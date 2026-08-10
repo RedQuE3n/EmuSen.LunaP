@@ -192,6 +192,31 @@ somewhere that is not a directory of JSON files.
 best-effort and falls back to defaults either way; the hook only stops it
 happening in silence.
 
+## Light and dark
+
+LunaP is **dark by default**, and that is a decision rather than the only option:
+the palette carries a light column too, keyed by theme variant.
+
+```csharp
+LunaTheme.Variant = ThemeVariant.Default;   // follow the desktop
+LunaTheme.Variant = ThemeVariant.Light;     // always light
+```
+
+Set it before `LunaApp.Configure`, which applies it. The default is `Dark` and
+stays there on purpose — every consumer of this toolkit has been dark since it
+existed, and following the desktop by default would mean an application looking
+different after a version bump its author took for something else.
+
+It matters that the two agree. `LunaTheme.axaml` includes a bare `<FluentTheme/>`,
+which follows the system variant whatever LunaP does; leaving the palette fixed
+while Avalonia's own controls moved is what put dark text on a dark surface for
+anybody on a light desktop. `docs/LunaP.md` §23 has the measurement.
+
+Every light foreground is held to 4.5:1 against the light surface by a test.
+`LunaMuted` on the **dark** surface measures 4.22:1, below that floor; it
+predates the light column, it is recorded rather than quietly adjusted, and §23.4
+says why.
+
 ## Themes
 
 A theme is a resource dictionary of palette keys, written as `.axaml` or as CSS,
@@ -212,7 +237,7 @@ the content, which is what re-runs the style pass. §12.3 is the finding.
     dotnet build
     dotnet test
 
-176 tests, all headless — no window is ever put on a screen, including for the
+207 tests, all headless — no window is ever put on a screen, including for the
 render tests, which drive a real Avalonia control tree through a real Skia pass.
 The suite runs serially on purpose; `docs/LunaP.md` §20.2 is the race that
 taught us why.

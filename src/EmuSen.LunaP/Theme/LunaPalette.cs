@@ -11,7 +11,17 @@ namespace EmuSen.LunaP.Theme
         Hot,
     }
 
-    // The C# half of Theme/Palette.axaml, for controls built in code; LunaPaletteTests pins the two together - see docs/LunaP.md §2.1.
+    // The C# half of Theme/Palette.axaml, for controls built in code; LunaPaletteTests pins the two
+    // together - see docs/LunaP.md §2.1.
+    //
+    // THESE ARE THE DARK COLUMN, and they are only the dark column. The palette gained a light one
+    // in §23 and a static field cannot follow a theme variant any more than it can follow a loaded
+    // theme - §12.1 already made exactly that point about a computed brush, which is why MeterRow
+    // uses pseudo-classes instead. Anything that must be correct in both variants has to resolve
+    // LunaSurface, LunaText and the rest as a DynamicResource and let the tree do it.
+    //
+    // This is not a gap waiting to be filled with a second set of fields. It is what a static is:
+    // the answer for code that has no resource host to ask, and the wrong tool for code that has.
     public static class LunaPalette
     {
         public static readonly ISolidColorBrush Surface = Brush("#1E1E1E");

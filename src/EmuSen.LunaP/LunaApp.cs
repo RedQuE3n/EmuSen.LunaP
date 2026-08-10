@@ -17,7 +17,13 @@ namespace EmuSen.LunaP
         {
             // AfterSetup, because the saved theme merges into Application.Current.Resources and needs the instance to exist.
             builder = builder.UsePlatformDetect().WithInterFont().LogToTrace()
-                .AfterSetup(_ => Theme.LunaTheme.ApplySaved());
+                .AfterSetup(_ =>
+                {
+                    // Before the saved theme, so a theme that overrides palette keys lands on top
+                    // of the right variant rather than being re-resolved out from under itself.
+                    Theme.LunaTheme.ApplyVariant();
+                    Theme.LunaTheme.ApplySaved();
+                });
 
             // UsePlatformDetect does not pick X11 on a Wayland session - see EmuSen_Project_Overview_v2.md §2a.
             return OperatingSystem.IsLinux() ? builder.UseX11() : builder;
