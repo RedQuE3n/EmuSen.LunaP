@@ -3,7 +3,7 @@ using Avalonia.Controls;
 
 namespace EmuSen.LunaP.Controls
 {
-    // A settings field: bold label, optional grey explanation, then whatever control the caller puts in Content - see EmuSen_LunaP.md §5.4.
+    // A settings field: bold label, optional grey explanation, then whatever control the caller puts in Content - see docs/LunaP.md §5.4.
     public class FieldRow : ContentControl
     {
         public static readonly StyledProperty<string> LabelProperty =

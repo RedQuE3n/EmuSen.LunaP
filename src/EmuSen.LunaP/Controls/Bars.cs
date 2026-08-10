@@ -4,7 +4,7 @@ using Avalonia.Controls.Primitives;
 
 namespace EmuSen.LunaP.Controls
 {
-    // A right-aligned run of buttons. Buttons go in as ordinary children - see EmuSen_LunaP.md §5.5.
+    // A right-aligned run of buttons. Buttons go in as ordinary children - see docs/LunaP.md §5.5.
     public class ButtonBar : ItemsControl
     {
     }

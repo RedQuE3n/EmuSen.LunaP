@@ -11,7 +11,7 @@ using EmuSen.LunaP.Theme;
 
 namespace EmuSen.LunaP.Tests
 {
-    // The control kit, driven through a real (headless) window so template application and styling are exercised, not assumed - see EmuSen_LunaP.md §5.
+    // The control kit, driven through a real (headless) window so template application and styling are exercised, not assumed - see docs/LunaP.md §5.
     public class LunaPControlTests
     {
         private static readonly HeadlessUnitTestSession Session =
@@ -247,5 +247,46 @@ namespace EmuSen.LunaP.Tests
 
         private static void Press(TextBox input, Key key) =>
             input.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key });
+
+        // The two defects §21.4 recorded in this control, now pinned - see §22.6.
+
+        [Fact]
+        public Task A_console_pane_drops_its_oldest_lines_at_the_cap() =>
+            Realised(() => new ConsolePane { MaxLines = 3 }, pane =>
+            {
+                for (int i = 1; i <= 6; i++) pane.AppendLine($"line {i}");
+
+                // Bounded, and bounded from the FRONT: a console keeps what just happened, not
+                // what happened first. Unbounded is a leak with a nice name.
+                Assert.Equal("line 4\nline 5\nline 6", pane.OutputText);
+            });
+
+        [Fact]
+        public Task A_console_pane_with_no_cap_keeps_everything() =>
+            Realised(() => new ConsolePane { MaxLines = 0 }, pane =>
+            {
+                for (int i = 1; i <= 200; i++) pane.AppendLine($"line {i}");
+
+                Assert.Equal(200, pane.OutputText.Split('\n').Length);
+            });
+
+        // The behaviour that made scrolling back useless: any new line yanked the reader to the
+        // bottom. The wiring cannot be tested here - under Avalonia.Headless a ScrollViewer reports
+        // extent == viewport however much text it holds, so ScrollToEnd does nothing and a test
+        // over Offset passes whatever the control does. That was found by writing such a test,
+        // sabotaging the fix, and watching it stay green (§22.6).
+        //
+        // So the RULE is tested instead, which is the §8.1 pattern: the decision is a pure function
+        // of three numbers and does not need a laid-out scroll viewer to be pinned.
+        [Theory]
+        [InlineData(0, 100, 100, true)]     // nothing hidden - a short console follows
+        [InlineData(900, 1000, 100, true)]  // pinned to the bottom - follow
+        [InlineData(899.5, 1000, 100, true)] // half a pixel short, still pinned in practice
+        [InlineData(0, 1000, 100, false)]   // scrolled to the top - do not yank them back
+        [InlineData(450, 1000, 100, false)] // reading the middle - leave them there
+        public void A_console_pane_follows_the_tail_only_from_the_bottom(
+            double offsetY, double extentHeight, double viewportHeight, bool expected) =>
+            Assert.Equal(expected, ConsolePane.Follows(offsetY, extentHeight, viewportHeight));
+
     }
 }

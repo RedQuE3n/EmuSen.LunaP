@@ -7,7 +7,7 @@ using Avalonia.Platform.Storage;
 
 namespace EmuSen.LunaP.Windowing
 {
-    // The OS file/folder pickers and the two small modals, once, instead of per call site - see EmuSen_LunaP.md §6 and §9.4.
+    // The OS file/folder pickers and the two small modals, once, instead of per call site - see docs/LunaP.md §6 and §8.4.
     public static class Dialogs
     {
         // False for cancel, for Escape, and for closing the window - anything that is not a deliberate yes.

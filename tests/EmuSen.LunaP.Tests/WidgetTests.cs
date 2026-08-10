@@ -7,7 +7,7 @@ using EmuSen.LunaP.Controls;
 
 namespace EmuSen.LunaP.Tests
 {
-    // Dropdowns, switches, tabs and filter bars - see EmuSen_LunaP.md §14.
+    // Dropdowns, switches, tabs and filter bars - see docs/LunaP.md §14.
     public class WidgetTests
     {
         private static Task Realised<T>(Func<T> make, Action<T> assert) where T : Control => UiTest.Run(() =>
@@ -23,7 +23,7 @@ namespace EmuSen.LunaP.Tests
         public Task A_switch_shows_its_label_and_reports_its_state() =>
             Realised(() => new LunaSwitch { Label = "Enable Logging", IsChecked = true }, toggle =>
             {
-                // Beside the knob and identical in both states, which is the line a CheckBox drew - see EmuSen_LunaP.md §14.1.
+                // Beside the knob and identical in both states, which is the line a CheckBox drew - see docs/LunaP.md §14.1.
                 Assert.Equal("Enable Logging", toggle.OnContent);
                 Assert.Equal("Enable Logging", toggle.OffContent);
                 Assert.Null(toggle.Content);

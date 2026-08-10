@@ -10,7 +10,7 @@ using EmuSen.LunaP.Fluent;
 
 namespace EmuSen.LunaP.Tests
 {
-    // The fluent surface - see EmuSen_LunaP.md §9.
+    // The fluent surface - see docs/LunaP.md §9.
     public class FluentTests
     {
         private static readonly HeadlessUnitTestSession Session =

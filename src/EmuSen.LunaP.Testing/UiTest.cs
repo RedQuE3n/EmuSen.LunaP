@@ -8,8 +8,9 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Xunit;
 
-namespace EmuSen.LunaP.Tests
+namespace EmuSen.LunaP.Testing
 {
     // A captured window, as plain RGBA8888.
     public readonly record struct RenderedFrame(byte[] Rgba, int Width, int Height)
@@ -49,8 +50,9 @@ namespace EmuSen.LunaP.Tests
         private const string BaselineVariable = "EMUSEN_UI_BASELINE";
         private const string BaselineModeVariable = "EMUSEN_UI_BASELINE_MODE";
 
-        public static readonly HeadlessUnitTestSession Session =
-            HeadlessUnitTestSession.GetOrStartForAssembly(typeof(UiTest).GetTypeInfo().Assembly);
+        // Resolved from the CONSUMER's test assembly, not this one - UiSession explains why that
+        // distinction only appears once the harness ships as a package.
+        public static HeadlessUnitTestSession Session => UiSession.Current;
 
         // Window and control construction is only valid on the one dispatcher this session owns.
         public static Task Run(Action body) => Session.Dispatch(body, default);

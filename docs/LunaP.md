@@ -162,7 +162,7 @@ The gallery ships in Release. It is ~110 lines with no dependencies beyond the k
 
 `Windowing/` is where the kit stops being widgets and starts being a framework. Still nothing consumes it — Phase 6 does that.
 
-### 9.1 `ToolWindow`
+### 8.1 `ToolWindow`
 
 The base class, and **deliberately thin: both of its features are opt-in, so inheriting it changes nothing by itself.** That was a design choice, not an oversight. Phase 6 rewrites a dozen windows onto this base, and a base class that silently altered how they close or where they open would make every one of those migrations a behaviour change hiding inside a refactor.
 
@@ -173,7 +173,7 @@ Restoring geometry has one non-obvious rule: **a remembered position is checked 
 
 A maximised window's own bounds are the screen's, so saving them would lose the restore size. Closing while maximised keeps the previously stored normal geometry and records only the flag.
 
-### 9.2 `PollingWindow`
+### 8.2 `PollingWindow`
 
 Declare `RefreshInterval` and override `Refresh()`. Timer construction, start, priming, stop-on-close and disposal happen once, here, instead of five times across two frontends.
 
@@ -184,7 +184,7 @@ Two details worth knowing before writing one:
 - **`StartPolling()` is called by the derived constructor, not the base one.** Priming from the base constructor would call `Refresh()` before the derived class had assigned its own fields — `CoretopWindow` would render "no target" against a `_target` that was about to be set. `Opened` calls `StartPolling()` too, so forgetting it costs a slightly later first paint rather than a window that never updates.
 - **`IsPolling` is public for the tests.** Asserting "it stopped" by counting ticks would mean racing a real clock inside a dispatcher the test is itself blocking; asserting on the timer's state is deterministic. That the tests are not vacuous was checked by mutation — replacing the visibility gate with `true` fails both of them.
 
-### 9.3 `WindowSlot<TWindow>`
+### 8.3 `WindowSlot<TWindow>`
 
 The "at most one of these, else bring it forward" pattern, which seven call sites hand-wrote (five in Mistress's `MainWindow`, two in Hotaru's `DebugWindows`), each with its own nullable field and its own `Closed` unhook.
 
@@ -198,7 +198,7 @@ _coretop.Show(owner: this,
 
 Thread marshalling is absorbed, but **not by always posting**: the slot runs inline when it is already on the UI thread and posts otherwise. Always posting would make `Current` unset when `Show` returns, which is surprising for Mistress, where every call is already on the UI thread. Hotaru's calls arrive from the emulation and console-reader threads and are posted.
 
-### 9.4 Confirm and error dialogs
+### 8.4 Confirm and error dialogs
 
 `Dialogs.ConfirmAsync` and `ErrorAsync` complete §6's pickers. These are the half that needed a window of our own rather than an OS dialog, which is why they waited for this phase — `MessageWindow` is built from the Phase 2 kit. Confirm returns false for cancel, for Escape and for closing the window: anything that is not a deliberate yes.
 
@@ -227,7 +227,7 @@ Ui.Cols("140,*,55", label, bar, value)   // instead of three Grid.SetColumn call
 
 Columns are assigned by position, and **an explicit `.AtColumn(2)` still wins** — the convenience never becomes a rule it imposes. Spans work the same way.
 
-### 11.1 The success criterion, proved rather than claimed
+### 9.1 The success criterion, proved rather than claimed
 
 The goal set in the gameplan was that a new dashboard is *a constructor and a `Refresh()` body*, with no `.axaml` file. `EmuSen.WiseMan/LunaP/DashboardShapeTests.cs` builds exactly that — an `ExampleDashboard` shaped like `CoretopWindow` but reading plain data instead of `ICoreTelemetry` — and drives it end to end: empty state on first paint, populated after a refresh, polling suspended when hidden. It is both the proof and the worked example for Phase 6.
 
@@ -244,7 +244,7 @@ The goal set in the gameplan was that a new dashboard is *a constructor and a `R
 - **`UiTest.AssertLaidOut(window, name, minColours = 8)`** — the always-on assertion: a window that failed to lay out, or whose controls have no template, renders as one flat colour. It dumps, asserts, and checks the baseline if one is configured.
 - **`UiTest.AssertStable(name, build)`** — builds and renders twice, asserting the two are identical.
 
-### 13.1 `EMUSEN_UI_DUMP` is now a directory
+### 10.1 `EMUSEN_UI_DUMP` is now a directory
 
 It used to be a *file path*, and that had already stopped working: `InputSettingsWindowRenderTests` appended `_{console}` to the basename to get three files out of one variable, and the two sites that used it disagreed about whether it wrote BMP or PNG. It now names a **directory**, and every capture in the run lands in it as `<name>.png`.
 
@@ -252,7 +252,7 @@ It used to be a *file path*, and that had already stopped working: `InputSetting
 EMUSEN_UI_DUMP=/tmp/ui dotnet test EmuSen.WiseMan/EmuSen.WiseMan.csproj --filter "FullyQualifiedName~RenderTests"
 ```
 
-### 13.2 Baselines, and why they are not committed
+### 10.2 Baselines, and why they are not committed
 
 `AssertLaidOut` also calls `AssertMatchesBaseline`, which is **a no-op unless `EMUSEN_UI_BASELINE` is set**. That is deliberate: the surrounding test always has its own real assertion, so nothing becomes vacuous when the baseline is absent, and a fresh clone or a CI run has nothing to fail against.
 
@@ -268,13 +268,13 @@ A mismatch reports how many pixels differ, not just that something changed. **Th
 
 **Reference images are deliberately not committed.** They are binary blobs that churn on any font, Skia or theme change, and a stale one fails in a way that looks like a real regression. Recording a baseline from the previous commit costs one command and is never stale.
 
-### 13.3 `AssertStable`, and the trap it encodes
+### 10.3 `AssertStable`, and the trap it encodes
 
 Phase 1 found that `VstopWindow` can never be a baseline target: it prints live pid, uptime and CPU figures, so its pixels differ between any two runs. `AssertStable` makes that an explicit, testable property rather than something discovered when a comparison mysteriously fails — a window that shows a clock, a pid or a frame counter fails it by design, and the message says so.
 
 The gallery is held to it, since it is the kit's own baseline target.
 
-### 13.4 The layering rule is now enforced
+### 10.4 The layering rule is now enforced
 
 `Common/LeafAssemblyTests.cs` already pinned Endymion, Serenity and Galaxia to their allowed references. **LunaP is in that list now.** §1's rule was documentation until this phase; adding one `ProjectReference` in a hurry is exactly the kind of thing that would otherwise go unnoticed until the launcher inherited the emulator.
 
@@ -294,7 +294,7 @@ What actually went away: three `BuildMeterRow` copies with their `Grid.SetColumn
 
 Every migrated dashboard also stops polling while hidden, which none of them did before.
 
-### 12.1 What the verification caught
+### 11.1 What the verification caught
 
 Three things, none of which a passing build would have shown:
 
@@ -304,13 +304,13 @@ Three things, none of which a passing build would have shown:
 
 `DebugSettingsWindow`, `CoretopWindow` (both states) and the gallery all came out byte-identical.
 
-### 12.2 Two judgement calls
+### 11.2 Two judgement calls
 
 **`DrainPendingFromEmulationThread` goes through `slot.Current`, not `RefreshIfOpen`.** `RefreshIfOpen` marshals to the UI thread, which is correct for every other caller and exactly wrong for this one — it must run on the thread that owns the core. Hotaru's `UpdateCoretopWindowTargetIfOpen` is the opposite case and is now a single line.
 
 **`FeedWindow` needs `.Grow()`.** `RgbaImageView` is left-aligned by default, which is right for a palette swatch in a column and wrong for a live game mirror that should fill the window. There is a test asserting the picture is actually wider than 400 px, because the wrong alignment renders as a working window that simply drew small.
 
-### 12.3 What was still duplicated, and how it was actually resolved
+### 11.3 What was still duplicated, and how it was actually resolved
 
 *Superseded on 2026-08-04 by §16 — kept because the reasoning recorded here was wrong in an instructive way.*
 
@@ -318,7 +318,7 @@ The two `CoretopWindow`s were 138 lines each and **differed by six lines, all na
 
 **That framing was too narrow, and taking it at face value cost a wrong turn.** A third assembly was actually built before anyone asked the prior question: *does referencing Cauldron from LunaP violate what the layering rule is for?* It does not — see §16. The window is in `Dashboards/` and there is no third assembly.
 
-### 12.4 Where the tests moved
+### 11.4 Where the tests moved
 
 Windows that build their own tree have no XAML namescope, so `GetControl<T>(name)` no longer resolves. Test lookups go through `FindNamed<T>` over the visual tree instead (the idiom `InputSettingsWindowLayoutTests` already used).
 
@@ -417,11 +417,11 @@ Three consequences worth carrying:
 
 ---
 
-## 13. The widgets
+## 14. The widgets
 
 Four, all **wrapping** Avalonia's own controls rather than reimplementing them — the value added is the theme plus an API shaped like the calls the frontends actually make.
 
-### 13.1 `LunaSwitch`, `Dropdown`, `Tabs`, and the style-key trap for the second time
+### 14.1 `LunaSwitch`, `Dropdown`, `Tabs`, and the style-key trap for the second time
 
 All three wrappers pin `StyleKeyOverride` to their base type. §5.5 recorded this for `ButtonBar`, where the symptom was a control that rendered as nothing. **`LunaSwitch` is worse: `ToggleSwitch.OnApplyTemplate` does not degrade to blank, it throws on the missing `PART_MovingKnobs`.** The rule to carry forward: *anything here that derives from a stock Avalonia control needs its style key pinned to that control, and a test that finds a real template part.*
 
@@ -431,7 +431,7 @@ All three wrappers pin `StyleKeyOverride` to their base type. §5.5 recorded thi
 
 `Tabs.Add(header, content)` and `RemoveFrom(index)` replace the "construct a `TabItem`, push it into `Items`" chore both frontends hand-wrote for their per-console tabs.
 
-### 13.2 `FilterBar`
+### 14.2 `FilterBar`
 
 A search box, optionally preceded by a labelled facet dropdown. Two windows had built this independently, and it owns the detail one of them had a comment about:
 
@@ -481,7 +481,7 @@ The distinction that keeps this from becoming a slippery slope: **controls take 
 
 ### 16.1 The wrong turn, recorded because the doc caused it
 
-§12.3 named "a small third assembly referencing LunaP *and* Cauldron" as the only remaining option. **A whole project was created on that basis** — csproj, solution entry, references from both frontends and the test project, a codename claimed out of the Sailor Moon pool, its own reference doc — to hold one 137-line file. It was deleted the same day.
+§11.3 named "a small third assembly referencing LunaP *and* Cauldron" as the only remaining option. **A whole project was created on that basis** — csproj, solution entry, references from both frontends and the test project, a codename claimed out of the Sailor Moon pool, its own reference doc — to hold one 137-line file. It was deleted the same day.
 
 The prior question was never asked: *is Cauldron actually the kind of dependency this rule is about?* It is not. **An assembly per layering exception grows the project faster than an entry on an allow-list does**, and a codename is a permanent claim on a finite pool (`EmuSen_Core_Naming_Scheme.md` (in EmuSen) §11 carries the same lesson from the other side).
 
@@ -493,7 +493,7 @@ The GUI counterpart to DianaOS's own `coretop` (`man coretop`). A `PollingWindow
 
 Two behaviours that are load-bearing and non-obvious, both pinned by tests:
 
-- **`UpdateTarget(null)` is a real state**, not a defensive check — the window drops to "No ROM loaded." That text is a plain muted `TextBlock` and **not** a `HintText`, because it is the window's whole content in that state rather than an explanation under something. `HintText` is 11 pt by definition, and using it here measured 11,060 pixels wrong (§12.1).
+- **`UpdateTarget(null)` is a real state**, not a defensive check — the window drops to "No ROM loaded." That text is a plain muted `TextBlock` and **not** a `HintText`, because it is the window's whole content in that state rather than an explanation under something. `HintText` is 11 pt by definition, and using it here measured 11,060 pixels wrong (§11.1).
 - **The sprite bar stays on screen at zero when no core is loaded.** It is a fixed part of the layout, not a per-core meter. The natural assumption is that the empty state draws no `ProgressBar`; it draws exactly one.
 
 The two frontends' `CoretopWindowTests` merged too. Mistress's was a strict superset — it covered the no-tile-memory case and the `UpdateTarget(null)` unload — so the merged file is its body, now in `EmuSen.WiseMan/Serenity/` beside the code it tests. What was genuinely dropped is the second pair of render baselines: with one window class there is one render to pin, and a second baseline under another name asserted the same pixels twice.
@@ -531,7 +531,7 @@ consumer that fails to include it gets a window in which every control occupies
 layout and draws nothing. That failure has shipped once — the account is now in
 the Pegasus repository's `docs/Pegasus_Design.md` §11, having left with the
 project, and `LunaTheme.axaml`'s own comment predicted it before it happened.
-§5.5 and §13 are the in-repository cousins of the same failure, where an
+§5.5 and §14 are the in-repository cousins of the same failure, where an
 untemplated control renders as nothing.
 
 Two limitations, recorded now rather than discovered later:
@@ -555,6 +555,8 @@ changes under Pegasus, that gap is what will be felt.
 ---
 
 ## 18. Where to look next
+
+*Superseded on 2026-08-10 by §21, and this is the one section the move to a separate repository invalidated outright. Every document below lives in the EmuSen repository and none of them is in this one, so the "plan of record" this section points at is not reachable from here. It is kept rather than deleted because the five titles still say where the reasoning came from, which is worth something to anybody who has both checkouts. **For what to build next, read §21 instead.***
 
 - **`EmuSen_LunaP_Gameplan.md` (in EmuSen)** — the plan of record: the full duplication audit (§1), the settled decisions (§2), Phases 2–6 (controls, window scaffolding, the fluent surface, harness support, migration), and the questions deliberately left open (§6).
 - **`EmuSen_Launcher_Multicore_Gameplan.md` (in EmuSen)** — the launcher this project is eventually for. Its Phase 4 (theming) is why §2's palette is a resource dictionary rather than a set of constants.
@@ -647,3 +649,325 @@ The general form is worth keeping: **a suite that funnels through one shared res
 The four projects that took a `ProjectReference` take a `PackageReference` instead, resolved from a folder feed until this is on a real one — the identical arrangement `EmuSen.Pegasus` has used from the start, and for the identical reason: a consumer outside this repository cannot resolve a `ProjectReference`.
 
 The consequence worth stating plainly: **iterating on the toolkit while working on EmuSen now costs a `dotnet pack` and a version bump.** That is the price of the split and it is a real one. `LeafAssemblyTests` still asserts what LunaP carries, now against the package assembly rather than a project in the same solution, and it still means the same thing.
+
+---
+
+## 21. Where the toolkit is thin
+
+Everything above this section is a record of what happened. This one is the only forward-looking section in the document, and it is written to a rule that keeps it from becoming a wish list.
+
+**The rule: an item earns a place here by having been written more than once, by somebody who was not trying to write a toolkit.** LunaP was never designed; it was extracted, and §1 is the shape that extraction left behind. The honest way to find the next piece is the same way the first ones were found — read what the consumers still hand-write, and count. So every item below carries its sites, and the count *is* the argument. Something hand-rolled once is a hazard note, not a roadmap entry; there is one exception and it is marked as such, because pretending the evidence pattern held there would be worse than admitting it did not.
+
+The survey covering this section read `EmuSen.Pegasus`, `EmuSen.Mistress`, `EmuSen.Hotaru` and `EmuSen.Serenity`. `EmuSen.Chariot`, the fourth consumer of the Pegasus core, has no UI at all and contributes nothing.
+
+One warning inherited from §16.1, which applies to this section more than to any other in the document: **a doc that says "the remaining option is X" is recording what was considered, not what is possible. Re-derive before building on it.** A roadmap is exactly the kind of writing that gets treated as a decision after enough time passes.
+
+### 21.1 State and threading, which is where the duplication actually is
+
+*Built, and recorded in §22 — which also carries a defect that building it turned up in the three implementations it replaces. A3 below is the one item deliberately left for §21.2; §22.4 says why.*
+
+The largest count in the survey, and none of it needs anything but Avalonia.
+
+**Latest-wins posting to the UI thread, written three times and byte-identical each time.** `EmuSen.Mistress/Views/MainWindow.axaml.cs:109,1205`, `EmuSen.Hotaru/Views/GameWindow.axaml.cs:209,838` and `EmuSen.Serenity/FramePresenter.cs:32,76` each hold an `int _presentScheduled`, swap the newest value in with `Interlocked.Exchange`, and post exactly one dispatcher callback with `Interlocked.CompareExchange(ref _presentScheduled, 1, 0) == 0`. Around ten further sites post raw. The toolkit already owns this correctly in exactly one place — `Windowing/WindowSlot.cs:44 OnUiThread`, which runs inline when it is already on the thread and posts otherwise — and that is precisely the one nobody rewrote, which is the whole argument in one observation.
+
+The trap to design around is already recorded. §11.2 found that `RefreshIfOpen` marshals to the UI thread, *"which is correct for every other caller and exactly wrong for this one"* — the drain that must run on the thread owning the core. **A marshalling seam that cannot be opted out of would re-create that bug at the toolkit level, where it would be harder to see.**
+
+**The "do not echo my own write back" flag, written six times.** `Pegasus/Shell.fs:72-73` carries two (`applying`, `syncingSelection`) with the comment that otherwise *"the list and the editor drive each other forever"*; `ActiveCheatsWindow.axaml.cs:37` has `_syncing` and `:183` has `_built`; `InputSettingsWindow.axaml.cs:39` has `_initialized`; `PreferencesWindow.cs:20` has `_initializing`. Every one guards the same thing: a handler firing during a programmatic update. And the kit already solves it for exactly one control — `Controls/Widgets.cs:46-55`, where `Dropdown.Fill` sets `_filling` around an items-and-selection swap so `Chose` does not fire for the reset. That solution was written for a dropdown and never asked whether it was about dropdowns. It is not.
+
+**Rebuild the list, then go and find the selection again, written three times.** `Pegasus/Buddies.fs:63-76` (*"Losing it every time somebody else signs in would make the Open button unusable"*), `Pegasus/Shell.fs:75-88`, and `ActiveCheatsWindow.axaml.cs:196-201`. This pairs with the typed list in §21.2 — done together, one control absorbs both.
+
+**Debouncing, which exists nowhere and is wanted in at least two places.** `MainWindow.axaml.cs:838` re-filters a ROM library on every keystroke and `CheatDatabaseWindow.axaml.cs:90` re-queries an on-disk cheat database on every keystroke. `Controls/FilterBar.cs` is where this belongs, and §14.2's existing care about *which* notification to watch — `TextBox.TextProperty` rather than `TextChanged`, so a programmatic `Text` set does not read as typing — is the precedent for how to do it without introducing the §21.1 flag problem all over again.
+
+**Deliberately excluded, and recorded so it is not proposed later:** the emulation-thread lifecycle at `MainWindow.axaml.cs:89,941`, the two copies of `SleepUntil` spin-waiting on `Thread.SpinWait(100)` (`MainWindow.axaml.cs:1190`, `GameWindow.axaml.cs:594`), and `GameWindow`'s ten `volatile bool _request*` flags standing in for a command queue. All genuinely duplicated. None of it belongs here, on exactly the reasoning §15 used for `DefaultPadKeyMap`: **a frame pacer is a fact about emulation, not about chrome.** The count is not the only test an item has to pass.
+
+### 21.2 The control kit
+
+**A list that takes a type, because five sites take a string and keep a shadow array.** `MainWindow.axaml.cs:47` says it outright — *"Parallel to LibraryList's item strings, which are titles only"* — and `:857` projects entries to a formatted string; `CheatDatabaseWindow.axaml.cs:116` builds `$"{s.System}  ({s.Count})"` and then `:128` has to take the label back apart to recover the name it already had; `RomBrowserWindow.axaml.cs:336`, `Pegasus/Shell.fs:79` and `Pegasus/Buddies.fs:66` do the same in smaller ways. **Parsing a display string to recover a model field is the shape of a missing control.** A list taking `IEnumerable<T>`, a projection and a key selector removes the shadow array and the selection-restore dance together — and the row to generalise from already exists, hand-built at `ActiveCheatsWindow.axaml:62-81`: a checkbox, a 34-pixel badge, an ellipsised description, a monospace detail.
+
+Note what this control must not become. §1's rule is that a control takes plain data or a delegate; a typed list takes a *projection*, not an interface the consumer implements. The moment it wants `IListItem` it has stopped being a LunaP control.
+
+**An empty state, and the clearest single piece of evidence in the whole survey.** `EmuSen.Serenity/Dashboards/CoretopWindow.cs:21` declares a plain `TextBlock` with the comment *"Muted but body-sized, not a HintText: this one is the window's whole content when no core is loaded"*. That is a consumer stating, in a comment, that the kit's nearest seam was the wrong one. `MainWindow.axaml.cs:861-882` and `Pegasus/SignIn.fs:42-45` build the same thing by hand, the latter noting that otherwise *"an empty box with no explanation reads as something broken"*.
+
+**The status-and-buttons footer, five times.** `MainWindow.axaml:65`, `ActiveCheatsWindow.axaml:45`, `CheatDatabaseWindow.axaml:23`, `InputSettingsWindow.axaml:19` and `VstopWindow.cs:34` all lay out `ColumnDefinitions="*,Auto"` with a status message on the left and a run of buttons on the right. The kit ships `StatusBar` and `ButtonBar` as separate controls and never the arrangement they are always in — and `luna:StatusBar` is instantiated by nobody at all, which is the more interesting half of the finding: **a control nobody uses and a layout everybody rewrites are usually the same bug.**
+
+**A card surface, because three sites escape the palette to get one.** `ActiveCheatsWindow.axaml:19`, `CheatDatabaseWindow.axaml:46` and `MainWindow.axaml:64` all paint a `Border` with `{DynamicResource SystemChromeLowColor}` — FluentTheme's token, not LunaP's. §4's centralisation check exists to catch exactly this, and here the colour is not hard-coded but sourced from the wrong dictionary, which the grep in §4 does not see. Adding `LunaCard` (or admitting `LunaInputSurface` already means this) is a smaller change than it looks; noticing it required reading for the *absence* of a Luna key rather than the presence of a hex literal.
+
+**Transient notification.** `StatusText.Text = …` is assigned seventeen times in `MainWindow.axaml.cs` and sixteen in `ActiveCheatsWindow.axaml.cs`, carrying results (*"Applied 12 cheat(s)"*), standing state (*"No ROM loaded"*) and failures (*"Save State failed: …"*) down one channel with no severity and no dismissal. Meanwhile `Dialogs.ConfirmAsync` and `ErrorAsync` are called **nowhere in any consumer** — verified by grep — and a destructive delete is hand-rolled as a two-click button at `CheatDatabaseWindow.axaml.cs:220`, where the button relabels itself `$"Delete {n} system(s)?"` and its second click consumes the plan its first click made. Before designing a toast, the question to answer is which of those two facts is the actual gap: **the kit may be missing a notification surface, or it may only be missing a reason for anybody to find the dialogs it already has.** §7 claims the gallery is how the kit is discovered, and the gallery does not show a dialog.
+
+**Smaller, each with its site:** an in-app chooser (`RomBrowserWindow` is 81 lines whose entire job is to show a list and return the selection or null, consumed at `MainWindow.axaml.cs:339`); a `MeterRow` that accepts `n` out of `max` rather than only a percentage, which is why `CoretopWindow.cs:24,48` rebuilds one out of a bare `ProgressBar` and a `TextBlock`; busy-and-cancellable state for long work, absent at `CheatDatabaseWindow.axaml.cs:260-288` where a multi-megabyte download is managed by disabling two buttons in a `try` and re-enabling them in a `finally`; and the toggle-with-an-explanation-underneath composite, currently a magic negative margin at `DebugSettingsWindow.cs:106` (`Ui.Hint(…).Margin(24, -2, 0, 4)`) copied into XAML at `InputSettingsWindow.axaml:55,66,75`.
+
+**The fluent surface has two shaped holes.** `Fluent/Ui.cs:38` offers `Cols` and there is no `Rows`, so header-and-body tables keep their two column strings in step by hand through a shared `const` (`InputSettingsWindow.axaml.cs:109,135,182,202`). And `Ui.Section` takes exactly one child, which is why section headings are written as bold `TextBlock`s in eight places rather than as `SectionHeader` — `DebugSettingsWindow.cs:97`, `InputSettingsWindow.axaml.cs:127`, `InputSettingsWindow.axaml:38,49,70`, `ActiveCheatsWindow.axaml:28,42`, `CheatDatabaseWindow.axaml:55,60`. There is also no `GridSplitter` anywhere in any of the three repositories, and `CheatDatabaseWindow.axaml:52` fakes a split pane as `ColumnDefinitions="2*,12,3*"` with the `12` as a spacer column.
+
+**Counter-evidence, recorded because it complicates the section's own method:** `Pegasus/Shell.fs:189-193` calls `DockPanel.SetDock` four times in a row, and `Fluent/LayoutExtensions.cs:84` has shipped `.Dock(side)` the whole time. Nothing was missing there. **Not every hand-roll is a gap in the kit; some are a gap in the gallery, or in the README**, and a roadmap built only by counting will propose code where documentation was the answer.
+
+### 21.3 A testing package, and the hazard it would ship
+
+The strongest evidence in the survey, and the only finding that crosses a repository boundary.
+
+`EmuSen.WiseMan/LunaP/VisualQuery.cs` is **byte-identical** to `tests/EmuSen.LunaP.Tests/VisualQuery.cs` except for line 7, the namespace — confirmed by `diff`, which reports that one line and nothing else. `EmuSen.WiseMan/Fixtures/UiTest.cs:16` re-declares `RenderedFrame`. And Pegasus, unable to reference either, wrote a third harness in F# at `tests/EmuSen.Pegasus.Tests/Headless.fs` with its own descendant queries and its own headless bootstrap. The cause is one line: `tests/EmuSen.LunaP.Tests/EmuSen.LunaP.Tests.csproj:16` is `<IsPackable>false</IsPackable>`, so there has never been another way to obtain `AssertLaidOut`.
+
+That matters more than the duplication does. §3.1 records that a headless suite without the real theme asserts over untemplated controls and **passes green**, and §17 records that a consumer omitting the `avares://` include gets *"a window in which every control occupies layout and draws nothing"* — a failure that has shipped once. `AssertLaidOut` is the guard against precisely that, and it is currently the one part of this toolkit a consumer has to retype by hand to get.
+
+**The decision: a second package, `EmuSen.LunaP.Testing`, and §1's rule does not bend.** A test harness needs xunit and `Avalonia.Headless`, which `EmuSen.LunaP` may not name. The rule as written in `EmuSen.LunaP.csproj` is about *this assembly* — *"a toolkit that names its first consumer is a toolkit only that consumer can use"* — and a sibling package that a consumer references from its test project only does not hand anybody the thing §1 was protecting against. Stating it explicitly because a reader arriving at this section will, correctly, check whether the headline claim just quietly loosened.
+
+**And the package would ship a hazard, so it has to ship the instructions too.** §20.2 records the race CI found: xunit parallelises across test classes, three fixtures configure statics global to the one headless application, and `ThemeTests`' constructor takes the diagnostics hook away from `CssThemeTests` mid-assertion. **That hazard is not a property of this suite.** It is a property of `UiTest`'s single dispatcher plus `LunaSettings`' process-global statics — which means every consumer suite inherits it the moment it uses a packaged harness, and inherits it in the worst available form: green on the developer's machine, red on a two-core runner.
+
+The corroboration is already on disk and predates the finding. Pegasus's hand-rolled harness declares `[<Xunit.CollectionDefinition "Avalonia">]` at `tests/EmuSen.Pegasus.Tests/Headless.fs:118` — **a second, independent discovery of the same constraint, in a different language, before the package it would belong to exists.** Two consumers reaching the same conclusion separately is the same kind of evidence as three copies of the same file, and it says the serialisation requirement is part of the contract rather than a footnote about this repository's tests.
+
+So the package's documentation is part of its design, not an afterthought to it: which statics are global, why §19.1 made them so, and that a consuming suite must disable test parallelisation. Two questions stay genuinely open. Whether the assertions should throw xunit exceptions or return a result the caller asserts on — the second costs the xunit reference and costs ergonomics, and it is not obvious which matters more to somebody who is not using xunit. And whether the baseline machinery travels at all, given §10.2's finding that reference images are *"an artefact of one machine's font rendering"*; `AssertLaidOut` is portable in a way `AssertStable` and the `.frame` comparison are not.
+
+### 21.4 Hygiene
+
+**The palette has no way to say "this went wrong".** Six sites hard-code a status colour: `Pegasus/SignIn.fs:49` and `Pegasus/Buddies.fs:53` both set `Colors.IndianRed` from a copied `fail`/`note` pair, `Pegasus/Shell.fs:103,104,111` maps connection state onto `SeaGreen`, `IndianRed` and `Goldenrod`, and `InputSettingsWindow.axaml.cs:393` uses `Brushes.OrangeRed` for a binding conflict. §4's centralisation check — *"that is the check to re-run before claiming the palette is still centralised"* — returns all of these today.
+
+§2.1 already argued this side of the question without meaning to. It refused to fold the input-conflict highlight into `LunaHot` because *"'this binding collides with another' is not 'this subsystem is at 85% load', and giving them one key would encode a relationship that does not exist."* **That is an argument for semantic tokens, not against them:** the reason those colours must not reuse the load ramp is exactly the reason they need keys of their own. What the load ramp is to a meter, an error/success/info triple would be to a message.
+
+**`ConsolePane` has two defects, and they ship today.** `Controls/ConsolePane.cs:57` appends with `_text = _text + "\n" + text`, which reallocates the entire buffer per line and has no cap, and `:59` calls `ScrollToEnd()` unconditionally, so a reader scrolled back through output is dragged to the bottom by the next line that arrives. Both console windows depend on this control entirely (`DianaOSConsoleWindow.cs:27`, `DianaOSShellWindow.cs:24`). These are behaviours, not gaps — they belong in this section as defects with a reproduction, and the second one is the sort of thing that is invisible in a test and obvious within ten seconds of real use.
+
+**Accessibility is the exception to this section's rule, and it is worth being blunt about why.** `ToolTip`, `AutomationProperties`, `TabIndex` and `IsTabStop` appear **zero times** across Pegasus, all three EmuSen frontends, *and this toolkit's own `src/`*. There is no hand-roll to count because nobody built it anywhere, so the method that produced every other item in this section produces nothing here. Focus is managed in exactly one place in the entire corpus (`Pegasus/SignIn.fs:82`). For a toolkit whose whole subject is chrome, that is the largest blank area on the map, and the absence of evidence is the finding rather than a reason to skip it.
+
+**Keyboard handling has three answers to one question.** "Enter means submit" is implemented at `MainWindow.axaml.cs:896`, at `Pegasus/SignIn.fs:87`, and as `FilterBar.Submitted`. The tunnelled global handler is written twice with the same comment about focus navigation eating the arrows (`MainWindow.axaml.cs:218`, `InputSettingsWindow.axaml.cs:87`), and `MainWindow.axaml.cs:223` holds `TypingIntoATextField`, a completely generic guard living in an emulator. §15 draws the line and it is a clean one here: the F-key map at `GameWindow.axaml.cs:350` stays out, because it names a console's controls; `TypingIntoATextField` does not name anything.
+
+**Six windows bypass `ToolWindow`, and `WindowKey` appears zero times in the EmuSen frontends.** `MainWindow.axaml.cs:39`, `ActiveCheatsWindow.axaml.cs:21`, `CheatDatabaseWindow.axaml.cs:19`, `RomBrowserWindow.axaml.cs:315`, `GameWindow.axaml.cs:91`, and `InputSettingsWindow.axaml.cs:22` — the last written as `Avalonia.Controls.Window`, fully qualified, which is a deliberate statement rather than an oversight. They lose the `LunaSurface` background, the `StylesChanged` restyle hook, Escape handling and placement memory in one go, which is the uncovered case §12.3 already flags. Two of them hand-roll a `DispatcherTimer` (`InputSettingsWindow.axaml.cs:35-36,92,409`, `MainWindow.axaml.cs:735`) while `Windowing/PollingWindow.cs` exists and its own comment says *"Five windows hand-rolled this; none of them stopped while hidden."* **The honest reading is that this is migration work in EmuSen and not toolkit work here** — but it is recorded here because a toolkit whose base class is refused by six of its consumer's windows should find out why before adding a seventh feature to it.
+
+**The layering guard did not move, and this repository does not enforce its own headline rule.** `LunaP_references_nothing_of_EmuSen` lives in `EmuSen.WiseMan/Common/LeafAssemblyTests.cs` and still runs there against the package. Nothing in `tests/EmuSen.LunaP.Tests/` asserts it; the only statement of the rule inside this repository is a comment in `EmuSen.LunaP.csproj`. §10.4 records how much that guard was worth — *"§1's rule was documentation until this phase"* — and bringing it here means bringing its blind spot with it, stated rather than rediscovered: the C# compiler elides a reference used only for `const` values, so **a project can depend on another project's constants and this test cannot see it.**
+
+**Version discipline, which §17 called an open gap, is now mostly closed.** The release runs off a tag (`.github/workflows/publish.yml`), the published version comes from that tag rather than the csproj so it cannot be written in two places, CI builds and tests on every push, and publishing uses NuGet Trusted Publishing so there is no stored key at all. `EmuSen.LunaP` 0.2.0 is on nuget.org and Pegasus restores it from there. What is left is smaller and should be carried at its real size: **there is still no changelog**, and `--skip-duplicate` means a mis-tagged publish fails silently rather than loudly. The question the tracks above raise is what a 0.3.0 owes a consumer who is on 0.2.0 — and that is a changelog question, not a release-plumbing one.
+
+### 21.5 What none of this may do
+
+Collected here because a roadmap is the likeliest place in a project for a rule to loosen without anybody deciding to loosen it.
+
+- **Avalonia and nothing else**, for this assembly. §21.3's second package is the one considered exception in this section, and it is argued rather than assumed.
+- **Plain data or a delegate, never a domain type** (§1). The typed list takes a projection; the moment it takes an interface, it is the wrong control.
+- **Nothing that names a console, a core, or a gamepad button** (§15).
+- **Every control gets a test that finds a real template part**, and its style key pinned if it derives from a stock control — §5.5 and §14.1, which record the same trap twice, the second time in the form where `ToggleSwitch.OnApplyTemplate` throws rather than degrading to blank.
+- **New guards fail on purpose before being trusted** — §10.4, §8.2, and §10.2, the last verified by moving `LunaSectionHeader` one channel and watching 904 pixels differ.
+- **§16.1 is the cautionary tale.** A whole assembly was stood up — csproj, solution entry, references from three projects, a codename out of a finite pool, its own reference document — to hold one 137-line file, and deleted the same day. Ask what a thing is *about*, not what it *references*.
+
+There is also a cost that did not exist when the earlier sections were written, and every item above pays it. **`ThemeVocabularyTests` stayed in EmuSen** (§20.2) and compares `man theme` against `CssTheme`'s allow-lists by set equality *in both directions*. So a new control in §21.2, or a new palette token in §21.4, **turns EmuSen's suite red until EmuSen's `man theme` page is updated** — a failing test in a repository the change never touched. §20.2 chose to leave that test behind deliberately and gave a good reason; this is the invoice for it, and it should be expected rather than debugged.
+
+### 21.6 Corrections this section makes
+
+**§18 is superseded**, and is the one section the move invalidated outright. It is annotated in place.
+
+**§17 is stale in four ways**, which matters because it is the section anybody asking how to consume LunaP will read. It says the packages are all 0.1.0 — the csproj says 0.2.0, and the published version now comes from the tag regardless. It says there is *"no release process, no changelog and no automated republish"* — two of those three are now false. It says the folder feed *"exists only because the packages have not been pushed yet"* — they have been. And it names **GitHub Packages as the intended destination**, where the package actually went to nuget.org. That last one is a changed decision rather than drift, and the reason is worth keeping: a public feed that needs no authentication to restore from is the one that matches what §19 was for, which was somebody outside this project being able to use the toolkit at all. §20.3's *"resolved from a folder feed until this is on a real one"* is stale for the same reason.
+
+**The citations from source are in far worse shape than a first look suggested, and this correction corrects an earlier draft of this very section.** That draft said "two source files still cite the pre-move document". The real figures, counted rather than sampled: **68 citation sites across 43 files**, of which **55 name `EmuSen_LunaP.md`** — a document that does not exist in this repository under that name.
+
+The filename was the smaller half. **Fourteen citation sites pointed at a section number that did not exist at all**, and a further four numbers — §12.1, §12.2, §12.3 and §13.2 — each resolved to *two different headings*, so a bare citation to any of them was undecidable. §13.2 was either the baseline machinery or `FilterBar`, and the two have nothing to do with each other.
+
+**The cause, and it is the useful part: the `##` chapter numbers and the `###` subsection numbers came from different eras, and the code had stayed with the chapters.** `Windowing/` cited §8.1 to §8.4 and sits under `## 8. The windowing layer`, whose subsections were numbered §9.1 to §9.4 — so the *code* agreed with the parent heading and the document's own subsections did not. Likewise the widgets: code cited §14.x, the chapter was `## 13`, and there was no §14 in the document at all. The drift was in the document, in every case but one.
+
+**It is fixed, and here is exactly what moved**, so that anybody holding an older checkout or an outside citation can convert:
+
+| Chapter | Subsections were | Subsections are |
+|---|---|---|
+| `## 8. The windowing layer` | §9.1 – §9.4 | **§8.1 – §8.4** |
+| `## 9. The fluent surface` | §11.1 | **§9.1** |
+| `## 10. The test harness` | §13.1 – §13.4 | **§10.1 – §10.4** |
+| `## 11. The migration` | §12.1 – §12.4 | **§11.1 – §11.4** |
+| `## 12. Themes` | §12.1 – §12.3 | unchanged |
+| `## 13. The widgets` → **`## 14`** | §13.1, §13.2 | **§14.1, §14.2** |
+
+Moving the widgets to §14 shifts nothing after it, because §15 existed already. It does **not** close the gap in the chapter sequence, and saying it did would be wrong: the chapters now run 1–12 and 14–21, so the hole moved from §14 to §13 rather than disappearing. Closing it properly would mean renumbering §14 through §21 down by one, which would break every citation to §15, §17, §19 and §20 in this document, in the README, and in anything outside this repository that has cited them — a much larger blast radius than an empty number is worth. **The gap is left where it is, and it records that a chapter was removed at some point.** That is information, not damage.
+
+What the pass does guarantee: every heading agrees with its parent, no number denotes two sections, and all 68 citations from source resolve — verified by extracting each one and matching it against the heading list, rather than by reading and believing.
+
+**Five citations were wrong in a way no renumbering would have fixed**, and they were corrected in the same pass. `Controls/MeterRow.cs:47` and `Theme/Controls.axaml:52` cited §13.2 for the load ramp living in styles rather than in a computed brush, which is §12.1. `Theme/LunaTheme.cs:19` and `tests/ThemeTests.cs:13` cited §13 for themes, which are §12. And `Windowing/Dialogs.cs:10` cited §9.4 — the one place in the whole codebase that had followed the document's old subsection numbering instead of its chapters, which is why it was the last one left standing after everything else resolved.
+
+Two things worth keeping from this. **`tests/UiTest.cs` was the file corrected during the move** (§20.2) and it came out with the new filename and a section number that resolved to nothing — the tidy-up introducing the defect it was tidying, which is an argument for checking that a citation resolves rather than that it looks current. And the reason this was worth doing at all is the rule the project already holds: a comment that has drifted from what it points at is worse than no comment, **because it is believed**. Fifty-five of these named a file that has not existed under that name since the move, and the suite was green throughout — nothing in a build or a test run can see any of it.
+
+---
+
+## 22. `Threading/` — the first track built
+
+§21.1 argued that the largest duplication in the consumers was not controls but plumbing, and named four things. Three of them are built and one is deliberately not; this section records what they are, the defect building them turned up, and what each guard was made to fail against.
+
+`Threading/` is four small types, each one thing, and all of them take a delegate and name nothing:
+
+| Type | Replaces | Sites it was counted at |
+|---|---|---|
+| `UiThread` | `Dispatcher.UIThread.CheckAccess()`-then-post, hand-written | §21.1 |
+| `Latest<T>` | the latest-wins frame poster, written three times byte-identically | §21.1 |
+| `Suppressor` | the "do not echo my own write back" flag, written six times | §21.1 |
+| `Debounce` | nothing — no consumer has one, and two want one | §21.1 |
+
+### 22.1 `Latest<T>`, and the defect all three copies share
+
+The three implementations this generalises are byte-identical, and **all three can strand a value.** They clear the scheduled flag *after* the hand-off:
+
+```csharp
+finally
+{
+    // Reset after the hand-off, so an in-flight Present keeps coalescing
+    Interlocked.Exchange(ref _presentScheduled, 0);
+}
+```
+
+A value offered while the UI thread is inside the callback sets `_pending`, then fails to schedule because the flag still reads 1. The flag then goes to 0 with nothing queued, and that value sits there until something else arrives to push it out.
+
+**At sixty frames a second this is invisible**, which is why it survived three copyings: the next frame lands 16 ms later and carries the fix with it. It shows when the stream *stops*. Pause an emulator and the frame at risk is the last one — the one somebody is about to sit and look at.
+
+The fix is to clear before presenting rather than after, so a late offer can always schedule again, plus a re-check afterwards for an offer that landed between the two interlocked operations. `Latest_does_not_strand_a_value_offered_while_presenting` pins it, and **the test was verified by reverting `Drain` to the copied ordering**, which failed that test and only that test.
+
+This is a correction to something outside this repository and is recorded rather than fixed here: EmuSen's `FramePresenter`, `MainWindow` and `GameWindow` still carry the original. Whether it is worth changing there is EmuSen's call — at a running frame rate it is genuinely unobservable.
+
+### 22.2 `Suppressor` is a counter, and that is the point
+
+Every hand-rolled version of this guard is a `bool` assigned true and then false. That is correct exactly once. A refresh that calls a helper that refreshes something else re-enables notifications halfway through the outer update, and the code reads as though it is protected — which is worse than having no guard, because nobody looks again.
+
+Depth counting makes nesting correct. `Suppressor_nests` pins it, verified by making the inner dispose reset the depth to zero — the bool semantics — which failed that test alone.
+
+`Dropdown.Fill` moved onto it. That is where the kit had already solved this privately, for one control, in a way that was never about dropdowns.
+
+Not thread-safe, deliberately: this guards UI event handlers, and making it interlocked would invite its use as a general mutual-exclusion primitive, which it is not.
+
+### 22.3 `Debounce`, and the one property that had to default to nothing
+
+`FilterBar.SearchDelay` defaults to `TimeSpan.Zero` and zero means synchronous, not "a zero-length timer". A `DispatcherTimer` with a zero interval still defers to the next dispatcher pass, which would quietly turn every existing consumer's synchronous `Changed` into one that arrives a frame late. **A control with consumers outside this repository does not get a new default.**
+
+Enter flushes anything pending before raising `Submitted`, so a caller that filters on one event and acts on the other cannot act on the results of the previous keystroke. `FilterBar_enter_brings_a_pending_change_forward` asserts the ordering rather than merely that both fired.
+
+The facet dropdown is never debounced. Picking from a dropdown is one deliberate act, not a stream of half-formed input, and delaying it would read as the application being slow.
+
+**No test here races a clock.** §8.2 settled that for the polling tests and the same argument applies: the debounce tests use a thirty-second interval precisely so the timer cannot fire, and assert on pending state, on `Flush` and on `Cancel`. What is being tested is that three pokes are one pending action, not how long a clock takes.
+
+### 22.4 What was not built, and why
+
+**A3, the selection-preserving refresh, is deliberately absent.** It was counted at three sites and it belongs in the kit, but every one of those sites is rebuilding a list and hunting the selection back down — which is the typed list of §21.2 with the shadow array still attached. Building the helper now would mean building it twice: once standalone, and again as the thing the list does for you. It goes with §21.2.
+
+### 22.5 The guards were made to fail
+
+Four sabotages, each turning exactly one test red and leaving the other twelve green:
+
+| Sabotage | Test that failed |
+|---|---|
+| `Drain` reverted to the copied clear-after-present ordering | `Latest_does_not_strand_a_value_offered_while_presenting` |
+| `Suppressor` inner dispose resets depth to zero (bool semantics) | `Suppressor_nests` |
+| `FilterBar` ignores `SearchDelay` | `FilterBar_defers_changed_when_a_delay_is_set` |
+| `UiThread.Run` always posts instead of running inline | `Run_is_inline_when_already_on_the_ui_thread` |
+
+**One branch has no test and it should be said rather than left to be discovered.** `Latest.Drain`'s final re-check — for an offer landing between the two interlocked operations — needs genuine concurrency to reach, and a single-threaded headless dispatcher cannot produce it. It is reasoned, not pinned. §12.2 records the same kind of admission about an unreachable guard in the CSS parser, and the same rule applies: a negative result recorded so nobody goes looking for the missing test.
+
+The suite is 145, up from 132.
+
+### 22.6 `ConsolePane`, and a test that could not fail
+
+§21.4 recorded two defects in this control, both shipped, and both in code that two console windows depend on entirely. They are fixed.
+
+**The append was quadratic.** `_text = _text + "\n" + line` allocates and copies the whole buffer per line, so printing *n* lines costs O(n²) and a console spends progressively more of its life copying its own history. It is a list of lines now, joined lazily. The join is still O(total length) — `SelectableTextBlock.Text` is one string property and there is no way around that short of a virtualised control — so the real bound is the new `MaxLines`, which defaults to 5000 and drops the oldest lines at the cap. Zero still means unlimited for anybody who wants the old behaviour.
+
+**The scroll was unconditional.** Every arriving line called `ScrollToEnd()`, so scrolling back to read something was undone by the next line — on a busy console, every few hundred milliseconds, which makes the history effectively unreadable while anything is still printing. Following the tail is what you want right up until the moment you start reading, and the fix is to ask whether the reader was at the bottom *before* the text changed.
+
+**And this is where a test was written that could not fail.** The obvious one — scroll to the top, append a line, assert the offset is still zero — passed. It also passed with the fix removed, which is the only reason it was caught: sabotage is what the project does before trusting a guard (§10.4), and this guard did not survive it.
+
+The measurement, since a claim like that should not rest on inference. Under `Avalonia.Headless`, with 500 lines in the pane:
+
+```
+PROBE extent=20 viewport=20 offset=0
+PROBE after set 0 -> offset=0
+PROBE after ScrollToEnd -> offset=0
+```
+
+**The `ScrollViewer` reports its extent as equal to its viewport however much text it holds**, so nothing is ever scrollable, `ScrollToEnd` is a no-op, and any assertion about `Offset` is vacuous. A test over the wiring cannot be written in this harness at all.
+
+What replaced it is the §8.1 pattern: the decision was split out of the control as `ConsolePane.Follows(offsetY, extentHeight, viewportHeight)`, a pure function of three numbers, exactly as `WindowPlacementStore.IsOnAScreen` is split so the rule is testable without a display. Five cases pin it, including the half-pixel one, and making `Follows` return `true` unconditionally — which *is* the behaviour being replaced — fails two of them.
+
+**What remains untested is the wiring**, and it is worth saying plainly rather than leaving it to be assumed: that `AppendLine` asks the question before mutating the text, and scrolls only on a true answer, is reasoned from six lines of code and is not pinned by anything. §12.2 records the same kind of admission about an unreachable guard in the CSS parser. The general form is the one worth keeping: **a headless harness is not a screen, and a test that asserts about geometry it never laid out is measuring nothing.**
+
+### 22.7 The layering guard, brought home
+
+§21.4 recorded that this repository had no test enforcing its own headline rule. It has one now, in `tests/EmuSen.LunaP.Tests/LayeringTests.cs`.
+
+The guard that existed stayed behind, deliberately and correctly: `EmuSen.WiseMan`'s `LeafAssemblyTests.LunaP_references_nothing_of_EmuSen` has run since §10.4 and still runs, now against the package. What it cannot do is answer for this repository. It asks *"did LunaP pick up something of EmuSen's"*, which was the question during the split; the rule written in `EmuSen.LunaP.csproj` is broader and was checked by nothing here — **"AVALONIA AND NOTHING ELSE. Not a settings library, not a logging library, not an application's own types."**
+
+A toolkit whose central claim is verified only by a repository its consumers do not have is a toolkit making an unverified claim.
+
+The guard asserts the whole allow-list rather than one prefix: every assembly LunaP references must be `Avalonia*`, `System*`, `netstandard` or `mscorlib`. Measured, that is eight Avalonia assemblies and ten of the base library, `System.Text.Json` among them because `JsonSettingsStore` uses it.
+
+**It fails on purpose permanently rather than once.** The usual sabotage — add a `PackageReference`, watch red, take it out — leaves the demonstration in a commit message and nothing in the suite. So the rule is a function, and a third test points it at the test assembly, which references xunit and must therefore fail it. If that test ever passes, the rule has stopped detecting anything and the other two are worthless. Weakening the allow-list to accept everything turns exactly that test red, which is the check working.
+
+**The blind spot came with it rather than being rediscovered.** §10.4 found that the C# compiler elides a reference used only for `const` values — the constant is baked into the consumer and no assembly reference survives — and that a first attempt to sabotage the original guard used a `const string` and produced a build naming nothing at all. The guard was correct and the sabotage was not. **A project can depend on another project's constants and none of these tests can see it.** That is a documented limit, not a gap waiting to be filled: there is nothing in the metadata to observe.
+
+### 22.8 `EmuSen.LunaP.Testing`, and the bug the move exposed
+
+§21.3 argued the harness should be a package because it was being copied by hand: `EmuSen.WiseMan/LunaP/VisualQuery.cs` byte-identical to this one apart from its namespace, `WiseMan`'s `UiTest` re-declaring `RenderedFrame`, and Pegasus writing a third harness in F# because it could reference neither. The cause was one line — `IsPackable=false` — and there was no other way to obtain `AssertLaidOut`.
+
+It is `EmuSen.LunaP.Testing` now: `UiTest`, `VisualQuery`, `RenderedFrame`, `UiSession`, and `LunaHeadless.BuildApp()`. **LunaP's own suite consumes it as a package rather than owning the files**, which is what stops it drifting back into being private — the harness is now used the way a consumer uses it, by the people most likely to notice if that stops working.
+
+**§1's rule does not bend for this.** A harness needs xunit and `Avalonia.Headless`, which `EmuSen.LunaP` may not name. The rule is about the toolkit assembly — *"a toolkit that names its first consumer is a toolkit only that consumer can use"* — and this is a sibling that a consumer references from its test project alone, so nothing an application ships gains a dependency. `LayeringTests` asserts it from the other side: the toolkit must not reference the harness.
+
+It takes `xunit.assert` and not `xunit`. The harness calls `Assert` and nothing else, and the full metapackage would push `xunit.core`'s `Fact` and `Theory` into every consumer, including one running its own tests on a different runner. The parallelisation check reads its attribute **by name** for the same reason.
+
+#### The bug that only exists once it is a package
+
+`UiTest.Session` was `HeadlessUnitTestSession.GetOrStartForAssembly(typeof(UiTest).Assembly)`, and that was correct for as long as `UiTest` lived in the suite that used it. **Packaged, it is wrong in a way that could not happen before**: `GetOrStartForAssembly` reads `[AvaloniaTestApplication]` off the assembly it is handed, and that attribute is on the *consumer's* test assembly — never on the package's.
+
+`UiSession` finds it instead, by scanning loaded assemblies for the attribute. Zero configuration, because a headless suite must carry that attribute already (§19.1's rule against a required setup step applies here just as it did to the settings store), and a loud, explanatory failure when there is no candidate or more than one.
+
+This is worth recording as a general shape rather than a one-off: **extracting a library turns "which assembly am I" from a question with one obvious answer into a question with two, and the old answer keeps compiling.**
+
+#### It ships the hazard, so it ships the refusal
+
+§20.2 records a race that CI found and a developer machine never did: the statics around the one headless application are process-global, xunit parallelises across test classes, and one class's constructor takes another's diagnostics hook mid-assertion.
+
+That hazard is not this suite's private problem — it belongs to `UiTest`'s single dispatcher plus `LunaSettings`' globals, so **every consumer inherits it the moment it uses the harness**, in the worst available form: green locally, red on CI, non-deterministic in between. It has already been discovered twice independently — Pegasus's hand-rolled harness declares its own xunit collection for the same reason, in F#, before this package existed.
+
+So the harness **refuses to start** against a suite that has not disabled test parallelisation, with a message naming both valid fixes. `UiSession.ParallelismIsHandled` is the escape hatch for a suite that serialises another way, named so that setting it is a statement rather than a shrug.
+
+`DisablesParallelization` is public because that is the only way to show the check works. Sabotaging it would mean editing a build file, which nobody would leave in; instead a test points it at this suite (which declares the attribute, and must return true) and at the harness package (which does not, and must return false). A check that returned true for everybody would protect nobody.
+
+#### Versioning
+
+Both packages ship at one version from one tag. The harness asserts about the toolkit's own controls, so a consumer pairing 0.4.0 of one with 0.2.0 of the other has a question nobody wants to answer. `publish.yml` packs both.
+
+### 22.9 Semantic colour, a typed list, and an empty state
+
+The last of the tracks, and the only one whose cost lands outside this repository.
+
+#### Outcome is not load
+
+Six sites across two applications hard-code a status colour — `IndianRed` twice from a copied `fail`/`note` pair, `SeaGreen`/`IndianRed`/`Goldenrod` for connection state, `Brushes.OrangeRed` for a binding conflict. §4's centralisation check finds every one of them.
+
+`LunaError`, `LunaSuccess` and `LunaInfo` exist now, and they are **deliberately not the load ramp**. §2.1 refused to fold an input-conflict highlight into `LunaHot` because *"'this binding collides with another' is not 'this subsystem is at 85% load', and giving them one key would encode a relationship that does not exist"*. That argument reads as if it were against new tokens and is in fact the argument for them: the reason those colours must not reuse the ramp is exactly the reason they need keys of their own. What the ramp is to a meter, these three are to a message. The values are the ones the six sites had already chosen.
+
+`LunaPaletteTests` pins them in both halves, as it does every other key — §2.1's "the palette is spelled twice on purpose" applies unchanged.
+
+#### `LunaList<T>`
+
+Five places project a model to a string, put the strings in a `ListBox`, and keep a parallel array to map the index back; three places then rebuild the list and go hunting for the selection again. `CheatDatabaseWindow` does the worst version of it, building `$"{s.System}  ({s.Count})"` and then taking the label apart to recover a name it already had. **Parsing a display string to recover a model field is the shape of a missing control.**
+
+It takes a projection, not an interface. §1's rule — plain data or a delegate, *"a meter row takes `(string, double, string)`, never a `DebugLoadInfo`"* — makes `Label` and `Key` `Func`s; a list demanding an `IListItem` would be a list only an application that had adopted LunaP's vocabulary could use.
+
+**`Refresh` restores the selection, and that is why §21.1's A3 was never built separately.** "Rebuild the list" and "keep the selection" are one operation that only looks like two, and the `Key` delegate is what makes it work for rows that are new objects on every poll — reference identity loses the selection precisely in the case that matters. When the selected row is gone the answer is -1 rather than a neighbour, because selecting the neighbour would be a guess about what somebody meant.
+
+A generic control cannot carry a XAML style selector, so it pins its style key to `ListBox` and borrows that theme. Removing that line reproduces the §5.5 trap exactly — no template, no `ItemsPresenter`, no items, no error.
+
+#### `EmptyState`
+
+Three places build this by hand and one of them wrote the reason the kit's nearest seam was wrong, in a comment, before the control existed: *"Muted but body-sized, not a HintText: this one is the window's whole content when no core is loaded"*. A `HintText` is an aside under something else and is 11pt by definition. An empty state **is** the something else. `Message` and `Detail`, because every hand-rolled version wanted both — what is missing, and what would put something there — with the detail line hidden when there is none.
+
+#### The fluent surface
+
+`Ui.Rows` exists now; only `Cols` did, which is why a header-and-body table keeps two column strings in step by hand. `Ui.Section` takes any number of children; taking exactly one is why eight places write a bold `TextBlock` instead of using `SectionHeader` at all. The existing single-child-plus-spacing signature still binds — a test asserts the params overload did not steal it from callers.
+
+#### Both new controls are in the gallery
+
+§7 claims the gallery is how the kit is discovered, and §21.2 recorded the counter-evidence that not every hand-roll is a missing feature — `Shell.fs` calls `DockPanel.SetDock` four times with `.Dock()` already shipping. A control nobody can find is a control that will be written again, so `LunaList` and `EmptyState` are both in `GalleryWindow`, which means the render test covers them too.
+
+#### Made to fail
+
+| Sabotage | Test that failed |
+|---|---|
+| `Refresh` does not restore the selection | `A_luna_list_keeps_the_selection_across_a_refresh`, and the no-spurious-`Chose` test with it |
+| `LunaList`'s style key left as its runtime type | `A_luna_list_is_templated_by_borrowing_the_list_box_theme` |
+| `EmptyState`'s detail line always visible | `An_empty_state_hides_its_detail_line_when_there_is_none` |
+
+#### The bill, which lands in EmuSen
+
+§21.5 warned about this and here it is. `ThemeVocabularyTests` stayed in EmuSen (§20.2) and compares `man theme` against `CssTheme`'s allow-lists **by set equality in both directions**. This change adds one element (`empty-state`, with `message` and `detail` parts) and three palette tokens.
+
+**So EmuSen's suite goes red the moment it takes this version**, in a repository this change never touched, and the fix is to add four entries to `EmuSen.DianaOS`'s `man theme` page. That is not a defect in either project — it is the arrangement §20.2 chose deliberately, working as designed. It is recorded here so that whoever bumps the package next knows the failure is expected and knows what closes it.
+
+`LunaList<T>` is deliberately **not** in the CSS vocabulary. Element names are derived from the type name, and a generic's is `LunaList\`1`; it also carries no LunaP-specific styling to name, since it borrows `ListBox`'s theme wholesale. A theme that wants to restyle it should style `ListBox`.

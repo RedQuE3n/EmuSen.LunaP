@@ -6,7 +6,7 @@ using EmuSen.LunaP.Theme;
 
 namespace EmuSen.LunaP.Windowing
 {
-    // The base every LunaP window shares. Deliberately thin, and both of its features are opt-in - see EmuSen_LunaP.md §8.
+    // The base every LunaP window shares. Deliberately thin, and both of its features are opt-in - see docs/LunaP.md §8.
     public class ToolWindow : Window
     {
         public static readonly StyledProperty<bool> ClosesOnEscapeProperty =
@@ -20,7 +20,7 @@ namespace EmuSen.LunaP.Windowing
         {
             this[!BackgroundProperty] = new DynamicResourceExtension("LunaSurface");
 
-            // A theme carrying rule blocks cannot reach a realized control on its own - see EmuSen_LunaP.md §12.3.
+            // A theme carrying rule blocks cannot reach a realized control on its own - see docs/LunaP.md §12.3.
             LunaTheme.StylesChanged += Restyle;
             Closed += (_, _) => LunaTheme.StylesChanged -= Restyle;
         }

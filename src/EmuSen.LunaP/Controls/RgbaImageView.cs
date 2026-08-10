@@ -8,7 +8,7 @@ using Avalonia.Platform;
 
 namespace EmuSen.LunaP.Controls
 {
-    // Shows a raw RGBA buffer, reusing its bitmap across frames - the one surviving implementation of three - see EmuSen_LunaP.md §5.3.
+    // Shows a raw RGBA buffer, reusing its bitmap across frames - the one surviving implementation of three - see docs/LunaP.md §5.3.
     public class RgbaImageView : TemplatedControl
     {
         public static readonly StyledProperty<Stretch> StretchProperty =

@@ -11,7 +11,7 @@ using EmuSen.LunaP.Windowing;
 
 namespace EmuSen.LunaP.Tests
 {
-    // ToolWindow/PollingWindow/WindowSlot - see EmuSen_LunaP.md §8.
+    // ToolWindow/PollingWindow/WindowSlot - see docs/LunaP.md §8.
     public class WindowingTests : IDisposable
     {
         private static readonly HeadlessUnitTestSession Session =

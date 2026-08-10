@@ -4,7 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
 
-namespace EmuSen.LunaP.Tests
+namespace EmuSen.LunaP.Testing
 {
     // Typed visual-tree lookups, so a control test asserts about a rendered part rather than a field it happens to hold.
     public static class VisualQuery

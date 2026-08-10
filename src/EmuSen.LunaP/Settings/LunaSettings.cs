@@ -2,7 +2,7 @@ using System;
 
 namespace EmuSen.LunaP.Settings
 {
-    // The one place a host points LunaP at its own settings and its own log - see EmuSen_LunaP.md §19.
+    // The one place a host points LunaP at its own settings and its own log - see docs/LunaP.md §19.
     public static class LunaSettings
     {
         private static ISettingsStore? _store;

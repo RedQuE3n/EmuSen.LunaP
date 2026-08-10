@@ -7,7 +7,7 @@ using EmuSen.LunaP.Gallery;
 
 namespace EmuSen.LunaP.Tests
 {
-    // One real Skia pass over every control at once - what catches a control that quietly renders as nothing - see EmuSen_LunaP.md §7.
+    // One real Skia pass over every control at once - what catches a control that quietly renders as nothing - see docs/LunaP.md §7.
     public class GalleryRenderTests
     {
         [Fact]
@@ -29,7 +29,7 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(2, window.CountParts<LunaSwitch>());
             Assert.Equal(1, window.CountParts<Tabs>());
 
-            // Templated, not merely present: a wrapper that lost its base style key renders as nothing - see EmuSen_LunaP.md §14.1.
+            // Templated, not merely present: a wrapper that lost its base style key renders as nothing - see docs/LunaP.md §14.1.
             Assert.NotNull(window.FindPart<Tabs>()!.FindPart<TabItem>());
             Assert.True(window.FindPart<LunaSwitch>()!.GetVisualChildren().Any());
         });

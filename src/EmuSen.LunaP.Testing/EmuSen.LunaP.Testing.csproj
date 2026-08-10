@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The test harness, as a package, because it was being copied by hand.
+
+       EmuSen.WiseMan/LunaP/VisualQuery.cs is byte-identical to the copy that
+       lived here apart from its namespace line; WiseMan's UiTest re-declares
+       RenderedFrame; and EmuSen.Pegasus, unable to reference either, wrote a
+       third harness in F#. The cause was one line - the test project that held
+       these is IsPackable=false, so there was no other way to obtain
+       AssertLaidOut. docs/LunaP.md §22.8.
+
+       WHY THIS IS A SECOND PACKAGE AND NOT PART OF THE TOOLKIT. EmuSen.LunaP
+       references Avalonia and nothing else, and that rule is the reason it was
+       able to leave EmuSen at all. A harness needs xunit and Avalonia.Headless,
+       which it may not name. So the rule does not bend: it applies to the
+       toolkit assembly, and this is a sibling a consumer references from its
+       TEST project only. Nothing an application ships gains a dependency.
+
+       LayeringTests in the suite asserts that separation from the other side -
+       EmuSen.LunaP must not reference this. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>EmuSen.LunaP.Testing</PackageId>
+    <!-- Tracks the toolkit's version rather than keeping its own, because the
+         harness asserts about the toolkit's controls and a consumer pairing
+         0.4.0 of one with 0.2.0 of the other has a question nobody wants to
+         answer. The published number comes from the git tag either way - see
+         .github/workflows/publish.yml. -->
+    <Version>0.3.0</Version>
+    <Authors>Tristan Pelland</Authors>
+    <Description>Headless test harness for EmuSen.LunaP: render capture, layout assertions and visual-tree queries.</Description>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/RedQuE3n/EmuSen.LunaP</RepositoryUrl>
+    <PackageTags>avalonia;ui;testing;headless;xunit</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- xunit.assert, not xunit. The harness calls Assert and nothing else, and
+         pulling the full metapackage would put xunit.core's Fact/Theory into
+         every consumer that references this - including one that runs its own
+         tests on a different runner. -->
+    <PackageReference Include="xunit.assert" Version="2.9.3" />
+    <PackageReference Include="Avalonia.Headless" Version="12.1.0" />
+    <!-- The real render pass AssertLaidOut depends on: without Skia a capture
+         goes through the headless drawing stub and every colour count is a lie. -->
+    <PackageReference Include="Avalonia.Skia" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="12.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EmuSen.LunaP\EmuSen.LunaP.csproj" />
+  </ItemGroup>
+
+</Project>
