@@ -43,10 +43,16 @@ here is one this project has already been bitten by: NuGet caches by package id
 restored is a package nobody receives. The `<Version>` in the csproj stays as the
 default for a local `dotnet pack` and nothing more.
 
-Publishing needs one repository secret, `NUGET_API_KEY`, from nuget.org under
-**Account → API Keys**, scoped to push for this package id:
+**There is no API key and no repository secret.** Publishing uses NuGet Trusted
+Publishing: the job asks GitHub for a short-lived token proving which repository
+and which workflow file is running, and nuget.org exchanges it for a key valid
+for minutes. Nothing long-lived is stored, so there is nothing to leak or rotate.
 
-    gh secret set NUGET_API_KEY --repo RedQuE3n/EmuSen.LunaP
+The trust policy lives on nuget.org under **Account → Trusted Publishing** and
+names four things that must match `publish.yml` exactly — publisher
+(GitHub Actions), repository owner (`RedQuE3n`, the GitHub *login*), repository
+(`EmuSen.LunaP`), and workflow file (`publish.yml`). Renaming that file breaks
+publishing, which is the point: the file name is part of what is being trusted.
 
 The workflow runs the suite before it packs. A package that was never tested is
 a package whose first user is testing it for you.
