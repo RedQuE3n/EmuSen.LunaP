@@ -1,6 +1,6 @@
 namespace EmuSen.LunaP.Settings
 {
-    // The seam between LunaP and whatever a host keeps its settings in - see EmuSen_LunaP.md §19.
+    // The seam between LunaP and whatever a host keeps its settings in - see docs/LunaP.md §19.
     public interface ISettingsStore
     {
         // A category is a subdirectory; null is the root.

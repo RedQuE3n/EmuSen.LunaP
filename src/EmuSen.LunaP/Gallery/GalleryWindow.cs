@@ -7,7 +7,7 @@ using EmuSen.LunaP.Theme;
 
 namespace EmuSen.LunaP.Gallery
 {
-    // Every control in the kit, once, with sample data - the visual reference, and what one render test covers - see EmuSen_LunaP.md §7.
+    // Every control in the kit, once, with sample data - the visual reference, and what one render test covers - see docs/LunaP.md §7.
     public class GalleryWindow : Window
     {
         public GalleryWindow()
@@ -36,6 +36,12 @@ namespace EmuSen.LunaP.Gallery
 
             var filter = new FilterBar { ShowFacet = true, FacetLabel = "Console:", Placeholder = "Search titles" };
             filter.SetFacets(new[] { "All consoles", "NES", "SNES" }, "All consoles");
+
+            // A real typed list, so the gallery shows the thing it actually is: rows built from a
+            // model through a projection, with the model coming back on selection.
+            var peers = new LunaList<string> { Height = 90 };
+            peers.Refresh(new[] { "ami", "usagi", "rei", "makoto" });
+            peers.SelectedIndex = 1;
 
             var tabs = new Tabs();
             tabs.Add("General", Ui.Hint("A tab's content is any control."));
@@ -70,6 +76,14 @@ namespace EmuSen.LunaP.Gallery
                         new LunaSwitch { Label = "Enable Logging", IsChecked = true },
                         new LunaSwitch { Label = "Concurrent GC" }),
                     tabs.Height(90))),
+
+                Ui.Section("Lists and empty states", Ui.Stack(8,
+                    peers,
+                    new EmptyState
+                    {
+                        Message = "No ROMs in the library.",
+                        Detail = "Add a folder in Preferences to see them here.",
+                    })),
 
                 Ui.Section("Console", console.Height(160)),
 

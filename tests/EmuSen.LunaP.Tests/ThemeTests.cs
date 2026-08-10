@@ -10,7 +10,7 @@ using EmuSen.LunaP.Windowing;
 
 namespace EmuSen.LunaP.Tests
 {
-    // A user theme really does repaint the kit - see EmuSen_LunaP.md §13.
+    // A user theme really does repaint the kit - see docs/LunaP.md §12.
     public class ThemeTests : IDisposable
     {
         private readonly string _configDir;

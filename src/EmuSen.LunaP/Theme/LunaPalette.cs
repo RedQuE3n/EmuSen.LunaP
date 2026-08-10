@@ -11,7 +11,7 @@ namespace EmuSen.LunaP.Theme
         Hot,
     }
 
-    // The C# half of Theme/Palette.axaml, for controls built in code; LunaPaletteTests pins the two together - see EmuSen_LunaP.md §2.1.
+    // The C# half of Theme/Palette.axaml, for controls built in code; LunaPaletteTests pins the two together - see docs/LunaP.md §2.1.
     public static class LunaPalette
     {
         public static readonly ISolidColorBrush Surface = Brush("#1E1E1E");
@@ -23,6 +23,16 @@ namespace EmuSen.LunaP.Theme
         public static readonly ISolidColorBrush Muted = Brush("#808080");
         public static readonly ISolidColorBrush SectionHeader = Brush("#9CDCFE");
         public static readonly ISolidColorBrush Warning = Brush("#D08770");
+
+        // Outcome, not load. Deliberately NOT the ramp's green/gold/red: §2.1 refused to give an
+        // input conflict the same key as a hot subsystem because that would encode a relationship
+        // that does not exist, and the same argument makes these three their own - see §22.9.
+        //
+        // The values are the ones six sites across two applications had already hard-coded:
+        // IndianRed, SeaGreen and Goldenrod.
+        public static readonly ISolidColorBrush Error = Brush("#CD5C5C");
+        public static readonly ISolidColorBrush Success = Brush("#2E8B57");
+        public static readonly ISolidColorBrush Info = Brush("#DAA520");
 
         public static readonly ISolidColorBrush Nominal = Brush("#32CD32");
         public static readonly ISolidColorBrush Busy = Brush("#FFD700");
@@ -36,7 +46,7 @@ namespace EmuSen.LunaP.Theme
         public const double BusyPercent = 60;
         public const double HotPercent = 85;
 
-        // The one place that decides what "getting busy" means, so no two dashboards disagree - see EmuSen_LunaP.md §2.2.
+        // The one place that decides what "getting busy" means, so no two dashboards disagree - see docs/LunaP.md §2.2.
         public static LoadLevel LevelFor(double percent) =>
             percent >= HotPercent ? LoadLevel.Hot : percent >= BusyPercent ? LoadLevel.Busy : LoadLevel.Nominal;
 

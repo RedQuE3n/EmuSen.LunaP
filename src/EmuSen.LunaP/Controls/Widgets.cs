@@ -2,10 +2,11 @@ using System;
 using System.Collections;
 using Avalonia;
 using Avalonia.Controls;
+using EmuSen.LunaP.Threading;
 
 namespace EmuSen.LunaP.Controls
 {
-    // Avalonia's ToggleSwitch, themed - see EmuSen_LunaP.md §14.1.
+    // Avalonia's ToggleSwitch, themed - see docs/LunaP.md §14.1.
     public class LunaSwitch : ToggleSwitch
     {
         // Without this the Fluent ToggleSwitch theme never reaches a subclass and ToggleSwitch.OnApplyTemplate throws on PART_MovingKnobs - see §14.1.
@@ -27,7 +28,7 @@ namespace EmuSen.LunaP.Controls
 
             // Both states, not Content: that puts the text beside the knob and keeps it there, which is
             // the line a CheckBox already drew. Content would stack it above, and the stock On/Off captions
-            // say nothing a switch's own position does not. See EmuSen_LunaP.md §14.1.
+            // say nothing a switch's own position does not. See docs/LunaP.md §14.1.
             OnContent = Label;
             OffContent = Label;
         }
@@ -41,17 +42,25 @@ namespace EmuSen.LunaP.Controls
         // Raised only for a real user choice, never for the selection set while filling the list.
         public event Action<object?>? Chose;
 
-        private bool _filling;
+        // Was a bare bool, and is a Suppressor now that the general form of this guard exists in
+        // the kit - six more copies of it across two applications are what argued it in
+        // (docs/LunaP.md §21.1). Behaviour is identical for a single Fill; what changes is that a
+        // nested one can no longer re-enable Chose halfway through the outer one.
+        private readonly Suppressor _filling = new();
 
-        public Dropdown() => SelectionChanged += (_, _) => { if (!_filling) Chose?.Invoke(SelectedItem); };
+        public Dropdown() => SelectionChanged += (_, _) =>
+        {
+            if (!_filling.IsSuppressing) Chose?.Invoke(SelectedItem);
+        };
 
         // Replaces the items and the selection together, without Chose firing for the reset.
         public void Fill(IEnumerable items, object? selected)
         {
-            _filling = true;
-            ItemsSource = items;
-            SelectedItem = selected;
-            _filling = false;
+            using (_filling.Suppress())
+            {
+                ItemsSource = items;
+                SelectedItem = selected;
+            }
         }
     }
 

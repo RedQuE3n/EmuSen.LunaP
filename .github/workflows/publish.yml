@@ -1,6 +1,6 @@
 # Publish to NuGet.org when a version tag is pushed.
 #
-#     git tag v0.2.0 && git push origin v0.2.0
+#     git tag v0.3.0 && git push origin v0.3.0
 #
 # THERE IS NO API KEY, and that is deliberate. This uses NuGet Trusted
 # Publishing: the job asks GitHub for a short-lived OIDC token proving which
@@ -50,11 +50,16 @@ jobs:
       # first user is running it for you.
       - run: dotnet test
 
+      # BOTH packages, at the same version. EmuSen.LunaP.Testing asserts about
+      # EmuSen.LunaP's own controls, so a consumer pairing two different versions
+      # of them has a question nobody wants to answer - see docs/LunaP.md §22.8.
       - name: Pack at the tagged version
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           echo "packing $VERSION"
           dotnet pack src/EmuSen.LunaP/EmuSen.LunaP.csproj \
+            -c Release -o nupkgs -p:Version="$VERSION"
+          dotnet pack src/EmuSen.LunaP.Testing/EmuSen.LunaP.Testing.csproj \
             -c Release -o nupkgs -p:Version="$VERSION"
 
       - name: Exchange the OIDC token for a short-lived key

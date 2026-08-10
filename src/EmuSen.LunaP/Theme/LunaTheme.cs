@@ -16,14 +16,14 @@ namespace EmuSen.LunaP.Theme
         public string Name { get; set; } = LunaTheme.BuiltIn;
     }
 
-    // Loads a user theme over the built-in palette - see EmuSen_LunaP.md §13.
+    // Loads a user theme over the built-in palette - see docs/LunaP.md §12.
     public static class LunaTheme
     {
         public const string BuiltIn = "Built-in";
         public const string Extension = ".axaml";
         public const string CssExtension = ".css";
 
-        // Tried in this order, so a name spelled both ways resolves to the .axaml - see EmuSen_LunaP.md §12.2.
+        // Tried in this order, so a name spelled both ways resolves to the .axaml - see docs/LunaP.md §12.2.
         public static readonly IReadOnlyList<string> Extensions = new[] { Extension, CssExtension };
 
         public const string ChoiceFileName = "luna.json";
@@ -39,7 +39,7 @@ namespace EmuSen.LunaP.Theme
 
         public static string Current { get; private set; } = BuiltIn;
 
-        // Raised only when Application.Styles changed, which is the one case an open window must be restyled - see EmuSen_LunaP.md §12.3.
+        // Raised only when Application.Styles changed, which is the one case an open window must be restyled - see docs/LunaP.md §12.3.
         public static event Action? StylesChanged;
 
         // Detaching and reattaching the content is what re-runs the style pass over controls that are already realized.
@@ -157,7 +157,7 @@ namespace EmuSen.LunaP.Theme
         {
             CssThemeResult css = CssTheme.Parse(File.ReadAllText(path));
 
-            // Skipped rules are reported but do not refuse the theme - see EmuSen_LunaP.md §12.2.
+            // Skipped rules are reported but do not refuse the theme - see docs/LunaP.md §12.2.
             if (css.Warnings.Count > 0) LunaSettings.Report($"{path}: {string.Join(" ", css.Warnings)}");
 
             return (css.Resources, css.Styles);

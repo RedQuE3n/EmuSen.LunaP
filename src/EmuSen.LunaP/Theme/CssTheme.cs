@@ -21,11 +21,11 @@ namespace EmuSen.LunaP.Theme
 
         public Styles Styles { get; } = new();
 
-        // Not fatal by design: a theme written against a newer LunaP still loads - see EmuSen_LunaP.md §12.2.
+        // Not fatal by design: a theme written against a newer LunaP still loads - see docs/LunaP.md §12.2.
         public List<string> Warnings { get; } = new();
     }
 
-    // The restricted CSS a theme may be written in - see EmuSen_LunaP.md §12.2 for the grammar and its limits.
+    // The restricted CSS a theme may be written in - see docs/LunaP.md §12.2 for the grammar and its limits.
     public static class CssTheme
     {
         public const string RootSelector = ":root";
@@ -87,6 +87,11 @@ namespace EmuSen.LunaP.Theme
                     ["output"] = new(typeof(SelectableTextBlock), "PART_Output"),
                     ["input"] = new(typeof(TextBox), "PART_Input"),
                     ["prompt"] = new(typeof(TextBlock), "PART_Prompt"),
+                }),
+                Element(typeof(EmptyState), parts: new Dictionary<string, PartSpec>
+                {
+                    ["message"] = new(typeof(TextBlock), "PART_Message"),
+                    ["detail"] = new(typeof(TextBlock), "PART_Detail"),
                 }),
                 Element(typeof(RgbaImageView)),
                 Element(typeof(LunaSwitch)),

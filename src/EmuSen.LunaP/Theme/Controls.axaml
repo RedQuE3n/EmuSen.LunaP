@@ -5,7 +5,7 @@
     <!-- Every look here is the one the frontends already had; LunaPControlTests
          asserts these styles actually apply, because a selector that silently
          stops matching renders as an unstyled control rather than an error.
-         See EmuSen_LunaP.md §5. -->
+         See docs/LunaP.md §5. -->
 
     <Style Selector="luna|SectionHeader">
         <Setter Property="Foreground" Value="{DynamicResource LunaSectionHeader}" />
@@ -16,6 +16,33 @@
         <Setter Property="Foreground" Value="{DynamicResource LunaMuted}" />
         <Setter Property="FontSize" Value="{DynamicResource LunaHintFontSize}" />
         <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <!-- Body-sized and muted, NOT a HintText: an empty state is the window's whole
+         content in that state, not an aside under something else. CoretopWindow
+         wrote that distinction in a comment before this control existed - see
+         docs/LunaP.md §22.9. -->
+    <Style Selector="luna|EmptyState">
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <StackPanel Spacing="4">
+                    <TextBlock Name="PART_Message"
+                               Text="{TemplateBinding Message}"
+                               Foreground="{DynamicResource LunaMuted}"
+                               HorizontalAlignment="Center"
+                               TextWrapping="Wrap" />
+                    <TextBlock Name="PART_Detail"
+                               Text="{TemplateBinding Detail}"
+                               IsVisible="{TemplateBinding HasDetail}"
+                               Foreground="{DynamicResource LunaMuted}"
+                               FontSize="{DynamicResource LunaHintFontSize}"
+                               HorizontalAlignment="Center"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </ControlTemplate>
+        </Setter>
     </Style>
 
     <Style Selector="luna|MonoText">
@@ -49,7 +76,7 @@
         </Setter>
     </Style>
 
-    <!-- The ramp lives in styles, not in a computed brush, so a loaded theme reaches it - see EmuSen_LunaP.md §13.2. -->
+    <!-- The ramp lives in styles, not in a computed brush, so a loaded theme reaches it - see docs/LunaP.md §12.1. -->
     <Style Selector="luna|MeterRow:nominal /template/ ProgressBar#PART_Bar">
         <Setter Property="Foreground" Value="{DynamicResource LunaNominal}" />
     </Style>
@@ -109,7 +136,7 @@
     <!-- Templated explicitly rather than inheriting ItemsControl's: a derived
          control's style key is its own type, so FluentTheme's ItemsControl
          theme does not reach it and it would render as nothing. See
-         EmuSen_LunaP.md §5.5. -->
+         docs/LunaP.md §5.5. -->
     <Style Selector="luna|ButtonBar">
         <Setter Property="HorizontalAlignment" Value="Right" />
         <Setter Property="Template">
