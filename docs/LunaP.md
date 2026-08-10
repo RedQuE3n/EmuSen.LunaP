@@ -634,6 +634,14 @@ The suite lived in `EmuSen.WiseMan`, EmuSen's test project, and 132 of its tests
 
 **One test deliberately stayed behind.** `ThemeVocabularyTests` checks that every key in `Palette.axaml` is documented as a token in EmuSen's own `man theme` page. That asserts *EmuSen's documentation* stays in step with this project, which is EmuSen's business to keep and not this project's to enforce. It still runs there, against the package.
 
+**And CI immediately found a race that had been sitting in the suite unnoticed.** `A_malformed_css_theme_leaves_the_previous_one_in_force` passed on the machine it was written on and failed on the first run against a two-core GitHub runner, on the assertion that LunaP had *reported* why the theme would not load.
+
+The cause is that xunit parallelises across test classes, and three fixtures here configure statics that are global to the one headless application every test dispatches onto: `LunaSettings.Store`, `LunaSettings.Diagnostics`, and the applied theme's resource dictionary. `ThemeTests`' constructor takes the diagnostics hook away from `CssThemeTests` between that test's write and its assert, and the report goes to a lambda nobody is reading any more.
+
+It is worth being exact about what was wrong, because the hazard predates the move: this suite has *always* been single-threaded in the only place that matters — `HeadlessUnitTestSession` owns one dispatcher, and every test body runs on it. What was parallel was the constructors and the assertions around those bodies, which is precisely where the shared statics are set and read. Parallelism was buying nothing across a four-second suite and was costing correctness, so the assembly now declares `DisableTestParallelization`.
+
+The general form is worth keeping: **a suite that funnels through one shared resource is a suite that is already serial, and leaving it nominally parallel only means the serialisation is somewhere you did not choose.** It also says something for running CI on hardware unlike your own — this had been green locally every time.
+
 ### 20.3 What EmuSen does now
 
 The four projects that took a `ProjectReference` take a `PackageReference` instead, resolved from a folder feed until this is on a real one — the identical arrangement `EmuSen.Pegasus` has used from the start, and for the identical reason: a consumer outside this repository cannot resolve a `ProjectReference`.
