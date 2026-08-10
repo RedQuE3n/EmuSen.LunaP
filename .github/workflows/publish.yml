@@ -2,15 +2,26 @@
 #
 #     git tag v0.2.0 && git push origin v0.2.0
 #
-# THE VERSION COMES FROM THE TAG, not from the csproj, and that is deliberate.
-# A version written in two places is a version that will eventually disagree
-# with itself, and the failure mode is the one this project has already been
-# bitten by: NuGet caches by package id AND version, so a package published
-# under a version somebody has already restored is a package nobody receives.
-# The csproj's <Version> stays as the default for a local `dotnet pack`.
+# THERE IS NO API KEY, and that is deliberate. This uses NuGet Trusted
+# Publishing: the job asks GitHub for a short-lived OIDC token proving which
+# repository and which workflow file is running, and nuget.org exchanges that
+# for an API key valid for a few minutes. Nothing long-lived is stored anywhere,
+# so there is no secret to leak, rotate, or accidentally print in a log.
 #
-# Requires one repository secret, NUGET_API_KEY, from nuget.org under
-# Account -> API Keys, scoped to push for the EmuSen.LunaP package id.
+# The trust policy lives on nuget.org under Account -> Trusted Publishing, and
+# it names four things that must match this file exactly:
+#
+#     Publisher          GitHub Actions
+#     Repository Owner   RedQuE3n          (the GitHub LOGIN, not a person's name)
+#     Repository         EmuSen.LunaP
+#     Workflow           publish.yml       (renaming this file breaks publishing)
+#
+# THE VERSION COMES FROM THE TAG, not from the csproj. A version written in two
+# places is a version that will eventually disagree with itself, and the failure
+# mode is one this project has already been bitten by: NuGet caches by package
+# id AND version, so a package published under a version somebody has already
+# restored is a package nobody receives. The csproj's <Version> stays as the
+# default for a local `dotnet pack`.
 name: publish
 
 on:
@@ -20,6 +31,14 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+
+    permissions:
+      # The whole mechanism. Without id-token: write the job cannot ask GitHub
+      # for the token nuget.org wants to see, and the exchange below fails with
+      # nothing more useful than a 401.
+      id-token: write
+      contents: read
+
     steps:
       - uses: actions/checkout@v4
 
@@ -27,8 +46,8 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      # Tested before published. A package that was never run is a package
-      # whose first user is running it for you.
+      # Tested before published. A package that was never run is a package whose
+      # first user is running it for you.
       - run: dotnet test
 
       - name: Pack at the tagged version
@@ -38,12 +57,18 @@ jobs:
           dotnet pack src/EmuSen.LunaP/EmuSen.LunaP.csproj \
             -c Release -o nupkgs -p:Version="$VERSION"
 
+      - name: Exchange the OIDC token for a short-lived key
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: RedQuE3n
+
       # --skip-duplicate so re-running a failed job is not itself a failure:
-      # nuget.org will not accept a version twice, and that is the whole point
-      # of the check rather than something to work around.
+      # nuget.org will not accept a version twice, and that is the check working
+      # rather than something to work around.
       - name: Push to NuGet.org
         run: |
           dotnet nuget push "nupkgs/*.nupkg" \
-            --api-key "${{ secrets.NUGET_API_KEY }}" \
+            --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
