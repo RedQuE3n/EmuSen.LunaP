@@ -5,7 +5,7 @@ using EmuSen.LunaP.Controls;
 
 namespace EmuSen.LunaP.Fluent
 {
-    // Terse constructors for the layouts and kit controls a window is made of - see EmuSen_LunaP.md §9.
+    // Terse constructors for the layouts and kit controls a window is made of - see docs/LunaP.md §9.
     public static class Ui
     {
         public static StackPanel Stack(params Control[] children) => Stack(0, children);
@@ -48,11 +48,36 @@ namespace EmuSen.LunaP.Fluent
             return grid;
         }
 
+        // Rows are assigned by position exactly as Cols assigns columns, and an explicit .AtRow()
+        // still wins. Only the column half existed, which is why a header-and-body table ends up
+        // keeping two column strings in step by hand instead - see docs/LunaP.md §21.2.
+        public static Grid Rows(string definitions, params Control[] children)
+        {
+            var grid = new Grid { RowDefinitions = new RowDefinitions(definitions) };
+            for (int i = 0; i < children.Length; i++)
+            {
+                Control child = children[i];
+                if (!child.IsSet(Grid.RowProperty)) Grid.SetRow(child, i);
+                grid.Children.Add(child);
+            }
+
+            return grid;
+        }
+
         public static ScrollViewer Scroll(Control content) => new() { Content = content };
 
         // A SectionHeader and its content. Spacing defaults to the 8 the dashboards already used between the two.
         public static StackPanel Section(string header, Control content, double spacing = 8) =>
             Stack(spacing, new SectionHeader { Text = header }, content);
+
+        // The same, for a section with more than one child. Taking exactly one is why eight places
+        // write a bold TextBlock by hand rather than using SectionHeader at all - see §21.2.
+        public static StackPanel Section(string header, params Control[] content)
+        {
+            var panel = Stack(8, new SectionHeader { Text = header });
+            foreach (Control child in content) panel.Children.Add(child);
+            return panel;
+        }
 
         public static SectionHeader Header(string text) => new() { Text = text };
 

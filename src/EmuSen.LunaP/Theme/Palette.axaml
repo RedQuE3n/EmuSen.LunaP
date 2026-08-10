@@ -2,7 +2,7 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- Every value here is the literal that was already in use, not a new
-         choice - see EmuSen_LunaP.md §2 for the audit and for why LunaText
+         choice - see docs/LunaP.md §2 for the audit and for why LunaText
          and LunaMeterText are still two greys. -->
 
     <!-- Surfaces -->
@@ -27,8 +27,22 @@
     <SolidColorBrush x:Key="LunaSectionHeader" Color="{StaticResource LunaSectionHeaderColor}" />
     <SolidColorBrush x:Key="LunaWarning" Color="{StaticResource LunaWarningColor}" />
 
+    <!-- OUTCOME, which is not the load ramp and must not borrow its keys. §2.1
+         refused to fold an input-conflict highlight into LunaHot because "this
+         binding collides with another" is not "this subsystem is at 85% load",
+         and giving them one key would encode a relationship that does not
+         exist. That argument is why these are three keys of their own rather
+         than three more uses of the ramp - see docs/LunaP.md §22.9. -->
+    <Color x:Key="LunaErrorColor">#CD5C5C</Color>
+    <Color x:Key="LunaSuccessColor">#2E8B57</Color>
+    <Color x:Key="LunaInfoColor">#DAA520</Color>
+
+    <SolidColorBrush x:Key="LunaError" Color="{StaticResource LunaErrorColor}" />
+    <SolidColorBrush x:Key="LunaSuccess" Color="{StaticResource LunaSuccessColor}" />
+    <SolidColorBrush x:Key="LunaInfo" Color="{StaticResource LunaInfoColor}" />
+
     <!-- The load ramp: what "getting busy" looks like, so the GUI dashboards
-         and DianaOS's own ColoredBar never disagree - see EmuSen_LunaP.md §2.2. -->
+         and DianaOS's own ColoredBar never disagree - see docs/LunaP.md §2.2. -->
     <Color x:Key="LunaNominalColor">#32CD32</Color>
     <Color x:Key="LunaBusyColor">#FFD700</Color>
     <Color x:Key="LunaHotColor">#FF4500</Color>

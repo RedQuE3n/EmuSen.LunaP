@@ -1,29 +1,17 @@
 using Avalonia;
 using Avalonia.Headless;
-using Avalonia.Markup.Xaml.Styling;
-using Avalonia.Styling;
+using EmuSen.LunaP.Testing;
 
 [assembly: AvaloniaTestApplication(typeof(EmuSen.LunaP.Tests.TestAppBuilder))]
 
 namespace EmuSen.LunaP.Tests
 {
-    // Read by HeadlessUnitTestSession.GetOrStartForAssembly to build the one shared headless app every test dispatches onto.
+    // Read by HeadlessUnitTestSession to build the one shared headless app every test dispatches
+    // onto. The body of it ships in EmuSen.LunaP.Testing now, so a consumer gets the same
+    // application this suite runs against rather than a lookalike that misses the theme include -
+    // see docs/LunaP.md §3.1 for what missing it costs, and §22.8 for the move.
     public class TestAppBuilder
     {
-        // UseSkia rather than the headless drawing stub, so a captured frame goes through a real render pass - see docs/LunaP.md §10.
-        public static AppBuilder BuildAvaloniaApp() =>
-            AppBuilder.Configure<Application>()
-                .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
-                .UseSkia()
-                .AfterSetup(builder =>
-                {
-                    // The real LunaTheme.axaml, not a hand-built lookalike: a headless pass that
-                    // misses it asserts over untemplated controls and passes green - see docs/LunaP.md §3.1.
-                    builder.Instance!.Styles.Add(new StyleInclude(null as System.Uri)
-                    {
-                        Source = new System.Uri("avares://EmuSen.LunaP/Theme/LunaTheme.axaml"),
-                    });
-                    builder.Instance.RequestedThemeVariant = ThemeVariant.Dark;
-                });
+        public static AppBuilder BuildAvaloniaApp() => LunaHeadless.BuildApp();
     }
 }

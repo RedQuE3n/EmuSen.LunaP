@@ -7,18 +7,36 @@ using Avalonia.Input;
 
 namespace EmuSen.LunaP.Controls
 {
-    // A terminal-shaped pane: scrolling output, a prompt, an input box with history recall. Knows nothing about DianaOS - see EmuSen_LunaP.md §5.6.
+    // A terminal-shaped pane: scrolling output, a prompt, an input box with history recall. Knows nothing about DianaOS - see docs/LunaP.md §5.6.
     public class ConsolePane : TemplatedControl
     {
         public static readonly StyledProperty<string> PromptProperty =
             AvaloniaProperty.Register<ConsolePane, string>(nameof(Prompt), string.Empty);
 
+        // How many lines to keep. Zero means no limit, which is what this control used to do and
+        // is still available for anybody who wants it; the default is a limit because an
+        // unbounded one is a leak with a nice name - see docs/LunaP.md §22.6.
+        public static readonly StyledProperty<int> MaxLinesProperty =
+            AvaloniaProperty.Register<ConsolePane, int>(nameof(MaxLines), 5000);
+
         private TextBox? _input;
         private SelectableTextBlock? _output;
         private ScrollViewer? _scroll;
 
-        // The output is held here, not in the TextBlock: callers print a welcome banner from their constructor, long before a template exists.
-        private string _text = "";
+        // The output is held here, not in the TextBlock: callers print a welcome banner from their
+        // constructor, long before a template exists.
+        //
+        // A list of lines rather than one accumulating string, and the reason is a defect this
+        // replaces: `_text = _text + "\n" + line` allocates and copies the ENTIRE buffer on every
+        // line, so printing n lines costs O(n^2) and a long-running console spends progressively
+        // more time copying its own history. Appending to a list is O(1), and dropping the oldest
+        // line when the cap is reached is O(1) from the front of the window kept below.
+        private readonly List<string> _lines = new();
+
+        // The joined form, rebuilt only when the lines change and reused by every read in between.
+        // Setting SelectableTextBlock.Text is unavoidably O(total length) - it is one string
+        // property - so the cap is what actually bounds the per-line cost, not this.
+        private string? _joined;
 
         // -1 means "not recalling, editing whatever is live in the box" - the algorithm DianaOS's own ConsoleLineReader uses.
         private int _historyIndex = -1;
@@ -36,7 +54,14 @@ namespace EmuSen.LunaP.Controls
             set => SetValue(PromptProperty, value);
         }
 
-        public string OutputText => _text;
+        // Lines kept before the oldest is dropped. Zero or less means unlimited.
+        public int MaxLines
+        {
+            get => GetValue(MaxLinesProperty);
+            set => SetValue(MaxLinesProperty, value);
+        }
+
+        public string OutputText => _joined ??= string.Join("\n", _lines);
 
         protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
         {
@@ -54,20 +79,63 @@ namespace EmuSen.LunaP.Controls
 
         public void AppendLine(string text)
         {
-            _text = _text.Length == 0 ? text : _text + "\n" + text;
+            // Asked BEFORE the text changes. Once the new line is in, the extent has already grown
+            // and every position looks like "not at the bottom".
+            bool follow = IsScrolledToBottom();
+
+            _lines.Add(text ?? "");
+
+            int cap = MaxLines;
+            if (cap > 0 && _lines.Count > cap)
+            {
+                _lines.RemoveRange(0, _lines.Count - cap);
+            }
+
+            _joined = null;
             Flush();
-            _scroll?.ScrollToEnd();
+
+            // ONLY IF THE READER WAS ALREADY AT THE BOTTOM. This used to scroll unconditionally,
+            // which meant scrolling back through output to read something was undone by the next
+            // line to arrive - on a busy console, that is every few hundred milliseconds, and it
+            // makes the history effectively unreadable while anything is still printing. Following
+            // the tail is the behaviour you want right up until the moment you start reading.
+            if (follow) _scroll?.ScrollToEnd();
         }
 
         public void Clear()
         {
-            _text = string.Empty;
+            _lines.Clear();
+            _joined = null;
             Flush();
         }
 
         private void Flush()
         {
-            if (_output is not null) _output.Text = _text;
+            if (_output is not null) _output.Text = OutputText;
+        }
+
+        // No scroll viewer yet counts as "at the bottom", so output arriving before the template -
+        // the welcome banner every console prints - ends up followed rather than stranded at the top.
+        private bool IsScrolledToBottom() =>
+            _scroll is null || Follows(_scroll.Offset.Y, _scroll.Extent.Height, _scroll.Viewport.Height);
+
+        // Split out from the ScrollViewer so the rule itself is testable without a laid-out scroll
+        // viewer, exactly as WindowPlacementStore.IsOnAScreen is split so it is testable without a
+        // display (§8.1). That is not tidiness here, it is the only option: under Avalonia.Headless
+        // a ScrollViewer reports extent == viewport however much text it holds, so ScrollToEnd is a
+        // no-op and the wiring cannot be observed at all - §22.6 records the measurement.
+        //
+        // "Follows" as in follows the tail: true means new output should scroll into view.
+        public static bool Follows(double offsetY, double extentHeight, double viewportHeight)
+        {
+            double hidden = extentHeight - viewportHeight;
+
+            // Nothing is hidden, so there is no "away from the bottom" to be at.
+            if (hidden <= 0) return true;
+
+            // A pixel of slack: a viewport that does not divide evenly into the extent can leave
+            // the offset a fraction short of the bottom while looking pinned to it.
+            return offsetY >= hidden - 1.0;
         }
 
         public void FocusInput() => _input?.Focus();

@@ -8,7 +8,7 @@ using EmuSen.LunaP.Theme;
 
 namespace EmuSen.LunaP.Tests
 {
-    // Theme/Palette.axaml and Theme/LunaPalette.cs spell the same values twice; this is what stops them drifting - see EmuSen_LunaP.md §2.1.
+    // Theme/Palette.axaml and Theme/LunaPalette.cs spell the same values twice; this is what stops them drifting - see docs/LunaP.md §2.1.
     public class LunaPaletteTests
     {
         private static readonly HeadlessUnitTestSession Session =
@@ -23,6 +23,9 @@ namespace EmuSen.LunaP.Tests
         [InlineData("LunaMuted", "#808080")]
         [InlineData("LunaSectionHeader", "#9CDCFE")]
         [InlineData("LunaWarning", "#D08770")]
+        [InlineData("LunaError", "#CD5C5C")]
+        [InlineData("LunaSuccess", "#2E8B57")]
+        [InlineData("LunaInfo", "#DAA520")]
         [InlineData("LunaNominal", "#32CD32")]
         [InlineData("LunaBusy", "#FFD700")]
         [InlineData("LunaHot", "#FF4500")]
@@ -44,6 +47,9 @@ namespace EmuSen.LunaP.Tests
         [InlineData("LunaMuted", nameof(LunaPalette.Muted))]
         [InlineData("LunaSectionHeader", nameof(LunaPalette.SectionHeader))]
         [InlineData("LunaWarning", nameof(LunaPalette.Warning))]
+        [InlineData("LunaError", nameof(LunaPalette.Error))]
+        [InlineData("LunaSuccess", nameof(LunaPalette.Success))]
+        [InlineData("LunaInfo", nameof(LunaPalette.Info))]
         [InlineData("LunaNominal", nameof(LunaPalette.Nominal))]
         [InlineData("LunaBusy", nameof(LunaPalette.Busy))]
         [InlineData("LunaHot", nameof(LunaPalette.Hot))]
@@ -71,7 +77,7 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(LunaPalette.HeaderFontSize, Assert.IsType<double>(header));
         }, default);
 
-        // The thresholds the three hand-written ColorForPercent copies used - see EmuSen_LunaP.md §2.2.
+        // The thresholds the three hand-written ColorForPercent copies used - see docs/LunaP.md §2.2.
         [Theory]
         [InlineData(0, "#32CD32")]
         [InlineData(59.9, "#32CD32")]

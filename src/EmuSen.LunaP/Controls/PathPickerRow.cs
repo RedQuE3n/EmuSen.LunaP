@@ -12,7 +12,7 @@ namespace EmuSen.LunaP.Controls
         OpenFile,
     }
 
-    // A read-only path box and a Browse... button, which is all four of the frontends' picker rows were - see EmuSen_LunaP.md §5.4.
+    // A read-only path box and a Browse... button, which is all four of the frontends' picker rows were - see docs/LunaP.md §5.4.
     public class PathPickerRow : TemplatedControl
     {
         public static readonly StyledProperty<string> PathProperty =
