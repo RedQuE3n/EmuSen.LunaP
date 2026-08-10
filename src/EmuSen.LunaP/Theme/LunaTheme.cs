@@ -39,6 +39,35 @@ namespace EmuSen.LunaP.Theme
 
         public static string Current { get; private set; } = BuiltIn;
 
+        // WHICH VARIANT THE PALETTE RESOLVES THROUGH, and it defaults to Dark rather than to the
+        // system - see docs/LunaP.md §23.
+        //
+        // Dark is not a preference here, it is the absence of a behaviour change. Every consumer of
+        // this toolkit has been dark since it existed, because the palette had no other column;
+        // making it follow the desktop would turn a version bump into "the application looks
+        // different now" for anybody on a light machine, and §9.1 already refused a base class that
+        // altered behaviour by being inherited. The same argument applies to a palette that alters
+        // behaviour by being upgraded.
+        //
+        // ThemeVariant.Default is the opt-in for following the desktop, and it is one line:
+        //
+        //     LunaTheme.Variant = ThemeVariant.Default;   // before LunaApp.Configure(...)
+        //
+        // This matters beyond LunaP's own keys. LunaTheme.axaml includes a bare <FluentTheme/>,
+        // which follows the variant whatever LunaP does, so leaving the two to disagree is what
+        // produced the dark-on-dark measured in §23.1.
+        public static ThemeVariant Variant { get; set; } = ThemeVariant.Dark;
+
+        // Applied by LunaApp.Configure. Separate from ApplySaved so an application that builds its
+        // own AppBuilder can still get the variant right without taking the theme loader too.
+        public static void ApplyVariant(Application? app = null)
+        {
+            app ??= Application.Current;
+            if (app is null) return;
+
+            app.RequestedThemeVariant = Variant;
+        }
+
         // Raised only when Application.Styles changed, which is the one case an open window must be restyled - see docs/LunaP.md §12.3.
         public static event Action? StylesChanged;
 
