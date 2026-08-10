@@ -1,0 +1,14 @@
+bin/
+obj/
+out/
+*.user
+
+# Where `dotnet pack` puts the package, when packing locally for a consumer
+# that resolves it from a folder feed rather than from a real feed.
+nupkgs/
+
+# UI render captures and baselines. EMUSEN_UI_DUMP writes .png here and
+# EMUSEN_UI_BASELINE writes .frame; both are local artefacts of one machine's
+# font rendering and are deliberately not committed - see docs/LunaP.md §10.2.
+*.png
+*.frame

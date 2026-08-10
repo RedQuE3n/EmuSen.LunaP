@@ -1,0 +1,61 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- LunaP: a small Avalonia toolkit. Theme, controls, window scaffolding and
+       a fluent layout surface, so an application stops rebuilding chrome from
+       raw primitives. Named for Luna-P, Chibiusa's gadget ball.
+
+       It was written inside the EmuSen emulator project, where three frontends
+       consume it, and it moved here once it depended on nothing of EmuSen's at
+       all. docs/LunaP.md §19 records what had to go for that to be true and
+       where each piece went; §20 records the move itself.
+
+       THE RULE THAT MADE THE MOVE POSSIBLE, and it is worth keeping: this
+       project references AVALONIA AND NOTHING ELSE. Not a settings library,
+       not a logging library, not an application's own types. Every control
+       takes plain data or a delegate, and everything that would otherwise need
+       a dependency arrives through a seam the host fills in - Settings/
+       ISettingsStore is the only one so far. A toolkit that names its first
+       consumer is a toolkit only that consumer can use. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>EmuSen.LunaP</PackageId>
+    <!-- 0.2.0, and the bump is a real one rather than housekeeping: 0.1.0
+         carried Dashboards/ and Input/, which are gone, and did not carry
+         Settings/, which is new. A consumer moving from 0.1.0 has work to do.
+         It also settles the folder-feed trap that made 0.1.0 painful - NuGet
+         caches by id AND version, so repacking at the same version does not
+         propagate and a build fails on code that was just written. -->
+    <Version>0.2.0</Version>
+    <Authors>Tristan Pelland</Authors>
+    <Description>A small Avalonia toolkit: theme, controls, window scaffolding and a fluent layout surface.</Description>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/RedQuE3n/EmuSen.LunaP</RepositoryUrl>
+    <PackageTags>avalonia;ui;toolkit;theme;controls</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Desktop, Fonts.Inter and X11 are here for LunaApp.Configure, which owns
+         the UsePlatformDetect/WithInterFont/LogToTrace/UseX11 sequence an
+         application's Program.cs would otherwise spell out - and which is the
+         one place the Wayland/X11 correction lives. See docs/LunaP.md §3. -->
+    <PackageReference Include="Avalonia" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.0" />
+    <PackageReference Include="Avalonia.X11" Version="12.1.0" />
+  </ItemGroup>
+
+</Project>

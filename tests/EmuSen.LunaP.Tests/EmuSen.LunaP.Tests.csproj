@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- LunaP's own suite. Everything here is headless: no window is ever put on
+       a screen, including for the render tests, which drive a real Avalonia
+       control tree through a real Skia pass under Avalonia.Headless.
+
+       These tests lived in EmuSen.WiseMan until the toolkit left that
+       repository. What did NOT come with them is the one test that checked
+       LunaP's palette keys against EmuSen's own `man theme` page: that asserts
+       EmuSen's documentation stays in step with this project, which is
+       EmuSen's business and not this project's. See docs/LunaP.md §20. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <!-- Real Avalonia render passes with no display and no GPU. Not
+         Avalonia.Headless.XUnit: that package pins xunit.v3, which collides
+         with xunit 2.9.3 on the Fact/Theory/InlineData types.
+         HeadlessUnitTestSession, in plain Avalonia.Headless, gives the same
+         capability against ordinary [Fact] and async Task. -->
+    <PackageReference Include="Avalonia.Headless" Version="12.1.0" />
+    <!-- The render pass the captures go through - see Fixtures in UiTest.cs. -->
+    <PackageReference Include="Avalonia.Skia" Version="12.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EmuSen.LunaP\EmuSen.LunaP.csproj" />
+  </ItemGroup>
+
+</Project>
