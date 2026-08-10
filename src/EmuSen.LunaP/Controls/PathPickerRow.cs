@@ -1,7 +1,9 @@
 using System;
 using Avalonia;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using EmuSen.LunaP.Automation;
 using EmuSen.LunaP.Windowing;
 
 namespace EmuSen.LunaP.Controls
@@ -56,6 +58,14 @@ namespace EmuSen.LunaP.Controls
             get => GetValue(ModeProperty);
             set => SetValue(ModeProperty, value);
         }
+
+        // BrowseTitle is doing double duty now, and it is the right property for it: it already
+        // holds the one thing that distinguishes one picker row from another - "Choose a save
+        // folder" rather than "Choose a ROM folder" - and a settings page full of these had no
+        // other way to tell them apart. The template hangs the path box's name and the button's
+        // help text off it; see docs/LunaP.md §24.2 for why the button's NAME stays "Browse...".
+        protected override AutomationPeer OnCreateAutomationPeer() =>
+            new LunaAutomationPeer(this, AutomationControlType.Group, name: () => BrowseTitle);
 
         protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
         {

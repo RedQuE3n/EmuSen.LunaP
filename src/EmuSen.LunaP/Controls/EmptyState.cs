@@ -1,5 +1,7 @@
 using Avalonia;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls.Primitives;
+using EmuSen.LunaP.Automation;
 
 namespace EmuSen.LunaP.Controls
 {
@@ -50,5 +52,18 @@ namespace EmuSen.LunaP.Controls
         // the derived answer, and letting a caller set it would let the two disagree.
         public static readonly DirectProperty<EmptyState, bool> HasDetailProperty =
             AvaloniaProperty.RegisterDirect<EmptyState, bool>(nameof(HasDetail), o => o.HasDetail);
+
+        // THE SHARPEST CASE IN THE WHOLE ACCESSIBILITY PASS, and worth stating plainly: before
+        // this, the one control whose entire job is to explain why a window is empty was the one
+        // thing a screen reader could not see. Both its lines are template parts, so Avalonia hid
+        // them expecting the control to speak for them, and the control had no peer to speak with.
+        // A sighted user got "No cores loaded - open a ROM to begin"; a screen reader got silence
+        // and an apparently empty window. Measured in docs/LunaP.md §24.1.
+        //
+        // Text rather than Group: this IS the content, which is the same distinction §22.9 drew
+        // when it refused to make an empty state a HintText.
+        protected override AutomationPeer OnCreateAutomationPeer() =>
+            new LunaAutomationPeer(this, AutomationControlType.Text,
+                name: () => Message, help: () => Detail);
     }
 }

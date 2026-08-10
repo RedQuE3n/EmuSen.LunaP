@@ -1,5 +1,7 @@
 using Avalonia;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls.Primitives;
+using EmuSen.LunaP.Automation;
 using EmuSen.LunaP.Theme;
 
 namespace EmuSen.LunaP.Controls
@@ -37,6 +39,21 @@ namespace EmuSen.LunaP.Controls
         }
 
         public MeterRow() => ApplyLoadLevel();
+
+        // A meter reads as ONE progress bar named for what it measures, not as a group containing
+        // an anonymous one. The template's ProgressBar is marked AccessibilityView="Raw" so it does
+        // not appear as a second, nameless node saying the same thing - see docs/LunaP.md §24.2.
+        //
+        // ValueText is the item status rather than the name, and it is deliberately NOT exposed as
+        // a range value. The property's own contract is that "the caller decides whether that is
+        // '62.0%' or '13/128'", so Percent and ValueText need not agree: a row showing 13 of 128
+        // slots sets Percent to 10 for the bar's length and ValueText to "13/128" for the reader.
+        // An IRangeValueProvider would announce "10 percent" over the top of that, which is a
+        // number the caller never asked for and, for the half of the uses that are counts rather
+        // than proportions, simply wrong.
+        protected override AutomationPeer OnCreateAutomationPeer() =>
+            new LunaAutomationPeer(this, AutomationControlType.ProgressBar,
+                name: () => Label, status: () => ValueText);
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
