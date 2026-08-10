@@ -26,12 +26,13 @@
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <PackageId>EmuSen.LunaP</PackageId>
-    <!-- 0.3.0. The published version comes from the git tag, so this is only
-         the default for a local `dotnet pack` - but it is kept in step so the
-         two never tell different stories. The bump is real: Threading/ is new
-         (§22), ConsolePane's append and scroll behaviour changed (§22.6), and
-         EmuSen.LunaP.Testing exists alongside this for the first time (§22.8). -->
-    <Version>0.3.0</Version>
+    <!-- 0.4.0. The published version comes from the git tag, so this is only
+         the default for a local `dotnet pack` - kept in step so the two never
+         tell different stories. The bump is real: the palette gained a light
+         column and the toolkit stopped letting FluentTheme follow the system
+         while its own keys stayed dark (§23). CHANGELOG.md is the consumer's
+         account of it. -->
+    <Version>0.4.0</Version>
     <Authors>Tristan Pelland</Authors>
     <Description>A small Avalonia toolkit: theme, controls, window scaffolding and a fluent layout surface.</Description>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>

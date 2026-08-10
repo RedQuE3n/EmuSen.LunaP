@@ -32,13 +32,18 @@
          0.4.0 of one with 0.2.0 of the other has a question nobody wants to
          answer. The published number comes from the git tag either way - see
          .github/workflows/publish.yml. -->
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <Authors>Tristan Pelland</Authors>
     <Description>Headless test harness for EmuSen.LunaP: render capture, layout assertions and visual-tree queries.</Description>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/RedQuE3n/EmuSen.LunaP</RepositoryUrl>
     <PackageTags>avalonia;ui;testing;headless;xunit</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- xunit.assert, not xunit. The harness calls Assert and nothing else, and
