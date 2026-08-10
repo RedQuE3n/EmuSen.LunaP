@@ -4,7 +4,7 @@
     <!-- The one line every App.axaml includes, and the one WiseMan's
          TestAppBuilder includes too - a headless render pass that misses the
          theme silently asserts over untemplated controls. See
-         EmuSen_LunaP.md §3.1. -->
+         docs/LunaP.md §3.1. -->
 
     <FluentTheme />
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls.axaml" />

@@ -32,10 +32,15 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="EmuSen.LunaP.Testing" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\EmuSen.LunaP\EmuSen.LunaP.csproj" />
+    <!-- The harness is a package now, and this suite consumes it exactly as any
+         other consumer would - which is what stops it drifting back into being
+         private. docs/LunaP.md §22.8. -->
+    <ProjectReference Include="..\..\src\EmuSen.LunaP.Testing\EmuSen.LunaP.Testing.csproj" />
   </ItemGroup>
 
 </Project>

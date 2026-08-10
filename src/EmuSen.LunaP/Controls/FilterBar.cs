@@ -4,10 +4,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.VisualTree;
+using EmuSen.LunaP.Threading;
 
 namespace EmuSen.LunaP.Controls
 {
-    // A search box, optionally preceded by a labelled facet dropdown - see EmuSen_LunaP.md §14.2.
+    // A search box, optionally preceded by a labelled facet dropdown - see docs/LunaP.md §14.2.
     public class FilterBar : TemplatedControl
     {
         public static readonly StyledProperty<string> SearchTextProperty =
@@ -23,10 +25,21 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<bool> ShowFacetProperty =
             AvaloniaProperty.Register<FilterBar, bool>(nameof(ShowFacet));
 
+        // Zero, so this changes nothing for anybody already using the control. Two consumers want
+        // it non-zero and both re-read storage on every keystroke without it - docs/LunaP.md §21.1.
+        public static readonly StyledProperty<TimeSpan> SearchDelayProperty =
+            AvaloniaProperty.Register<FilterBar, TimeSpan>(nameof(SearchDelay), TimeSpan.Zero);
+
         private TextBox? _search;
         private Dropdown? _facet;
         private IEnumerable? _pendingFacets;
         private object? _pendingSelection;
+
+        // Built on demand, and rebuilt when the delay changes. Null means "no delay", which is the
+        // default and is a real state rather than a zero-length timer - a DispatcherTimer with a
+        // zero interval still defers to the next dispatcher pass, which would turn the documented
+        // default of "synchronous" into "one frame later" for every existing caller.
+        private Debounce? _debounce;
 
         // Raised whenever the search text or the facet changes, from any cause.
         public event Action? Changed;
@@ -57,6 +70,22 @@ namespace EmuSen.LunaP.Controls
         {
             get => GetValue(ShowFacetProperty);
             set => SetValue(ShowFacetProperty, value);
+        }
+
+        // How long to wait after the last keystroke before raising Changed. Zero raises it
+        // immediately, which is what this control has always done.
+        //
+        // SearchText still updates on every keystroke; only the notification waits. A caller reads
+        // SearchText from inside Changed, so delaying both would be the same thing said twice, and
+        // delaying the property would break anything binding to it.
+        //
+        // The FACET IS NEVER DEBOUNCED. Picking from a dropdown is a deliberate act that happens
+        // once, not a stream of half-formed input, and making the user wait after it would read as
+        // the application being slow.
+        public TimeSpan SearchDelay
+        {
+            get => GetValue(SearchDelayProperty);
+            set => SetValue(SearchDelayProperty, value);
         }
 
         public object? Facet => _facet?.SelectedItem ?? _pendingSelection;
@@ -102,7 +131,14 @@ namespace EmuSen.LunaP.Controls
             if (e.Property != TextBox.TextProperty) return;
 
             SetCurrentValue(SearchTextProperty, _search?.Text ?? "");
-            Changed?.Invoke();
+
+            if (SearchDelay <= TimeSpan.Zero)
+            {
+                Changed?.Invoke();
+                return;
+            }
+
+            EnsureDebounce().Poke();
         }
 
         private void OnSearchKeyDown(object? sender, KeyEventArgs e)
@@ -110,7 +146,36 @@ namespace EmuSen.LunaP.Controls
             if (e.Key != Key.Enter) return;
 
             e.Handled = true;
+
+            // Enter means "I have finished typing", so anything still waiting on the delay runs
+            // now. Without this a caller that filters on Changed and acts on Submitted would act
+            // on the results of the previous keystroke.
+            _debounce?.Flush();
             Submitted?.Invoke();
+        }
+
+        private Debounce EnsureDebounce()
+        {
+            // Rebuilt when the delay changes, because DispatcherTimer's interval is fixed at
+            // construction here and a stale one would keep the old timing silently.
+            if (_debounce is null || _lastDelay != SearchDelay)
+            {
+                _debounce?.Cancel();
+                _lastDelay = SearchDelay;
+                _debounce = new Debounce(_lastDelay, () => Changed?.Invoke());
+            }
+
+            return _debounce;
+        }
+
+        private TimeSpan _lastDelay;
+
+        // A pending filter belongs to a bar that is on screen. Leaving the timer running after the
+        // control is torn down would fire Changed into a window that has gone.
+        protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            _debounce?.Cancel();
+            base.OnDetachedFromVisualTree(e);
         }
 
         private void OnFacetChose(object? _)

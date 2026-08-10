@@ -2,7 +2,7 @@ using Avalonia.Controls;
 
 namespace EmuSen.LunaP.Controls
 {
-    // The three text idioms the frontends retyped per window; all styling lives in Theme/Controls.axaml - see EmuSen_LunaP.md §5.1.
+    // The three text idioms the frontends retyped per window; all styling lives in Theme/Controls.axaml - see docs/LunaP.md §5.1.
     public class SectionHeader : TextBlock
     {
     }

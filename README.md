@@ -110,8 +110,24 @@ public class SettingsWindow : ToolWindow
 
 **Controls**: `MeterRow` and `MeterList`, `ConsolePane`, `FieldRow`,
 `PathPickerRow`, `FilterBar`, `RgbaImageView`, `LunaSwitch`, `Dropdown`, `Tabs`,
-`ButtonBar`, `StatusBar`, and the three text styles the theme knows about —
-`SectionHeader`, `HintText`, `MonoText`.
+`ButtonBar`, `StatusBar`, `EmptyState`, `LunaList<T>`, and the three text styles
+the theme knows about — `SectionHeader`, `HintText`, `MonoText`.
+
+`LunaList<T>` keeps hold of the type you gave it — you get the model back on
+selection, not a row index into a parallel array — and `Refresh` puts the
+selection back afterwards:
+
+```csharp
+var peers = new LunaList<Peer> { Label = p => p.Handle, Key = p => p.Handle };
+peers.Chose += peer => Open(peer);
+peers.Refresh(await roster.All());   // selection survives the rebuild
+```
+
+**Threading**: `UiThread` (marshal onto the UI thread), `Latest<T>` (a fast
+producer, the newest value, one callback), `Suppressor` (stop a control's own
+change handler answering back while you write to it) and `Debounce`. All four
+were things applications kept writing by hand; `docs/LunaP.md` §22 has the
+counts, and §22.1 has a bug that turned up while generalising one of them.
 
 **Windows**: `ToolWindow`, `PollingWindow` (a refresh on a cadence),
 `MessageWindow`, dialogs, and `WindowSlot` for one-at-a-time windows.
@@ -119,6 +135,44 @@ public class SettingsWindow : ToolWindow
 **The gallery** — `GalleryWindow` shows every control in the kit against the
 current theme, which is the fastest way to see what a theme you are writing
 actually does.
+
+## Testing your own windows
+
+`EmuSen.LunaP.Testing` is the harness this project tests itself with, as a
+separate package so the toolkit itself keeps referencing Avalonia and nothing
+else:
+
+    dotnet add package EmuSen.LunaP.Testing
+
+```csharp
+[assembly: AvaloniaTestApplication(typeof(TestAppBuilder))]
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
+
+public class TestAppBuilder
+{
+    public static AppBuilder BuildAvaloniaApp() => LunaHeadless.BuildApp();
+}
+
+[Fact]
+public Task The_settings_window_lays_out() => UiTest.Run(() =>
+{
+    var window = new SettingsWindow();
+    window.Show();
+    UiTest.AssertLaidOut(window, "settings");
+});
+```
+
+`AssertLaidOut` is the one that earns its keep: a window that failed to lay out,
+or whose controls have no template, renders as one flat colour, and counting
+distinct colours catches that where walking the logical tree does not.
+
+**`DisableTestParallelization` is required, and the harness refuses to start
+without it.** Every test shares one headless application and several statics
+around it are process-global, so running test classes concurrently lets one
+class's constructor overwrite another's state mid-assertion — which presents as
+a suite that is green on your machine and red on CI. `docs/LunaP.md` §20.2 is
+the failure that taught us, §22.8 is why the refusal is loud rather than
+documented.
 
 ## Settings
 
@@ -158,8 +212,10 @@ the content, which is what re-runs the style pass. §12.3 is the finding.
     dotnet build
     dotnet test
 
-132 tests, all headless — no window is ever put on a screen, including for the
+176 tests, all headless — no window is ever put on a screen, including for the
 render tests, which drive a real Avalonia control tree through a real Skia pass.
+The suite runs serially on purpose; `docs/LunaP.md` §20.2 is the race that
+taught us why.
 
 The assertion that earns its keep is `AssertLaidOut`: a window that failed to lay
 out, or whose controls have no template, renders as one flat colour, and counting

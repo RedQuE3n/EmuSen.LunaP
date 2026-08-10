@@ -13,7 +13,7 @@ using EmuSen.LunaP.Windowing;
 
 namespace EmuSen.LunaP.Tests
 {
-    // The CSS theme format: what it compiles to, and what it refuses - see EmuSen_LunaP.md §12.2.
+    // The CSS theme format: what it compiles to, and what it refuses - see docs/LunaP.md §12.2.
     public class CssThemeTests : IDisposable
     {
         private readonly string _configDir;

@@ -4,7 +4,7 @@ using EmuSen.LunaP.Theme;
 
 namespace EmuSen.LunaP.Controls
 {
-    // One row of a load/level dashboard: a label, a percentage bar, a value - see EmuSen_LunaP.md §5.2.
+    // One row of a load/level dashboard: a label, a percentage bar, a value - see docs/LunaP.md §5.2.
     public class MeterRow : TemplatedControl
     {
         public static readonly StyledProperty<string> LabelProperty =
@@ -44,7 +44,7 @@ namespace EmuSen.LunaP.Controls
             if (change.Property == PercentProperty) ApplyLoadLevel();
         }
 
-        // A pseudo-class rather than a computed brush, so the ramp follows a loaded theme - see EmuSen_LunaP.md §13.2.
+        // A pseudo-class rather than a computed brush, so the ramp follows a loaded theme - see docs/LunaP.md §12.1.
         private void ApplyLoadLevel()
         {
             LoadLevel level = LunaPalette.LevelFor(Percent);

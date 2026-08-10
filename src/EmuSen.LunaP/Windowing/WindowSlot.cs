@@ -1,10 +1,10 @@
 using System;
 using Avalonia.Controls;
-using Avalonia.Threading;
+using EmuSen.LunaP.Threading;
 
 namespace EmuSen.LunaP.Windowing
 {
-    // "At most one of these, else bring it forward" - the pattern seven call sites hand-wrote - see EmuSen_LunaP.md §8.3.
+    // "At most one of these, else bring it forward" - the pattern seven call sites hand-wrote - see docs/LunaP.md §8.3.
     public sealed class WindowSlot<TWindow> where TWindow : Window
     {
         public TWindow? Current { get; private set; }
@@ -12,7 +12,7 @@ namespace EmuSen.LunaP.Windowing
         public bool IsOpen => Current is not null;
 
         // Creates the window, or refreshes and activates the one already open.
-        public void Show(Window? owner, Func<TWindow> create, Action<TWindow>? refresh = null) => OnUiThread(() =>
+        public void Show(Window? owner, Func<TWindow> create, Action<TWindow>? refresh = null) => UiThread.Run(() =>
         {
             if (Current is { } existing)
             {
@@ -33,18 +33,15 @@ namespace EmuSen.LunaP.Windowing
         });
 
         // Never creates and never activates: a core swap should not pop up a dashboard nobody asked for, or steal focus mid-game.
-        public void RefreshIfOpen(Action<TWindow> refresh) => OnUiThread(() =>
+        //
+        // This one marshals and that is not free of consequence - §11.2 records a caller for which
+        // marshalling was exactly wrong, because its work had to run on the thread owning the core.
+        // Such a caller must not come through here.
+        public void RefreshIfOpen(Action<TWindow> refresh) => UiThread.Run(() =>
         {
             if (Current is { } existing) refresh(existing);
         });
 
-        public void Close() => OnUiThread(() => Current?.Close());
-
-        // Inline when already on the UI thread, so Current is set by the time Show returns for the common case; posted otherwise.
-        private static void OnUiThread(Action action)
-        {
-            if (Dispatcher.UIThread.CheckAccess()) action();
-            else Dispatcher.UIThread.Post(action);
-        }
+        public void Close() => UiThread.Run(() => Current?.Close());
     }
 }

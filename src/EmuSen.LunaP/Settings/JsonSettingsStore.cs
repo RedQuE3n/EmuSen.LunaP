@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace EmuSen.LunaP.Settings
 {
-    // The default store: indented JSON under a directory the host names - see EmuSen_LunaP.md §19.1.
+    // The default store: indented JSON under a directory the host names - see docs/LunaP.md §19.1.
     public sealed class JsonSettingsStore : ISettingsStore
     {
         // Deliberately the same shape EmuSen.Galaxia uses, so the files it already wrote still read.
