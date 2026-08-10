@@ -1,0 +1,31 @@
+# Build and run the suite on every push and pull request.
+#
+# Everything here is headless - no display, no GPU - which is why this runs on a
+# bare ubuntu runner with nothing but the .NET SDK. If a render test ever needs
+# something installed, that is a sign the suite stopped being headless rather
+# than a sign this file needs a package.
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - run: dotnet restore
+
+      # Warnings are not errors here, but a build that emits one should be
+      # visible in the log rather than buried under test output.
+      - run: dotnet build --no-restore
+
+      - run: dotnet test --no-build --verbosity normal

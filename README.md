@@ -29,6 +29,28 @@ to move for it to be true and §20 records the move.
 The package id keeps the `EmuSen.` prefix from where it was written. It carries
 no dependency on anything of EmuSen's — a test asserts exactly that.
 
+## Releasing
+
+Tag it, and the workflow does the rest:
+
+    git tag v0.2.0
+    git push origin v0.2.0
+
+**The published version comes from the tag, not from the `.csproj`.** A version
+written in two places will eventually disagree with itself, and the failure mode
+here is one this project has already been bitten by: NuGet caches by package id
+*and* version, so a package published under a version somebody has already
+restored is a package nobody receives. The `<Version>` in the csproj stays as the
+default for a local `dotnet pack` and nothing more.
+
+Publishing needs one repository secret, `NUGET_API_KEY`, from nuget.org under
+**Account → API Keys**, scoped to push for this package id:
+
+    gh secret set NUGET_API_KEY --repo RedQuE3n/EmuSen.LunaP
+
+The workflow runs the suite before it packs. A package that was never tested is
+a package whose first user is testing it for you.
+
 ## Using it
 
 **The bootstrap.** `LunaApp.Configure<App>()` replaces the `AppBuilder` chain a

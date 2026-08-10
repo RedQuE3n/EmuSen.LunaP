@@ -1,0 +1,49 @@
+# Publish to NuGet.org when a version tag is pushed.
+#
+#     git tag v0.2.0 && git push origin v0.2.0
+#
+# THE VERSION COMES FROM THE TAG, not from the csproj, and that is deliberate.
+# A version written in two places is a version that will eventually disagree
+# with itself, and the failure mode is the one this project has already been
+# bitten by: NuGet caches by package id AND version, so a package published
+# under a version somebody has already restored is a package nobody receives.
+# The csproj's <Version> stays as the default for a local `dotnet pack`.
+#
+# Requires one repository secret, NUGET_API_KEY, from nuget.org under
+# Account -> API Keys, scoped to push for the EmuSen.LunaP package id.
+name: publish
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Tested before published. A package that was never run is a package
+      # whose first user is running it for you.
+      - run: dotnet test
+
+      - name: Pack at the tagged version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "packing $VERSION"
+          dotnet pack src/EmuSen.LunaP/EmuSen.LunaP.csproj \
+            -c Release -o nupkgs -p:Version="$VERSION"
+
+      # --skip-duplicate so re-running a failed job is not itself a failure:
+      # nuget.org will not accept a version twice, and that is the whole point
+      # of the check rather than something to work around.
+      - name: Push to NuGet.org
+        run: |
+          dotnet nuget push "nupkgs/*.nupkg" \
+            --api-key "${{ secrets.NUGET_API_KEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
