@@ -11,6 +11,65 @@ answer.
 
 ---
 
+## 0.5.0
+
+### Fixed
+
+- **Nine of the toolkit's controls were not in the automation tree at all**, so a
+  screen reader never reached them — `MeterRow`, `MeterList`, `EmptyState`,
+  `FieldRow`, `PathPickerRow`, `FilterBar`, `ConsolePane`, `StatusBar` and
+  `RgbaImageView`. Avalonia's default peer reports `IsControlElement = false`,
+  and a templated control's parts are hidden on the assumption that the control
+  speaks for them; these controls never did, so label and value vanished with
+  them. A dashboard of meters reached a reader as anonymous percentages with
+  nothing to say what they measured (`§24.1`).
+- **`EmptyState` was silent** — the one control whose job is to explain why a
+  window is empty was the one thing a screen reader could not see.
+- **`LunaSwitch` announced as an unnamed button.** Its label lives in
+  `OnContent`/`OffContent` (`§14.1`) and Avalonia's toggle peer reads `Content`.
+- **Eight of eleven reachable tab stops announced as nothing** — five text
+  boxes, a dropdown, a selectable text block and the switch. `FieldRow` now
+  lends its label to the control inside it via `LabeledBy`, and `FilterBar` and
+  `PathPickerRow` name their parts from properties they already had.
+- **A page of `PathPickerRow`s was a page of buttons all called "Browse..."**
+  The name stays "Browse..." — an accessible name that drops the visible label
+  breaks voice control — and `BrowseTitle` becomes the button's help text.
+
+### Added
+
+- `Automation/LunaAutomationPeer` — one peer, taking a control type and
+  delegates, so a control reports its live property rather than a captured
+  string. An explicit `AutomationProperties.Name` always wins (`§24.2`).
+- `Fluent/AccessibilityExtensions` — `.AccessibleName()`, `.HelpText()`,
+  `.LabeledBy()`, `.LiveRegion()`, `.Decorative()`. The attached form was
+  available all along and used zero times across four applications (`§24.3`).
+- `StatusBar` is a `Polite` live region by default; set `LiveSetting` to `Off`
+  if your status updates continuously.
+
+### Changed
+
+- **`ButtonBar` reports `ToolBar` where it used to report `List`.** A row of
+  OK/Cancel is a run of commands, not a two-item list. Nothing in any known
+  consumer queries an automation control type, so this breaks nothing today —
+  it is here because it would break a UI test written tomorrow.
+
+### Known
+
+- **No screen reader has been run against any of this.** Every measurement is of
+  Avalonia's automation tree, not of Orca, NVDA or VoiceOver reading it. Being
+  in the control view is necessary and is not the same as verified end to end
+  (`§24.4`).
+- `ConsolePane` output cannot be announced line by line: it is one text block
+  holding the joined buffer, so a live region would re-read the whole history on
+  every append. The trade is recorded rather than half-solved (`§24.4`).
+- **Avalonia 12.1.0's `TextBlockAutomationPeer` ignores
+  `AutomationProperties.Name`**, returning `Text` instead. Reproduction in
+  `§24.5`.
+- The consumers are untouched. Every `Group` and `Image` above still needs a
+  name only the application can supply.
+
+---
+
 ## 0.4.0
 
 ### Added

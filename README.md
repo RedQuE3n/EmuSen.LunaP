@@ -217,6 +217,36 @@ Every light foreground is held to 4.5:1 against the light surface by a test.
 predates the light column, it is recorded rather than quietly adjusted, and §23.4
 says why.
 
+## Accessibility
+
+Every LunaP control reports itself to the automation layer, and names itself from
+the property it already had — a `MeterRow` from `Label`, an `EmptyState` from
+`Message`, a `StatusBar` from `Status`. `FieldRow` lends its label to whatever
+you put inside it, so the `TextBox` in a settings field is announced by the
+field's name without you doing anything.
+
+Where the toolkit cannot know what a control is *about* — a `MeterList`, an
+`RgbaImageView` — it says nothing rather than guessing, and that is where you
+come in:
+
+```csharp
+using EmuSen.LunaP.Fluent;
+
+new RgbaImageView().AccessibleName("Game screen")
+new Dropdown().AccessibleName("Console")
+new Button { Content = "Prune" }.HelpText("Deletes every cheat for the selected system")
+new TextBox().LabeledBy(theLabelYouAlreadyDrew)
+```
+
+Anything you set wins over the control's own name, so a toolkit default never
+overrides your decision. `StatusBar` is a polite live region by default — set
+`AutomationProperties.LiveSetting` to `Off` if yours updates continuously.
+
+Worth knowing what this is not: it is measured against Avalonia's automation
+tree, not against a running screen reader. `docs/LunaP.md` §24 has the before
+measurement — nine controls that were not in the tree at all — and §24.4 is
+honest about what is still missing.
+
 ## Themes
 
 A theme is a resource dictionary of palette keys, written as `.axaml` or as CSS,

@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using Avalonia;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using EmuSen.LunaP.Threading;
 
 namespace EmuSen.LunaP.Controls
@@ -31,6 +33,39 @@ namespace EmuSen.LunaP.Controls
             // say nothing a switch's own position does not. See docs/LunaP.md §14.1.
             OnContent = Label;
             OffContent = Label;
+        }
+
+        // AND HERE IS WHAT THAT DECISION COST, FOUND BY MEASURING RATHER THAN BY READING IT BACK.
+        //
+        // Avalonia's ToggleButtonAutomationPeer takes its name from Content. LunaSwitch puts the
+        // label in OnContent and OffContent and leaves Content null - so a switch with a perfectly
+        // good visible label announced as an unnamed button. "Button" and nothing else, for every
+        // switch on a settings page. Measured in docs/LunaP.md §24.1.
+        //
+        // The §14.1 decision was still right; it just had a consequence nobody looked for. The peer
+        // is where it gets paid, not the layout: the label goes back to being the accessible name
+        // without moving the text on screen.
+        protected override AutomationPeer OnCreateAutomationPeer() => new LunaSwitchAutomationPeer(this);
+    }
+
+    // Subclassed from Avalonia's own rather than built on LunaAutomationPeer, and the reason is the
+    // toggle pattern: ToggleButtonAutomationPeer implements IToggleProvider, which is how assistive
+    // technology reads the switch's state and flips it. A LunaAutomationPeer would report a nicely
+    // named control that nothing could tell was on or off, which trades one silence for another.
+    internal sealed class LunaSwitchAutomationPeer : ToggleButtonAutomationPeer
+    {
+        public LunaSwitchAutomationPeer(LunaSwitch owner) : base(owner)
+        {
+        }
+
+        // base first, so AutomationProperties.Name and LabeledBy still win - the same precedence
+        // LunaAutomationPeer keeps, for the same reason.
+        protected override string? GetNameCore()
+        {
+            string? explicitly = base.GetNameCore();
+            if (!string.IsNullOrWhiteSpace(explicitly)) return explicitly;
+
+            return Owner is LunaSwitch { Label: { Length: > 0 } label } ? label : null;
         }
     }
 

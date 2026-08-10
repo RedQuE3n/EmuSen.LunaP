@@ -726,6 +726,8 @@ So the package's documentation is part of its design, not an afterthought to it:
 
 **Accessibility is the exception to this section's rule, and it is worth being blunt about why.** `ToolTip`, `AutomationProperties`, `TabIndex` and `IsTabStop` appear **zero times** across Pegasus, all three EmuSen frontends, *and this toolkit's own `src/`*. There is no hand-roll to count because nobody built it anywhere, so the method that produced every other item in this section produces nothing here. Focus is managed in exactly one place in the entire corpus (`Pegasus/SignIn.fs:82`). For a toolkit whose whole subject is chrome, that is the largest blank area on the map, and the absence of evidence is the finding rather than a reason to skip it.
 
+> **Built, in §24 — and this paragraph was wrong about one thing worth correcting.** "No hand-roll to count" was true and led to the wrong conclusion, which was that this item had no evidence available. It had none of *this section's* kind; asking Avalonia's automation layer what it thought each control was produced a table immediately, and that table said something worse than missing labels. **Nine of the toolkit's controls were not in the automation tree at all.** §24.1 has the measurement. The lesson generalises past accessibility: when the house method finds nothing, that is a fact about the method.
+
 **Keyboard handling has three answers to one question.** "Enter means submit" is implemented at `MainWindow.axaml.cs:896`, at `Pegasus/SignIn.fs:87`, and as `FilterBar.Submitted`. The tunnelled global handler is written twice with the same comment about focus navigation eating the arrows (`MainWindow.axaml.cs:218`, `InputSettingsWindow.axaml.cs:87`), and `MainWindow.axaml.cs:223` holds `TypingIntoATextField`, a completely generic guard living in an emulator. §15 draws the line and it is a clean one here: the F-key map at `GameWindow.axaml.cs:350` stays out, because it names a console's controls; `TypingIntoATextField` does not name anything.
 
 **Six windows bypass `ToolWindow`, and `WindowKey` appears zero times in the EmuSen frontends.** `MainWindow.axaml.cs:39`, `ActiveCheatsWindow.axaml.cs:21`, `CheatDatabaseWindow.axaml.cs:19`, `RomBrowserWindow.axaml.cs:315`, `GameWindow.axaml.cs:91`, and `InputSettingsWindow.axaml.cs:22` — the last written as `Avalonia.Controls.Window`, fully qualified, which is a deliberate statement rather than an oversight. They lose the `LunaSurface` background, the `StylesChanged` restyle hook, Escape handling and placement memory in one go, which is the uncovered case §12.3 already flags. Two of them hand-roll a `DispatcherTimer` (`InputSettingsWindow.axaml.cs:35-36,92,409`, `MainWindow.axaml.cs:735`) while `Windowing/PollingWindow.cs` exists and its own comment says *"Five windows hand-rolled this; none of them stopped while hidden."* **The honest reading is that this is migration work in EmuSen and not toolkit work here** — but it is recorded here because a toolkit whose base class is refused by six of its consumer's windows should find out why before adding a seventh feature to it.
@@ -1031,3 +1033,161 @@ Recording it costs nothing and hides nothing. Changing it is a decision somebody
 ### 23.5 What is still missing
 
 A light column is not accessibility. `ToolTip`, `AutomationProperties`, `TabIndex` and `IsTabStop` still appear **zero times** in this toolkit and in every consumer of it, which remains the largest blank area on the map (§21.4). Contrast is one property of one part of it, and the only one this section touched.
+
+> **Superseded for the toolkit by §24.** The zero above was true when it was written and is now true only of the consumers. `src/` uses `AutomationProperties` in nine controls and a control template; the count that matters turned out not to be that one anyway, for the reason §24 opens with.
+
+---
+
+## 24. Accessibility, and a toolkit that was not in the tree
+
+§21.4 flagged this as the one item on the roadmap with no hand-roll to count, because nobody had built it anywhere, and said that the absence of evidence was the finding rather than a reason to skip it. That was right about the absence and wrong about what to do next: the method that produced every other roadmap item — count what consumers rewrite — produces nothing here, so this section had to get its evidence somewhere else.
+
+**It got it by asking the framework what it thought each control was.** Avalonia exposes `ControlAutomationPeer.CreatePeerForElement`, which is the same route a screen reader's platform bridge takes, so a probe can walk a real window and print what assistive technology would find. That turned an item with no evidence into an item with a table, and the table said something considerably worse than "the labels are missing".
+
+### 24.1 The measurement
+
+Seventeen controls in a shown `ToolWindow`, under the headless harness. The column that matters is the last one:
+
+```
+CONTROL         | PEER                      | TYPE        | NAME              | IN CONTROL VIEW
+MeterRow        | NoneAutomationPeer        | None        |                   | False
+EmptyState      | NoneAutomationPeer        | None        |                   | False
+FieldRow        | NoneAutomationPeer        | None        |                   | False
+PathPickerRow   | NoneAutomationPeer        | None        |                   | False
+FilterBar       | NoneAutomationPeer        | None        |                   | False
+ConsolePane     | NoneAutomationPeer        | None        |                   | False
+StatusBar       | NoneAutomationPeer        | None        |                   | False
+MeterList       | NoneAutomationPeer        | None        |                   | False
+RgbaImageView   | NoneAutomationPeer        | None        |                   | False
+ButtonBar       | ItemsControlAutomationPeer| List        |                   | True
+LunaSwitch      | ToggleButtonAutomationPeer| Button      |                   | True
+```
+
+**Nine of the toolkit's controls were not in the automation tree at all.** Not unlabelled — absent. `Control.OnCreateAutomationPeer` returns a `NoneAutomationPeer` unless a control overrides it, and a `NoneAutomationPeer` reports `IsControlElement = false`, which removes the node from the *control view*: the filtered view of the tree that assistive technology navigates.
+
+That alone would be recoverable, because the labels are right there in each template. **They are not, and the second half of the mechanism is the part worth keeping.** Avalonia also hides a templated control's own template parts from the control view, on the entirely reasonable assumption that the control speaks for its parts. Walking into a `MeterRow`:
+
+```
+NoneAutomationPeer        type=None        isControlElement=False  name=""        <- the row
+  TextBlockAutomationPeer   type=Text        isControlElement=False  name="CPU"     <- its label
+  ProgressBarAutomationPeer type=ProgressBar isControlElement=True   name=""        <- the bar
+  TextBlockAutomationPeer   type=Text        isControlElement=False  name="62.0%"   <- its value
+```
+
+The label is hidden because it is a template part of a control that was supposed to speak for it. The control is hidden because it never volunteered to. **The only thing left in the control view is a nameless progress bar**, so a dashboard of eight meters presented as eight anonymous percentages with nothing to say what any of them measured.
+
+Three particular cases are worth naming, because each is sharper than the general finding.
+
+**`EmptyState` was the worst of them, and it is almost funny.** The one control in the kit whose entire job is to explain why a window is empty was the one thing a screen reader could not see. Both of its lines are template parts, so both were hidden. A sighted user got "No cores loaded — open a ROM to begin"; a screen reader got an apparently empty window and silence. §22.9 built that control because `CoretopWindow` had written a comment explaining why an empty state is the window's whole content rather than an aside — and then it was the one piece of content that did not reach a reader.
+
+**`LunaSwitch` was a defect with a documented cause.** §14.1 decided the label goes in `OnContent` and `OffContent` rather than `Content`, so that the text sits beside the knob and stays there. Avalonia's `ToggleButtonAutomationPeer` takes its name from `Content`. So every switch in every settings window announced as an unnamed button. The §14.1 decision was still the right one — it is about layout, and it is correct about layout — but it had a consequence in a second system that nobody went to look for. This is the shape §12.1 already recorded once, where a value that was right in one representation was frozen in another.
+
+**`ButtonBar` was reporting the wrong kind of thing rather than nothing.** `ItemsControl`'s stock peer says `List`, so a row of OK/Cancel announced as a two-item list — inviting a reader to navigate it as data instead of pressing one of them.
+
+Then the keyboard. The probe listed every focusable tab stop in the window and asked each for its name. Thirteen entries, of which **three had names**: one `Button` reading "Browse...", and two `ListBoxItem`s that read as themselves. Two of the thirteen turned out to be unreachable (§24.5), leaving **eleven reachable tab stops of which eight announced as nothing at all** — five text boxes, a dropdown, a selectable text block, and the switch.
+
+The five text boxes are the ordinary case and the most damaging. `FieldRow`'s content, `PathPickerRow`'s path, `FilterBar`'s search: in each, the words that name the box are in a **sibling** — a label next door in the same template — which a reader has no reason to connect to it. And a settings page with four `PathPickerRow`s had four buttons, all called "Browse...", with nothing to say which was which.
+
+### 24.2 What the fix is
+
+**`Automation/LunaAutomationPeer.cs`, one peer rather than nine.** Every LunaP control needs the same three answers — what kind of thing am I, what am I called, what else is worth saying — so the control type is a constructor argument and the strings are delegates:
+
+    protected override AutomationPeer OnCreateAutomationPeer() =>
+        new LunaAutomationPeer(this, AutomationControlType.ProgressBar,
+            name: () => Label, status: () => ValueText);
+
+Delegates and not strings, because a meter's reading changes several times a second and a peer holding the value it was built with would report whatever the number was when the window opened. There is a test for exactly that, and it fails when the value is captured.
+
+**The caller always wins.** Each override consults `base.GetNameCore()` first — which reads `AutomationProperties.Name` and falls back to `LabeledBy` — and uses the control's own property only when that is empty. The other order would make the attached property silently useless on precisely the controls that most need it, and a toolkit that ignores the standard Avalonia way of naming a control is worse than one that names nothing, **because the caller's fix looks applied**.
+
+The types each control now reports, and the property each name comes from:
+
+| Control | Type | Name from |
+|---|---|---|
+| `MeterRow` | `ProgressBar` | `Label`, with `ValueText` as item status |
+| `EmptyState` | `Text` | `Message`, with `Detail` as help text |
+| `FieldRow` | `Group` | `Label`, with `Hint` as help text |
+| `PathPickerRow` | `Group` | `BrowseTitle` |
+| `StatusBar` | `StatusBar` | `Status` |
+| `LunaSwitch` | `Button` | `Label` |
+| `ButtonBar` | `ToolBar` | — |
+| `FilterBar`, `ConsolePane`, `MeterList` | `Group` | — |
+| `RgbaImageView` | `Image` | — |
+
+The four unnamed ones are unnamed **on purpose**, and it is the same judgement §5.2 made when it left meter group headers with the caller. A `MeterList` does not know whether it is showing core load or audio buffers; an `RgbaImageView` is showing a live buffer of pixels only the caller can describe. A toolkit-supplied name there would be a guess presented as a description, which is worse for a reader than an admitted blank: **a wrong alt text is believed, a missing one is asked about.**
+
+**A meter's reading is item status, not part of its name.** A name is how you refer to a thing; if it changed every frame it would not be one. And `ValueText` is deliberately not exposed as a range value, because the property's own contract — recorded when it was written — is that *"the caller decides whether that is `62.0%` or `13/128`"*. A row showing 13 of 128 slots sets `Percent` to 10 so the bar is the right length and `ValueText` to "13/128" for the reader. An `IRangeValueProvider` would announce "10 percent" over the top of that: a number the caller never asked for, and for every use that is a count rather than a proportion, simply wrong.
+
+**The template's `ProgressBar` is `AccessibilityView="Raw"`.** With the row itself now reporting `ProgressBar`, leaving the inner one in the control view would put a second, nameless bar beside it saying the same number with nothing attached to it. One node, named, is the whole point.
+
+**`FieldRow` lends its label to whatever is inside it**, using `LabeledBy` rather than writing `Name` onto the caller's control — so an application that has already named its own `TextBox` keeps that name. Writing `Name` would win that argument silently and leave the caller no way to say "no, mine", and there is a test that fails if it does. The pairing is re-made when the content is swapped, because a settings page that rebuilds a row's editor would otherwise end up with a labelled row containing an unlabelled control.
+
+**"Browse..." stays "Browse...".** The obvious fix — rename the button to "Choose a save folder" — is the wrong one: **an accessible name that does not contain the visible label breaks voice control**, because somebody saying "click browse" needs "Browse" to be in the name of the button that says Browse. So the name is untouched and `BrowseTitle` becomes the button's `HelpText`, which is announced after it. `BrowseTitle` needed no new property invented for it; it already held the one thing that distinguishes one picker row from another.
+
+**A placeholder is not a label.** `FilterBar`'s search box takes its name from `Placeholder` *as well as* using it as the placeholder, because a placeholder disappears the moment the user types — which is exactly when they might want reminding what they are searching.
+
+**The status line is a live region**, `Polite`, set in the style rather than in code so a caller can turn it off. This is the one place in the toolkit where text arrives to be *read* rather than *found*: "Applied 12 cheats", "Save State failed". Polite and not Assertive because a status line carries far more that can wait than that cannot, and Assertive on anything that updates often makes an application unusable with a screen reader running — a failure mode worse than the silence it was meant to fix. A caller whose status updates twice a second should set it to `Off`, and it is an attached property precisely so that stays their decision.
+
+### 24.3 The fluent surface
+
+`Fluent/AccessibilityExtensions.cs`: `.AccessibleName(…)`, `.HelpText(…)`, `.LabeledBy(…)`, `.LiveRegion(…)`, `.Decorative()`.
+
+§9's rule is that every name in the fluent surface is the XAML attribute it sets. Four of these follow it exactly. `.AccessibleName` does not, and cannot: the toolkit has shipped a `.Name(…)` that sets `Control.Name` since §9 was written, and `AutomationProperties.Name` is a different property entirely — two unrelated things one word apart would be a worse trap than the inconsistency.
+
+The case for these existing at all is that a caller could always have written `AutomationProperties.SetName(box, "…")` and **across three repositories and four applications did so zero times** (§21.4). A fluent chain that has to break to call a static setter on the line between `.Width(200)` and `.Margin(8)` is a chain people stop writing. Naming a control has to cost one call in the middle of a builder or it does not get done.
+
+### 24.4 What this does not do
+
+**No screen reader has been run against any of this.** Every measurement here is of Avalonia's automation tree — the thing a platform bridge reads — and not of Orca, NVDA or VoiceOver reading it aloud. That is a real gap and it is stated rather than papered over: the control view is what assistive technology navigates, so being in it is necessary, but "necessary" is not "verified end to end". Pinning it properly would mean a test that drives a real AT-SPI or UIA client, which is a different kind of test than anything this project currently runs.
+
+**`ConsolePane` output cannot be announced line by line.** The output is one `SelectableTextBlock` holding the whole joined buffer, so a live region there would re-read the entire history on every `AppendLine`, which is worse than silence. Announcing per line would mean output became a list of line items — a different control, and one that gives back the per-line cost §22.6 removed. It is left alone, with the trade recorded, rather than half-solved.
+
+**`ToolTip` is still unused everywhere**, and `TabIndex` is still unset. Neither turned out to be the problem: the tab *order* follows the visual tree and reads correctly in every window measured, and a tooltip is a poor substitute for a name that is always available. They are named here only because §21.4 listed them and a reader will want to know they were considered rather than forgotten.
+
+**Focus visuals were not touched.** FluentTheme supplies them for the stock controls, and none of LunaP's own templated controls is focusable, so there was nothing to draw. If a future LunaP control takes focus, it needs one.
+
+**The consumers are untouched.** This is toolkit work; four applications still name nothing of their own, and every `Group` and `Image` above is a name a consumer must supply. What changed is that supplying it now works.
+
+### 24.5 Two findings about Avalonia 12.1.0
+
+**`TextBlockAutomationPeer` ignores `AutomationProperties.Name`.** It overrides `GetNameCore` to return `Text` and never consults the attached property. Reproduction, on 12.1.0:
+
+```
+SelectableTextBlock  text=""          attached="Console output" -> peerName=""
+SelectableTextBlock  text="line one"  attached="Console output" -> peerName="line one"
+TextBlock            text="visible"   attached="attached name"  -> peerName="visible"
+```
+
+Every other peer in the framework honours the attached name; this one does not. It was found the way these things are found — by setting the property in `ConsolePane`'s template, believing it, and only then measuring. **That attribute has been removed rather than left in place**, because one line of ignored XAML with a comment claiming it names the output is exactly the drifted comment this project holds is worse than none. The practical effect is small: a console's output names itself with its own text, which is what a reader wants from a console, and an empty console has no name and nothing to read.
+
+**A correction to this section's own first measurement.** The initial probe reported thirteen focusable tab stops, two of which were nameless with no apparent owner. They belong to Avalonia's `ComboBox` template — a hidden `TextBox` carried for the editable mode — and they are `IsVisible = false`, so no keyboard reaches them. The probe was filtering on `Focusable && IsTabStop` and not on `IsEffectivelyVisible`. **Two of the eight "unnamed tab stops" in the first draft of §24.1 were not defects and not LunaP's**, and the figures above are the corrected ones. The guard carries that filter with the reason written beside it, because it is a mistake worth making only once.
+
+### 24.6 The guards, and what each sabotage turned red
+
+`tests/EmuSen.LunaP.Tests/AccessibilityTests.cs`, thirty tests. The suite is **237** (was 207). The load-bearing assertion is `IsControlElement`, not the name: a control with an empty name is one somebody forgot to label, a control outside the control view is one no amount of labelling reaches.
+
+Nine sabotages, each run and each caught:
+
+| Sabotage | Turned red |
+|---|---|
+| `EmptyState`'s peer removed | `Every_control_is_in_the_control_view(EmptyState)`, `A_control_names_itself(EmptyState)` |
+| Name precedence reversed, control beats caller | `An_explicit_name_beats_the_controls_own` |
+| `LunaSwitch`'s peer removed | `A_switch_announces_its_label_and_keeps_its_toggle`, plus the whole-window guard |
+| Meter status captured at construction | `A_meters_status_follows_the_property_rather_than_being_captured` |
+| `AccessibilityView="Raw"` removed from the inner bar | `A_meter_row_does_not_also_expose_a_nameless_progress_bar` |
+| `PART_Label` renamed | both `FieldRow` labelling tests |
+| The status bar's `LiveSetting` setter removed | `The_status_bar_is_a_live_region` |
+| `FilterBar`'s search name removed | `Nothing_the_keyboard_can_reach_is_unnamed` |
+| `FieldRow` writing `Name` instead of `LabeledBy` | `A_field_row_does_not_overwrite_a_name_the_caller_set` |
+
+The last one is there because it was the one test the other eight sabotages left green, which made it the one test not yet known to be a test. §5's rule is that a guard is not trusted until it has failed, and a guard that survives every sabotage aimed at its neighbours has not been aimed at.
+
+`Nothing_the_keyboard_can_reach_is_unnamed` is the one most likely to catch something added later: it builds a window of six controls, walks every reachable tab stop and fails with the type names of any that announce as nothing. It does not know what the controls are, so a control added to the kit next year is covered by it without anybody remembering to.
+
+`Every_control_is_in_the_control_view_and_says_what_it_is` is a `TheoryData` listing every control by name. A control added to the kit and not added to that list is a control this file cannot speak for — which is a weaker guarantee than the whole-window one and is why both exist.
+
+### 24.7 What this costs a consumer
+
+**Nothing to rebuild, and one thing to know.** No control changed shape, no palette key moved, no template part was removed. `ThemeVocabularyTests` in EmuSen (§21.5) compares `man theme` against `CssTheme`'s allow-lists by set equality in both directions — **and this section adds no control and no token**, so that bill does not come due here. It is worth stating explicitly, because §21.5 warned it would come due for anything in §21.2 or §21.4 and a reader is entitled to check.
+
+The one behaviour change is that `ButtonBar` reports `ToolBar` where it used to report `List`. Nothing in any consumer queries an automation control type, so it breaks nothing today; it is in the changelog because it is the kind of thing that breaks a UI test written tomorrow.
