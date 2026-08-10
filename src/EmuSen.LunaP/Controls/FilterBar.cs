@@ -1,10 +1,12 @@
 using System;
 using System.Collections;
 using Avalonia;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.VisualTree;
+using EmuSen.LunaP.Automation;
 using EmuSen.LunaP.Threading;
 
 namespace EmuSen.LunaP.Controls
@@ -97,6 +99,15 @@ namespace EmuSen.LunaP.Controls
             _pendingSelection = selected;
             _facet?.Fill(items, selected);
         }
+
+        // A Group holding two named controls rather than a named thing in its own right. The parts
+        // are what a reader interacts with, and the template names them from Placeholder and
+        // FacetLabel - properties that already held exactly the words a label wants. A PLACEHOLDER
+        // IS NOT A LABEL: it is announced separately where it is announced at all, and it vanishes
+        // the moment the user types, which is precisely when they might want reminding what the box
+        // was for. See docs/LunaP.md §24.2.
+        protected override AutomationPeer OnCreateAutomationPeer() =>
+            new LunaAutomationPeer(this, AutomationControlType.Group);
 
         protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
         {

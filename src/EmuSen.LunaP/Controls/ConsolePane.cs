@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using Avalonia;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using EmuSen.LunaP.Automation;
 
 namespace EmuSen.LunaP.Controls
 {
@@ -62,6 +64,20 @@ namespace EmuSen.LunaP.Controls
         }
 
         public string OutputText => _joined ??= string.Join("\n", _lines);
+
+        // A Group over two named parts, named in the template - "Console output" and "Console
+        // input". Prompt is deliberately NOT used as the input's name: it is "> " or "diana$ ",
+        // which is a sigil rather than a description and reads as punctuation.
+        //
+        // WHAT THIS DOES NOT DO, because the honest thing is to say so rather than to appear to.
+        // Output is one SelectableTextBlock holding the whole joined buffer, so there is no way to
+        // announce a line as it arrives: a live region here would re-read the entire history on
+        // every AppendLine, which is worse than silence. Announcing per line would mean output
+        // became a list of line items, which is a different control and would give back the O(n)
+        // per-line cost §22.6 removed. Recorded as a limitation in docs/LunaP.md §24.4 rather than
+        // half-solved.
+        protected override AutomationPeer OnCreateAutomationPeer() =>
+            new LunaAutomationPeer(this, AutomationControlType.Group);
 
         protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
         {

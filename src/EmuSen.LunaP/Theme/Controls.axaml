@@ -5,7 +5,16 @@
     <!-- Every look here is the one the frontends already had; LunaPControlTests
          asserts these styles actually apply, because a selector that silently
          stops matching renders as an unstyled control rather than an error.
-         See docs/LunaP.md §5. -->
+         See docs/LunaP.md §5.
+
+         THE AutomationProperties.* ATTRIBUTES BELOW ARE LOAD-BEARING, not
+         decoration. A template part that a keyboard can reach - a TextBox, a
+         Button, a Dropdown - is announced by its accessible name and by nothing
+         else, and every one of these was announced as "edit" or "Browse..." with
+         no way to tell one from another. They are set here rather than in code
+         because a TemplateBinding is the whole of what each one needs, and
+         because the name then lives beside the part it names. §24.2. -->
+
 
     <Style Selector="luna|SectionHeader">
         <Setter Property="Foreground" Value="{DynamicResource LunaSectionHeader}" />
@@ -61,10 +70,16 @@
                                Foreground="{DynamicResource LunaMeterText}"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis" />
+                    <!-- Raw keeps this out of the control view. The MeterRow's own
+                         peer already reports ProgressBar with the label as its
+                         name and the reading as its status, so leaving this in
+                         would put a SECOND, nameless progress bar next to it
+                         saying the same number with nothing to attach it to. -->
                     <ProgressBar Grid.Column="1"
                                  Name="PART_Bar"
                                  Minimum="0" Maximum="100"
                                  Height="14"
+                                 AutomationProperties.AccessibilityView="Raw"
                                  Value="{TemplateBinding Percent}" />
                     <TextBlock Grid.Column="2"
                                Text="{TemplateBinding ValueText}"
@@ -111,7 +126,11 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <StackPanel Spacing="4">
-                    <TextBlock Text="{TemplateBinding Label}" FontWeight="Bold" />
+                    <!-- Named so FieldRow can point the content's LabeledBy at it.
+                         Renaming this part breaks the pairing silently, which is
+                         why AccessibilityTests asserts the content comes back
+                         named rather than asserting the part exists. -->
+                    <TextBlock Name="PART_Label" Text="{TemplateBinding Label}" FontWeight="Bold" />
                     <luna:HintText Text="{TemplateBinding Hint}" IsVisible="{TemplateBinding HasHint}" />
                     <ContentPresenter Content="{TemplateBinding Content}" />
                 </StackPanel>
@@ -123,11 +142,27 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <Grid ColumnDefinitions="*,Auto">
+                    <!-- Read-only and still a tab stop, on purpose: the path is
+                         often long and truncated on screen, and focusing it is
+                         how a keyboard reads or copies the whole thing. That
+                         only works if it says which path it holds. -->
                     <TextBox Grid.Column="0"
                              IsReadOnly="True"
+                             AutomationProperties.Name="{TemplateBinding BrowseTitle}"
                              Text="{TemplateBinding Path}"
                              PlaceholderText="{TemplateBinding Placeholder}" />
-                    <Button Grid.Column="1" Name="PART_Browse" Content="Browse..." Margin="8,0,0,0" />
+                    <!-- HelpText, NOT Name. The visible word is "Browse..." and
+                         an accessible name that does not contain the visible
+                         label breaks voice control - a user saying "click
+                         browse" needs the name to be the thing they can see.
+                         So the name stays, and what makes THIS browse button
+                         different from the four others on the page goes in help
+                         text, which is announced after it. -->
+                    <Button Grid.Column="1"
+                            Name="PART_Browse"
+                            Content="Browse..."
+                            AutomationProperties.HelpText="{TemplateBinding BrowseTitle}"
+                            Margin="8,0,0,0" />
                 </Grid>
             </ControlTemplate>
         </Setter>
@@ -152,6 +187,14 @@
     </Style>
 
     <Style Selector="luna|StatusBar">
+        <!-- Polite, so a changed status is announced when the reader next
+             pauses rather than interrupting them. Assertive would cut across
+             whatever they were listening to, and a status line carries
+             "Applied 12 cheats" far more often than it carries anything that
+             cannot wait a moment. A caller whose status updates continuously
+             should set this to Off - it is an attached property precisely so
+             that stays their decision. §24.2. -->
+        <Setter Property="(AutomationProperties.LiveSetting)" Value="Polite" />
         <Setter Property="Template">
             <ControlTemplate>
                 <Grid ColumnDefinitions="*,Auto">
@@ -176,13 +219,22 @@
                                Foreground="{DynamicResource LunaMuted}"
                                VerticalAlignment="Center"
                                Margin="0,0,8,0" />
+                    <!-- The facet's visible label is the TextBlock above, which
+                         is a sibling and not something a reader would connect
+                         to the dropdown. FacetLabel already holds the words. -->
                     <luna:Dropdown Grid.Column="1"
                                    Name="PART_Facet"
                                    MinWidth="180"
                                    Margin="0,0,8,0"
+                                   AutomationProperties.Name="{TemplateBinding FacetLabel}"
                                    IsVisible="{TemplateBinding ShowFacet}" />
+                    <!-- Placeholder as the NAME as well as the placeholder. The
+                         two are not the same thing: a placeholder disappears the
+                         moment the user types, which is exactly when they may
+                         want reminding what they are searching. -->
                     <TextBox Grid.Column="2"
                              Name="PART_Search"
+                             AutomationProperties.Name="{TemplateBinding Placeholder}"
                              Text="{TemplateBinding SearchText}"
                              PlaceholderText="{TemplateBinding Placeholder}" />
                 </Grid>
@@ -202,8 +254,11 @@
                                    FontFamily="{DynamicResource LunaMonoFont}"
                                    Foreground="{DynamicResource LunaText}"
                                    Margin="0,0,4,0" />
+                        <!-- Not named from Prompt. A prompt is "> " or "diana$ ",
+                             which is a sigil and reads as punctuation. -->
                         <TextBox Grid.Column="1"
                                  Name="PART_Input"
+                                 AutomationProperties.Name="Console input"
                                  FontFamily="{DynamicResource LunaMonoFont}"
                                  Background="{DynamicResource LunaInputSurface}"
                                  Foreground="{DynamicResource LunaText}"
@@ -212,6 +267,20 @@
                     </Grid>
 
                     <ScrollViewer Name="PART_Scroll">
+                        <!-- A tab stop by virtue of being selectable, which is
+                             worth keeping: it is how a keyboard selects and
+                             copies output.
+
+                             DELIBERATELY NOT GIVEN AutomationProperties.Name,
+                             because on a text block it would do nothing.
+                             Avalonia 12.1.0's TextBlockAutomationPeer overrides
+                             GetNameCore to return Text and never consults the
+                             attached property, so the name here is the output
+                             itself - which is what a reader wants from a console
+                             anyway - and an empty console has no name at all.
+                             Measured, with the reproduction, in §24.5. Setting
+                             the attribute would read as a fix and be one line of
+                             ignored XAML. -->
                         <SelectableTextBlock Name="PART_Output"
                                              FontFamily="{DynamicResource LunaMonoFont}"
                                              Foreground="{DynamicResource LunaText}"

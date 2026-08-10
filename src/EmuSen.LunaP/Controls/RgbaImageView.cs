@@ -1,10 +1,12 @@
 using System.Runtime.InteropServices;
 using Avalonia;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using EmuSen.LunaP.Automation;
 
 namespace EmuSen.LunaP.Controls
 {
@@ -29,6 +31,14 @@ namespace EmuSen.LunaP.Controls
         }
 
         public IImage? Source => _bitmap;
+
+        // An Image, and unnamed on purpose. This shows a live buffer of pixels - a game frame, a
+        // tile viewer - and only the caller knows what is in it. A toolkit-supplied name here would
+        // be a guess presented as a description, which is worse for a reader than an image the
+        // toolkit admits it cannot describe: a wrong alt text is believed, a missing one is asked
+        // about. AutomationProperties.Name is where the caller says.
+        protected override AutomationPeer OnCreateAutomationPeer() =>
+            new LunaAutomationPeer(this, AutomationControlType.Image);
 
         protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
         {

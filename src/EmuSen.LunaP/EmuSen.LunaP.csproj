@@ -26,13 +26,14 @@
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <PackageId>EmuSen.LunaP</PackageId>
-    <!-- 0.4.0. The published version comes from the git tag, so this is only
+    <!-- 0.5.0. The published version comes from the git tag, so this is only
          the default for a local `dotnet pack` - kept in step so the two never
-         tell different stories. The bump is real: the palette gained a light
-         column and the toolkit stopped letting FluentTheme follow the system
-         while its own keys stayed dark (§23). CHANGELOG.md is the consumer's
+         tell different stories. The bump is real: nine of the toolkit's controls
+         were not in the automation tree at all, so a screen reader never reached
+         them, and the controls now report themselves and name themselves from
+         the properties they already had (§24). CHANGELOG.md is the consumer's
          account of it. -->
-    <Version>0.4.0</Version>
+    <Version>0.5.0</Version>
     <Authors>Tristan Pelland</Authors>
     <Description>A small Avalonia toolkit: theme, controls, window scaffolding and a fluent layout surface.</Description>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
