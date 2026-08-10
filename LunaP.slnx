@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/EmuSen.LunaP/EmuSen.LunaP.csproj" />
+  <Project Path="tests/EmuSen.LunaP.Tests/EmuSen.LunaP.Tests.csproj" />
+</Solution>
