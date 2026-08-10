@@ -971,3 +971,63 @@ Three places build this by hand and one of them wrote the reason the kit's neare
 **So EmuSen's suite goes red the moment it takes this version**, in a repository this change never touched, and the fix is to add four entries to `EmuSen.DianaOS`'s `man theme` page. That is not a defect in either project — it is the arrangement §20.2 chose deliberately, working as designed. It is recorded here so that whoever bumps the package next knows the failure is expected and knows what closes it.
 
 `LunaList<T>` is deliberately **not** in the CSS vocabulary. Element names are derived from the type name, and a generic's is `LunaList\`1`; it also carries no LunaP-specific styling to name, since it borrows `ListBox`'s theme wholesale. A theme that wants to restyle it should style `ListBox`.
+
+---
+
+## 23. The light column, and a defect the harness could not see
+
+The palette had one column and `LunaTheme.axaml` included a bare `<FluentTheme />`. Those two facts do not sit together, and on a light desktop they came apart.
+
+### 23.1 The measurement
+
+`FluentTheme` follows the **system** theme variant. Every `Luna*` key was a fixed dark literal. So on a light-mode machine, Avalonia's own controls rendered for a light background inside a window LunaP had painted `#1E1E1E`:
+
+```
+variant=Dark    windowBg=#ff1e1e1e   buttonBg=#33ffffff
+variant=Light   windowBg=#ff1e1e1e   buttonBg=#33000000
+```
+
+A stock button's overlay is white-over-dark in the first row and **black-over-dark** in the second. Fluent's foregrounds go the same way. The result is dark text on a dark surface, on any desktop set to light — which is the default on a great many of them.
+
+**The suite could not see this, and the reason is worth more than the bug.** `LunaHeadless.BuildApp` pins `ThemeVariant.Dark`, so every test in this project has always run in the one variant where the mismatch does not exist. §3.1 records that a headless pass missing the theme asserts over untemplated controls and passes green; this is the same shape one level up — **a harness that fixes an environment variable cannot test the code's behaviour across that variable.** The probe above had to set the variant by hand to see anything at all.
+
+### 23.2 What the fix is
+
+`Theme/Palette.axaml` is keyed by variant now — `ResourceDictionary.ThemeDictionaries` with a `Dark` and a `Light` entry. **The dark column is untouched**, so nothing already on a screen has moved.
+
+The light column is a re-derivation rather than an inversion. A hue that carries on `#1E1E1E` is usually far too pale to carry on `#F3F3F3`, so each was darkened until it read against the light surface. That is a judgement, and judgements about colour are exactly the kind that decay, so it is pinned: **every light foreground is asserted at 4.5:1 or better against the light surface**, the WCAG AA floor for body text. Setting `LunaMuted` to a plausible-looking `#9A9A9A` measures 2.54:1 and fails.
+
+The brushes stay **outside** the theme dictionaries, declared once with their `Color` bound by `DynamicResource`. One brush declaration serves both columns, so there is no second place for them to drift — §2.1 already calls the palette "spelled twice on purpose", and spelling it four times would be worse.
+
+That decision has a consequence sharp enough to have caught out the first attempt at testing it:
+
+```
+v=Dark   color=#ff1e1e1e  brush=#ff1e1e1e
+v=Light  color=#fff3f3f3  brush=#ff1e1e1e     <- the brush, not the palette
+```
+
+**A brush is one instance and reports whichever variant is currently active.** `TryGetResource("LunaSurface", ThemeVariant.Light)` hands back the dark colour while the app is in dark mode. That looks exactly like the light column not working and is nothing of the sort — the `Color` keys resolve per variant correctly, and a live `ToolWindow` under Light really does paint `#F3F3F3`. So the tests assert **colours** per variant and assert **brushes** only through a control that is actually on screen. Anything else measures the lookup rather than the palette.
+
+### 23.3 Dark stays the default, and that is the whole of the "pin"
+
+`LunaTheme.Variant` defaults to `ThemeVariant.Dark` rather than to the system, and `LunaApp.Configure` applies it before the saved theme.
+
+**This is not a preference, it is the absence of a behaviour change.** Every consumer of this toolkit has been dark since it existed, because the palette had no other column. Making it follow the desktop would mean an application on a light machine looks different after a version bump that its author took for something else — and §9.1 already refused a base class that altered behaviour merely by being inherited. A palette that alters behaviour merely by being upgraded is the same objection.
+
+Following the desktop is one line, and the test that stops the default drifting is one assertion:
+
+    LunaTheme.Variant = ThemeVariant.Default;
+
+`ApplyVariant` is separate from `ApplySaved` so an application that builds its own `AppBuilder` can get the variant right without taking the theme loader too — the §17 hazard is that a consumer who hand-rolls three quarters of `LunaApp` silently drops the quarter they did not know about.
+
+### 23.4 A contrast shortfall, measured and left alone
+
+Holding the light column to 4.5:1 raised the obvious question about the dark one, and the answer is not comfortable: **`LunaMuted` on the dark surface measures 4.22:1.** Below AA.
+
+It is not changed here. §2.1's rule is that a palette literal is a deliberate one-line decision, not something adjusted in passing while doing something else — the same reasoning that has kept `LunaText` and `LunaMeterText` two greys since the audit. So the dark test carries an explicit floor of 4.2 with the number and the reason written beside it, rather than a global 4.5 that would have to be quietly weakened to pass.
+
+Recording it costs nothing and hides nothing. Changing it is a decision somebody can now make on evidence, which they could not before, because until this section nobody had measured it.
+
+### 23.5 What is still missing
+
+A light column is not accessibility. `ToolTip`, `AutomationProperties`, `TabIndex` and `IsTabStop` still appear **zero times** in this toolkit and in every consumer of it, which remains the largest blank area on the map (§21.4). Contrast is one property of one part of it, and the only one this section touched.
