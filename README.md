@@ -291,4 +291,9 @@ was answering changed, and that is the useful part.
 
 ## Licence
 
-GPL-3.0-or-later.
+MIT, as of 0.6.0. Link it into anything, including a closed application.
+
+Versions 0.2.0 through 0.5.0 were published GPL-3.0-or-later, and remain so —
+a package already on nuget.org cannot have its metadata changed, and a grant
+already made cannot be withdrawn. If you are on one of those, take 0.6.0: it
+is the same code under a licence that asks less of you. §25 is the reasoning.
