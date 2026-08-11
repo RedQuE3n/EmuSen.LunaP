@@ -74,4 +74,8 @@ explicitly with `UiSession.ParallelismIsHandled = true`.
 
 ## Licence
 
-GPL-3.0-or-later.
+MIT, as of 0.6.0, in step with the toolkit. Versions 0.2.0 through 0.5.0 were
+published GPL-3.0-or-later and stay that way on nuget.org — see §25.
+
+This package links `xunit.assert`, which is Apache-2.0. It is referenced from a
+test project, so nothing your application ships carries it.

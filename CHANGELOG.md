@@ -11,6 +11,40 @@ answer.
 
 ---
 
+## 0.6.0
+
+**Both packages are now MIT.** No code changed — this release exists only to
+carry the licence, because a version number is the only way to signal one.
+
+### Changed
+
+- **`EmuSen.LunaP` and `EmuSen.LunaP.Testing` are MIT, where 0.2.0 through
+  0.5.0 were GPL-3.0-or-later.** You can link this into a closed application.
+  That was always the term the GPL denied you, and it was never a decision
+  about LunaP: it was EmuSen's licence, inherited because LunaP was a folder in
+  EmuSen, and §19 got the *references* out of the toolkit while leaving the
+  term behind (`§25`).
+- Nothing else. 0.6.0 is the same toolkit as 0.5.0 — no control changed shape,
+  no palette key moved, no template part was removed, no automation peer
+  changed what it reports. If you are on 0.5.0 the upgrade is a version number.
+
+### Known
+
+- **0.2.0 through 0.5.0 stay GPL-3.0-or-later, and stay listed.** nuget.org
+  cannot edit a published package's metadata, and a grant already made is not
+  withdrawn by a later one. If you took one of those versions you are not in
+  the wrong and nothing is being recalled; take 0.6.0 if you want the looser
+  term (`§25.3`).
+- `EmuSen.LunaP.Testing` links `xunit.assert`, which is Apache-2.0 — the one
+  non-MIT reference in either package. It is a test-project dependency, so
+  nothing your application ships carries it (`§22.8`).
+- **The Inter typeface is not covered by this and has not been checked.**
+  `Avalonia.Fonts.Inter` is an MIT package, but `LunaApp.Configure` calls
+  `WithInterFont`, so your application ships the font, which carries its own
+  terms. Recorded as an open question rather than an answer (`§25.4`).
+
+---
+
 ## 0.5.0
 
 ### Fixed
