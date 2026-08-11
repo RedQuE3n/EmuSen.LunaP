@@ -1191,3 +1191,66 @@ The last one is there because it was the one test the other eight sabotages left
 **Nothing to rebuild, and one thing to know.** No control changed shape, no palette key moved, no template part was removed. `ThemeVocabularyTests` in EmuSen (§21.5) compares `man theme` against `CssTheme`'s allow-lists by set equality in both directions — **and this section adds no control and no token**, so that bill does not come due here. It is worth stating explicitly, because §21.5 warned it would come due for anything in §21.2 or §21.4 and a reader is entitled to check.
 
 The one behaviour change is that `ButtonBar` reports `ToolBar` where it used to report `List`. Nothing in any consumer queries an automation control type, so it breaks nothing today; it is in the changelog because it is the kind of thing that breaks a UI test written tomorrow.
+
+---
+
+## 25. The relicence, and a term that was never chosen
+
+LunaP has been GPL-3.0-or-later since its first commit, and **it was never a decision about LunaP**. It was EmuSen's licence, and LunaP was a folder in EmuSen. §19 and §20 record the toolkit being cut loose and given its own repository on the argument that "a general Avalonia toolkit — theme, chrome, remembered geometry, a fluent layout surface — is useful to people who will never run an emulator". The licence did not come along for that reasoning; it came along because nobody moved it.
+
+That is a defect of the same kind §1's layering rule exists to prevent. The rule says the toolkit must not name its first consumer, because a toolkit that names its first consumer is a toolkit only that consumer can use. A copyleft licence inherited from the first consumer is that same mistake spelled in a different file: it does not make LunaP *reference* EmuSen, but it does make LunaP usable only by people who make the choice EmuSen made. §19 got the references out and left the term in.
+
+**As of 0.6.0 both packages are MIT.**
+
+### 25.1 Whether it could be relicensed at all
+
+Three things had to hold, and each was checked rather than assumed.
+
+**One copyright holder.** 26 commits, 23 authored `Tristan Pelland <twistdfrost@gmail.com>` and 3 authored `RedQuE3n <98552311+RedQuE3n@users.noreply.github.com>`. That is one person, not two: the three are the merge commits for pull requests #1, #2 and #3, made through the GitHub web interface, which attributes them to the account's noreply address. There is no outside contributor to ask, and no contributor licence agreement to have wished for earlier. The sixteen commits replayed out of EmuSen in §20 carry their original authorship, and it is the same.
+
+**No copyleft arriving through a dependency.** A permissive licence on the tin is worth nothing if something linked underneath imposes more. Read out of the `<license>` expression in each package's own `.nuspec`:
+
+| Package | Licence |
+|---|---|
+| `Avalonia`, `Avalonia.Desktop`, `Avalonia.Markup.Xaml.Loader` | MIT |
+| `Avalonia.Themes.Fluent`, `Avalonia.Fonts.Inter`, `Avalonia.X11` | MIT |
+| `Avalonia.Headless`, `Avalonia.Skia` (harness only) | MIT |
+| `xunit.assert` (harness only) | Apache-2.0 |
+
+Every dependency of the toolkit is MIT. The one non-MIT reference in either package is `xunit.assert`, which is Apache-2.0 — permissive, compatible, and confined to the harness, which a consumer references from a *test* project so nothing an application ships gains it (§22.8). **Nothing was forcing the GPL.** The rule that "a new `PackageReference` is a decision and gets a `§`, including its licence" was already doing its job; what it turned up here is that the strictest term in the whole tree was the one LunaP applied to itself.
+
+**No third-party code in the tree.** No attribution headers, no SPDX identifiers, no vendored sources. The one entry that needed a second look is `Settings/JsonSettingsStore.cs`, which §19.1 describes as "deliberately a near-copy of what Galaxia's `ConfigFile` does". That section is describing a behaviour copy — indented JSON, tolerant reader, write-then-rename — and enumerates two things it deliberately does *not* do, which is not what a text copy looks like. `EmuSen.Galaxia` is the same author's in any case, so the answer does not change; it is recorded because a reader auditing this section deserves to find the awkward file already named rather than discover it themselves.
+
+### 25.2 What MIT was chosen over
+
+**LGPL-3.0 is the obvious step down and is wrong for .NET.** It is the answer for a library that wants to stay replaceable inside an application that is not open, and it gets there by requiring the user be able to relink against a modified version. A modern Avalonia desktop application ships trimmed, often AOT-compiled, sometimes single-file — deployment shapes in which "relink against a different LunaP" ranges from awkward to meaningless. A term whose central mechanism the target platform has quietly stopped supporting is a term that generates compliance anxiety and delivers no freedom, which is the worst trade available here.
+
+**MPL-2.0 was the real alternative.** File-level copyleft: changes to LunaP's own files stay open, and it links into anything. If the goal were to keep improvements flowing back it would be the right answer, and it was not rejected because it is bad. It was rejected because it still asks a consumer's legal review a question, and this toolkit's entire premise is not asking. §17 and §24.7 both measure a release by *what it costs a consumer* — a consumer who, per §1, cannot patch this and can only take a version. Weak copyleft costs a reading; MIT costs a line in a notice file.
+
+**Apache-2.0 was rejected on the same axis, with more regret.** Its patent grant and contribution terms are genuinely better engineering than MIT's silence, and it is what a project expecting corporate contributors should take. LunaP has one contributor and no patents. What it would add today is a `NOTICE` file to maintain and a "state your changes" obligation on a consumer's fork — cost now, against a benefit that begins if this project's shape changes. Recorded here so that if the shape does change, the alternative is already argued rather than rediscovered.
+
+**MIT is also what Avalonia is**, and LunaP is a thin layer over Avalonia. A consumer who has already accepted the licence on the substrate finds nothing new on the layer.
+
+### 25.3 The four versions that stay GPL
+
+`v0.2.0`, `v0.3.0`, `v0.4.0` and `v0.5.0` are tagged and published, and each carries `<PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>` in its `.nuspec`. **They stay that way, and nothing here changes them.** nuget.org does not permit a published package's metadata to be edited — a version can be unlisted but not altered — and a licence grant already made to somebody who took a package cannot be withdrawn from them afterwards.
+
+This costs nothing and is worth stating plainly, because the alternative belief is the dangerous one. A relicence is not a recall. It does not reach backwards, it does not put anybody who took 0.5.0 in the wrong, and it does not require unlisting anything: 0.2.0 through 0.5.0 remain honest offers of that code under that term. What changes is that 0.6.0 onwards is a different offer of the same code, and anybody may take it instead.
+
+The four are left listed. Unlisting them would hide a real history to make the package page tidier, which is the same instinct this document's header refuses on its own account.
+
+### 25.4 What this costs a consumer
+
+**Nothing to rebuild, and one thing to gain.** 0.6.0 is byte-for-byte the same toolkit as 0.5.0 — no control changed shape, no palette key moved, no template part was removed, no automation peer changed what it reports. The version bump exists solely to carry the licence, because a licence change is the one thing a consumer most needs a version number to signal, and there is no mechanism other than a version for signalling it.
+
+The gain is the reason for doing it: an application linking `EmuSen.LunaP` no longer inherits a term obliging it to offer its own source. That was always the practical effect of GPL-3.0-or-later on a UI library linked into a desktop application, and it is the effect that made LunaP unusable in exactly the projects §19 said it was worth cutting loose *for*.
+
+**One hazard, and the licence table does not reach it.** `LunaApp.Configure` calls `WithInterFont` (§3), so a consumer's application ships the Inter typeface itself, not merely a reference to it. What `Avalonia.Fonts.Inter` 12.1.0 actually contains, read out of the package in the local cache:
+
+- Six embedded font assets in `lib/*/Avalonia.Fonts.Inter.dll` — `Inter-Thin.ttf`, `Inter-Light.ttf`, `Inter-Regular.ttf`, `Inter-Medium.ttf`, `Inter-SemiBold.ttf`, `Inter-Bold.ttf`.
+- `MIT` in the `.nuspec` `<license>` expression, and `MIT` again in the CycloneDX BOM at `_manifest/cyclonedx/bom.cdx.json`.
+- **No licence file of any kind.** No `OFL.txt`, no `LICENSE`, no notice accompanying the fonts. The package is eight files and none of them is one.
+
+So the table in §25.1 says MIT for that row because that is what the package declares, and the declaration is about the package. **Whether it is also the correct term for a typeface embedded inside it is a question this document cannot answer and should not pretend to.** Inter upstream is widely distributed under the SIL Open Font License 1.1, which permits commercial use and embedding but expects its notice to travel with the font and reserves the font's name. If that is the operative term, the notice is not travelling, and it was not travelling under the GPL either — this is inherited, not introduced.
+
+Recorded as a hazard rather than a defect because the finding is real and its consequence is not established: it is Avalonia's declaration to make, LunaP only passes it along, and nothing about MIT versus GPL-3.0-or-later on LunaP's own code changes any of it. A consumer whose legal review asks about bundled fonts should be pointed here and then upstream, rather than at a table that reads MIT and stops.
