@@ -39,6 +39,7 @@ namespace EmuSen.LunaP.Tests
         [Theory]
         [InlineData("LunaSurfaceColor", "#1E1E1E", "#F3F3F3")]
         [InlineData("LunaInputSurfaceColor", "#252526", "#FFFFFF")]
+        [InlineData("LunaBorderColor", "#6E6E6E", "#8C8C8C")]
         [InlineData("LunaTextColor", "#D4D4D4", "#1F1F1F")]
         [InlineData("LunaMeterTextColor", "#DCDCDC", "#2A2A2A")]
         [InlineData("LunaMutedColor", "#808080", "#5F5F5F")]
@@ -139,6 +140,29 @@ namespace EmuSen.LunaP.Tests
 
             double ratio = Contrast((Color)fg!, (Color)bg!);
             Assert.True(ratio >= floor, $"{key} on the dark surface is {ratio:F2}:1, below {floor:F1}:1.");
+        }, default);
+
+        // A DIFFERENT FLOOR FOR A DIFFERENT KIND OF THING. Everything above is WCAG 1.4.3, which
+        // is about reading text. The border token is not text: it is the edge of a card, the rule
+        // under a panel header, and the divider a splitter is dragged by - and that last one is a
+        // control a keyboard can focus and move (§26.11), so it falls under 1.4.11, whose bar for
+        // "visual information required to identify user interface components" is 3:1.
+        //
+        // Worth a test rather than a comment because the obvious value fails it: #3C3C3C is what
+        // a dark theme reaches for and measures 1.51:1 on this surface, which is a divider that is
+        // hardest to see for the people who most need to see it. See docs/LunaP.md §26.9.
+        [Theory]
+        [InlineData("Dark")]
+        [InlineData("Light")]
+        public Task The_border_clears_three_to_one_against_the_surface(string variantName) => Session.Dispatch(() =>
+        {
+            ThemeVariant variant = variantName == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light;
+
+            Application.Current!.TryGetResource("LunaBorderColor", variant, out object? border);
+            Application.Current!.TryGetResource("LunaSurfaceColor", variant, out object? surface);
+
+            double ratio = Contrast((Color)border!, (Color)surface!);
+            Assert.True(ratio >= 3.0, $"LunaBorder on the {variantName} surface is {ratio:F2}:1, below 3:1.");
         }, default);
 
         // WCAG 2.x relative luminance, spelled out rather than pulled in: it is nine lines and a

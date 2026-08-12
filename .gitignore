@@ -3,6 +3,10 @@ obj/
 out/
 *.user
 
+# Editor workspace files. They carry one machine's folder paths, which are
+# wrong on every other machine and say nothing about the project.
+*.code-workspace
+
 # Where `dotnet pack` puts the package, when packing locally for a consumer
 # that resolves it from a folder feed rather than from a real feed.
 nupkgs/

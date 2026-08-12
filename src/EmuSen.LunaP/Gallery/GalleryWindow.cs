@@ -1,21 +1,31 @@
 using System.Collections.Generic;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Layout;
 using Avalonia.Media;
+using EmuSen.LunaP.Commands;
 using EmuSen.LunaP.Controls;
 using EmuSen.LunaP.Fluent;
 using EmuSen.LunaP.Theme;
+using EmuSen.LunaP.Windowing;
 
 namespace EmuSen.LunaP.Gallery
 {
     // Every control in the kit, once, with sample data - the visual reference, and what one render test covers - see docs/LunaP.md §7.
-    public class GalleryWindow : Window
+    //
+    // AN AppWindow RATHER THAN A Window SINCE §26, and that is the gallery doing its job rather
+    // than a convenience. The shell's parts cannot be shown as a row of samples: a menu bar is not
+    // a thing you look at next to a meter row, it is the top of a window, and a side panel only
+    // means anything when there is something for it to be beside. So the gallery IS a shell, with
+    // the control samples as its central content - which also makes it the one place the whole
+    // arrangement is exercised in a render pass.
+    public class GalleryWindow : AppWindow
     {
         public GalleryWindow()
         {
             Title = "LunaP gallery";
-            Width = 520;
+            Width = 720;
             Height = 1120;
-            Background = LunaPalette.Surface;
 
             var console = new ConsolePane { Prompt = "DianaOS #: ", HistorySource = () => new[] { "help", "coretop" } };
             console.Submitted += line => console.AppendLine("DianaOS #: " + line);
@@ -48,7 +58,34 @@ namespace EmuSen.LunaP.Gallery
             tabs.Add("NES", Ui.Hint("Appended by Tabs.Add, not declared in XAML."));
             tabs.Add("SNES", Ui.Hint("RemoveFrom(1) drops these again."));
 
-            Content = Ui.Scroll(Ui.Stack(10,
+            // Three columns over a model, which is the shape the one piece of evidence for this
+            // control actually has - a field list with a name, a type and a page number (§27).
+            var fields = new LunaTable<Field> { Key = f => f.Name };
+            fields.Column("name", f => f.Name, "2*")
+                  .Column("type", f => f.Type)
+                  .Column("pg", f => f.Page.ToString(), "40");
+            fields.Refresh(new[]
+            {
+                new Field("Site", "text", 1),
+                new Field("Technician", "text", 1),
+                new Field("Approved", "checkbox", 2),
+                new Field("Total aid retained", "text", 2),
+            });
+
+            // A splitter with something on each side of it, sized so the divider is visibly not
+            // in the middle - a proportional splitter would put it there and the fixed/elastic
+            // arrangement §26.6 chose would be invisible in the picture.
+            var split = new SplitPane
+            {
+                Height = 96,
+                FixedSize = 150,
+                MinFirst = 60,
+                MinSecond = 60,
+                First = Ui.Hint("Fixed: 150pt, and stays 150pt when the window is widened."),
+                Second = Ui.Hint("Elastic: takes whatever is left."),
+            };
+
+            Central = Ui.Scroll(Ui.Stack(10,
                 Ui.Section("Text", Ui.Stack(6,
                     Ui.Mono("PC=0x008123  A=0x0000  X=0x01FF"),
                     Ui.Hint("Grey, 11pt, wrapping - the explanatory line under a label or a checkbox."))),
@@ -87,17 +124,97 @@ namespace EmuSen.LunaP.Gallery
 
                 Ui.Section("Console", console.Height(160)),
 
-                Ui.Section("Bottom bar", new StatusBar
+                Ui.Section("Cards", new Card
                 {
-                    Status = "Ready.",
-                    Content = Ui.Buttons(
-                        Ui.Button("Apply", () => { }),
-                        Ui.Button("Close", Close)),
-                })).Margin(12));
+                    Header = "Emulation",
+                    Content = Ui.Stack(6,
+                        Ui.Hint("A titled surface, on LunaP's own key rather than FluentTheme's."),
+                        new LunaSwitch { Label = "Pause when unfocused", IsChecked = true }),
+                }),
+
+                Ui.Section("Table", fields.Height(150)),
+
+                Ui.Section("Split pane", split)).Margin(12));
+
+            // The shell's own status line, which is the arrangement five windows in one
+            // application laid out by hand: a message on the left, a run of buttons on the right
+            // (§21.2). It is one control and always has been - what was missing was a window that
+            // put it where it goes.
+            Status = "Ready.";
+            StatusContent = Ui.Buttons(
+                Ui.Button("Apply", () => { }),
+                Ui.Button("Close", Close));
+
+            BuildShell();
 
             console.AppendLine("DianaOS #: help");
             console.AppendLine("Type a command. This pane knows nothing about DianaOS.");
         }
+
+        // The menu bar, the toolbar and a docked panel, all built from the same actions - which is
+        // the point of §26 and cannot be shown by putting three controls next to each other.
+        private void BuildShell()
+        {
+            // One action, three surfaces: the File menu, the toolbar, and Ctrl+O. Changing its
+            // enabled state changes all three, which is the thing four hand-written declarations
+            // could never quite manage.
+            var open = new LunaAction("Open ROM...", () => Status = "Open chosen.")
+            {
+                Shortcut = KeyGesture.Parse("Ctrl+O"),
+                HelpText = "Chooses a ROM to load.",
+            };
+
+            var save = new LunaAction("Save State", () => Status = "State saved.")
+            {
+                Shortcut = KeyGesture.Parse("Ctrl+S"),
+            };
+
+            // Disabled from the start, to show that a greyed menu entry, a greyed toolbar button
+            // and a shortcut that does nothing are one fact rather than three.
+            var strip = new LunaAction("Remove Fields", () => Status = "Fields removed.")
+            {
+                IsEnabled = false,
+                HelpText = "Nothing is loaded, so there is nothing to remove.",
+            };
+
+            var grid = new LunaAction("Grid", self => Status = self.IsChecked ? "Grid on." : "Grid off.")
+            {
+                IsCheckable = true,
+                Shortcut = KeyGesture.Parse("Ctrl+G"),
+            };
+
+            // A radio set, which is what an ActionGroup is for: exactly one of these is ticked at
+            // any moment and the group does the unticking.
+            var variants = new ActionGroup();
+            LunaAction dark = variants.Add("Dark");
+            LunaAction light = variants.Add("Light");
+            dark.IsChecked = true;
+
+            var explorer = new SidePanel
+            {
+                Title = "Explorer",
+                Side = PanelSide.Left,
+                PanelSize = 180,
+                Content = Ui.Stack(6,
+                    Ui.Hint("Docked to an edge, closable, and remembered when it has a key."),
+                    Ui.Mono("smw.sfc\nzelda.sfc\nmetroid.sfc")),
+            };
+
+            AddPanel(explorer);
+
+            SetMenus(
+                new LunaMenu("File", open, save, LunaAction.Separator(), strip),
+                new LunaMenu("View", grid, LunaAction.Separator(), explorer.ToggleAction,
+                    new LunaAction("Theme") { Submenu = new LunaMenu("Theme", dark, light) }),
+                new LunaMenu("Help", new LunaAction("About LunaP", () => Status = "A small Avalonia toolkit.")));
+
+            SetToolBar(open, save, LunaAction.Separator(), grid, strip);
+        }
+
+        // A model for the table to project, so the gallery shows the control doing the thing it is
+        // for: rows built from a type through three projections, with the type coming back on
+        // selection rather than a row index.
+        private sealed record Field(string Name, string Type, int Page);
 
         // Real pixels, so the image view is not just showing a flat rectangle.
         private static byte[] Ramp(int width, int height)

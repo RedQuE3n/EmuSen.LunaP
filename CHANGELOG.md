@@ -11,6 +11,78 @@ answer.
 
 ---
 
+## 0.7.0
+
+**A shell.** Actions, menus, a toolbar, context menus, keyboard shortcuts, a
+draggable splitter, docked side panels, a card surface, and an `AppWindow` that
+puts them where they go. Everything is additive: if you upgrade and change
+nothing, nothing changes (`§26`).
+
+### Added
+
+- **`LunaAction` — one command object behind a menu item, a toolbar button, a
+  context-menu entry and a key binding.** It is an `ICommand`, so it also drops
+  into any Avalonia control that takes one. Changing its label or its enabled
+  state changes every surface showing it, which is the four-declarations problem
+  it exists to remove (`§26.3`).
+- **`ActionGroup`**, for mutually exclusive checkable actions — a theme picker,
+  a view mode. Qt's `QActionGroup` (`§26.3`).
+- **`MenuBar`, `ToolBar`, and `Menus.Context(...)`**, all built from the same
+  actions. `ToolBar` is not `ButtonBar`: one is built from actions and follows
+  them, the other is a run of buttons you own (`§26.4`).
+- **`Menus.BindShortcuts`, which is what actually makes a shortcut work.**
+  `MenuItem.InputGesture` draws "Ctrl+S" in the menu and binds nothing, so a
+  menu can advertise a key that does nothing at all. `AppWindow` binds every
+  action in its menus and toolbar for you (`§26.5`).
+- **`SplitPane`** — a draggable divider with one fixed pane and one elastic one,
+  remembered in pixels under an opt-in `PaneKey`. The divider is keyboard
+  operable and now says what it is (`§26.6`, `§26.11`).
+- **`SidePanel`** — a titled, closable panel docked to an edge, with a
+  `ToggleAction` for your View menu that is the *same object* as its close
+  button. `QDockWidget` without the floating; `§26.7` says what that leaves out.
+- **`Card`** — a titled surface on LunaP's own key. If you were painting a
+  `Border` with FluentTheme's `SystemChromeLowColor`, this is that, except a
+  theme can reach it (`§26.9`).
+- **`AppWindow`** — menu bar, toolbar, central content, status line, panels. It
+  extends `ToolWindow` and changes nothing it inherited: empty, it lays out
+  identically to a plain `ToolWindow` (`§26.8`).
+- **`LunaTable<T>`** — a list with columns. Columns are `(header, projection)` pairs, the model
+  comes back on selection, and `Refresh` keeps the selection across a rebuild, exactly as
+  `LunaList<T>` does. Flat: no tree, no sorting, no cell editing (`§27`).
+- **`LunaBorder`**, one new palette token, in both variants and both halves of
+  the palette. Chosen against WCAG 1.4.11's 3:1 rather than by eye, because the
+  splitter it draws is a control you have to see to use — the subtle value a
+  dark theme reaches for measures 1.51:1 (`§26.9`).
+
+### Changed
+
+- **The gallery is an `AppWindow` now.** A menu bar is not something you look at
+  next to a meter row, so the gallery *is* a shell with the samples inside it.
+- `LunaSettings.Diagnostics` now also carries "two commands claim one shortcut",
+  alongside the "this file would not load" it already carried (`§26.5`).
+
+### Known
+
+- **`Avalonia.Controls.TreeDataGrid` was considered for the table and rejected: it requires a paid
+  Avalonia Accelerate licence.** No `<license>` in its nuspec, a `AvaloniaUILicenseKeyProduct`
+  build property, a dependency on `AvaloniaUI.Licensing`, and its own README saying so since
+  11.2.0. Taking it would have meant every LunaP consumer needing a key to ship a LunaP control,
+  which is the term `§25` spent a whole section removing. LunaP's dependencies are still all MIT
+  (`§27.1`).
+- **If you consume LunaP and check its vocabulary against your own docs, this
+  release will turn that test red.** One new palette token and five new CSS
+  elements (`menu-bar`, `tool-bar`, `card`, `split-pane`, `side-panel`). EmuSen
+  has exactly such a test and `§21.5` predicted this invoice.
+- **`panes.json` is a new file**, written next to `windows.json` for any pane or
+  panel you give a key. Nothing is written without one.
+- **No icons.** An action has no icon property, so a toolbar is a row of words.
+  This needs an icon system rather than a property, and there isn't one
+  (`§26.12`).
+- **No floating or re-dockable panels, no MDI, no native macOS menu bar, and no
+  hierarchical tree view.** `§26.12` and `§27.5` are the honest lists.
+
+---
+
 ## 0.6.0
 
 **Both packages are now MIT.** No code changed — this release exists only to

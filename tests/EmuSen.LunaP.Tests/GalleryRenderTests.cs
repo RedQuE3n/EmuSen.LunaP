@@ -17,7 +17,7 @@ namespace EmuSen.LunaP.Tests
             window.Show();
 
             Assert.True(window.CountParts<SectionHeader>() >= 7);
-            Assert.Equal(1, window.CountParts<MonoText>());
+            Assert.Equal(2, window.CountParts<MonoText>());
             Assert.Equal(4, window.CountParts<MeterRow>());
             Assert.Equal(1, window.CountParts<RgbaImageView>());
             Assert.Equal(2, window.CountParts<FieldRow>());
@@ -26,12 +26,44 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(1, window.CountParts<StatusBar>());
             Assert.Equal(1, window.CountParts<ButtonBar>());
             Assert.Equal(1, window.CountParts<FilterBar>());
-            Assert.Equal(2, window.CountParts<LunaSwitch>());
+            Assert.Equal(3, window.CountParts<LunaSwitch>());
             Assert.Equal(1, window.CountParts<Tabs>());
+
+            // The shell, which the gallery IS since §26 rather than showing as a row of samples.
+            Assert.Equal(1, window.CountParts<MenuBar>());
+            Assert.Equal(1, window.CountParts<ToolBar>());
+            Assert.Equal(1, window.CountParts<Card>());
+            Assert.Equal(1, window.CountParts<SidePanel>());
+
+            // Counted through the non-generic base, which is the same reason it exists at all: a
+            // generic type cannot be named in a style selector, and it cannot be named here
+            // either without knowing the gallery's own model type.
+            Assert.Equal(1, window.CountParts<LunaTable>());
+
+            // The header proves the template applied - the whole risk with a generic control,
+            // whose style selector has to be `:is(...)` or it silently matches nothing (§27.2).
+            //
+            // Rows are asserted as "at least one" rather than as four, and the reason is worth
+            // keeping: the table sits near the bottom of a scrolled page, and its ListBox
+            // virtualises, so exactly one container is realised here. A count of four passes only
+            // when the table happens to be in view, which is a test that breaks when somebody
+            // adds a section above it. TableTests asserts all three rows against a table that is
+            // actually on screen.
+            LunaTable table = window.FindPart<LunaTable>()!;
+            Assert.Equal(3, table.FindNamed<Grid>("PART_Header").ColumnDefinitions.Count);
+            Assert.True(table.CountParts<ListBoxItem>() >= 1);
+
+            // FOUR, and three of them are the shell's own. AppWindow builds one divider per edge
+            // and leaves it in the tree with a null pane where no panel is docked, so toggling a
+            // panel never re-parents the central content. The fourth is the one the gallery shows
+            // on purpose. A number that changes here means the shell's layout changed shape.
+            Assert.Equal(4, window.CountParts<SplitPane>());
 
             // Templated, not merely present: a wrapper that lost its base style key renders as nothing - see docs/LunaP.md §14.1.
             Assert.NotNull(window.FindPart<Tabs>()!.FindPart<TabItem>());
             Assert.True(window.FindPart<LunaSwitch>()!.GetVisualChildren().Any());
+            Assert.NotNull(window.FindPart<MenuBar>()!.FindPart<MenuItem>());
+            Assert.NotNull(window.FindPart<ToolBar>()!.FindPart<ActionButton>());
         });
 
         [Fact]

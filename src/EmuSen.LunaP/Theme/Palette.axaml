@@ -24,6 +24,21 @@
             <Color x:Key="LunaInputSurfaceColor">#252526</Color>
             <Color x:Key="LunaVoidColor">#000000</Color>
 
+            <!-- Where one surface stops and the next begins: a card's edge, the
+                 rule under a panel header, the divider a splitter is dragged by.
+                 The first token in this palette that is neither a surface nor
+                 something written on one, and the shell in §26 needed it four
+                 times over - see §26.9 for why it is one token and not four.
+
+                 CHOSEN AGAINST 3:1, NOT BY EYE. #3C3C3C is the value a dark
+                 theme reaches for and it measures 1.51:1 here, which is fine
+                 for decoration and not fine for a splitter: WCAG 1.4.11 asks
+                 3:1 of anything you have to see in order to use it, and a
+                 divider you drag is exactly that. This measures 3.27:1 on the
+                 surface and 3.00:1 on the input surface. §26.9 has both
+                 columns and the test that holds them. -->
+            <Color x:Key="LunaBorderColor">#6E6E6E</Color>
+
             <!-- Text -->
             <Color x:Key="LunaTextColor">#D4D4D4</Color>
             <Color x:Key="LunaMeterTextColor">#DCDCDC</Color>
@@ -57,6 +72,11 @@
                  same reason a cinema's masking is. -->
             <Color x:Key="LunaVoidColor">#000000</Color>
 
+            <!-- 3.03:1 on the light surface, 3.36:1 on white. Darkened rather
+                 than inverted, the same way every other colour in this column
+                 was derived. -->
+            <Color x:Key="LunaBorderColor">#8C8C8C</Color>
+
             <Color x:Key="LunaTextColor">#1F1F1F</Color>
             <Color x:Key="LunaMeterTextColor">#2A2A2A</Color>
             <Color x:Key="LunaMutedColor">#5F5F5F</Color>
@@ -82,6 +102,7 @@
     <SolidColorBrush x:Key="LunaSurface" Color="{DynamicResource LunaSurfaceColor}" />
     <SolidColorBrush x:Key="LunaInputSurface" Color="{DynamicResource LunaInputSurfaceColor}" />
     <SolidColorBrush x:Key="LunaVoid" Color="{DynamicResource LunaVoidColor}" />
+    <SolidColorBrush x:Key="LunaBorder" Color="{DynamicResource LunaBorderColor}" />
 
     <SolidColorBrush x:Key="LunaText" Color="{DynamicResource LunaTextColor}" />
     <SolidColorBrush x:Key="LunaMeterText" Color="{DynamicResource LunaMeterTextColor}" />

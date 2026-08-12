@@ -28,6 +28,12 @@ namespace EmuSen.LunaP.Theme
         public static readonly ISolidColorBrush InputSurface = Brush("#252526");
         public static readonly ISolidColorBrush Void = Brush("#000000");
 
+        // Card edges, the rule under a panel header, the divider a splitter is dragged by. Picked
+        // against WCAG 1.4.11's 3:1 rather than by eye, because a divider you have to find with a
+        // mouse is a control and not decoration - 3.27:1 on the dark surface, and docs/LunaP.md
+        // §26.9 has the light column and the test.
+        public static readonly ISolidColorBrush Border = Brush("#6E6E6E");
+
         public static readonly ISolidColorBrush Text = Brush("#D4D4D4");
         public static readonly ISolidColorBrush MeterText = Brush("#DCDCDC");
         public static readonly ISolidColorBrush Muted = Brush("#808080");

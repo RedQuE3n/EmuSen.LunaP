@@ -110,8 +110,9 @@ public class SettingsWindow : ToolWindow
 
 **Controls**: `MeterRow` and `MeterList`, `ConsolePane`, `FieldRow`,
 `PathPickerRow`, `FilterBar`, `RgbaImageView`, `LunaSwitch`, `Dropdown`, `Tabs`,
-`ButtonBar`, `StatusBar`, `EmptyState`, `LunaList<T>`, and the three text styles
-the theme knows about — `SectionHeader`, `HintText`, `MonoText`.
+`ButtonBar`, `StatusBar`, `EmptyState`, `LunaList<T>`, `LunaTable<T>`, `Card`,
+`SplitPane`, `SidePanel`, `MenuBar`, `ToolBar`, and the three text styles the
+theme knows about — `SectionHeader`, `HintText`, `MonoText`.
 
 `LunaList<T>` keeps hold of the type you gave it — you get the model back on
 selection, not a row index into a parallel array — and `Refresh` puts the
@@ -123,6 +124,22 @@ peers.Chose += peer => Open(peer);
 peers.Refresh(await roster.All());   // selection survives the rebuild
 ```
 
+`LunaTable<T>` is the same idea with columns — each one a header and a
+projection, so your model needs no attributes and no base class:
+
+```csharp
+var fields = new LunaTable<Field> { Key = f => f.Name };
+fields.Column("name", f => f.Name, "2*")
+      .Column("type", f => f.Type)
+      .Column("pg", f => f.Page.ToString(), "40");
+fields.Refresh(detected);            // selection survives the rebuild
+```
+
+It is flat and stays flat: no tree, no sorting, no cell editing. If you want a
+real data grid, `Avalonia.Controls.TreeDataGrid` is the one to reach for — but
+check `docs/LunaP.md` §27.1 first, because it requires a paid Avalonia
+Accelerate licence and LunaP therefore does not depend on it.
+
 **Threading**: `UiThread` (marshal onto the UI thread), `Latest<T>` (a fast
 producer, the newest value, one callback), `Suppressor` (stop a control's own
 change handler answering back while you write to it) and `Debounce`. All four
@@ -131,6 +148,40 @@ counts, and §22.1 has a bug that turned up while generalising one of them.
 
 **Windows**: `ToolWindow`, `PollingWindow` (a refresh on a cadence),
 `MessageWindow`, dialogs, and `WindowSlot` for one-at-a-time windows.
+
+**Commands, menus and a shell.** A `LunaAction` is one command — a label, a
+shortcut, an enabled state, a handler — and every surface you put it on follows
+it. Disable the action and the menu entry, the toolbar button and the keystroke
+all go with it:
+
+```csharp
+var open = new LunaAction("Open ROM...", () => Load())
+{
+    Shortcut = KeyGesture.Parse("Ctrl+O"),
+    HelpText = "Chooses a ROM to load.",
+};
+var grid = new LunaAction("Grid", self => ShowGrid(self.IsChecked)) { IsCheckable = true };
+
+var window = new AppWindow { Title = "Studio", WindowKey = "main" };
+window.SetMenus(new LunaMenu("File", open, LunaAction.Separator(), quit));
+window.SetToolBar(open, grid);
+window.AddPanel(new SidePanel { Title = "Explorer", Side = PanelSide.Left, PanelKey = "explorer" });
+window.Central = editor;
+window.Status = "Ready.";
+```
+
+`SetMenus` and `SetToolBar` also **bind the shortcuts**, which is a separate act
+from showing them: `MenuItem.InputGesture` draws "Ctrl+O" in the menu and binds
+nothing at all, so a hand-built menu can advertise a key that does nothing.
+Claim one key twice and LunaP says so through `LunaSettings.Diagnostics` rather
+than letting the second command quietly never fire.
+
+A panel's `ToggleAction` is the View-menu entry for it, and it is the *same
+object* as its close button — so the tick and the panel cannot drift apart.
+`SplitPane` gives you a draggable divider that remembers where it was left, in
+pixels, under an opt-in `PaneKey`. What this deliberately does not do — floating
+docks, icons, MDI, a native macOS menu bar — is listed in `docs/LunaP.md` §26.12
+rather than left to be discovered.
 
 **The gallery** — `GalleryWindow` shows every control in the kit against the
 current theme, which is the fastest way to see what a theme you are writing
