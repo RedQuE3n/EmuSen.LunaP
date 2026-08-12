@@ -1,0 +1,299 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using EmuSen.LunaP.Commands;
+using EmuSen.LunaP.Controls;
+using EmuSen.LunaP.Windowing;
+
+namespace EmuSen.LunaP.Tests
+{
+    // THE OTHER REPEATED DEFECT - see docs/LunaP.md §28.2.
+    //
+    // A window in this toolkit is built in its constructor: make the control, fill it, select
+    // something, and only then show it. So every imperative method on a control is called BEFORE
+    // its template exists at least as often as after, and a method that writes straight to a
+    // template part does nothing at all on that path - no exception, no warning.
+    //
+    // It has been found three times, each time by a person rather than by the suite. §5.6:
+    // ConsolePane's callers print a welcome banner from their constructor, so the pane buffers.
+    // §14.2: FilterBar.SetFacets holds pending facets. §27.6: LunaTable.Select dropped a selection
+    // made before the template, and TWELVE PASSING TESTS did not notice - it was found by looking
+    // at a render dump and seeing no row highlighted.
+    //
+    // That last one is why this file exists rather than another paragraph. §27.6 concluded that a
+    // render pass proves a window is not blank but not that it is right, and that looking is still
+    // a separate act. That is true and it is not a control anybody can rely on. THIS IS THE SAME
+    // FINDING TURNED INTO AN ASSERTION: run the identical script before the template and after it,
+    // and require the same answer. There is no baseline to eyeball and no picture to interpret,
+    // because the two runs are each other's expected value.
+    //
+    // WHAT IS NOT COVERED, and why that is not a gap. Styled properties are immune by
+    // construction: Avalonia stores them on the control and the template binds to them, so order
+    // cannot matter and there is nothing to guard. Only imperative methods can drop state, so only
+    // imperative methods are in the registry - and the completeness test at the bottom is what
+    // makes that a rule rather than a hope.
+    public class TemplateOrderTests
+    {
+        private sealed record Case(string Name, Func<Control> Make, Action<Control> Configure, Func<Control, string> Read);
+
+        private static readonly string[] Facets = { "All", "Audio", "Video" };
+
+        private static readonly Case[] Cases =
+        {
+            // §5.6's original: a banner printed from a constructor.
+            new("ConsolePane.AppendLine/Clear",
+                () => new ConsolePane(),
+                c =>
+                {
+                    var pane = (ConsolePane)c;
+                    pane.AppendLine("discarded");
+                    pane.Clear();
+                    pane.AppendLine("DianaOS 1.0");
+                    pane.AppendLine("ready");
+                },
+                c => c.FindNamed<SelectableTextBlock>("PART_Output").Text ?? ""),
+
+            // §14.2's: facets filled before the dropdown part exists.
+            new("FilterBar.SetFacets",
+                () => new FilterBar { ShowFacet = true, FacetLabel = "Console:" },
+                c => ((FilterBar)c).SetFacets(Facets, "Video"),
+                c =>
+                {
+                    Dropdown facet = c.FindNamed<Dropdown>("PART_Facet");
+                    return $"{facet.ItemCount} items, showing {facet.SelectedItem}, bar reports {((FilterBar)c).Facet}";
+                }),
+
+            // §27.6's: the one a render found and twelve tests did not.
+            new("LunaTable.Column/Refresh/Select",
+                () => new LunaTable<string>(),
+                c =>
+                {
+                    var table = (LunaTable<string>)c;
+                    table.Column("name", s => s).Column("length", s => s.Length.ToString(), "60");
+                    table.Refresh(new[] { "alpha", "beta", "gamma" });
+                    table.Select("beta");
+                },
+                c => $"{c.FindNamed<Grid>("PART_Header").ColumnDefinitions.Count} columns, "
+                    + $"{c.FindNamed<ListBox>("PART_Rows").GetVisualDescendants().OfType<ListBoxItem>().Count(i => i.IsSelected)} row selected, "
+                    + $"model {((LunaTable<string>)c).Selected}"),
+
+            new("LunaList.Refresh/Select",
+                () => new LunaList<string>(),
+                c =>
+                {
+                    var list = (LunaList<string>)c;
+                    list.Refresh(new[] { "one", "two", "three" });
+                    list.Select("three");
+                },
+                c => $"{c.GetVisualDescendants().OfType<ListBoxItem>().Count(i => i.IsSelected)} selected, "
+                    + $"model {((LunaList<string>)c).Selected}"),
+
+            new("Dropdown.Fill",
+                () => new Dropdown(),
+                c => ((Dropdown)c).Fill(Facets, "Audio"),
+                c => $"{((Dropdown)c).ItemCount} items, showing {((Dropdown)c).SelectedItem}"),
+
+            new("Tabs.Add/RemoveFrom",
+                () => new Tabs(),
+                c =>
+                {
+                    var tabs = (Tabs)c;
+                    tabs.Add("Console", new TextBlock { Text = "a" });
+                    tabs.Add("Log", new TextBlock { Text = "b" });
+                    tabs.Add("gone", new TextBlock { Text = "x" });
+
+                    // RemoveFrom is "drop everything from here on", not "drop the one at this
+                    // index" - the shape a caller rebuilding a variable tail of tabs wants. Read
+                    // the other way it silently empties the control, which is what the first draft
+                    // of this case did and what the hollow-read check below caught.
+                    tabs.RemoveFrom(2);
+                },
+                c => string.Join(", ", c.GetVisualDescendants().OfType<TabItem>().Select(t => t.Header))),
+
+            new("MenuBar.SetMenus",
+                () => new MenuBar(),
+                c => ((MenuBar)c).SetMenus(
+                    new LunaMenu("File", new LunaAction("Open"), new LunaAction("Quit")),
+                    new LunaMenu("View", new LunaAction("Zoom"))),
+                c => string.Join(", ", c.GetVisualDescendants().OfType<MenuItem>().Select(m => m.Header))),
+
+            new("ToolBar.SetActions",
+                () => new ToolBar(),
+                c => ((ToolBar)c).SetActions(
+                    new LunaAction("Run"),
+                    LunaAction.Separator(),
+                    new LunaAction("Grid") { IsCheckable = true, IsChecked = true }),
+                c => string.Join(", ", c.GetVisualDescendants().OfType<Control>()
+                    .Where(x => x is ActionButton or ActionToggle or Separator)
+                    .Select(x => x switch
+                    {
+                        ActionToggle toggle => $"[{(toggle.IsChecked == true ? "x" : " ")}] {toggle.Content}",
+                        ActionButton button => $"{button.Content}",
+                        _ => "|",
+                    }))),
+
+            new("RgbaImageView.SetFrame/Clear",
+                () => new RgbaImageView(),
+                c =>
+                {
+                    var view = (RgbaImageView)c;
+                    view.SetFrame(new byte[8 * 4 * 4], 8, 4);
+                    view.Clear();
+                    view.SetFrame(new byte[16 * 9 * 4], 16, 9);
+                },
+                c =>
+                {
+                    Image image = c.FindNamed<Image>("PART_Image");
+                    return $"part shows {image.Source?.Size}, control reports {((RgbaImageView)c).Source?.Size}";
+                }),
+        };
+
+        public static TheoryData<string> Names()
+        {
+            var data = new TheoryData<string>();
+            foreach (Case single in Cases) data.Add(single.Name);
+            return data;
+        }
+
+        // A render pass, not just a dispatcher drain, and the difference is measurable rather than
+        // cautious: RunJobs applies templates, but a TabControl does not realise its TabItems into
+        // the visual tree until something has laid the strip out, so the Tabs case read back an
+        // empty string in BOTH orders and its own hollow-read check caught it. Capturing the frame
+        // is the public way to force layout - the same one UiTest.AssertLaidOut uses.
+        private static void Settle(Window window)
+        {
+            Dispatcher.UIThread.RunJobs();
+            UiTest.Capture(window);
+        }
+
+        private static string Observe(Case single, bool configureFirst)
+        {
+            Control control = single.Make();
+            if (configureFirst) single.Configure(control);
+
+            var window = new ToolWindow { Width = 500, Height = 340, Content = control };
+            window.Show();
+            Settle(window);
+
+            if (!configureFirst)
+            {
+                single.Configure(control);
+                Settle(window);
+            }
+
+            string read = single.Read(control);
+            window.Close();
+            return read;
+        }
+
+        // THE GUARD. The two orders are each other's expected value, which is what makes this
+        // cheap to extend: a new case needs no separately-computed answer to be written down and
+        // kept true.
+        [Theory]
+        [MemberData(nameof(Names))]
+        public Task Configuring_before_the_template_reads_the_same_as_configuring_after(string name) => UiTest.Run(() =>
+        {
+            Case single = Cases.First(c => c.Name == name);
+
+            string before = Observe(single, configureFirst: true);
+            string after = Observe(single, configureFirst: false);
+
+            // Checked first, and it is not a formality: a Read that returns "" for both orders
+            // would pass the comparison below while asserting nothing at all. §26.11 caught
+            // exactly that shape of hollow guard - every assertion passing against a control that
+            // had been sabotaged into rendering nothing.
+            Assert.True(after.Length > 0 && !after.StartsWith("0 ", StringComparison.Ordinal),
+                $"{name}: reading after the template gave '{after}', which is empty or a zero count. "
+                + "The comparison below would pass whatever the control did. Fix the Read, not the assertion.");
+
+            Assert.True(before == after,
+                $"{name} was dropped when it ran before the template existed."
+                + Environment.NewLine + $"  configured, then shown: {before}"
+                + Environment.NewLine + $"  shown, then configured: {after}"
+                + Environment.NewLine
+                + "A window here is built in its constructor, so the first line is the normal path. Hold the "
+                + "state on the control and apply it in OnApplyTemplate, the way ConsolePane buffers its lines "
+                + "(§5.6) and FilterBar holds its facets (§14.2). See docs/LunaP.md §28.2.");
+        });
+
+        // Which (type, method) pairs the cases above account for. Keyed by name rather than by
+        // MethodInfo so that a params overload and the IEnumerable one it delegates to count as
+        // the one method a reader thinks they are.
+        private static readonly HashSet<(Type Type, string Method)> Covered = new()
+        {
+            (typeof(ConsolePane), nameof(ConsolePane.AppendLine)),
+            (typeof(ConsolePane), nameof(ConsolePane.Clear)),
+            (typeof(FilterBar), nameof(FilterBar.SetFacets)),
+            (typeof(LunaTable<>), "Column"),
+            (typeof(LunaTable<>), "Refresh"),
+            (typeof(LunaTable<>), "Select"),
+            (typeof(LunaList<>), "Refresh"),
+            (typeof(LunaList<>), "Select"),
+            (typeof(Dropdown), nameof(Dropdown.Fill)),
+            (typeof(Tabs), nameof(Tabs.Add)),
+            (typeof(Tabs), nameof(Tabs.RemoveFrom)),
+            (typeof(MenuBar), nameof(MenuBar.SetMenus)),
+            (typeof(ToolBar), nameof(ToolBar.SetActions)),
+            (typeof(RgbaImageView), nameof(RgbaImageView.SetFrame)),
+            (typeof(RgbaImageView), nameof(RgbaImageView.Clear)),
+        };
+
+        // Methods that carry no state a template could show, each with the reason it is here
+        // rather than in a case. An exemption is a claim about the method and has to be as
+        // checkable as an assertion.
+        private static readonly Dictionary<(Type Type, string Method), string> Exempt = new()
+        {
+            [(typeof(ConsolePane), nameof(ConsolePane.FocusInput))] =
+                "moves focus, which is an act rather than state; there is nothing to be dropped and nothing to read back.",
+            [(typeof(FilterBar), nameof(FilterBar.FocusSearch))] =
+                "as ConsolePane.FocusInput.",
+            [(typeof(ConsolePane), nameof(ConsolePane.ResetHistoryRecall))] =
+                "sets one private field the template never sees; history recall is keyboard state, not display.",
+            [(typeof(SplitPane), nameof(SplitPane.SaveNow))] =
+                "writes the divider position to the settings store; nothing about the control's own appearance.",
+        };
+
+        // The half that makes the registry above impossible to forget. Every public imperative
+        // method on a kit control is either exercised in both orders or explicitly excused, and a
+        // method added tomorrow fails here until somebody has decided which it is.
+        //
+        // Instance methods only: a static method has no control and therefore no template part to
+        // miss, which is why ConsolePane.Follows and FilterBar.Matches never reach this list.
+        [Fact]
+        public void Every_imperative_method_on_a_control_is_covered_or_excused()
+        {
+            var unaccounted = new List<string>();
+
+            foreach (Type type in typeof(SectionHeader).Assembly.GetTypes()
+                         .Where(t => t.Namespace == "EmuSen.LunaP.Controls" && t.IsPublic && typeof(Control).IsAssignableFrom(t)))
+            {
+                foreach (MethodInfo method in type.GetMethods(
+                             BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+                {
+                    // Property and event accessors are compiler-generated pairs, and an override
+                    // is Avalonia's method rather than one this kit added.
+                    if (method.IsSpecialName || method.GetBaseDefinition() != method) continue;
+
+                    var key = (type, method.Name);
+                    if (Covered.Contains(key) || Exempt.ContainsKey(key)) continue;
+
+                    unaccounted.Add($"{Readable(type)}.{method.Name}");
+                }
+            }
+
+            Assert.True(unaccounted.Count == 0,
+                $"{string.Join(", ", unaccounted.Distinct())} can be called before the template exists and "
+                + "nothing says what happens then. Add a case to TemplateOrderTests.Cases, or an entry to Exempt "
+                + "with the reason it cannot drop state.");
+        }
+
+        private static string Readable(Type type) =>
+            type.IsGenericType ? type.Name[..type.Name.IndexOf('`')] + "<T>" : type.Name;
+    }
+}

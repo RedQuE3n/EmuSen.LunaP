@@ -17,7 +17,15 @@ namespace EmuSen.LunaP.Settings
         // Set once by the host; null discards, which is what tests and any caller with nowhere to print want.
         public static Action<string>? Diagnostics { get; set; }
 
-        // "This file would not load, and why" - loading stays best-effort, this only stops it happening in silence.
+        // "Something the application asked for could not be honoured, and why."
+        //
+        // It began as "this file would not load", which is still most of what arrives here: the
+        // theme loader and the settings store both carry on best-effort and use this so that
+        // carrying on does not happen in silence. §26.5 widened it to a second kind of thing -
+        // two menu commands claiming one keyboard shortcut, where Avalonia runs the first and
+        // ignores the second while the menu goes on showing the key beside both. That is the same
+        // shape of problem (recoverable, invisible, and the user's evidence says it should have
+        // worked) and it goes to the same sink rather than to a second one nobody would install.
         public static void Report(string message) => Diagnostics?.Invoke(message);
     }
 }

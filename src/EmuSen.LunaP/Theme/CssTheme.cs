@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
@@ -97,6 +98,30 @@ namespace EmuSen.LunaP.Theme
                 Element(typeof(LunaSwitch)),
                 Element(typeof(Dropdown)),
                 Element(typeof(Tabs)),
+
+                // The shell (§26). A theme reaches these by the same names the controls have -
+                // menu-bar, tool-bar, card, split-pane, side-panel - and only through parts that
+                // exist, which is what stops a rule silently matching nothing.
+                Element(typeof(MenuBar)),
+                Element(typeof(ToolBar)),
+                Element(typeof(Card), parts: new Dictionary<string, PartSpec>
+                {
+                    ["header"] = new(typeof(ContentPresenter), "PART_Header"),
+                    ["content"] = new(typeof(ContentPresenter), "PART_Content"),
+                }),
+                Element(typeof(SplitPane), parts: new Dictionary<string, PartSpec>
+                {
+                    // The divider's own colour, for a theme that wants it louder or quieter than
+                    // the border token - which is the one place a 3:1 default may reasonably be
+                    // overridden downwards by somebody who has decided it for themselves.
+                    ["rule"] = new(typeof(Border), "PART_Rule"),
+                }),
+                Element(typeof(SidePanel), parts: new Dictionary<string, PartSpec>
+                {
+                    ["title"] = new(typeof(TextBlock), "PART_Title"),
+                    ["close"] = new(typeof(Button), "PART_Close"),
+                    ["content"] = new(typeof(ContentPresenter), "PART_Content"),
+                }),
             };
 
             return specs.ToDictionary(s => Kebab(s.Target.Name), s => s, StringComparer.Ordinal);
