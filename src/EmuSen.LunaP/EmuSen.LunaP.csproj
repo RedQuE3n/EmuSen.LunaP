@@ -59,7 +59,7 @@
          from GPL-3.0-or-later to MIT (§25), which is the largest thing a
          version can mean to a consumer who could not previously link this into
          a closed application. CHANGELOG.md is the consumer's account of both. -->
-    <Version>0.7.0</Version>
+    <Version>0.7.1</Version>
     <Authors>Tristan Pelland</Authors>
     <Description>A small Avalonia toolkit: theme, controls, an application shell, window scaffolding and a fluent layout surface.</Description>
     <!-- MIT as of 0.6.0; 0.2.0-0.5.0 shipped GPL-3.0-or-later and stay that way
