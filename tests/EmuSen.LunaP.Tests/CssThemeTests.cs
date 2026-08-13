@@ -384,26 +384,34 @@ namespace EmuSen.LunaP.Tests
         // Foreground), so a combination it rejects is not a defect and is never emitted as a case.
         // That also means the vocabulary's own validation is what decides the subjects, and a part
         // that gains a property gains its case here on the same commit.
-        private static readonly string[] Colours = { "background", "color" };
-
-        // ONE EXEMPTION, AND IT EXPIRES. §28.2's Exempt table is the model: a case that cannot pass
-        // gets an entry with the reason, never a quiet deletion from the sweep.
+        // EVERY PROPERTY THE VOCABULARY PUBLISHES, not just the two colours. §39.5 recorded the
+        // narrower sweep as a known hole: "a template that pins FontFamily as an attribute would
+        // block font-family while color passed". That is not hypothetical - ConsolePane pinned
+        // FontFamily on all three of its parts.
         //
-        // This one is a real limit rather than a defect. MeterRow's bar takes its colour from three
-        // state styles - :nominal, :busy, :hot - and a selector carrying a pseudo-class binds at
-        // BindingPriority.StyleTrigger, which outranks Style. Measured: after applying
-        // `meter-row .bar { color: … }` the bar is LimeGreen at priority StyleTrigger. No stateless
-        // rule can win, and it should not - a meter whose colour stopped tracking its load would be
-        // a worse control. A host that wants other colours names the states, which
-        // A_rule_can_reach_a_state_and_a_template_part proves works.
-        private static readonly Dictionary<string, string> Exempt = new(StringComparer.Ordinal)
+        // Each one needs a sentinel that cannot be a default. The Avalonia property is named here
+        // rather than derived, because `background` and `background-color` are two CSS spellings of
+        // one property and deriving it would test one of them twice.
+        private static readonly (string Css, string Avalonia, string Value)[] Themeable =
         {
-            ["meter-row .bar|color"] =
-                "the bar's colour comes from the :nominal/:busy/:hot styles, which bind at "
-                + "StyleTrigger priority and outrank any stateless rule. Name the state instead: "
-                + "`meter-row.busy .bar { color: … }`.",
+            ("background", "Background", "#FF00FF"),
+            ("color", "Foreground", "#FF00FF"),
+            ("font-family", "FontFamily", "Probe Sentinel Mono"),
+            ("font-size", "FontSize", "33.5"),
+            ("font-weight", "FontWeight", "black"),
         };
 
+        // NO EXEMPTION TABLE, because the one case that needed one is refused by the parser now.
+        //
+        // `meter-row .bar { color: … }` cannot win: the bar's colour comes from the :nominal, :busy
+        // and :hot styles, and a selector carrying a pseudo-class binds at StyleTrigger, above the
+        // Style priority every host rule lands at. §39.4 exempted it from the sweep and documented
+        // the limit. That was the wrong call, and this file already said so - the message on
+        // Every_element_in_the_vocabulary_can_actually_be_styled has read "a rule that is accepted
+        // and does nothing is worse than one that is refused" since §30. §40 refuses it.
+        //
+        // So the generator needs no exemption logic at all: it skips whatever the parser rejects,
+        // which now includes this. The case below is what replaces the expiring-exemption test.
         public static TheoryData<string, string> VocabularyParts()
         {
             var data = new TheoryData<string, string>();
@@ -412,11 +420,10 @@ namespace EmuSen.LunaP.Tests
                 foreach (string part in CssTheme.PartsOf(element))
                 {
                     string selector = $"{element} .{part}";
-                    foreach (string property in Colours)
+                    foreach ((string css, _, string value) in Themeable)
                     {
-                        if (Exempt.ContainsKey($"{selector}|{property}")) continue;
-                        if (CssTheme.Parse($"{selector} {{ {property}: #FF00FF; }}").Styles.Count > 0)
-                            data.Add(selector, property);
+                        if (CssTheme.Parse($"{selector} {{ {css}: {value}; }}").Styles.Count > 0)
+                            data.Add(selector, css);
                     }
                 }
             }
@@ -424,69 +431,96 @@ namespace EmuSen.LunaP.Tests
             return data;
         }
 
-        public static TheoryData<string, string> Exemptions()
+        // The refusal, and that it is a refusal WITH ADVICE rather than a bare rejection: whoever
+        // wrote the rule cannot tell a shadowed property from a typo, so the warning has to name
+        // the spellings that work.
+        [Fact]
+        public void A_rule_that_could_only_lose_is_refused_and_says_what_to_write_instead()
         {
-            var data = new TheoryData<string, string>();
-            foreach (string key in Exempt.Keys)
-            {
-                int bar = key.IndexOf('|');
-                data.Add(key[..bar], key[(bar + 1)..]);
-            }
+            CssThemeResult refused = CssTheme.Parse("meter-row .bar { color: #FF00FF; }");
 
-            return data;
+            Assert.Empty(refused.Styles);
+            string warning = Assert.Single(refused.Warnings);
+            Assert.Contains("always overridden", warning, StringComparison.Ordinal);
+            Assert.Contains("meter-row.busy .bar", warning, StringComparison.Ordinal);
+            Assert.Contains("--luna-busy", warning, StringComparison.Ordinal);
         }
 
-        // AN EXEMPTION THAT NO LONGER APPLIES IS A LIE IN A TABLE, and the only thing worse than an
-        // untested case is one everybody believes is untestable. So each exemption asserts that its
-        // limitation is STILL REAL: make the stateless rule win somehow and this turns red saying
-        // the entry should be deleted, which is the opposite of how an exemption list usually rots.
-        [Theory]
-        [MemberData(nameof(Exemptions))]
-        public Task An_exemption_is_still_needed(string selector, string property) => UiTest.Run(() =>
+        // The shadow is on the STATELESS spelling only. Naming a state produces a rule at the same
+        // priority as the one that shadows it, applied later, so it wins - and warning about the
+        // form that works would be worse than saying nothing.
+        [Fact]
+        public void Naming_the_state_is_not_refused()
         {
-            string element = selector[..selector.IndexOf(' ')];
-            var control = (Control)Activator.CreateInstance(ControlFor(element))!;
-            Configure(control);
+            CssThemeResult accepted = CssTheme.Parse("meter-row.busy .bar { color: #FF00FF; }");
 
-            WriteCss("Exempt", $"{selector} {{ {property}: #FF00FF; }}");
+            Assert.Empty(accepted.Warnings);
+            Assert.Single(accepted.Styles);
+        }
 
-            var window = new ToolWindow { Width = 400, Height = 240, Content = control };
+        // THE SHADOW ENTRY EXPIRES, which is the one good property §39.4's exemption had and the
+        // refusal would otherwise have thrown away. Shadowed is a hand-written list, and a refusal
+        // that outlives its reason is worse than the silence it replaced: the host would be told to
+        // name a state for a rule that had started working.
+        //
+        // The reason IS the priority, so that is what is asserted. A pseudo-class selector binds at
+        // StyleTrigger; if MeterRow ever stops colouring its bar from state styles this drops to
+        // Style, a stateless rule starts winning, and this turns red asking for the entry back out.
+        [Fact]
+        public Task The_shadow_on_the_meter_bar_is_still_real() => UiTest.Run(() =>
+        {
+            var row = new MeterRow { Label = "S-CPU", Percent = 50 };
+            var window = new ToolWindow { Width = 400, Height = 100, Content = row };
             window.Show();
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-            Assert.True(LunaTheme.Apply("Exempt"));
-            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
-            string avalonia = property == "background" ? "Background" : "Foreground";
-            bool reached = control.GetSelfAndVisualDescendants().Any(v => IsSentinel(v, avalonia));
+            ProgressBar bar = row.FindPart<ProgressBar>()!;
+            var diagnostic = Avalonia.Diagnostics.AvaloniaObjectExtensions.GetDiagnostic(
+                bar, TemplatedControl.ForegroundProperty);
 
-            Assert.False(reached,
-                $"`{selector} {{ {property}: … }}` NOW WORKS, and is listed as exempt in CssThemeTests "
-                + $"with this reason: {Exempt[$"{selector}|{property}"]}\n"
-                + "Delete the entry - the sweep will pick the case up on its own. See docs/LunaP.md §39.4.");
+            Assert.True(diagnostic.Priority == Avalonia.Data.BindingPriority.StyleTrigger,
+                $"MeterRow's bar takes its Foreground at priority {diagnostic.Priority}, not StyleTrigger. "
+                + "CssVocabulary refuses `meter-row .bar { color: ... }` because state styles outrank "
+                + "any stateless rule; if that is no longer how the bar is coloured, the rule may now "
+                + "work and the Shadowed entry for it should be deleted. See docs/LunaP.md §40.");
 
             window.Close();
         });
+
+        // And the other property on the same part is untouched: the shadow is per-property, not a
+        // blanket ban on the part.
+        [Fact]
+        public void The_shadow_does_not_spread_to_the_rest_of_the_part()
+        {
+            CssThemeResult accepted = CssTheme.Parse("meter-row .bar { background: #FF00FF; }");
+
+            Assert.Empty(accepted.Warnings);
+            Assert.Single(accepted.Styles);
+        }
 
         // A [Theory] with no cases is a pass, so the sweep is required to have subjects - the same
         // trap StyleKeyTests.The_sweep_has_subjects covers (§30.6).
         [Fact]
         public void The_part_sweep_has_subjects() =>
-            Assert.True(VocabularyParts().Count >= 24,
-                $"The part sweep found only {VocabularyParts().Count} cases. There were 26 when it was "
-                + "written - 14 parts times two colours, less `split-pane .rule { color }` which the "
-                + "parser refuses because a Border has no Foreground, and less the one exemption. If "
-                + "parts were removed that is fine and this number moves; if the vocabulary query "
-                + "broke, this is the only thing that would say so.");
+            Assert.True(VocabularyParts().Count >= 60,
+                $"The part sweep found only {VocabularyParts().Count} cases. There were 65 when it was "
+                + "written: 14 parts times 5 themeable properties, less 5 the parser refuses - four "
+                + "on `split-pane .rule`, since a Border has no Foreground and no font at all, and "
+                + "`meter-row .bar { color }`, which state styles always outrank (§40). If parts were "
+                + "removed that is fine and this number moves; if the vocabulary query broke, this is "
+                + "the only thing that would say so.");
 
         [Theory]
         [MemberData(nameof(VocabularyParts))]
         public Task Every_part_in_the_vocabulary_can_actually_be_styled(string selector, string property) => UiTest.Run(() =>
         {
+            (string css, string avalonia, string value) = Themeable.Single(t => t.Css == property);
+
             string element = selector[..selector.IndexOf(' ')];
             var control = (Control)Activator.CreateInstance(ControlFor(element))!;
             Configure(control);
 
-            WriteCss("Parts", $"{selector} {{ {property}: #FF00FF; }}");
+            WriteCss("Parts", $"{selector} {{ {css}: {value}; }}");
 
             var window = new ToolWindow { Width = 400, Height = 240, Content = control };
             window.Show();
@@ -500,11 +534,10 @@ namespace EmuSen.LunaP.Tests
             // and a selector naming the wrong type or the wrong name is exactly the defect being
             // swept for. So the question is the one the rule actually claims: after applying it,
             // does anything inside this control carry the colour?
-            string avalonia = property == "background" ? "Background" : "Foreground";
-            bool reached = control.GetSelfAndVisualDescendants().Any(v => IsSentinel(v, avalonia));
+            bool reached = control.GetSelfAndVisualDescendants().Any(v => IsSentinel(v, avalonia, value));
 
             Assert.True(reached,
-                $"`{selector} {{ {property}: #FF00FF; }}` compiled without a warning and coloured nothing "
+                $"`{selector} {{ {css}: {value}; }}` compiled without a warning and changed nothing "
                 + $"inside {control.GetType().Name}. Two ways that happens, and they need different fixes: "
                 + "the selector reaches nothing (Template() + a type + a PART_ name, and the type in the "
                 + $"vocabulary must be the part's REAL type), or it reaches the part and loses - a {avalonia} "
@@ -541,12 +574,23 @@ namespace EmuSen.LunaP.Tests
             }
         }
 
-        private static bool IsSentinel(Visual visual, string propertyName)
+        // Compared as the Avalonia value rather than as text, because a FontFamily whose Name is the
+        // sentinel and a FontFamily that fell back to the default both stringify usefully only by
+        // accident. FontWeight and FontSize are parsed the same way the theme parsed them.
+        private static bool IsSentinel(Visual visual, string propertyName, string value)
         {
             AvaloniaProperty? property = AvaloniaPropertyRegistry.Instance.FindRegistered(visual, propertyName);
-            return property is not null
-                && visual.GetValue(property) is ISolidColorBrush brush
-                && brush.Color == Color.Parse("#FF00FF");
+            if (property is null) return false;
+
+            object? actual = visual.GetValue(property);
+            return actual switch
+            {
+                ISolidColorBrush brush => brush.Color == Color.Parse(value),
+                FontFamily family => family.Name == value,
+                FontWeight weight => weight == FontWeight.Black,
+                double size => Math.Abs(size - double.Parse(value, System.Globalization.CultureInfo.InvariantCulture)) < 0.001,
+                _ => false,
+            };
         }
 
         // The same spelling CssTheme uses to name an element after its control, so the two halves
