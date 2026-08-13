@@ -478,12 +478,30 @@ namespace EmuSen.LunaP.Controls
         // stays correct whenever the upstream fix does arrive. docs/LunaP.md §27.7 carries the
         // measurement, the reduction to two plain grids, and why the guard that watched this could
         // not have caught it.
+        //
+        // AND ONLY AUTO COLUMNS JOIN THE GROUP, WHICH IS THE OTHER HALF AND WAS LEARNED THE HARD
+        // WAY. A shared size group makes a STAR column behave as Auto - measured at 360.0 outside a
+        // scope against 36.0 inside one, on two otherwise identical grids - so grouping every column
+        // fixed the alignment and stopped the table filling its own width. That is Avalonia #19114,
+        // open, and #6455 before it.
+        //
+        // Sharing only the Auto columns is not a workaround for that; it is what was needed all
+        // along. Absolute columns are identical in both grids by definition, and a star column
+        // resolves from whatever the other columns leave over - so once the Auto columns agree, the
+        // remainder agrees, and star lines up without being told to. §27.7's own measurement said as
+        // much before the cause was known: pre-fix, the star and absolute columns were already at
+        // delta 0.0 and only the Auto column was out. §27.10.
         private void Define(Grid grid, string scope)
         {
             grid.ColumnDefinitions.Clear();
             for (int i = 0; i < _columns.Count; i++)
             {
-                grid.ColumnDefinitions.Add(new ColumnDefinition(_columns[i].Width) { SharedSizeGroup = scope + "_" + i });
+                GridLength width = _columns[i].Width;
+
+                grid.ColumnDefinitions.Add(new ColumnDefinition(width)
+                {
+                    SharedSizeGroup = width.IsAuto ? scope + "_" + i : null,
+                });
             }
         }
 
