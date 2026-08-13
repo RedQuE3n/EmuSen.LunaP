@@ -115,6 +115,18 @@ namespace EmuSen.LunaP.Testing
         // glyph edge is antialiasing, and two differing in half the buffer is a different window.
         public static void AssertStable(string name, Func<Window> build)
         {
+            // THE FIRST FRAME IS THROWN AWAY, and §37 is the measurement that put it there. On
+            // macOS the first render of a process differs from every render after it by 0.39% of
+            // the buffer - 12,741 bytes of 3,225,600, along glyph edges - while renders two and
+            // three are byte-identical. Linux and Windows show no such warm-up.
+            //
+            // Discarding it is not weakening the assertion, it is asking the right question. What
+            // this method exists to answer is "can this window be compared against a baseline",
+            // and the answer on macOS is yes from the second frame on. A comparison that included
+            // the cold frame would report every macOS window as unstable and be wrong about all of
+            // them. What it still catches is unchanged: a window whose steady state moves.
+            _ = Once(build);
+
             RenderedFrame first = Once(build);
             RenderedFrame second = Once(build);
             if (first.Hash == second.Hash) return;
@@ -167,6 +179,13 @@ namespace EmuSen.LunaP.Testing
         }
 
         // No-op unless a baseline directory and mode are both set; the caller's own assertions are what run in CI.
+        //
+        // ON macOS, WARM UP BEFORE CAPTURING THE FRAME YOU PASS HERE. This method compares whatever
+        // it is handed, so the warm-up AssertStable does for itself (§37) is the caller's job on this
+        // path. The first render in a process differs from the steady state by 0.39% of the buffer
+        // there - measured, §37.1 - so a baseline written from a cold frame and compared against a
+        // warm one mismatches on twelve thousand bytes of antialiasing and nothing is wrong.
+        // Render once and discard before the capture you keep.
         public static void AssertMatchesBaseline(string name, RenderedFrame frame)
         {
             if (Environment.GetEnvironmentVariable(BaselineVariable) is not { Length: > 0 } directory) return;

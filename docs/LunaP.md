@@ -2713,9 +2713,10 @@ situation this section was written in.
 
 ### 35.5 What this does not do
 
-- **It does not prove the suite passes on Windows or macOS.** Nothing here can, and §35.4 corrects
-  how this sentence originally put it: the matrix's first run needs a pull request against `main`,
-  not merely a push, and at the time of writing it has never run at all. The audit is an argument
+- ~~**It does not prove the suite passes on Windows or macOS.**~~ **It ran on PR #5 and found
+  something: Windows green, macOS red on a render-stability assertion. §37 is the measurement and
+  the fix.** The original caveat stands as written — this section could not know — and §35.4
+  corrects how it put the mechanism. The audit is an argument
   for expecting green, not a substitute for seeing it. **If a runner comes back red, that result
   belongs in §35.5 and the audit above is what should be read sceptically.**
 - **It does not test the X11 branch**, per §35.1, and no headless suite can.
@@ -2843,3 +2844,80 @@ reaching, AOT-safe is not currently reachable and nobody has said it must be.
   will be read: §32.5 already records that attributes are invisible to the surface snapshot, and this
   is the first time that gap had teeth — adding `[RequiresUnreferencedCode]` to a public interface is
   a real change to what a consumer compiles against, and `ApiSurface/*.txt` would not have moved.
+
+---
+
+## 37. macOS renders the first frame differently, measured
+
+§35 added a three-platform matrix and §35.4 recorded that it had never run. Opening PR #5 ran it, and
+it produced the result it was added to find: **`ubuntu-latest` and `windows-latest` green,
+`macos-latest` red**, on `GalleryRenderTests.The_gallery_renders_the_same_way_twice`.
+
+`fail-fast: false` is why that sentence can be written. With the default, one runner's failure would
+have cancelled the others and "macOS only" — the whole diagnosis — would have been invisible.
+
+### 37.1 The first failure named the wrong cause
+
+`AssertStable` rendered twice and, on a mismatch, **stated a cause**: *"it shows something live (a
+clock, a pid, a counter). It is not a valid baseline target."*
+
+That is a hypothesis, and it was wrong. The gallery has no clock, no pid and no counter — grepping it
+for `DateTime`, `Now`, `Random`, `Guid` and `Stopwatch` returns nothing — and the identical binary is
+stable on two other runners and across three consecutive local runs. **An assertion that names a
+cause it has not measured sends its reader to look for something that is not there**, which is
+§29.3.1's failure wearing a different costume.
+
+So it was rebuilt to report rather than assume: three renders, and a verdict derived from which ones
+match. One CI round-trip then produced the answer.
+
+| | |
+|---|---|
+| hashes | `15EFF8639918669A`, `DB3C094C0223FB27`, `DB3C094C0223FB27` |
+| frame 1 vs 2 | **12,741 of 3,225,600 bytes — 0.39%** |
+| frame 2 vs 3 | **0 of 3,225,600 bytes — byte-identical** |
+| size | 720×1120 throughout |
+
+**The first render differs from the steady state; every render after it is identical.** A 0.39%
+difference spread across a page full of labels is the shape of glyph-edge antialiasing, and the
+cause is a warm-up — font rasterisation caches and lazily realised platform resources — not live
+content. Linux and Windows show none of it.
+
+### 37.2 The fix, and why discarding a frame is not weakening the test
+
+`AssertStable` renders once and throws the frame away before it starts comparing.
+
+That sounds like sanding off a failure and is not, because of what the method exists to answer:
+**"can this window be compared against a baseline?"** On macOS the answer is *yes, from the second
+frame onwards*. A comparison that included the cold frame would report every macOS window as
+unstable and be wrong about all of them. What the assertion still catches is exactly what it caught
+before — a window whose **steady state** moves — and the three-frame message survives for when that
+happens.
+
+**The message is the part worth keeping.** It now carries three hashes, the frame sizes and the count
+of differing bytes, because two frames differing in forty bytes along one glyph edge and two
+differing in half the buffer are different problems, and the old message could not tell them apart.
+`AssertStable` ships in `EmuSen.LunaP.Testing`, so a consumer's failures get that too.
+
+### 37.3 The hazard this leaves on the baseline path
+
+`AssertMatchesBaseline` compares whatever frame it is handed, so the warm-up `AssertStable` now does
+for itself is **the caller's job** there. On macOS a baseline written from a cold frame and compared
+against a warm one mismatches on twelve thousand bytes of antialiasing with nothing actually wrong.
+
+It is a hazard rather than a defect: the baseline machinery is opt-in behind two environment
+variables, off in CI, and §10.2 already keeps `.frame` files out of the repository because they are
+one machine's font rendering. This is that finding arriving from a new direction — **the same
+machine renders differently on its first frame**, which §10.2 did not know. The method's comment says
+so where somebody will be standing when it bites.
+
+### 37.4 What this does not do
+
+- **It does not explain the 0.39% at the pixel level.** The cause is inferred from the shape of the
+  difference and from renders two and three being byte-identical. Nobody has dumped the two frames
+  and diffed them visually, which `EMUSEN_UI_DUMP` exists to make possible.
+- **It does not establish whether the warm-up is per-process or per-window.** One discarded render
+  before each comparison is enough either way, and cheap.
+- **It does not fix `AssertMatchesBaseline`**, per §37.3 — that path takes a frame rather than
+  building one, so warming it would mean changing its signature.
+- **It says nothing about Windows**, which passed both runs without a warm-up frame and is not
+  covered by the discard being there.
