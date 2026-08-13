@@ -159,6 +159,22 @@ namespace EmuSen.LunaP.Gallery
                     {
                         Label = "Emulator Core",
                         Content = new ComboBox { ItemsSource = new[] { "SNES", "NES" }, SelectedIndex = 0 }.Grow(),
+                    },
+
+                    // AN INVALID FIELD, SHOWN INVALID, because §49's error state is the one thing in
+                    // this kit whose whole job is to appear only when something is wrong - and a
+                    // gallery that shows every control in its happy state never shows it at all.
+                    //
+                    // Hint AND Error together on purpose: the two are different sentences that both
+                    // stay on screen, which is the argument for ItemStatus over HelpText written up
+                    // beside FieldRow's peer. Seeing them stacked is the only way to notice that the
+                    // advice survives the failure.
+                    new FieldRow
+                    {
+                        Label = "Save State Folder",
+                        Hint = "Where save states are written.",
+                        Error = "That folder does not exist.",
+                        Content = new TextBox { Text = "/mnt/roms/states" },
                     })),
 
                 Ui.Section("Form controls", forms),

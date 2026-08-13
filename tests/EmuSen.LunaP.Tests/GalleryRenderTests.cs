@@ -21,7 +21,10 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(2, window.CountParts<MonoText>());
             Assert.Equal(4, window.CountParts<MeterRow>());
             Assert.Equal(1, window.CountParts<RgbaImageView>());
-            Assert.Equal(2, window.CountParts<FieldRow>());
+            // THREE since §49: two valid and one showing an error, because an error state that is
+            // only ever exercised by its own unit test is a state nobody looks at.
+            Assert.Equal(3, window.CountParts<FieldRow>());
+            Assert.Equal(1, window.FindParts<ErrorText>().Count(t => t.IsVisible));
             Assert.Equal(1, window.CountParts<PathPickerRow>());
             Assert.Equal(1, window.CountParts<ConsolePane>());
             Assert.Equal(1, window.CountParts<StatusBar>());

@@ -53,6 +53,7 @@ namespace EmuSen.LunaP.Theme
                 Element(typeof(SectionHeader)),
                 Element(typeof(HintText)),
                 Element(typeof(MonoText)),
+                Element(typeof(ErrorText)),
                 Element(typeof(MeterRow),
                     classes: new Dictionary<string, string> { ["nominal"] = ":nominal", ["busy"] = ":busy", ["hot"] = ":hot" },
                     parts: new Dictionary<string, PartSpec>
