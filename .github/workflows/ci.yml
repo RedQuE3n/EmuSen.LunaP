@@ -14,7 +14,24 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # THREE RUNNERS, because this is a cross-platform UI toolkit that was verified
+    # on one Linux box until §35. Nothing in the suite is platform-specific - the
+    # audit found no hard-coded paths and one guarded OperatingSystem.IsLinux()
+    # branch in the whole toolkit - which is an argument for expecting green, not
+    # a substitute for knowing.
+    #
+    # The suite stays headless everywhere, so no runner needs a display or a
+    # package installed. If one ever does, that is a sign the suite stopped being
+    # headless rather than a sign this file needs a step.
+    strategy:
+      # Not cancelled on first failure: "fails on macOS only" is the single most
+      # useful thing this matrix can tell us, and fail-fast would hide it behind
+      # whichever runner happened to finish first.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -47,7 +64,14 @@ jobs:
       # lost to a property somebody moves - it is produced by IncludeSymbols in
       # Directory.Build.props, and nothing else in the build would fail if that
       # line were deleted. So it is asserted rather than assumed.
+      #
+      # `shell: bash` IS LOAD-BEARING NOW THAT THIS RUNS ON THREE RUNNERS. GitHub
+      # defaults windows-latest to PowerShell, where this loop is not a syntax
+      # error but a different language - ${pkg%.nupkg} and [ -f ] mean nothing
+      # there, and the step would have failed on Windows for a reason that has
+      # nothing to do with the packages. Bash is present on all three.
       - name: Every package ships symbols
+        shell: bash
         run: |
           for pkg in nupkgs/*.nupkg; do
             sym="${pkg%.nupkg}.snupkg"

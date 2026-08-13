@@ -26,7 +26,24 @@ namespace EmuSen.LunaP
                     Theme.LunaTheme.ApplySaved();
                 });
 
-            // UsePlatformDetect does not pick X11 on a Wayland session - see EmuSen_Project_Overview_v2.md §2a.
+            // Kept, and no longer claimed to do anything - see docs/LunaP.md §35.1.
+            //
+            // This line arrived with the note "UsePlatformDetect does not pick X11 on a Wayland
+            // session", citing section 2a of EmuSen_Project_Overview_v2.md - a document that stayed
+            // behind when LunaP left EmuSen (§19, §20), so the measurement behind it is unreachable
+            // to anybody reading this repository, including us. (Spelled out rather than written as
+            // a § so it cannot be mistaken for a citation into this project's own man page.)
+            //
+            // MEASURED ON AVALONIA 12.1.0, AND IT IS CURRENTLY A NO-OP: `UsePlatformDetect()` alone
+            // and `UsePlatformDetect().UseX11()` leave the identical windowing initializer on the
+            // builder. So this cannot be tested from here - an assertion that X11 was selected
+            // passes with the call removed - and BootstrapTests says so rather than pinning it.
+            //
+            // It stays anyway. The original correction was made against a real symptom on a real
+            // session, the failure it prevented would appear at Setup on somebody's Wayland desktop
+            // rather than in any suite here, and removing a guard because its justification became
+            // hard to read is how the symptom comes back. §35.1 records what it would take to
+            // retire it honestly.
             return OperatingSystem.IsLinux() ? builder.UseX11() : builder;
         }
     }
