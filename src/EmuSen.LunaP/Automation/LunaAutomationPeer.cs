@@ -34,6 +34,7 @@ namespace EmuSen.LunaP.Automation
     // subclasses would be nine places for that answer to drift. The control type is a constructor
     // argument and the strings are delegates, so a control reports its live property rather than
     // whatever the string was when the peer was built.
+    /// <summary>What a LunaP control reports itself as to a screen reader.</summary>
     public class LunaAutomationPeer : ControlAutomationPeer
     {
         private readonly AutomationControlType _type;
@@ -44,6 +45,12 @@ namespace EmuSen.LunaP.Automation
         // `name`, `help` and `status` are read every time they are asked for, never cached. A meter
         // row's value changes several times a second and a peer holding the string it was built
         // with would report the reading from whenever the window opened.
+        /// <summary>An automation peer that answers from delegates, so a control built in code can say what it is without a peer class of its own.</summary>
+        /// <param name="owner">The control this peer speaks for.</param>
+        /// <param name="type">What kind of control a screen reader should announce it as.</param>
+        /// <param name="name">Supplies the accessible name, called each time it is asked for rather than captured, so a control whose label changes stays correct. Null falls back to the base peer.</param>
+        /// <param name="help">Supplies the help text the same way.</param>
+        /// <param name="status">Supplies the item status - the sentence a reader adds after the name and role, for state that is not the value.</param>
         public LunaAutomationPeer(
             Control owner,
             AutomationControlType type,

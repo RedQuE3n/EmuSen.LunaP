@@ -1,0 +1,47 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- The surface three consumers painted by hand with FluentTheme's
+         SystemChromeLowColor - a resource LunaP's own theme cannot reach, which
+         is why a theme change left all three behind. §21.2, §26.9. -->
+    <Style Selector="luna|Card">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{DynamicResource LunaInputSurface}"
+                        BorderBrush="{DynamicResource LunaBorder}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="12">
+                    <StackPanel Spacing="8">
+                        <!-- Collapses rather than reserving a blank line, the
+                             same arrangement FieldRow's hint uses. -->
+                        <!-- TextElement, not TextBlock: Avalonia hangs the
+                             inheritable text properties off TextElement, and
+                             the WPF spelling compiles to nothing a
+                             ContentPresenter can set. A header given as a
+                             string is rendered by a TextBlock the presenter
+                             makes for itself, so this is the only way to reach
+                             it without demanding the caller pass a control. -->
+                        <ContentPresenter Name="PART_Header"
+                                          Content="{TemplateBinding Header}"
+                                          IsVisible="{TemplateBinding HasHeader}" />
+                        <ContentPresenter Name="PART_Content" Content="{TemplateBinding Content}" />
+                    </StackPanel>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- Set from a style so `card .header` can override it. As attributes on the
+         presenter these bound at priority Template, which outranks Style, and a
+         host rule that matched the part lost to them - measured, §39.2.
+
+         Still TextElement, for the reason given above: the header is usually a
+         string, and the TextBlock the presenter makes for it inherits these. -->
+    <Style Selector="luna|Card /template/ ContentPresenter#PART_Header">
+        <Setter Property="TextElement.FontWeight" Value="Bold" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource LunaSectionHeader}" />
+    </Style>
+
+</Styles>

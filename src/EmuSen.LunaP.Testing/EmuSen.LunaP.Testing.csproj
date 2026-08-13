@@ -22,6 +22,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <!-- The harness is a published package too, so its IntelliSense is a
+         consumer's IntelliSense. Same bargain as the toolkit: every public type
+         carries a summary and CS1591 stays off, because a member whose name is
+         the whole story does not need a sentence saying the name again. §33. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -29,10 +36,10 @@
     <PackageId>EmuSen.LunaP.Testing</PackageId>
     <!-- Tracks the toolkit's version rather than keeping its own, because the
          harness asserts about the toolkit's controls and a consumer pairing
-         0.6.0 of one with 0.2.0 of the other has a question nobody wants to
+         0.7.0 of one with 0.2.0 of the other has a question nobody wants to
          answer. The published number comes from the git tag either way - see
          .github/workflows/publish.yml. -->
-    <Version>0.6.0</Version>
+    <Version>0.7.0</Version>
     <Authors>Tristan Pelland</Authors>
     <Description>Headless test harness for EmuSen.LunaP: render capture, layout assertions and visual-tree queries.</Description>
     <!-- MIT as of 0.6.0, in step with the toolkit (§25). The harness links
@@ -44,6 +51,10 @@
     <PackageTags>avalonia;ui;testing;headless;xunit</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <!-- Symbols, SourceLink and the deterministic-under-CI switch are in
+       Directory.Build.props at the repository root, shared with the toolkit so
+       the two packages cannot drift apart on how they are published - see §31. -->
 
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />

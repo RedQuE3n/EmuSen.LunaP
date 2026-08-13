@@ -16,6 +16,7 @@ namespace EmuSen.LunaP.Controls
     // Message and Detail rather than one string, because every hand-rolled version wanted both:
     // what is missing, and what to do about it. Detail is optional and hidden when empty, so a
     // bare "No results" does not leave a gap where a second line would be.
+    /// <summary>A centred message saying that there is nothing to show, and why.</summary>
     public class EmptyState : TemplatedControl
     {
         public static readonly StyledProperty<string> MessageProperty =
@@ -24,6 +25,7 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<string> DetailProperty =
             AvaloniaProperty.Register<EmptyState, string>(nameof(Detail), string.Empty);
 
+        /// <summary>The main line: what is not here, in a few words.</summary>
         public string Message
         {
             get => GetValue(MessageProperty);
@@ -31,12 +33,14 @@ namespace EmuSen.LunaP.Controls
         }
 
         // The second line: what would put something here. Hidden when empty.
+        /// <summary>A second, smaller line saying what to do about it. Empty collapses it.</summary>
         public string Detail
         {
             get => GetValue(DetailProperty);
             set => SetValue(DetailProperty, value);
         }
 
+        /// <summary>Whether a detail line was given, which is what collapses it when none was.</summary>
         public bool HasDetail => !string.IsNullOrWhiteSpace(Detail);
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

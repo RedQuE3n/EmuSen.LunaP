@@ -1,0 +1,20 @@
+# Line endings, which matter here for exactly one reason worth writing down.
+#
+# ApiSurface/*.txt is the committed public-API baseline (§32), and its whole
+# value is that the DIFF IS THE REVIEW. A Windows checkout with core.autocrlf
+# rewriting it to CRLF would make a regeneration on that machine look like a
+# six-hundred-line change with nothing in it, which is the same failure §32.3
+# rejected the XAML compiler's generated types for: a baseline that cries wolf
+# is a baseline somebody approves without reading.
+#
+# ApiSurfaceTests normalises line endings before comparing, so this is not what
+# makes the test pass on Windows - it is what keeps the artefact under review
+# readable when it does. Added with the CI matrix in §35, since before that no
+# Windows machine ever touched these files.
+* text=auto
+
+tests/EmuSen.LunaP.Tests/ApiSurface/*.txt text eol=lf
+
+# Shell scripts and workflows are read by bash on every runner.
+*.sh text eol=lf
+*.yml text eol=lf

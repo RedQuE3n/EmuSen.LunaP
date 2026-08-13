@@ -21,21 +21,47 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+
+    <!-- The .xml beside the .dll, which is the only thing a consumer's IntelliSense
+         reads. Sixty-three public types offered it nothing until §33.
+
+         CS1591 ("missing XML comment") IS SUPPRESSED ON PURPOSE, and that is the
+         decision rather than an oversight. Turning it on demands a sentence for
+         all 460 public members, including 41 Avalonia StyledProperty fields and
+         58 protected overrides of OnApplyTemplate and friends, where the only
+         sentence available restates the name. This repository's position is that
+         a comment which has drifted is worse than none because it is believed,
+         and filler is the same failure arriving pre-drifted.
+
+         So the rule is enforced where it carries information and nowhere else:
+         EVERY PUBLIC TYPE HAS A SUMMARY, and DocumentationTests fails the build
+         if one does not. Members get a summary when the name does not already
+         say it. See docs/LunaP.md §33. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <PackageId>EmuSen.LunaP</PackageId>
-    <!-- 0.6.0. The published version comes from the git tag, so this is only
+    <!-- 0.7.0. The published version comes from the git tag, so this is only
          the default for a local `dotnet pack` - kept in step so the two never
-         tell different stories. The bump carries no code change at all: it is
-         the relicence from GPL-3.0-or-later to MIT (§25), which is the largest
-         thing a version can mean to a consumer who could not previously link
-         this into a closed application. CHANGELOG.md is the consumer's account
-         of it. -->
-    <Version>0.6.0</Version>
+         tell different stories.
+
+         0.7.0 is the shell: actions, menus, a toolbar, context menus, keyboard
+         shortcuts, a splitter, docked side panels and an AppWindow to hold them
+         (§26). All of it is additive - no control changed shape, no palette key
+         moved, no template part was renamed - so following it is a version
+         number. The one thing it costs is a vocabulary check: one new palette
+         token and five new CSS element names (§26.13).
+
+         0.6.0 before it carried no code change at all; it was the relicence
+         from GPL-3.0-or-later to MIT (§25), which is the largest thing a
+         version can mean to a consumer who could not previously link this into
+         a closed application. CHANGELOG.md is the consumer's account of both. -->
+    <Version>0.7.0</Version>
     <Authors>Tristan Pelland</Authors>
-    <Description>A small Avalonia toolkit: theme, controls, window scaffolding and a fluent layout surface.</Description>
+    <Description>A small Avalonia toolkit: theme, controls, an application shell, window scaffolding and a fluent layout surface.</Description>
     <!-- MIT as of 0.6.0; 0.2.0-0.5.0 shipped GPL-3.0-or-later and stay that way
          on nuget.org, which cannot edit a published package's metadata. Every
          dependency below is MIT, so nothing here forces a copyleft term on a
@@ -45,6 +71,12 @@
     <RepositoryUrl>https://github.com/RedQuE3n/EmuSen.LunaP</RepositoryUrl>
     <PackageTags>avalonia;ui;toolkit;theme;controls</PackageTags>
   </PropertyGroup>
+
+  <!-- Symbols, SourceLink and the deterministic-under-CI switch are in
+       Directory.Build.props at the repository root, which applies to this
+       project and to the harness together - see §31. They are not repeated here
+       because the two packages must carry identical publication settings, and
+       two copies is how they would stop. -->
 
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />

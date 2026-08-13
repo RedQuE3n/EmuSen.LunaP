@@ -7,7 +7,70 @@
          docs/LunaP.md §3.1. -->
 
     <FluentTheme />
-    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls.axaml" />
+
+    <!-- THE INDEX OF CONTROL STYLES. One file per control file in Controls/, so
+         Theme/Controls/SplitPane.axaml sits opposite Controls/SplitPane.cs and
+         there is never a question about which file a style belongs in. This was
+         a single 508-line Controls.axaml until §29 split it.
+
+         Every look here is the one the frontends already had; LunaPControlTests
+         asserts these styles actually apply, because a selector that silently
+         stops matching renders as an unstyled control rather than an error.
+         See docs/LunaP.md §5.
+
+         THE AutomationProperties.* ATTRIBUTES IN THESE FILES ARE LOAD-BEARING,
+         not decoration. A template part that a keyboard can reach - a TextBox, a
+         Button, a Dropdown - is announced by its accessible name and by nothing
+         else, and every one of these was announced as "edit" or "Browse..." with
+         no way to tell one from another. They are set in XAML rather than in
+         code because a TemplateBinding is the whole of what each one needs, and
+         because the name then lives beside the part it names. §24.2.
+
+         A FILE THAT IS NOT LISTED BELOW IS A FILE THAT DOES NOTHING. Its styles
+         are compiled and never reach the application, so its control has no
+         template, renders as nothing, and raises no error - the §5.5 symptom,
+         now reachable by forgetting a line here rather than by mistyping a
+         selector.
+
+         ALL SIXTEEN OMISSIONS TURN THE SUITE RED, by three different guards and
+         for three different reasons. Dropping a templated control's file is
+         caught by TemplateReachTests, which requires a visual tree (§28.1);
+         dropping TextControls.axaml is caught by LunaPControlTests, which reads
+         the palette back off a SectionHeader, because a TextBlock has no
+         template to miss; dropping MenuBar.axaml is caught by ShellTests, and
+         only since §30 - it was the one file whose omission cost nothing, which
+         is how the defect in §30 was found. Each was measured by deleting the
+         line and running the suite: 11, 13 and 1 red respectively. §29.2 has
+         the table.
+
+         Order is the order the single file had, which is not load-bearing -
+         every style below names a distinct control type, so none overrides
+         another - but a diff against the old file is worth more than an
+         alphabet.
+
+         Three control files are deliberately absent. ActionControls, LunaList
+         and Widgets (LunaSwitch, Dropdown, Tabs) carry StyleKeyOverride and
+         borrow FluentTheme's templates wholesale, so they have no styles of
+         their own to list - see §29.1. -->
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/TextControls.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/EmptyState.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/MeterRow.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/MeterList.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/RgbaImageView.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/FieldRow.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/PathPickerRow.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/Bars.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/FilterBar.axaml" />
+
+    <!-- The shell: menu bar, toolbar, card, splitter, side panel. §26. -->
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/MenuBar.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/ToolBar.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/Card.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/SplitPane.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/LunaTable.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/SidePanel.axaml" />
+
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/ConsolePane.axaml" />
 
     <Styles.Resources>
         <ResourceDictionary>

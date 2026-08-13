@@ -1,0 +1,55 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- A header row above a list, sharing its column widths with every row in
+         it - see docs/LunaP.md §27.
+
+         Grid.IsSharedSizeScope is what makes an Auto column line up: the header
+         grid and each row grid are separate grids, so without a shared scope an
+         Auto column would size itself independently in every one of them and
+         nothing would align. The scope goes on the root so both parts are
+         inside it.
+
+         The header's padding matches the item container's below, because those
+         two numbers are what actually decide whether a column heading sits over
+         its own cells.
+
+         `:is(...)` AND NOT A BARE TYPE SELECTOR, which is the whole reason the
+         first draft of this style did nothing at all. An Avalonia type selector
+         is an EXACT match: `luna|LunaTable` selects instances whose type is
+         precisely LunaTable, and every instance there will ever be is a
+         LunaTable<T> deriving from it. The symptom is the one §5.5 keeps
+         recording - a control with no template, no error, and nothing on
+         screen. Every other style in the kit names a type that is instantiated
+         directly, which is why the trap has not appeared elsewhere. -->
+    <Style Selector=":is(luna|LunaTable)">
+        <Setter Property="Grid.IsSharedSizeScope" Value="True" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <DockPanel>
+                    <Border DockPanel.Dock="Top"
+                            BorderBrush="{DynamicResource LunaBorder}"
+                            BorderThickness="0,0,0,1"
+                            Padding="12,4,12,6">
+                        <Grid Name="PART_Header" />
+                    </Border>
+                    <ListBox Name="PART_Rows"
+                             Background="Transparent"
+                             BorderThickness="0" />
+                </DockPanel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- The other half of the alignment. Fluent's ListBoxItem padding is not the
+         header's, so left alone the columns start at two different x positions;
+         this pins both to 12. The vertical figure is smaller than Fluent's
+         default because a table is read as rows of data rather than as a menu
+         of choices, and Fluent's spacing puts four fields on a screen. -->
+    <Style Selector=":is(luna|LunaTable) ListBoxItem">
+        <Setter Property="Padding" Value="12,4" />
+        <Setter Property="MinHeight" Value="0" />
+    </Style>
+
+</Styles>

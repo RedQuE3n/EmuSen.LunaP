@@ -43,6 +43,15 @@ namespace EmuSen.LunaP.Tests
             { nameof(StatusBar), AutomationControlType.StatusBar },
             { nameof(ButtonBar), AutomationControlType.ToolBar },
             { nameof(RgbaImageView), AutomationControlType.Image },
+
+            // The shell (§26). A menu bar is not here and that is deliberate rather than an
+            // omission: MenuBar derives from Avalonia's Menu, which already has a peer of its own
+            // reporting Menu and implementing the patterns that go with it. Overriding that to
+            // satisfy a list would be replacing a working answer with a Luna-shaped one.
+            { nameof(ToolBar), AutomationControlType.ToolBar },
+            { nameof(Card), AutomationControlType.Group },
+            { nameof(SplitPane), AutomationControlType.Pane },
+            { nameof(SidePanel), AutomationControlType.Pane },
         };
 
         [Theory]
@@ -69,6 +78,8 @@ namespace EmuSen.LunaP.Tests
         [InlineData(nameof(PathPickerRow), "Choose a save folder")]
         [InlineData(nameof(StatusBar), "Applied 12 cheats")]
         [InlineData(nameof(LunaSwitch), "Enable rewind")]
+        [InlineData(nameof(Card), "Emulation")]
+        [InlineData(nameof(SidePanel), "Explorer")]
         public Task A_control_names_itself_from_the_property_it_already_had(string name, string expected) =>
             Session.Dispatch(() =>
             {
@@ -238,6 +249,58 @@ namespace EmuSen.LunaP.Tests
                 ControlAutomationPeer.CreatePeerForElement(status).GetLiveSetting());
         }, default);
 
+        // Not a LunaAutomationPeer, and that is the finding rather than an exemption. MenuBar
+        // derives from Avalonia's Menu, whose own peer already reports Menu and is in the control
+        // view - measured here rather than assumed, because §24.1 is a whole section about a
+        // toolkit that assumed exactly this and was wrong about nine controls.
+        [Fact]
+        public Task A_menu_bar_is_in_the_tree_through_Avalonias_own_peer() => Session.Dispatch(() =>
+        {
+            var bar = new MenuBar();
+            bar.SetMenus(new EmuSen.LunaP.Commands.LunaMenu("File", new EmuSen.LunaP.Commands.LunaAction("Open")));
+            using var host = Host(bar);
+
+            AutomationPeer peer = ControlAutomationPeer.CreatePeerForElement(bar);
+
+            Assert.True(peer.IsControlElement(), "The menu bar is outside the control view.");
+            Assert.Equal(AutomationControlType.Menu, peer.GetAutomationControlType());
+        }, default);
+
+        // THE WHOLE-WINDOW GUARD, AGAIN, OVER THE SHELL. §24.1's nine missing controls were found
+        // by walking a window and asking, and the shell is a whole new window's worth of chrome to
+        // walk. A toolbar button whose action had no text, or a splitter that took focus with
+        // nothing to say, would be caught here and nowhere else.
+        [Fact]
+        public Task Nothing_the_keyboard_can_reach_in_a_shell_is_unnamed() => Session.Dispatch(() =>
+        {
+            var open = new EmuSen.LunaP.Commands.LunaAction("Open ROM...");
+            var grid = new EmuSen.LunaP.Commands.LunaAction("Grid") { IsCheckable = true };
+
+            // The caller's own controls are named by the caller - that is not the shell's job and
+            // never was. Leaving them bare here would test this file's carelessness rather than
+            // the toolkit's.
+            var window = new AppWindow { Width = 640, Height = 480, Central = new TextBox().AccessibleName("Document") };
+            window.SetMenus(new EmuSen.LunaP.Commands.LunaMenu("File", open));
+            window.SetToolBar(open, EmuSen.LunaP.Commands.LunaAction.Separator(), grid);
+            window.AddPanel(new SidePanel { Title = "Explorer", Content = new TextBox().AccessibleName("Filter") });
+            window.Status = "Ready.";
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            var unnamed = new List<string>();
+            foreach (Visual v in window.GetVisualDescendants())
+            {
+                if (v is not InputElement e || !e.Focusable || !e.IsTabStop || !e.IsEffectivelyVisible) continue;
+
+                AutomationPeer peer = ControlAutomationPeer.CreatePeerForElement((Control)v);
+                if (string.IsNullOrWhiteSpace(peer.GetName())) unnamed.Add(v.GetType().Name);
+            }
+
+            window.Close();
+
+            Assert.True(unnamed.Count == 0, "Focusable but unnamed: " + string.Join(", ", unnamed));
+        }, default);
+
         // THE WHOLE-WINDOW GUARD, and the one most likely to catch a control added later. Anything
         // the keyboard can land on must say what it is: an unnamed tab stop is a dead end for
         // somebody who cannot see where the focus went.
@@ -322,8 +385,20 @@ namespace EmuSen.LunaP.Tests
             nameof(ButtonBar) => new ButtonBar(),
             nameof(RgbaImageView) => new RgbaImageView(),
             nameof(LunaSwitch) => new LunaSwitch { Label = "Enable rewind" },
+            nameof(ToolBar) => Loaded(new ToolBar()),
+            nameof(Card) => new Card { Header = "Emulation", Content = new TextBlock { Text = "inside" } },
+            nameof(SplitPane) => new SplitPane { First = new TextBlock(), Second = new TextBlock() },
+            nameof(SidePanel) => new SidePanel { Title = "Explorer", Content = new TextBlock() },
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, "No builder for this control."),
         };
+
+        // A toolbar with one command in it. Empty, it is a run of nothing, and a peer over a
+        // control with no items would pass this file's assertions while telling a reader nothing.
+        private static ToolBar Loaded(ToolBar bar)
+        {
+            bar.SetActions(new EmuSen.LunaP.Commands.LunaAction("Open"));
+            return bar;
+        }
 
         // A real window with a real template pass, because a peer over a control that never got a
         // template reports whatever the unstyled control would - which is §3.1's trap again.

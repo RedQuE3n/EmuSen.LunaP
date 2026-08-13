@@ -7,15 +7,18 @@ using EmuSen.LunaP.Theme;
 namespace EmuSen.LunaP.Windowing
 {
     // The base every LunaP window shares. Deliberately thin, and both of its features are opt-in - see docs/LunaP.md §8.
+    /// <summary>The thin base every LunaP window shares, whose extra features are all opt-in.</summary>
     public class ToolWindow : Window
     {
         public static readonly StyledProperty<bool> ClosesOnEscapeProperty =
             AvaloniaProperty.Register<ToolWindow, bool>(nameof(ClosesOnEscape));
 
         // Setting this is what enables geometry persistence; a window without one is never remembered.
+        /// <summary>The name this window saves its position under. Null means nothing is saved or restored, which is the default.</summary>
         public string? WindowKey { get; set; }
 
         // Bound rather than styled: FluentTheme's own Window ControlTheme otherwise wins and paints it near-black.
+        /// <summary>A window that restores its own position and closes on Escape.</summary>
         public ToolWindow()
         {
             this[!BackgroundProperty] = new DynamicResourceExtension("LunaSurface");
@@ -28,6 +31,7 @@ namespace EmuSen.LunaP.Windowing
         private void Restyle() => LunaTheme.Restyle(this);
 
         // Off by default: Escape inside a console pane means "stop what I am typing", not "close the window".
+        /// <summary>Whether Escape closes the window. True by default, which suits a tool window and not a main one.</summary>
         public bool ClosesOnEscape
         {
             get => GetValue(ClosesOnEscapeProperty);

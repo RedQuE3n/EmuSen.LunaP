@@ -7,6 +7,7 @@ using EmuSen.LunaP.Automation;
 namespace EmuSen.LunaP.Controls
 {
     // A right-aligned run of buttons. Buttons go in as ordinary children - see docs/LunaP.md §5.5.
+    /// <summary>A right-aligned horizontal run of buttons, which go in as ordinary children.</summary>
     public class ButtonBar : ItemsControl
     {
         // ToolBar, not List, and the correction is worth the line. ItemsControl's stock peer reports
@@ -18,11 +19,13 @@ namespace EmuSen.LunaP.Controls
     }
 
     // The bottom strip: a status message on the left, a ButtonBar's worth of actions on the right.
+    /// <summary>The bottom strip of a window: a status message on the left, content on the right.</summary>
     public class StatusBar : ContentControl
     {
         public static readonly StyledProperty<string> StatusProperty =
             AvaloniaProperty.Register<StatusBar, string>(nameof(Status), string.Empty);
 
+        /// <summary>The status text. The bar hides itself entirely while this is empty rather than reserving a blank strip.</summary>
         public string Status
         {
             get => GetValue(StatusProperty);
@@ -32,7 +35,7 @@ namespace EmuSen.LunaP.Controls
         // The status line is the one place in the toolkit where text arrives to be READ RATHER THAN
         // FOUND: "Applied 12 cheats", "Save State failed". A sighted user gets that from the corner
         // of their eye without going to look for it, and the equivalent is a live region - which is
-        // set on this control in Theme/Controls.axaml rather than here, because it is a default a
+        // set on this control in Theme/Controls/Bars.axaml rather than here, because it is a default a
         // caller may want to turn off (a status line updating twice a second is a live region that
         // never shuts up) and Avalonia's attached property is the way to say so.
         //

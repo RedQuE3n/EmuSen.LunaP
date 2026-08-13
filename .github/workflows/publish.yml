@@ -68,6 +68,17 @@ jobs:
         with:
           user: RedQuE3n
 
+      # THE .snupkg GOES UP WITH THIS, without being named. `dotnet nuget push`
+      # looks for a symbol package sitting beside each .nupkg and sends it to
+      # nuget.org's symbol server in the same call, so the glob below stays
+      # *.nupkg and still publishes four files. Adding a second push for
+      # "nupkgs/*.snupkg" would upload each of them twice.
+      #
+      # This job also gets ContinuousIntegrationBuild for free: Directory.Build.props
+      # turns it on when GITHUB_ACTIONS is set, so the published PDBs carry
+      # normalised /_/ source paths rather than a runner's scratch directory.
+      # See docs/LunaP.md §31.
+      #
       # --skip-duplicate so re-running a failed job is not itself a failure:
       # nuget.org will not accept a version twice, and that is the check working
       # rather than something to work around.
