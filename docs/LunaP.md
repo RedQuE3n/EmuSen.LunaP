@@ -2690,10 +2690,32 @@ A `.gitattributes` came with it, for one reason worth stating: `ApiSurface/*.txt
 because its whole value is that the diff is the review (§32.2), and a Windows checkout rewriting it
 to CRLF would make a regeneration there look like a six-hundred-line change containing nothing.
 
-### 35.4 What this does not do
+### 35.4 A correction: the matrix has still never run
 
-- **It does not prove the suite passes on Windows or macOS.** Nothing here can: the matrix's first
-  run happens on the next push, and this section is written before that. The audit is an argument
+**§35.4 below says "the matrix's first run happens on the next push". That is wrong**, and checking
+rather than assuming is what found it.
+
+`ci.yml` triggers on `push` to `main` and on `pull_request` targeting `main`. **`shell-and-actions`
+is neither.** Pushing this branch runs nothing, and `gh run list --branch shell-and-actions` returns
+no rows at all — not a failure, not a queue, nothing. Every commit in this arc (§26 through §36) has
+been verified on exactly one machine, and the three-runner matrix added above has never executed on
+any of them.
+
+That is a larger statement than it looks. Everything this document says about these changes being
+green is a local result. **The matrix is a change to a file, not yet evidence about Windows or
+macOS**, and it becomes evidence at the moment a pull request against `main` is opened and not
+before.
+
+Whether CI should also run on branch pushes is a separate question with a real trade — the current
+arrangement keeps runner minutes for merges and pull requests, which is the ordinary choice — but it
+means a long-lived working branch gets no cross-platform signal at all, which is exactly the
+situation this section was written in.
+
+### 35.5 What this does not do
+
+- **It does not prove the suite passes on Windows or macOS.** Nothing here can, and §35.4 corrects
+  how this sentence originally put it: the matrix's first run needs a pull request against `main`,
+  not merely a push, and at the time of writing it has never run at all. The audit is an argument
   for expecting green, not a substitute for seeing it. **If a runner comes back red, that result
   belongs in §35.5 and the audit above is what should be read sceptically.**
 - **It does not test the X11 branch**, per §35.1, and no headless suite can.
