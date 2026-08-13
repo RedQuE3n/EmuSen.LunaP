@@ -300,7 +300,9 @@ namespace EmuSen.LunaP.Controls
         // Fixed upstream by AvaloniaUI/Avalonia#21848, "register assigned definition collections
         // with their shared size group", merged 2026-07-26 - after 12.1.0 was released on
         // 2026-07-09. Populating works on 12.1.0 as it stands, so this costs no version bump, and it
-        // stays correct whenever the upstream fix does arrive. docs/LunaP.md §27.
+        // stays correct whenever the upstream fix does arrive. docs/LunaP.md §27.7 carries the
+        // measurement, the reduction to two plain grids, and why the guard that watched this could
+        // not have caught it.
         private void Define(Grid grid, string scope)
         {
             grid.ColumnDefinitions.Clear();

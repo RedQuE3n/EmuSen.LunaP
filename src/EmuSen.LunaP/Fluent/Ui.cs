@@ -53,13 +53,30 @@ namespace EmuSen.LunaP.Fluent
         }
 
         // Columns are assigned by position, so the Grid.SetColumn chore disappears - an explicit .AtColumn() still wins.
+        //
+        // THE DEFINITIONS ARE ADDED, NOT ASSIGNED, and it is worth a line because the two read as
+        // the same thing and are not. Avalonia 12.1.0 registers a definition with its shared size
+        // scope on Add and not on assignment, so a grid handed a ready-made ColumnDefinitions shares
+        // nothing no matter what group its definitions name. Nothing here is broken by that today -
+        // `definitions` is a comma-separated string with no syntax for a SharedSizeGroup, so no
+        // caller of Cols is trying to share anything.
+        //
+        // It is written this way because of where the use would arise. Rows below cites §21.2, "a
+        // header-and-body table ends up keeping two column strings in step by hand" - which is the
+        // problem shared sizing solves, so the first person to reach for it reaches for it here.
+        // They would set a group on the returned grid's definitions and watch it do nothing. §27.7.
         /// <summary>Puts children in a single row of columns.</summary>
         /// <param name="definitions">Avalonia column widths, comma separated - "Auto,*,120" and so on.</param>
         /// <param name="children">The children. Each is placed in the next column by position unless it already carries an explicit column, which lets one child span while the rest fall where they are written.</param>
         /// <returns>A Grid with those columns.</returns>
         public static Grid Cols(string definitions, params Control[] children)
         {
-            var grid = new Grid { ColumnDefinitions = new ColumnDefinitions(definitions) };
+            var grid = new Grid();
+            foreach (ColumnDefinition definition in new ColumnDefinitions(definitions))
+            {
+                grid.ColumnDefinitions.Add(definition);
+            }
+
             for (int i = 0; i < children.Length; i++)
             {
                 Control child = children[i];
@@ -73,13 +90,20 @@ namespace EmuSen.LunaP.Fluent
         // Rows are assigned by position exactly as Cols assigns columns, and an explicit .AtRow()
         // still wins. Only the column half existed, which is why a header-and-body table ends up
         // keeping two column strings in step by hand instead - see docs/LunaP.md §21.2.
+        //
+        // Added rather than assigned, for the reason spelled out on Cols above.
         /// <summary>Puts children in a single column of rows.</summary>
         /// <param name="definitions">Avalonia row heights, comma separated - "Auto,*,Auto" and so on.</param>
         /// <param name="children">The children. Each is placed in the next row by position unless it already carries an explicit row.</param>
         /// <returns>A Grid with those rows.</returns>
         public static Grid Rows(string definitions, params Control[] children)
         {
-            var grid = new Grid { RowDefinitions = new RowDefinitions(definitions) };
+            var grid = new Grid();
+            foreach (RowDefinition definition in new RowDefinitions(definitions))
+            {
+                grid.RowDefinitions.Add(definition);
+            }
+
             for (int i = 0; i < children.Length; i++)
             {
                 Control child = children[i];
