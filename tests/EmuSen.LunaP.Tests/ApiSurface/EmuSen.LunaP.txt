@@ -121,15 +121,22 @@ public class EmuSen.LunaP.Controls.EmptyState : Avalonia.Controls.Primitives.Tem
     public string Detail { get; set; }
     public string Message { get; set; }
 
+public class EmuSen.LunaP.Controls.ErrorText : Avalonia.Controls.TextBlock
+    public ErrorText()
+
 public class EmuSen.LunaP.Controls.FieldRow : Avalonia.Controls.ContentControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     public FieldRow()
+    public bool HasError { get; }
     public bool HasHint { get; }
+    public static readonly Avalonia.DirectProperty<EmuSen.LunaP.Controls.FieldRow, bool> HasErrorProperty
     public static readonly Avalonia.DirectProperty<EmuSen.LunaP.Controls.FieldRow, bool> HasHintProperty
+    public static readonly Avalonia.StyledProperty<string> ErrorProperty
     public static readonly Avalonia.StyledProperty<string> HintProperty
     public static readonly Avalonia.StyledProperty<string> LabelProperty
+    public string Error { get; set; }
     public string Hint { get; set; }
     public string Label { get; set; }
 

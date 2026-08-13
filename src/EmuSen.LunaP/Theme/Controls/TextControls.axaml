@@ -19,4 +19,14 @@
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
+    <!-- The hint's size and wrapping, deliberately, so an error and the hint it
+         replaces on screen occupy the line the same way and nothing reflows when
+         a field goes invalid. The colour is the only difference, and it is the
+         whole signal. §49. -->
+    <Style Selector="luna|ErrorText">
+        <Setter Property="Foreground" Value="{DynamicResource LunaError}" />
+        <Setter Property="FontSize" Value="{DynamicResource LunaHintFontSize}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
 </Styles>

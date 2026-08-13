@@ -4536,3 +4536,104 @@ count.
 than a style note: `TextBox.Watermark` is `[Obsolete]` in Avalonia 12.1.0 in favour of
 `PlaceholderText`. The build says so, and this repository builds with zero warnings, so it was fixed
 where it was written rather than becoming the first one.
+
+## 49. A field that is wrong, and the state Avalonia does not have
+
+**§48.5 named this as the piece left open**, and it is the one an office application cannot fake: a
+settings window whose fields can only be right is a settings window that silently keeps a bad value.
+Until now this toolkit had no error state anywhere.
+
+*Numbering note: `PLAN-general-purpose.md` reserved §49 for the graphics door. That plan says at its
+head that its numbering is stale, and §47.4 put the graphics door behind a gate it has not passed —
+a named repository that will use it. Sections are numbered as they are written, so validation took
+the number.*
+
+### 49.1 String in, string out, and the message is the state
+
+```csharp
+new FieldRow { Label = "Save State Folder", Error = "That folder does not exist." }
+```
+
+There is no `IsValid`. **The message is the state**, so the two can never disagree — a control
+carrying both would eventually be set invalid with an empty message, and the user would be blocked
+by a blank line with nothing to fix. Empty means valid, so the common case stays quiet and no caller
+ever writes "no error" out loud.
+
+This is deliberately the same shape as the `Validate` seam `PLAN-table.md` §4.8 settled for
+`LunaTable<T>`, so that an invalid field and an invalid cell are one idea rather than two.
+
+**Not wired to `DataValidationErrors`,** which is the obvious thing to reach for and is the wrong
+shape twice over. It reports errors raised by a *binding*, and LunaP's controls are built in code
+and given values directly (§5.2), so there is frequently no binding to raise one. And it would put
+the decision about what counts as invalid inside the control, when the only thing that knows a ROM
+directory has to exist is the application.
+
+### 49.2 A fourth text idiom, not a hint in red
+
+`ErrorText` joins `SectionHeader`, `HintText` and `MonoText` rather than reusing `HintText` with a
+different brush. **A hint is advice and is true whether or not anything is wrong; an error is a
+consequence and is there because something is.** They wrap the same way and sit in the same place,
+so colour is the only thing telling a reader which one they are looking at — and a host restyling
+"the small text under a field" through CSS (§12.2) would otherwise restyle the error message with
+it. It takes the hint's size and wrapping so that nothing reflows when a field goes invalid, and it
+is **not muted**: every other small line in the kit is grey because it is secondary, and this one is
+the reason the field is refusing to be saved.
+
+It is in `CssVocabulary`, so a host theme can name it like any other element.
+
+### 49.3 Avalonia has no concept of "invalid", enumerated
+
+The obvious question is how a screen reader is told. The answer was **enumerated rather than
+recalled**, per §48.2, by reflecting over Avalonia 12.1.0:
+
+- every overridable member of `AutomationPeer` — 41 of them
+- every attached property on `AutomationProperties` — 22
+- every interface in `Avalonia.Automation.Provider` — 10
+
+**Members whose name contains "Valid" or "Error", across the whole `Avalonia.Automation*` namespace:
+zero.** UIA has `IsDataValidForForm`; Avalonia does not surface it. The near miss is instructive —
+`AutomationProperties.IsRequiredForForm` exists, so a field can say it is *required* and cannot say
+it is *wrong*.
+
+So there is no way to report invalidity as a state, and the only decision left is which sentence
+carries the message. **`ItemStatus`, not `HelpText`.** `HelpText` is already the hint, and
+overwriting it when a field goes invalid would destroy the explanation at the moment it is most
+useful. `ItemStatus` is defined as the state that is not the value, which is what an error message
+is, and `MeterRow` already uses it for that shape of thing (§24.2).
+
+**A hazard, not a behaviour.** Nothing here makes a reader announce the error the moment it appears.
+`AutomationProperties.LiveSetting` exists and would be the mechanism, but the message is a template
+part, and template parts sit outside the control view a reader navigates — so whether a live region
+on one would announce at all is **unverified, and this suite cannot verify it**. A reader that visits
+the field gets the message; a reader that has moved on is not interrupted. Recorded here rather than
+claimed, per §24.4's precedent.
+
+### 49.4 Below the field, and that is an assertion
+
+The message sits under the content. Above it, a field going invalid would **push the control the user
+is typing in downwards** at the exact moment they are told they got it wrong. That is the kind of
+decision that survives in a comment until somebody tidies the template, so
+`The_message_sits_below_the_field_it_is_about` compares the two translated Y positions instead.
+
+### 49.5 Seven guards, three sabotages
+
+`ValidationTests` covers the message appearing and collapsing, clearing being the only way back to
+valid, the peer reporting the error while keeping the hint, a valid field reporting no status, the
+layout, and the colour. Made to fail on purpose per §22.5:
+
+| Sabotage | What turned red |
+|---|---|
+| `PART_Error` moved above the `ContentPresenter` | *"message is at y=43 and the field at y=62… above the control it is about"* |
+| `ErrorText` foreground set to `LunaMuted` | *Expected `IndianRed`, Actual `Gray`* |
+| `status:` dropped from `FieldRow`'s peer | *Expected "That folder does not exist.", Actual `null`* |
+
+The gallery shows one invalid field beside two valid ones, with a hint *and* an error on the same
+row — the two sentences stacked are the only way to see that the advice survives the failure, which
+is the whole argument for `ItemStatus` over `HelpText`.
+
+### 49.6 What this leaves
+
+The field half is done; the cell half is not. `LunaTable<T>.Commit` and `.Validate` are Pass G of
+`PLAN-table.md`, and they now have an error presentation to share (§4.8 said they would). Pass H —
+`ISelectionItemProvider` on rows and `IValueProvider` on editable cells — is the automation depth
+§2.1 of that plan identified, and both interfaces were confirmed present in the enumeration above.
