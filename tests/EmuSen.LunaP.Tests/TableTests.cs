@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
@@ -89,10 +90,67 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(new[] { "Site", "text", "1" }, first);
         });
 
-        // Shared size groups are what make an Auto column line up between the header grid and each
-        // row grid, which are separate grids that would otherwise size independently.
+        // THE TEST THIS REPLACES COULD NOT FAIL, AND DID NOT, FOR THE WHOLE LIFE OF THE CONTROL.
+        //
+        // It asserted that the SharedSizeGroup NAMES matched between the header grid and a row
+        // grid, and that every name was non-empty. Both were true the entire time the columns were
+        // not sharing a size at all: Avalonia registers a definition with its scope on Add and not
+        // on assignment, so the names read back perfectly while the grids sized independently. See
+        // LunaTable.Define for the mechanism and the upstream issue.
+        //
+        // It had a second hole, and it is the more instructive one. The comment it was guarding
+        // says "AUTO IS ACCEPTED AND MADE TO WORK" - and no test in this file had ever used an Auto
+        // column. Star and absolute columns resolve identically in both grids without sharing
+        // anything, so every existing assertion passed on data that could not have exposed the
+        // defect even if it had been measuring the right thing.
+        //
+        // So this measures where the text actually lands, in the table's own coordinates, with an
+        // Auto column whose heading is deliberately wider than its cells. Made to fail on purpose
+        // by reverting Define to an assignment, which puts the middle column six pixels out. §22.5.
         [Fact]
-        public Task Columns_share_a_size_group_with_their_header() => Realised(table =>
+        public Task An_auto_column_lines_up_with_its_own_heading() => Realised(
+            make: () =>
+            {
+                var table = new LunaTable<Field>();
+
+                // "classification" is far wider than any of its cells, so an Auto column that is
+                // not sharing sizes to 13 characters in the header and 8 in the rows.
+                table.Column("name", f => f.Name, "2*")
+                     .Column("classification", f => f.Type, "Auto")
+                     .Column("pg", f => f.Page.ToString(), "40");
+                table.Refresh(Fields);
+                return table;
+            },
+            assert: table =>
+            {
+                Grid header = table.FindNamed<Grid>("PART_Header");
+                Grid row = table.FindNamed<ListBox>("PART_Rows")
+                    .GetVisualDescendants().OfType<ListBoxItem>().First()
+                    .GetVisualDescendants().OfType<Grid>().First();
+
+                TextBlock[] headings = header.Children.OfType<TextBlock>().ToArray();
+                TextBlock[] cells = row.Children.OfType<TextBlock>().ToArray();
+
+                Assert.Equal(3, headings.Length);
+                Assert.Equal(3, cells.Length);
+
+                for (int i = 0; i < headings.Length; i++)
+                {
+                    double heading = headings[i].TranslatePoint(default, table)!.Value.X;
+                    double cell = cells[i].TranslatePoint(default, table)!.Value.X;
+
+                    Assert.True(Math.Abs(heading - cell) < 0.5,
+                        $"Column {i} ({headings[i].Text}) heading starts at x={heading:F1} but its cell "
+                        + $"starts at x={cell:F1}. The column is not sharing a size with its header - see "
+                        + "LunaTable.Define.");
+                }
+            });
+
+        // The wiring, kept as a smaller claim than it used to make. This one localizes a failure -
+        // if the names have gone wrong, the positional test above cannot say why - but it is no
+        // longer mistaken for evidence that the sharing works.
+        [Fact]
+        public Task Columns_share_a_size_group_name_with_their_header() => Realised(table =>
         {
             Grid header = table.FindNamed<Grid>("PART_Header");
             Grid row = table.FindNamed<ListBox>("PART_Rows")
@@ -104,6 +162,98 @@ namespace EmuSen.LunaP.Tests
                 header.ColumnDefinitions.Select(c => c.SharedSizeGroup),
                 row.ColumnDefinitions.Select(c => c.SharedSizeGroup));
         });
+
+        // The assumption the whole "no cell virtualization needed" argument rests on: rows are
+        // virtualized by the ListBox under PART_Rows, and because cells are built by the row's data
+        // template, only realized rows have any cells at all.
+        //
+        // Asserted rather than assumed because a change of items panel - in this theme or in a
+        // consumer's - would turn a 10,000-row table into 10,000 realized grids and 30,000
+        // TextBlocks with nothing to announce it but a slow window. §7 of the table plan.
+        [Fact]
+        public Task A_long_table_realizes_only_the_rows_that_are_visible() => Realised(
+            make: () =>
+            {
+                var table = new LunaTable<Field>();
+                table.Column("name", f => f.Name, "2*")
+                     .Column("type", f => f.Type)
+                     .Column("pg", f => f.Page.ToString(), "40");
+                table.Refresh(Enumerable.Range(0, 10_000).Select(i => new Field("row " + i, "text", i)).ToArray());
+                return table;
+            },
+            assert: table =>
+            {
+                ListBox rows = table.FindNamed<ListBox>("PART_Rows");
+                int realized = rows.GetVisualDescendants().OfType<ListBoxItem>().Count();
+
+                Assert.Equal(10_000, table.Models.Count);
+                Assert.True(realized is > 0 and < 100,
+                    $"{realized} of 10,000 rows were realized. Under 100 means the ListBox is virtualizing; "
+                    + "10,000 means it is not, and every cell of every row exists.");
+            });
+
+        // A CANARY ON UPSTREAM, not a claim about LunaTable. It pins the Avalonia behaviour that
+        // LunaTable.Define works around: a definition ADDED to a grid's own collection joins the
+        // shared size scope, and an identical one ASSIGNED as a ready-made collection does not.
+        //
+        // AvaloniaUI/Avalonia#21848 fixes this on main, merged after 12.1.0 shipped. When a version
+        // carrying the fix is taken, THIS TEST FAILS - which is the intended outcome. It is the
+        // notice that Define's comment has become history rather than a live hazard, and that the
+        // workaround is now a choice rather than a requirement. Do not delete it to make a bump
+        // green; read it, then decide what Define should say.
+        [Fact]
+        public Task Avalonia_still_ignores_an_assigned_definition_collection() => Session.Dispatch(() =>
+        {
+            static Grid Grid2(string text, bool assign, string group)
+            {
+                var grid = new Grid();
+                var definitions = new ColumnDefinitions
+                {
+                    new ColumnDefinition(GridLength.Auto) { SharedSizeGroup = group },
+                    new ColumnDefinition(new GridLength(1, GridUnitType.Star)),
+                };
+
+                if (assign)
+                {
+                    grid.ColumnDefinitions = definitions;
+                }
+                else
+                {
+                    foreach (ColumnDefinition definition in definitions) grid.ColumnDefinitions.Add(definition);
+                }
+
+                var wide = new TextBlock { Text = text };
+                var filler = new TextBlock { Text = "x" };
+                Grid.SetColumn(filler, 1);
+                grid.Children.Add(wide);
+                grid.Children.Add(filler);
+                return grid;
+            }
+
+            static double Spread(bool assign, string group)
+            {
+                Grid wide = Grid2("a much wider heading", assign, group);
+                Grid narrow = Grid2("narrow", assign, group);
+                var scope = new StackPanel { Children = { wide, narrow } };
+                Grid.SetIsSharedSizeScope(scope, true);
+
+                var window = new ToolWindow { Width = 600, Height = 400, Content = scope };
+                window.Show();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+                double spread = Math.Abs(wide.ColumnDefinitions[0].ActualWidth - narrow.ColumnDefinitions[0].ActualWidth);
+                window.Close();
+                return spread;
+            }
+
+            Assert.True(Spread(assign: false, "canaryAdded") < 0.5,
+                "An ADDED definition no longer shares its size. That is not the defect this pins - "
+                + "LunaTable.Define depends on adding working, so this is a real regression.");
+
+            Assert.True(Spread(assign: true, "canaryAssigned") > 0.5,
+                "An ASSIGNED definition now shares its size, so AvaloniaUI/Avalonia#21848 has arrived in "
+                + "the referenced version. Read LunaTable.Define and decide what it should say now.");
+        }, default);
 
         [Fact]
         public Task A_table_hands_back_the_model_not_the_row() => Realised(table =>

@@ -11,6 +11,13 @@
          nothing would align. The scope goes on the root so both parts are
          inside it.
 
+         This half is necessary and not sufficient, and the other half is not
+         here. A definition only actually joins the scope if it is ADDED to a
+         grid's own collection rather than assigned as a ready-made one - see
+         LunaTable.Define, which carries the measurement and the upstream issue.
+         Setting the scope here and getting that wrong leaves a control that
+         looks correct everywhere except on screen.
+
          The header's padding matches the item container's below, because those
          two numbers are what actually decide whether a column heading sits over
          its own cells.
