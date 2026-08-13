@@ -2576,7 +2576,7 @@ available except one restating the name, and that argument stands. **It says not
 |---|---|---|
 | Member-level API docs | §33.4, §34.1 | the largest, and the one a consuming dev feels first |
 | Nullability absent from the API snapshot | §32.5 | `string?` and `string` are one line; `NullabilityInfoContext` reads it |
-| CI runs on one Linux runner | — | a cross-platform UI toolkit never built on Windows or macOS; a three-way matrix is nearly free since the suite is headless |
+| ~~CI runs on one Linux runner~~ | **closed by §35** | matrix added; the audit found one platform branch, and it turned out to be untested, undocumented here, and currently a no-op (§35.1) |
 | Trim/AOT unverified | §25 | `CssTheme` resolves properties through `AvaloniaPropertyRegistry` at runtime, which a trimmer cannot see; neither project declares `IsTrimmable` or `IsAotCompatible` |
 | `net10.0` only | — | Avalonia 12.1.0 ships `net8.0` too, so LunaP is stricter than its own dependency — but .NET 8 leaves support around 2026-11-10 and .NET 9 already has, so multi-targeting buys a dying LTS. **Decided against, recorded so it is not re-derived.** |
 | CSS template parts unswept | §30.5 | §30.4 proves every *element* reaches its control; `card .header` and friends are still unproven |
@@ -2607,3 +2607,98 @@ Two things to do at that point, in this order:
 version was set to 0.7.0 when §26 was the whole story. What has landed since is larger than that
 number was chosen for, and §30 in particular repairs behaviour that has been wrong since 0.2.0 —
 which a consumer reading a minor bump would not expect to find.
+
+---
+
+## 35. One runner, and a correction nobody can read
+
+§34.2 listed "CI runs on one Linux runner" as an open item on the grounds that a cross-platform UI
+toolkit had never been built on Windows or macOS. Closing it turned out to be four lines of YAML.
+Auditing *before* writing them is what produced this section.
+
+### 35.1 The audit, and the one line it could not verify
+
+**The portability audit came back nearly empty, which is the good outcome.** No hard-coded POSIX
+paths anywhere in `src` or `tests`; no `HOME`, `XDG_*` or `USERPROFILE`; every settings path already
+goes through `LunaSettings.Store` and `Path.Combine`. Exactly **one** `OperatingSystem.Is*` branch
+exists in the whole toolkit, and it is the `UseX11()` call in `LunaApp.Configure`.
+
+That one line turned out to be three problems stacked on each other.
+
+**It was untested, and structurally so.** `LunaApp.Configure` had no test at all — the only public
+entry point in the toolkit without one. The reason is not carelessness: the headless suite builds
+its own `AppBuilder` through `LunaHeadless.BuildApp` so that the harness and a real frontend share a
+theme (§3.1), which is right, and which means the sequence a consumer's `Program.cs` actually calls
+is never executed by anything. Every consumer's first line of Avalonia code was unguarded.
+
+**Its justification is unreachable.** The comment cited `EmuSen_Project_Overview_v2.md §2a` — a
+document that stayed behind when LunaP left EmuSen (§19, §20). §3 in this document defers to the
+same missing file. So the measurement behind the correction cannot be read by anybody working here,
+which makes it exactly the kind of claim §21.6 and §29.3.1 exist to flag rather than repeat.
+
+**And on Avalonia 12.1.0 it is a no-op.** Measured by reflecting the builder's private
+`WindowingSubsystemInitializer` on this machine:
+
+| Builder | Windowing initializer |
+|---|---|
+| `AppBuilder.Configure<T>().UsePlatformDetect()` | `<UseX11>b__0_0` |
+| `LunaApp.Configure<T>()` — i.e. `…UsePlatformDetect().UseX11()` | `<UseX11>b__0_0` |
+
+**Identical.** Platform detection already chooses X11 on Linux, so the explicit call changes nothing
+observable at the builder.
+
+The consequence for testing is the important part, and it is why this section exists rather than a
+new assertion. The obvious test — *"on Linux the windowing subsystem is X11"* — **passes with the
+`UseX11()` call deleted.** That is a test that cannot fail, and §22.5's rule is that one of those is
+not a test. It was written, run, and thrown away.
+
+**The line stays.** The original correction was made against a real symptom on a real session; the
+failure it prevents would appear at `Setup` on somebody's Wayland desktop rather than in any suite
+here; and removing a guard because its justification became hard to read is how the symptom comes
+back. What `LunaApp.cs` says now is what is actually known, including that it is currently
+unobservable. **Retiring it honestly needs one thing this repository cannot do from a test: a real
+window on a real Wayland session, on the Avalonia version in use.** Until somebody does that, it is
+a hazard note and not a behaviour.
+
+### 35.2 What is asserted instead
+
+`BootstrapTests` pins the parts of the sequence that *can* fail:
+
+- **`UsePlatformDetect` is in the chain**, proven through what it installs rather than its own name —
+  it is what brings Skia and HarfBuzz, so `RenderingSubsystemName` and `TextShapingSubsystemName` are
+  the evidence. Removing the call turns two tests red.
+- **The application type survives both overloads**, including the `Func<TApp>` one `EmuSen.Hotaru`
+  needs because its `Main` resolves a ROM before any Avalonia type is touched. An overload that
+  silently skipped the shared setup would hand that application a window with no theme.
+
+All three assertions stop at the builder and never call `Setup` or `Start`, which is what lets them
+run inside a headless session without a second `Application` fighting the session's own.
+
+### 35.3 The matrix, and the step that would have failed on Windows
+
+`ci.yml` now runs on `ubuntu-latest`, `windows-latest` and `macos-latest`, with **`fail-fast: false`**
+— "fails on macOS only" is the single most useful thing this matrix can say, and fail-fast would
+hide it behind whichever runner finished first.
+
+Writing it surfaced a defect in §31's own work. The symbol-package assertion is a bash loop using
+`${pkg%.nupkg}` and `[ -f ]`, and **GitHub defaults `windows-latest` to PowerShell**, where that is
+not a syntax error but a different language. The step would have failed on Windows for a reason
+having nothing to do with the packages — a red matrix cell pointing at the wrong thing, which is
+worse than no matrix. It carries `shell: bash` now.
+
+A `.gitattributes` came with it, for one reason worth stating: `ApiSurface/*.txt` is pinned to `eol=lf`
+because its whole value is that the diff is the review (§32.2), and a Windows checkout rewriting it
+to CRLF would make a regeneration there look like a six-hundred-line change containing nothing.
+
+### 35.4 What this does not do
+
+- **It does not prove the suite passes on Windows or macOS.** Nothing here can: the matrix's first
+  run happens on the next push, and this section is written before that. The audit is an argument
+  for expecting green, not a substitute for seeing it. **If a runner comes back red, that result
+  belongs in §35.5 and the audit above is what should be read sceptically.**
+- **It does not test the X11 branch**, per §35.1, and no headless suite can.
+- **It does not cover packaging on Windows beyond `dotnet pack` succeeding** — the `.nupkg` contents
+  are asserted only for the symbol package, not compared across runners.
+- **It says nothing about rendering differences between platforms.** §10.2 already keeps render
+  baselines out of the repository because they are one machine's font rendering; a matrix makes that
+  argument stronger, not weaker.
