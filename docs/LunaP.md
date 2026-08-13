@@ -4,7 +4,7 @@
 
 *Sections still say `EmuSen.Mistress`, `EmuSen.Hotaru` and `EmuSen.Serenity`. Those are the three applications this toolkit was built for, and their names are left in place rather than generalised, because a record that has been tidied to look like it was always general is a record nobody can check.*
 
-*Revision history, most recent first: **two traps turned into guards** — the style-key trap had been written up four times and the before-the-template trap three, each time as a paragraph asking the next author to remember; both are now swept by reflection, so a control added later is covered without anybody reading the paragraph (§28); **a table, and a dependency refused** — `Avalonia.Controls.TreeDataGrid` turns out to require a paid licence, so `LunaTable<T>` is built on stock Avalonia instead (§27); **a shell** — actions, menus, a toolbar, a splitter, docked panels and an `AppWindow` to hold them (§26), chosen by asking what Qt6 offers and then, belatedly, by running the survey that should have come first (§26.1); the relicence to MIT (§25); accessibility, and nine controls that were not in the automation tree (§24); the light column (§23); **the toolkit left EmuSen** (§20); the settings seam and the two files that had to move for it (§19); a theme may be written in CSS, and building that turned up an Avalonia behaviour sitting under the theme system unnoticed — mutating `Application.Styles` at runtime strips every already-realized control of its styling (§12.2, §12.3); the widget set and user themes from disk; the migration, which removed 863 net lines from two frontends.*
+*Revision history, most recent first: **a guard that could not fail, and six pixels it never saw** — `LunaTable`'s columns were never sharing a size, because Avalonia registers a shared size group on Add and not on assignment; the test watching it asserted the group names, which stayed correct throughout, on data that contained no `Auto` column at all (§27.7); **two traps turned into guards** — the style-key trap had been written up four times and the before-the-template trap three, each time as a paragraph asking the next author to remember; both are now swept by reflection, so a control added later is covered without anybody reading the paragraph (§28); **a table, and a dependency refused** — `Avalonia.Controls.TreeDataGrid` turns out to require a paid licence, so `LunaTable<T>` is built on stock Avalonia instead (§27); **a shell** — actions, menus, a toolbar, a splitter, docked panels and an `AppWindow` to hold them (§26), chosen by asking what Qt6 offers and then, belatedly, by running the survey that should have come first (§26.1); the relicence to MIT (§25); accessibility, and nine controls that were not in the automation tree (§24); the light column (§23); **the toolkit left EmuSen** (§20); the settings seam and the two files that had to move for it (§19); a theme may be written in CSS, and building that turned up an Avalonia behaviour sitting under the theme system unnoticed — mutating `Application.Styles` at runtime strips every already-realized control of its styling (§12.2, §12.3); the widget set and user themes from disk; the migration, which removed 863 net lines from two frontends.*
 
 ---
 
@@ -1806,6 +1806,116 @@ is still a separate act.
 before the template and after it, and the two runs are each other's expected value. That turns
 "somebody has to look" into an assertion, and the sabotage table in §28.3 puts this exact defect
 back to prove it fails.
+
+### 27.7 Correction: the shared size groups never worked, and the guard could not have said so
+
+**What §27.5 says**, in its last bullet: *"`Auto` works — every column is put in a shared size group
+and the root is a shared size scope, because a header grid and a row grid are separate grids that
+would otherwise size an `Auto` column independently and line nothing up."* The `//` block on
+`LunaTable.Column` said the same thing at more length, under the heading AUTO IS ACCEPTED AND MADE
+TO WORK, and so did the comment in `LunaTable.axaml`.
+
+**All three were wrong for the life of the control.** The scope was set, the groups were named, and
+no column ever shared a size with anything.
+
+#### The measurement
+
+A three-column table — `2*`, `Auto`, `40` — with the x of each heading and its first-row cell taken
+in the table's own coordinates:
+
+| col | width | heading x | cell x | delta |
+|---|---|---|---|---|
+| 0 `name` | `2*` | 12.0 | 12.0 | 0.0 |
+| 1 `type` | **`Auto`** | 416.0 | 422.0 | **6.0** |
+| 2 `pg` | `40` | 448.0 | 448.0 | 0.0 |
+
+The header sized its `Auto` column to a bold *"type"* at 32 px; each row sized the same column to
+*"text"* at 26 px; the star column absorbed the six pixels, and every cell in that column sat six
+pixels right of the heading it belonged to.
+
+#### The defect, which is Avalonia's
+
+Reduced to two plain sibling `Grid`s in one shared size scope, built the two possible ways:
+
+| | wide grid | narrow grid | equalized |
+|---|---|---|---|
+| `ColumnDefinitions` **assigned** to the Grid | 147.0 | 47.0 | **no** |
+| `ColumnDefinitions` **populated** with `.Add()` | 148.0 | 148.0 | **yes** |
+
+**Avalonia 12.1.0 registers a definition with its shared size scope when the definition is added to
+the collection a Grid already owns, and not when a ready-made collection is assigned to the Grid.**
+An assigned definition keeps a `SharedSizeGroup` that reads back correctly and shares nothing.
+
+Fixed upstream by [AvaloniaUI/Avalonia#21848](https://github.com/AvaloniaUI/Avalonia/pull/21848),
+*"fix(grid): register assigned definition collections with their shared size group"*, merged
+**2026-07-26** — after **12.1.0** was released on **2026-07-09**. A companion,
+[#21837](https://github.com/AvaloniaUI/Avalonia/pull/21837), *"allow shared size groups to shrink"*,
+merged 2026-07-24. Whether either was backported into 12.1.1 is **not verified**, and does not need
+to be: populating works on 12.1.0 as it stands and stays correct when the fix arrives.
+
+`LunaTable` assigned in both places — the header grid in `Rebuild`, each row grid in `Row`. Both now
+populate, through a single `Define(grid, scope)` that carries the argument beside it.
+
+**Why it shipped, and why it stayed.** Star and absolute columns resolve to the same number in both
+grids without needing to share anything, so they line up whether the mechanism works or not. Only an
+`Auto` column can expose this, and only when its heading and its content differ in width. The defect
+was six pixels wide and required a specific column type to see at all.
+
+#### The guard had two holes, and the second one is the lesson
+
+`Columns_share_a_size_group_with_their_header` asserted that the `SharedSizeGroup` names matched
+between the header grid and a row grid, and that none was empty. Both were true every day the
+columns shared nothing. **It asserted the wiring and the defect was in the effect.**
+
+The second hole is worse and more useful: **no test in `TableTests` had ever used an `Auto` column.**
+The fixture is `2*`, default `*`, `40`. The one feature the comment claimed — that `Auto` is made to
+work — was the one feature the test data could not exercise.
+
+**And §27.6's sabotage table records this guard being made to fail.** It says *"columns stop sharing
+a size group with the header"* turned `Columns_share_a_size_group_with_their_header` red, and that
+is true. It is also worth nothing, and this is the correction that matters most:
+
+> **A sabotage that attacks the same wiring the assertion reads proves only that the assertion can
+> see that wiring. It says nothing about whether the wiring does anything.**
+
+Removing the group names turned the test red while the columns were already not sharing. The
+sabotage and the assertion were one claim wearing two hats, and §22.5's method — *make the guard
+fail on purpose* — passed cleanly on a guard that could not fail for the reason it existed. That is
+a real limit of the method and it is worth carrying: **the sabotage has to break the outcome, not
+the mechanism the test happens to name.**
+
+#### What replaced it
+
+`An_auto_column_lines_up_with_its_own_heading` measures where the text lands: for every column, the
+heading's x equals its cell's x, on a fixture whose `Auto` column is headed *"classification"* and
+filled with *"text"*, so a column that is not sharing is off by a wide margin rather than a subtle
+one. Sabotaged by reverting `Define` to an assignment: **red, with "Column 1 (classification)
+heading starts at x=356.0 but its cell starts at x=422.0" — a 66 pixel gap that names the site to
+fix.** The name assertion survives under a smaller name, because it localizes a failure the
+positional one cannot explain.
+
+Two guards were added alongside it:
+
+- `A_long_table_realizes_only_the_rows_that_are_visible`. 10,000 models realize **10** row
+  containers and **30** `TextBlock`s, in 369 ms. This pins what §27.5 asserts loosely — that the
+  control virtualizes — and adds the part that follows from it: cells are built by the row's data
+  template, so cell virtualization is a consequence of row virtualization and needs no machinery of
+  its own. A change of items panel would otherwise turn a long table into 10,000 realized grids with
+  nothing to announce it but a slow window.
+- `Avalonia_still_ignores_an_assigned_definition_collection`, **a canary on upstream rather than a
+  claim about this toolkit.** It asserts that an added definition shares and an assigned one does
+  not, so it **fails the day a version carrying #21848 is taken** — which is the intended outcome
+  and the notice that `Define`'s comment has become history rather than a live hazard. It is not to
+  be deleted to make a version bump green.
+
+#### The same shape, latent, in the fluent surface
+
+`Ui.Cols` and `Ui.Rows` assign their definitions the same way. **Nothing there is broken**: those
+definitions are parsed from a comma-separated string, which has no syntax for a `SharedSizeGroup`,
+so nothing is trying to share. It is a trap rather than a defect — and it sits exactly where the use
+arises, since `Ui.Rows`'s own comment cites §21.2, *"a header-and-body table ends up keeping two
+column strings in step by hand"*, which is the problem shared sizing exists to solve. Both populate
+now, at no behavioural cost, so the trap is not there for the first person to find.
 
 ---
 

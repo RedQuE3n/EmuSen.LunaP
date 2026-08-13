@@ -18,6 +18,43 @@ namespace EmuSen.LunaP.Tests
 
         private static Task Run(System.Action body) => Session.Dispatch(body, default);
 
+        // A grid from Ui.Cols can join a shared size scope, which is not free and was not true.
+        //
+        // Ui.Cols and Ui.Rows assigned a ready-made definitions collection to the Grid, and Avalonia
+        // 12.1.0 only registers a definition with its scope when it is ADDED to the collection the
+        // Grid already owns. Nothing here was broken by it - `definitions` is a string with no
+        // syntax for a SharedSizeGroup, so no caller was trying to share - but the trap sat exactly
+        // where the use arises: a header row and a body row built from two Ui.Cols calls, which is
+        // §21.2's complaint about keeping two column strings in step by hand.
+        //
+        // This asserts the outcome rather than the wiring, which is the whole lesson of §27.7: two
+        // grids in one scope, an Auto column whose content differs, and the same resolved width.
+        // Sabotaged by putting the assignment back - both grids then size their Auto column alone.
+        [Fact]
+        public Task A_grid_from_cols_shares_a_size_group_with_another() => Run(() =>
+        {
+            Grid wide = Ui.Cols("Auto,*", Ui.Text("a much wider heading"), Ui.Text("x"));
+            Grid narrow = Ui.Cols("Auto,*", Ui.Text("narrow"), Ui.Text("y"));
+
+            wide.ColumnDefinitions[0].SharedSizeGroup = "fluent";
+            narrow.ColumnDefinitions[0].SharedSizeGroup = "fluent";
+
+            var scope = new StackPanel { Children = { wide, narrow } };
+            Grid.SetIsSharedSizeScope(scope, true);
+
+            var window = new EmuSen.LunaP.Windowing.ToolWindow { Width = 600, Height = 400, Content = scope };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            double a = wide.ColumnDefinitions[0].ActualWidth;
+            double b = narrow.ColumnDefinitions[0].ActualWidth;
+            window.Close();
+
+            Assert.True(System.Math.Abs(a - b) < 0.5,
+                $"Two Ui.Cols grids in one shared size scope resolved their Auto column to {a:F1} and "
+                + $"{b:F1}. The definitions are not joining the scope - see Ui.Cols and docs/LunaP.md §27.7.");
+        });
+
         // The headline of the phase: three Grid.SetColumn calls become one Ui.Cols.
         [Fact]
         public Task Cols_assigns_columns_by_position() => Run(() =>
