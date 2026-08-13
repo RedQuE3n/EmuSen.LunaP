@@ -76,6 +76,13 @@ namespace EmuSen.LunaP.Controls
     {
         protected override Type StyleKeyOverride => typeof(MenuItem);
 
+        // A style key spent is a type a selector can no longer name (§30), so every control
+        // that pins one publishes the class that names it instead. Uniform rather than
+        // added-when-needed: the class costs nothing, and the day this control gains a style
+        // file or a CSS element name the selector already has something to match. Enforced by
+        // StyleKeyTests, which is why this cannot be forgotten on the next one.
+        public const string StyleClass = "luna-action-menu-item";
+
         private readonly LunaAction _action;
 
         // Guards the write-back below against the sync it is meant to correct - the general form
@@ -84,6 +91,7 @@ namespace EmuSen.LunaP.Controls
 
         public ActionMenuItem(LunaAction action)
         {
+            Classes.Add(StyleClass);
             _action = action ?? throw new ArgumentNullException(nameof(action));
 
             if (action.Submenu is { } submenu)
@@ -156,8 +164,16 @@ namespace EmuSen.LunaP.Controls
     {
         protected override Type StyleKeyOverride => typeof(Button);
 
+        // A style key spent is a type a selector can no longer name (§30), so every control
+        // that pins one publishes the class that names it instead. Uniform rather than
+        // added-when-needed: the class costs nothing, and the day this control gains a style
+        // file or a CSS element name the selector already has something to match. Enforced by
+        // StyleKeyTests, which is why this cannot be forgotten on the next one.
+        public const string StyleClass = "luna-action-button";
+
         public ActionButton(LunaAction action)
         {
+            Classes.Add(StyleClass);
             Action = action ?? throw new ArgumentNullException(nameof(action));
 
             // Command, unlike the menu item above, because a plain Button has no state of its own
@@ -199,10 +215,18 @@ namespace EmuSen.LunaP.Controls
     {
         protected override Type StyleKeyOverride => typeof(ToggleButton);
 
+        // A style key spent is a type a selector can no longer name (§30), so every control
+        // that pins one publishes the class that names it instead. Uniform rather than
+        // added-when-needed: the class costs nothing, and the day this control gains a style
+        // file or a CSS element name the selector already has something to match. Enforced by
+        // StyleKeyTests, which is why this cannot be forgotten on the next one.
+        public const string StyleClass = "luna-action-toggle";
+
         private readonly Suppressor _syncing = new();
 
         public ActionToggle(LunaAction action)
         {
+            Classes.Add(StyleClass);
             Action = action ?? throw new ArgumentNullException(nameof(action));
 
             // Same reasoning as ActionMenuItem: a ToggleButton flips itself on click, so binding

@@ -148,7 +148,7 @@ namespace EmuSen.LunaP.Theme
             app.Resources.MergedDictionaries.Add(loaded);
             _applied = loaded;
 
-            // Appended last for the same reason, so a theme's rules beat Theme/Controls.axaml's.
+            // Appended last for the same reason, so a theme's rules beat the Theme/Controls/ styles.
             if (styles is { Count: > 0 })
             {
                 app.Styles.Add(styles);

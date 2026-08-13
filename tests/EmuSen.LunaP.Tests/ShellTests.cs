@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Automation.Peers;
 using Avalonia.Automation.Provider;
 using Avalonia.Controls;
@@ -11,6 +12,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using EmuSen.LunaP.Commands;
 using EmuSen.LunaP.Controls;
@@ -90,6 +92,29 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(2, items.Length);
             Assert.Equal("File", items[0].Header);
             Assert.Equal("Help", items[1].Header);
+        });
+
+        // Theme/Controls/MenuBar.axaml is the only style file in the kit whose control borrows its
+        // template from FluentTheme, so §28.1's sweep sees a visual tree whether that file reaches
+        // the bar or not. Dropping its StyleInclude turned NOTHING red, and chasing that down found
+        // the style had never applied at all: `luna|MenuBar` is a type selector, Avalonia matches
+        // those against the STYLE KEY, and MenuBar pins its key to Menu so it can have a template
+        // (§30). The selector is `Menu.luna-menu-bar` now.
+        //
+        // Padding is the half worth asserting. Before the fix its diagnostic priority was Unset -
+        // nothing anywhere set it - so this value can only come from that file. Background is
+        // asserted alongside it but proves less on its own: Fluent independently paints a Menu
+        // transparent, which is exactly why the defect was invisible for so long.
+        [Fact]
+        public Task A_menu_bar_is_styled_by_the_kit_and_not_only_by_fluent() => Realised(() =>
+        {
+            var bar = new MenuBar();
+            bar.SetMenus(new LunaMenu("File", new LunaAction("Open")));
+            return bar;
+        }, bar =>
+        {
+            Assert.Equal(new Thickness(2, 0), bar.Padding);
+            Assert.Equal(Colors.Transparent, Assert.IsAssignableFrom<ISolidColorBrush>(bar.Background).Color);
         });
 
         // A top-level entry is a plain MenuItem, deliberately: File is not a command, and giving

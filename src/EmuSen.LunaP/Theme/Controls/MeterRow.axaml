@@ -1,0 +1,47 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- 140/*/55 is what all three hand-written copies used. -->
+    <Style Selector="luna|MeterRow">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid ColumnDefinitions="140,*,55">
+                    <TextBlock Grid.Column="0"
+                               Text="{TemplateBinding Label}"
+                               Foreground="{DynamicResource LunaMeterText}"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" />
+                    <!-- Raw keeps this out of the control view. The MeterRow's own
+                         peer already reports ProgressBar with the label as its
+                         name and the reading as its status, so leaving this in
+                         would put a SECOND, nameless progress bar next to it
+                         saying the same number with nothing to attach it to. -->
+                    <ProgressBar Grid.Column="1"
+                                 Name="PART_Bar"
+                                 Minimum="0" Maximum="100"
+                                 Height="14"
+                                 AutomationProperties.AccessibilityView="Raw"
+                                 Value="{TemplateBinding Percent}" />
+                    <TextBlock Grid.Column="2"
+                               Text="{TemplateBinding ValueText}"
+                               Foreground="{DynamicResource LunaMeterText}"
+                               Margin="8,0,0,0"
+                               VerticalAlignment="Center" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- The ramp lives in styles, not in a computed brush, so a loaded theme reaches it - see docs/LunaP.md §12.1. -->
+    <Style Selector="luna|MeterRow:nominal /template/ ProgressBar#PART_Bar">
+        <Setter Property="Foreground" Value="{DynamicResource LunaNominal}" />
+    </Style>
+    <Style Selector="luna|MeterRow:busy /template/ ProgressBar#PART_Bar">
+        <Setter Property="Foreground" Value="{DynamicResource LunaBusy}" />
+    </Style>
+    <Style Selector="luna|MeterRow:hot /template/ ProgressBar#PART_Bar">
+        <Setter Property="Foreground" Value="{DynamicResource LunaHot}" />
+    </Style>
+
+</Styles>

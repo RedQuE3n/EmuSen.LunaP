@@ -61,6 +61,29 @@ nothing, nothing changes (`§26`).
 - `LunaSettings.Diagnostics` now also carries "two commands claim one shortcut",
   alongside the "this file would not load" it already carried (`§26.5`).
 
+- **`StyleClass` on the eight controls that pin a style key** — `MenuBar`, `LunaSwitch`, `Dropdown`,
+  `Tabs`, `ActionMenuItem`, `ActionButton`, `ActionToggle`, `LunaList<T>`. Each adds its class to
+  itself, so `ToggleSwitch.luna-switch` reaches a `LunaSwitch` and not your own `ToggleSwitch`. If
+  you have been trying to style one of these from your own `.axaml` and finding that
+  `luna|Dropdown` matched nothing, this is the selector you needed and `§30` is why it did not work.
+
+### Fixed
+
+- **Four CSS element names have never worked, and now do: `luna-switch`, `dropdown`, `tabs` and
+  `menu-bar`.** If you wrote `dropdown { color: … }` in a `.css` theme, the theme loaded, **no
+  warning was raised**, and nothing changed. The first three have been broken since the CSS format
+  shipped in 0.2.0; `menu-bar` since 0.7.0 advertised it. The cause is one line of Avalonia
+  semantics: a type selector matches a control's **style key**, and these four pin
+  `StyleKeyOverride` to a stock control so that they get a template at all — so the selector asked
+  for a control that cannot exist. They now select their style-key type narrowed by a class each
+  control adds to itself (`§30`).
+- **The menu bar's own styling now applies at all.** `Theme/Controls/MenuBar.axaml` used a
+  `luna|MenuBar` selector that matched nothing, so its `Padding="2,0"` never arrived — measured at
+  priority `Unset`, meaning nothing anywhere was setting it. Its background looked right only
+  because Avalonia paints a `Menu` transparent anyway (`§29.3`, `§30`).
+- **This is a visible change if you worked around any of the above.** A rule you wrote that quietly
+  did nothing will start doing what it says, and the menu bar gains 2px of horizontal padding.
+
 ### Known
 
 - **`Avalonia.Controls.TreeDataGrid` was considered for the table and rejected: it requires a paid

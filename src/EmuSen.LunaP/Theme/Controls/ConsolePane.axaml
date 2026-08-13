@@ -1,0 +1,54 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <Style Selector="luna|ConsolePane">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <DockPanel>
+                    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*" Margin="0,8,0,0">
+                        <TextBlock Grid.Column="0"
+                                   Name="PART_Prompt"
+                                   Text="{TemplateBinding Prompt}"
+                                   VerticalAlignment="Center"
+                                   FontFamily="{DynamicResource LunaMonoFont}"
+                                   Foreground="{DynamicResource LunaText}"
+                                   Margin="0,0,4,0" />
+                        <!-- Not named from Prompt. A prompt is "> " or "diana$ ",
+                             which is a sigil and reads as punctuation. -->
+                        <TextBox Grid.Column="1"
+                                 Name="PART_Input"
+                                 AutomationProperties.Name="Console input"
+                                 FontFamily="{DynamicResource LunaMonoFont}"
+                                 Background="{DynamicResource LunaInputSurface}"
+                                 Foreground="{DynamicResource LunaText}"
+                                 CaretBrush="{DynamicResource LunaText}"
+                                 BorderThickness="1" />
+                    </Grid>
+
+                    <ScrollViewer Name="PART_Scroll">
+                        <!-- A tab stop by virtue of being selectable, which is
+                             worth keeping: it is how a keyboard selects and
+                             copies output.
+
+                             DELIBERATELY NOT GIVEN AutomationProperties.Name,
+                             because on a text block it would do nothing.
+                             Avalonia 12.1.0's TextBlockAutomationPeer overrides
+                             GetNameCore to return Text and never consults the
+                             attached property, so the name here is the output
+                             itself - which is what a reader wants from a console
+                             anyway - and an empty console has no name at all.
+                             Measured, with the reproduction, in §24.5. Setting
+                             the attribute would read as a fix and be one line of
+                             ignored XAML. -->
+                        <SelectableTextBlock Name="PART_Output"
+                                             FontFamily="{DynamicResource LunaMonoFont}"
+                                             Foreground="{DynamicResource LunaText}"
+                                             TextWrapping="Wrap" />
+                    </ScrollViewer>
+                </DockPanel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+</Styles>

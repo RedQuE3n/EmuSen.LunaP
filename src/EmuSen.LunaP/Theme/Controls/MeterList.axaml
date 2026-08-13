@@ -1,0 +1,13 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <Style Selector="luna|MeterList">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <StackPanel Name="PART_Rows" Spacing="3" />
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+</Styles>
