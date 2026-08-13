@@ -3635,8 +3635,50 @@ inputs, set well below the real counts so ordinary editing never touches them an
 is caught at once.
 
 It reads the source tree rather than the build output, since neither the man page nor the sources
-being scanned are copied to `bin`; `[CallerFilePath]` gives it the repository and it walks up until
-it finds `docs/LunaP.md`.
+being scanned are copied to `bin`. Getting from `bin` back to the tree is the only interesting part
+of it, and the first attempt was wrong.
+
+### 44.1 `[CallerFilePath]` does not survive this package's own build settings
+
+The first version found the repository with `[CallerFilePath]` and walked up from the test file.
+That works locally and **failed on all three CI platforms at once**, with:
+
+    Walked up from /_/tests/EmuSen.LunaP.Tests/CitationTests.cs without finding docs/LunaP.md
+
+`/_` is the tell. §31 turned on SourceLink and symbol packages so a consumer can step into LunaP's
+own source in a debugger, and CI sets `ContinuousIntegrationBuild=true`, which switches on
+**deterministic source paths**: every source path the compiler embeds is rewritten to a fixed root
+so that two checkouts in different directories produce byte-identical binaries. `[CallerFilePath]`
+is one of the things it rewrites. The path compiles to somewhere that has never existed.
+
+**This is a property of LunaP's own packaging decisions, not a CI quirk**, which is why it is worth
+a subsection rather than a commit message. Anybody reaching for `[CallerFilePath]` in this
+repository will hit it again, and it will look like a CI failure rather than a consequence of §31.
+
+**It reproduces locally in one command**, which is the part worth keeping, because the whole cost of
+this mistake was a round trip through CI to discover something a laptop can show in ten seconds:
+
+    dotnet test -c Release -p:ContinuousIntegrationBuild=true
+
+Measured both ways, with a throwaway probe returning `[CallerFilePath]`:
+
+| Build | What the compiler embedded |
+|---|---|
+| `dotnet test` | `/home/red/Projects/EmuSen.LunaP/tests/EmuSen.LunaP.Tests/PathProbe.cs` |
+| `-p:ContinuousIntegrationBuild=true` | `/_/tests/EmuSen.LunaP.Tests/PathProbe.cs` |
+
+That flag is the right way to check **any** change that could behave differently under a packaging
+build, not only this one — it is what CI does, and nothing else here runs it.
+
+`AppContext.BaseDirectory` has none of the problem: it is resolved at run time from where the
+assembly actually sits, which is `<repo>/tests/EmuSen.LunaP.Tests/bin/<config>/net10.0`, and walking
+up from there finds the man page on every platform.
+
+**The guard failed loudly rather than quietly, and that was the design working.** A version that
+silently found no files would have reported "all citations resolve" — a green tick meaning nothing,
+on the exact rule §44 exists to stop being taken on trust. `RepoRoot` asserts rather than returning
+a best guess for precisely this reason, and it is the reason the mistake cost one CI run instead of
+becoming permanent.
 
 ## 45. The version: 0.7.1
 
