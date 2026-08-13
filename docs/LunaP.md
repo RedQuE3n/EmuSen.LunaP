@@ -4,7 +4,7 @@
 
 *Sections still say `EmuSen.Mistress`, `EmuSen.Hotaru` and `EmuSen.Serenity`. Those are the three applications this toolkit was built for, and their names are left in place rather than generalised, because a record that has been tidied to look like it was always general is a record nobody can check.*
 
-*Revision history, most recent first: **the toolkit left EmuSen** (§20); the settings seam and the two files that had to move for it (§19); a theme may be written in CSS, and building that turned up an Avalonia behaviour sitting under the theme system unnoticed — mutating `Application.Styles` at runtime strips every already-realized control of its styling (§12.2, §12.3); the widget set and user themes from disk; the migration, which removed 863 net lines from two frontends.*
+*Revision history, most recent first: **two traps turned into guards** — the style-key trap had been written up four times and the before-the-template trap three, each time as a paragraph asking the next author to remember; both are now swept by reflection, so a control added later is covered without anybody reading the paragraph (§28); **a table, and a dependency refused** — `Avalonia.Controls.TreeDataGrid` turns out to require a paid licence, so `LunaTable<T>` is built on stock Avalonia instead (§27); **a shell** — actions, menus, a toolbar, a splitter, docked panels and an `AppWindow` to hold them (§26), chosen by asking what Qt6 offers and then, belatedly, by running the survey that should have come first (§26.1); the relicence to MIT (§25); accessibility, and nine controls that were not in the automation tree (§24); the light column (§23); **the toolkit left EmuSen** (§20); the settings seam and the two files that had to move for it (§19); a theme may be written in CSS, and building that turned up an Avalonia behaviour sitting under the theme system unnoticed — mutating `Application.Styles` at runtime strips every already-realized control of its styling (§12.2, §12.3); the widget set and user themes from disk; the migration, which removed 863 net lines from two frontends.*
 
 ---
 
@@ -128,6 +128,8 @@ Since writing pixels does not change the bitmap instance, nothing downstream wou
 **`ButtonBar` initially rendered as nothing, and this is the single most useful thing learned in Phase 2.** It derives from `ItemsControl`, and in Avalonia a control's *style key* defaults to its own runtime type — so `FluentTheme`'s `ControlTheme` for `ItemsControl` does not reach a subclass of `ItemsControl`. No template, no `ItemsPresenter`, no items, no error. It looked like a working control that simply had nothing in it.
 
 The fix is to template it explicitly rather than inherit (the alternative, overriding `StyleKeyOverride` to point back at the base type, works too but silently re-couples the control's look to whatever the Fluent theme does next). **Anything added to this kit that derives from a templated Avalonia control needs its own `Template` setter and a test that finds a real part in the visual tree** — asserting on a property alone would have passed here.
+
+That rule was restated three more times before anything enforced it (§14.1, §26.11, §27.3). **§28.1 is the enforcement**: every templated control in the kit is now found by reflection, shown, and required to have a visual tree, so a control added later is covered without anybody having read this paragraph.
 
 ### 5.6 `ConsolePane`
 
@@ -424,6 +426,8 @@ Four, all **wrapping** Avalonia's own controls rather than reimplementing them �
 ### 14.1 `LunaSwitch`, `Dropdown`, `Tabs`, and the style-key trap for the second time
 
 All three wrappers pin `StyleKeyOverride` to their base type. §5.5 recorded this for `ButtonBar`, where the symptom was a control that rendered as nothing. **`LunaSwitch` is worse: `ToggleSwitch.OnApplyTemplate` does not degrade to blank, it throws on the missing `PART_MovingKnobs`.** The rule to carry forward: *anything here that derives from a stock Avalonia control needs its style key pinned to that control, and a test that finds a real template part.*
+
+All three are covered by §28.1's sweep now, and one of them is the reason that sweep is honest about its limits: removing every `StyleKeyOverride` in the kit turns six of eight red, and `LunaSwitch`, `Dropdown` and `Tabs` are three of the six. The two that survive are `ActionButton` and `ActionToggle` (§26.11, §28.1).
 
 `LunaSwitch` puts its `Label` into `OnContent` **and** `OffContent` rather than `Content`. That places the text beside the knob and keeps it there — the same single line the `CheckBox` it replaces already drew. `Content` stacks it above, and the stock On/Off captions say nothing the knob's own position does not.
 
@@ -1254,3 +1258,2240 @@ The gain is the reason for doing it: an application linking `EmuSen.LunaP` no lo
 So the table in §25.1 says MIT for that row because that is what the package declares, and the declaration is about the package. **Whether it is also the correct term for a typeface embedded inside it is a question this document cannot answer and should not pretend to.** Inter upstream is widely distributed under the SIL Open Font License 1.1, which permits commercial use and embedding but expects its notice to travel with the font and reserves the font's name. If that is the operative term, the notice is not travelling, and it was not travelling under the GPL either — this is inherited, not introduced.
 
 Recorded as a hazard rather than a defect because the finding is real and its consequence is not established: it is Avalonia's declaration to make, LunaP only passes it along, and nothing about MIT versus GPL-3.0-or-later on LunaP's own code changes any of it. A consumer whose legal review asks about bundled fonts should be pointed here and then upstream, rather than at a table that reads MIT and stops.
+
+---
+
+## 26. The shell, and a method this document did not have
+
+Everything in the toolkit before this section arrived the same way: somebody wrote it by hand in a
+consumer, then wrote it again somewhere else, and §21 counted the copies. **The question that
+produced this section was a different one — "what does Qt6 offer that this does not"** — and that
+is a top-down method §21 was written specifically against. Its rule is that *"an item earns a
+place here by having been written more than once, by somebody who was not trying to write a
+toolkit"*, and it says outright that something hand-rolled once is a hazard note rather than a
+roadmap entry.
+
+So each piece below says which method chose it, rather than letting a Qt-shaped list borrow §21's
+evidence. **Some of it turned out to have evidence after all**, which was found by running the
+survey rather than by assuming either way: §26.1 is that survey, and it opens by correcting the
+first draft of itself.
+
+### 26.1 The survey this section should have started with
+
+**This subsection replaces one that was wrong, and the error is the reason to read it.** The first
+draft of §26.1 said that the shell had no hand-rolls to count, and offered as support that the §21
+survey "found no menu bars, no toolbars and no context menus either". Nobody had looked. That
+sentence was an inference from §21.4's finding about `ToolTip` and `AutomationProperties`,
+presented as though it were a result — which is the one thing this document's header rules out
+absolutely. So the survey was run, over five consumers this time, and it found something.
+
+**There is a menu bar, and it is a catalogue of everything `LunaAction` exists to fix.**
+`EmuSen.Mistress/Views/MainWindow.axaml:12-60` declares one by hand: **29 `MenuItem`s**, four of
+them `ToggleType="Radio"`, three `ToggleType="CheckBox"`, across File, Emulation, View and
+Settings. What is around it matters more than the count:
+
+- **Seven `SubmenuOpened` handlers**, whose whole job is to re-derive state that nothing carries.
+  `MainWindow.axaml.cs:563-583` is fifteen lines setting `IsEnabled` on seven items, `IsChecked` on
+  five, and rewriting two headers, **every time the menu is opened**.
+- **The consequence is already recorded in the code**, at `MainWindow.axaml.cs:573`: *"Only synced
+  here, never from Pause/ResumeEmulation."* The pause tick is correct while the menu is open and at
+  no other time. That is not a bug somebody missed; it is a comment somebody wrote, because with no
+  command object there is nowhere else to put the truth.
+- **A hand-rolled `ICommand`**, `SelectSlotCommand` at `MainWindow.axaml.cs:638-645`: eight lines,
+  and its `CanExecuteChanged` is `{ add { } remove { } }` — an event that never fires, which is
+  precisely the enabled-state plumbing that has to be replaced by a `SubmenuOpened` handler.
+- **Radio groups by hand**, `MainWindow.axaml.cs:576-579`: four `IsChecked = _baseSpeedPercent == …`
+  assignments, which is `ActionGroup` written as arithmetic.
+- **A second, unrelated shortcut subsystem.** `Input/HotkeyBindingMap.cs:8-40` maps seven
+  `HotkeyAction`s to keys — and **six of the seven name a command that also has a menu item**:
+  Save State (F5), Load State (F8), Pause (P), Fullscreen (F11), Exit to Library (Escape), Fast
+  Forward (Tab). The menu and the hotkey map share no object, no label and no enabled state.
+- **`InputGesture` appears zero times in the entire corpus.** The application has hotkeys and its
+  menu never tells anybody what they are. §26.5 called that trap a hazard; it is not a hazard, it
+  is what the one real menu bar in the corpus does today.
+
+So the honest table:
+
+| Piece | Chosen by | Evidence |
+|---|---|---|
+| `LunaAction`, `ActionGroup`, `MenuBar` | **counted** | one menu bar, 29 items, 7 state-sync handlers, a hand-rolled `ICommand` with a dead `CanExecuteChanged`, four hand-written radio assignments, and a parallel hotkey map duplicating six of its commands |
+| shortcut binding | **counted** | `HotkeyBindingMap` versus the menu, with `InputGesture` used zero times |
+| `SplitPane` | **counted** | `CheatDatabaseWindow.axaml:52` fakes one as `ColumnDefinitions="2*,12,3*"`, the `12` being a spacer; no `GridSplitter` in any repository (§21.2) |
+| `Card` | **counted** | three sites paint a `Border` with FluentTheme's `SystemChromeLowColor`, a key LunaP's theme cannot reach (§21.2) |
+| `ToolBar`, context menus | **Qt parity** | genuinely zero: no toolbar, no `ContextMenu`, no `ContextFlyout` anywhere in five repositories |
+| `SidePanel`, `AppWindow` | **Qt parity** | no docked panel anywhere; the shell arrangement is Qt's, not a count |
+
+**§21's rule is that one hand-roll is a hazard note rather than a roadmap entry, and this is one
+site.** It is worth saying why it is treated as more than that anyway: the rule counts *sites*
+because a thing written twice is a thing whose shape has been confirmed by two authors. Here one
+site contains twenty-nine items, seven handlers, a bespoke `ICommand` and a whole second subsystem
+for the same commands — the repetition is inside the site rather than across sites, and it is the
+same repetition the rule is trying to detect. A reader who disagrees with that reasoning should
+know it is reasoning and not a count of two.
+
+**What the survey did not find is left standing.** There is no toolbar and no context menu in any
+consumer, so `ToolBar` and `Menus.Context` are Qt-parity choices with no evidence behind them, and
+they are marked as such above rather than folded into the counted rows. The same goes for
+`SidePanel` and `AppWindow`: the argument for them is "Qt has one and every application that grows
+past one window wants one", which is an argument, not a measurement.
+
+**One thing the survey settles that the first draft got backwards.** It is not true that the
+toolkit's consumers never attempted a shell. One of them built most of a menu bar, badly, and
+wrote comments explaining which parts of it are only correct some of the time. The reason §21
+missed it is that §21 was looking for *duplication between* sites and this is duplication *within*
+one — which is a fact about the method, exactly as §21.4's correction says.
+
+### 26.2 The gap, in Qt's vocabulary
+
+What a `QMainWindow` application is made of, and what LunaP had before this section:
+
+| Qt | LunaP before | LunaP now |
+|---|---|---|
+| `QAction` | nothing | `Commands/LunaAction.cs` |
+| `QActionGroup` | nothing | `ActionGroup`, same file |
+| `QMenuBar` / `QMenu` | nothing | `Controls/MenuBar.cs`, `Commands/LunaMenu.cs` |
+| `QToolBar` | `ButtonBar` (a run of buttons the caller owns) | `Controls/ToolBar.cs` |
+| context menus | nothing | `Menus.Context` |
+| `QShortcut` / `QKeySequence` | nothing | `Menus.BindShortcuts` |
+| `QSplitter` | nothing (`2*,12,3*`) | `Controls/SplitPane.cs` |
+| `QGroupBox` | nothing (FluentTheme's key) | `Controls/Card.cs` |
+| `QDockWidget` | nothing | `Controls/SidePanel.cs`, minus floating — §26.7 |
+| `QMainWindow` | `ToolWindow` (chrome, geometry, Escape) | `Windowing/AppWindow.cs` |
+| `QStatusBar` | `StatusBar`, instantiated by nobody | the same control, now with a window that puts it somewhere |
+
+The last row is the §21.2 observation restated: *"a control nobody uses and a layout everybody
+rewrites are usually the same bug."* `StatusBar` was never missing. What was missing was a window
+with a bottom to put it at.
+
+### 26.3 `LunaAction`, and why a command object rather than a handler
+
+"Save" is a menu item, a toolbar button, a context-menu entry and a `Ctrl+S` binding. Without a
+command object that is four declarations kept in step by hand: four labels, four enabled states,
+and a shortcut written once in a `KeyBinding` and once again as the grey text on the right of the
+menu, where nothing checks that the two agree.
+
+The failure mode is worth naming because it is quiet: **the menu item greys out and the toolbar
+button does not.** The button stays clickable and does nothing, and the user's evidence says the
+application is broken rather than that the command is unavailable.
+
+Three decisions inside it:
+
+- **It is an `ICommand`.** Avalonia's `Button`, `MenuItem` and `KeyBinding` all take one already,
+  so an action drops into a control this toolkit has never heard of. A LunaP-shaped command that
+  only LunaP controls could consume would be §1's mistake in a new place.
+- **A checkable action flips before its handler runs**, which is Qt's order and the only one that
+  makes a one-line handler possible. Setting `IsChecked` directly does *not* invoke the handler:
+  that is the difference between the application saying what is true and the user asking for a
+  change, and collapsing the two is how a settings dialog applies everything twice on open.
+- **A separator is an action with nothing to do**, not a second item type. One list type, one
+  loop, and the divider is written where it goes.
+
+**It carries no icon, and that is a gap rather than a decision that closed.** Qt's `QAction` has a
+`QIcon`; LunaP has no icon system at all — no set, no resolver, no theming for one — and an
+`object Icon` property would invite a raw `Bitmap` into a toolkit that could not restyle it with
+the theme. §26.12.
+
+### 26.4 The menu bar, the toolbar, and one item type
+
+`MenuBar` takes `LunaMenu` objects and builds controls from them; nothing built is kept. A
+top-level entry is a plain `MenuItem` and **not** an action, deliberately: *File* cannot be
+invoked, checked, disabled or bound to a key, and giving it an action would put three uninvokable
+actions in front of the shortcut binder.
+
+`ToolBar` is not `ButtonBar` and neither gained a mode switch. `ButtonBar` is a right-aligned run
+of `Button`s the caller built and owns, for the bottom of a window. `ToolBar` is built from
+actions, left-aligned, and every item follows its action's label, enabled state and checked state.
+
+`ActionMenuItem`, `ActionButton` and `ActionToggle` **follow** an action rather than copying it,
+and the subscription is attached and detached with the logical tree. An action lives as long as
+the application and a menu item lives as long as its window, so subscribing in a constructor and
+never detaching leaks every closed window's menu items into the action's `Changed` list — a leak
+that grows with the number of times a dialog is opened.
+
+**One ordering problem is designed around rather than resolved.** Avalonia's `MenuItem` toggles
+its own `IsChecked` when clicked, and whether that happens before or after the `Click` event
+reaches a handler is an implementation detail of a control this toolkit does not own. Rather than
+encode a guess, `ActionMenuItem` treats the action as the only truth and puts `IsChecked` back
+whenever anything else moves it. Both orders converge, and it picks up a case neither covers: a
+grouped action clicked while already checked, where an unguarded toggle would uncheck the only
+checked member of a radio set.
+
+### 26.5 Shortcuts, and a trap in the menu itself
+
+**`MenuItem.InputGesture` is display only.** It draws "Ctrl+S" on the right of the item and binds
+absolutely nothing. That is worth stating loudly because the resulting menu looks like a working
+one: the shortcut is written in the exact place a user goes to learn it, and pressing it does
+nothing at all. `Menus.BindShortcuts` is the separate act that makes it real, and `AppWindow` does
+it for every action in its menus and its toolbar.
+
+**Two commands on one key is a defect, and a silent one.** Avalonia runs the first matching binding
+and stops, so the second action never fires while the menu goes on advertising its shortcut. It is
+reported through `LunaSettings.Diagnostics` rather than thrown, on the same principle the theme
+loader follows: a menu that is wrong in one entry should still open.
+
+That widens what the diagnostics sink is for. It was *"this file would not load, and why"* (§19.1)
+and is now also *"this shortcut will not fire, and why"*. Same shape of problem — recoverable,
+invisible, and the on-screen evidence says it should have worked — so it goes to the sink a host
+has already installed rather than to a second one nobody would.
+
+**The same action in two places is not a conflict**, and getting that wrong would have made the
+diagnostic worse than useless: an action in the File menu *and* on the toolbar is the arrangement
+this whole design is for, and reporting "Ctrl+S is bound to both Save and Save" trains a reader to
+ignore the message that catches the real collision.
+
+### 26.6 `SplitPane`, and why the divider is remembered in pixels
+
+This one has §21's kind of evidence: a consumer faking a split pane with a spacer column, and no
+`GridSplitter` anywhere in three repositories. Not because nobody wanted a draggable divider, but
+because getting one means three column definitions, a splitter, two minimum widths and somewhere
+to keep the size the user chose — and at that point people write `2*,12,3*` instead.
+
+**One pane is fixed and the other elastic**, which departs from `QSplitter`'s proportional model
+and is the more useful behaviour for what a splitter is used for: a sidebar next to a document
+does not want to grow when the window is widened, and the document does. Qt says the same thing
+less directly with stretch factors. `Fixed` names which side, so a right-hand panel works as well
+as a left-hand one.
+
+**The divider is remembered in pixels, not as a fraction.** A fraction survives a window resize by
+moving the divider, which is precisely what the user was being exact about when they dragged it:
+they made the sidebar wide enough for the longest filename, not wide enough for 22% of a window
+they may never open at that size again.
+
+Two implementation notes worth keeping:
+
+- **A drag can only be observed through the grid definition.** `GridSplitter` writes the new length
+  straight onto the `ColumnDefinition`; there is no "dragged" event reporting where it ended up. So
+  `SplitPane` subscribes to the definition's `PropertyChanged` and mirrors it into `FixedSize`,
+  with a `Suppressor` (§22.2) keeping the two from driving each other.
+- **The write is debounced by 400ms and flushed on the way out of the visual tree.** A drag raises
+  a property change per frame, and `panes.json` is a full read-modify-write; without the debounce
+  that is the whole file rewritten sixty times a second. Without the flush, a drag followed
+  immediately by closing the window loses the last thing the user did.
+
+`PaneLayoutStore` exposes `Update(key, edit)` rather than a whole-record `Save`, and that is not
+tidiness. **One key has two writers**: the divider owns `Size` and the panel owns `Collapsed`, and
+they share an entry on purpose because "the explorer is 320 wide and currently shut" is one fact
+about one panel. Two whole-record writers would mean whichever saved last discarded the other's
+field — presenting as a panel that forgets its width whenever you close it.
+
+### 26.7 `SidePanel`: docking without floating
+
+This is `QDockWidget` with the floating taken out, and the omission is the design rather than an
+unfinished edge of it.
+
+What a dock widget is used for — an explorer down the left, an output pane along the bottom, a
+properties panel on the right — needs a title, a way to shut it, a remembered width and a menu
+entry to bring it back. What costs the other nine tenths of `QDockWidget` is tearing it off into
+its own window, dragging it to a different edge, and tabbing two together: a drag protocol,
+floating windows, hit-testing against every dock site, and a layout format to serialise the
+result. §26.12 records that as a gap with its name on it.
+
+**The toggle is an action**, which is where this section meets §26.3. Qt has
+`QDockWidget::toggleViewAction()` for the same reason: the View-menu entry that shows and hides a
+panel must be *the same object* as the panel's own close button, or the tick and the panel drift
+apart the first time somebody uses the button.
+
+**A closed panel is removed from the layout, not hidden in place.** An invisible pane still owns
+its grid track and its divider, so hiding it leaves the middle of the window ending 240 pixels
+early with nothing in the gap.
+
+### 26.8 `AppWindow`
+
+It extends `ToolWindow` and changes nothing it inherited. Remembered geometry, the restyle hook
+and the Escape behaviour work exactly as before, and every part of the shell is empty until
+something is put in it: **an `AppWindow` with no menus, no toolbar, no panels and no status line
+lays out identically to a `ToolWindow` with the same content**, and a test says so.
+
+That is not politeness. §9.1 refused a base class that altered behaviour by being inherited, and
+§21.4 found six windows in one application that had already refused `ToolWindow` itself — a shell
+that levied an empty menu strip on everything deriving from it would earn the same treatment.
+
+**The three dividers are built once and left in the tree with a null pane where no panel is
+docked.** `SplitPane` collapses a null pane and its divider together, so this costs an empty grid
+track and buys the alternative's whole problem: re-parenting the central content every time
+somebody toggles a panel, which is how a control ends up with two logical parents and an exception
+nobody can reproduce. The consequence is visible in one test — a shell with one panel contains
+four `SplitPane`s, three of them the shell's own.
+
+Nesting is left outermost, then right, then bottom, which is what makes a left panel full height
+and a bottom panel sit under the middle of the window rather than across the whole of it.
+
+**The status bar appears when something is put in it and then stays**, even if the message is
+cleared. A strip that came and went with the text would move every control in the window by its
+own height each time an operation finished.
+
+### 26.9 `Card`, and the one new palette token
+
+Three consumers paint a `Border` with FluentTheme's `SystemChromeLowColor` (§21.2). The
+interesting half of that finding is that §4's centralisation check greps for hard-coded hex and
+these three are not hard-coded — they are sourced from the wrong dictionary, so a theme that
+restyles the whole application leaves all three behind. The card is not new chrome; it is the
+chrome those three already drew, on a key a theme can reach.
+
+**`LunaBorder` is the first token in this palette that is neither a surface nor something written
+on one**, and the shell needed it four times over: a card's edge, the rule under a panel header,
+the divider a splitter is dragged by, and the line under the toolbar. One token rather than four,
+because four would be four things to keep in step for a distinction nothing in the kit draws.
+
+**It was chosen against 3:1, and the obvious value fails that.** `#3C3C3C` is what a dark theme
+reaches for and it measures **1.51:1** against `LunaSurface` — fine for decoration and not fine
+for a splitter, because WCAG 1.4.11 asks 3:1 of anything you must see in order to use it, and
+§26.11 records that the divider is a control a keyboard can focus and move. Measured:
+
+| | on `LunaSurface` | on `LunaInputSurface` |
+|---|---|---|
+| Dark `#6E6E6E` | **3.27:1** | 3.00:1 |
+| Light `#8C8C8C` | **3.03:1** | 3.36:1 |
+| *(rejected)* dark `#3C3C3C` | 1.51:1 | 1.39:1 |
+| *(rejected)* light `#C8C8C8` | 1.51:1 | 1.67:1 |
+
+`PaletteVariantTests` holds both columns at 3:1. Note that this is a **different floor from the
+tests either side of it**: those are WCAG 1.4.3 and about reading text, where the dark column is
+held to 4.5:1 with one measured exception (§23.4).
+
+A theme that wants a subtler divider can have one — `split-pane .rule` is in the CSS vocabulary —
+which is the right place for that decision, because somebody overriding it has decided it for
+themselves rather than inheriting it by default.
+
+### 26.10 What this cost, in numbers
+
+- **Twelve new files**: `Commands/LunaAction.cs`, `Commands/LunaMenu.cs`, `Commands/Menus.cs`,
+  `Controls/ActionControls.cs`, `Controls/MenuBar.cs`, `Controls/ToolBar.cs`, `Controls/Card.cs`,
+  `Controls/SplitPane.cs`, `Controls/SidePanel.cs`, `Controls/LunaTable.cs` (§27),
+  `Windowing/AppWindow.cs`, `Windowing/PaneLayoutStore.cs`.
+- **The suite went from 237 tests to 304**, all passing, in the same ~3 seconds.
+- **One new palette token** (`LunaBorder`), spelled in both halves (§2.1) and in both variants.
+- **Five new CSS elements** — `menu-bar`, `tool-bar`, `card`, `split-pane`, `side-panel` — with
+  six template parts between them.
+- **No new `PackageReference`.** Every piece of this is Avalonia and `System.Windows.Input`, so
+  §1's rule is untouched and there is no licence to record.
+- **The gallery is now an `AppWindow`**, which is the only honest way to show a shell: a menu bar
+  is not something you look at next to a meter row.
+
+### 26.11 The guards, and what each sabotage turned red
+
+Twelve deliberate breakages, run one at a time against the suite. **Two of them turned nothing
+red, and those are the useful entries.**
+
+| Sabotage | Turned red |
+|---|---|
+| `ActionMenuItem` loses `StyleKeyOverride` | **nothing — the guard did not cover its own trap** |
+| *(after adding a templated-at-all assertion)* the same | `A_menu_item_follows_its_actions_label_and_enabled_state` |
+| `ActionButton` loses `StyleKeyOverride` | **nothing** |
+| `ActionToggle` loses `StyleKeyOverride` | **nothing** |
+| `MenuBar` loses `StyleKeyOverride` | 2 tests |
+| `ActionMenuItem`'s `IsChecked` write-back guard removed | `A_menu_items_tick_cannot_be_moved_behind_the_actions_back` |
+| `ActionButton` stops mirroring the enabled state | `A_toolbar_button_follows_its_action` |
+| `Menus` stops recognising the same action twice | `The_same_action_in_two_places_is_not_a_conflict` |
+| `SplitPane` keeps the divider when a pane is empty | `An_empty_pane_takes_the_divider_with_it` |
+| `SplitPane` stops saving on the way out of the tree | `A_dragged_divider_is_remembered_under_its_key` |
+| the splitter loses its accessible name | `A_divider_can_be_found_and_moved_from_the_keyboard`, and the shell-wide guard, reporting *"Focusable but unnamed: GridSplitter"* |
+| `LunaBorder` set to `#3C3C3C` | the contrast guard, reporting *"1.51:1, below 3:1"* |
+| `Card` stops collapsing an absent header | `A_card_with_no_header_collapses_the_header_row` |
+
+Three findings came out of this rather than out of writing the code:
+
+**The style-key trap does not bite uniformly.** Dropping the override turns tests red for `Menu`
+and `MenuItem` and turns nothing red for `Button` and `ToggleButton` — Avalonia finds those a
+theme anyway. **Why they differ was not established**, and the overrides stay on all four: one
+line each, against a fallback that demonstrably does not apply to every control in the same file.
+The comment at the top of `Controls/ActionControls.cs` used to claim all three were load-bearing;
+it says this instead, because a comment that has drifted from the code is worse than none.
+
+**A property assertion is not a rendering assertion, and this pass proved it.** Every assertion in
+the menu-item test — `Header`, `IsEnabled`, `InputGesture` — passes for a control that draws
+absolutely nothing. The guard was written for §5.5's trap and did not cover it until an
+"it was templated at all" assertion was added. §5.5 has said this since the beginning and it was
+still got wrong here.
+
+**`GridSplitter` is a keyboard-operable control, and it was unnamed.** The whole-window
+accessibility guard, extended over a shell, reported it immediately. Measured before deciding what
+to do about it: the splitter is `Focusable`, is a tab stop, takes focus, and **one Left press moves
+a 200pt pane to 190** — so it is not an inert focus stop to be removed from the tab order, it is a
+real control that a screen-reader user reached and was told nothing about. It has a name now,
+`AppWindow` names each of its own after the panel it resizes, and a test holds both halves: that
+it is reachable, and that it does something when reached. That is the second time this particular
+test has found a control nobody had thought about; §24.1 was the first.
+
+**One Avalonia behaviour measured, and worth knowing.** Binding `Command` on a `Button` disables it
+through `IsEffectivelyEnabled` and **leaves `IsEnabled` true**. So `ActionButton` (which binds
+`Command`) and `ActionToggle` (which syncs the property directly) answered differently for the
+same disabled action. `ActionButton` now mirrors the state onto the property as well, so two
+controls in one file cannot disagree about what disabled means.
+
+### 26.12 What this does not do
+
+Named rather than left to be discovered, because a shell that is 80% of `QMainWindow` invites the
+assumption that it is all of it.
+
+- **No floating or re-dockable panels, no tabbed dock groups, no MDI.** §26.7 is the argument. One
+  panel per side, and a second on the same side replaces the first rather than silently stacking.
+- **No icons anywhere.** No `QIcon` equivalent on an action, so a toolbar is a row of words. This
+  is the single most visible difference from a Qt toolbar and it needs an icon system, not a
+  property (§26.3). The §26.1 survey is mildly reassuring here and no more than that: `Icon=` is
+  used **zero times** across five repositories, so nobody is currently working around its absence
+  — but nobody has had a toolbar to put an icon on either.
+- **No vertical toolbar.** `QToolBar` can run down a side; this one is horizontal.
+- **No `QToolButton` drop-downs**, no split buttons, no overflow chevron when a toolbar is wider
+  than its window — it clips.
+- **No native macOS menu bar.** Avalonia has `NativeMenu` for putting a menu in the system bar,
+  and `MenuBar` does not use it, so a macOS application gets an in-window menu strip where the
+  platform expects one at the top of the screen.
+- **No `QWhatsThis`, no status-bar tips**, and no tooltip on a menu item (only on toolbar items).
+- **Item views: a flat table exists, a tree does not.** `LunaTable<T>` is in §27. This entry
+  originally said the route was decided — `Avalonia.Controls.TreeDataGrid`, "MIT" — and **that
+  was wrong about the licence**: the package requires a paid Avalonia Accelerate key, which §27.1
+  documents out of the artifact. No dependency was taken; the table is built on stock Avalonia,
+  and `QTreeView`'s hierarchy is still absent with no evidence yet asking for it.
+
+### 26.13 What this costs a consumer
+
+**Nothing breaks.** Every addition is additive: no control changed shape, no palette key moved, no
+template part was removed or renamed, and no automation peer changed what it reports. A consumer
+on 0.6.0 who upgrades and changes nothing has the same application.
+
+Two invoices, both expected rather than surprising:
+
+- **§21.5's invoice comes due.** `ThemeVocabularyTests` stayed in EmuSen (§20.2) and compares
+  EmuSen's `man theme` page against `CssTheme`'s allow-lists **by set equality in both
+  directions**. One new palette token and five new CSS elements therefore turn EmuSen's suite red
+  until EmuSen's documentation is updated — a failing test in a repository this change never
+  touched. §21.5 predicted exactly this and called it the invoice for leaving that test behind. It
+  should be expected, not debugged.
+- **A second settings file.** `panes.json` appears next to `windows.json` for any application that
+  gives a pane or a panel a key. Nothing writes it otherwise; it is opt-in like everything else
+  the kit persists.
+
+---
+
+## 27. Item views, and a dependency that was not taken
+
+`LunaList<T>` is a flat list of strings. Everything above it — a table, a tree, columns — was
+recorded in §26.12 as absent, with a note that the route was decided and only the code was
+missing. **The route was decided on a false statement about its licence, and this section is what
+happened when somebody checked.**
+
+### 27.1 `Avalonia.Controls.TreeDataGrid` requires a paid licence
+
+The decision to use it was taken on the claim that it is "an official Avalonia package, MIT".
+**That claim was wrong.** Read out of the 12.1.0 package itself:
+
+| Where | What it says |
+|---|---|
+| `README.md`, shipped in the package | *"As of 11.2.0 this package requires an Avalonia Accelerate license: https://avaloniaui.net/accelerate"* |
+| `.nuspec` | **no `<license>` element and no `licenseUrl` at all**; `<copyright>Copyright 2019-2026 © AvaloniaUI OÜ</copyright>` |
+| `build/Avalonia.Controls.TreeDataGrid.props` | `<AvaloniaUILicenseKeyProduct Include="Avalonia.Controls.TreeDataGrid" />` |
+| dependencies | `AvaloniaUI.Licensing 3.1.1`, whose own description is *"Internal license validation infrastructure for Avalonia Pro and XPF components. Not intended for direct use or reference."* |
+| `_manifest/cyclonedx/bom.cdx.json`, shipped in the package | `Avalonia.Controls.TreeDataGrid: licenses=None` — while `Avalonia`, `Avalonia.Remote.Protocol`, `Avalonia.BuildServices` and `MicroCom.Runtime` in the same BOM each declare `MIT` |
+| `themes/README.md` | *"the assembly is distributed in obfuscated form"* |
+
+Two further notes so nobody re-derives this from scratch. **It is not a change in the 12 line**:
+11.3.2 carries the same `AvaloniaUI.Licensing` dependency and the README dates the requirement to
+11.2.0. And **it is not a copyleft problem**, which is what §25 was watching for — it is a
+commercial one, which the licence table in §25.1 has no column for.
+
+**That ends it, on rules this project already had.** §1 says the toolkit references Avalonia and
+nothing else; the csproj already takes six Avalonia packages, so an official seventh would have
+been an easy argument to make. The rule that actually bites is the other one: *"a consumer
+inherits what is linked, and a copyleft dependency would hand them a term the licence on the tin
+does not mention."* A licence-keyed component is that same sentence with a worse ending — LunaP
+says MIT on the tin, and a consumer who used one LunaP control would need to buy an Avalonia
+Accelerate licence to ship it. §25 spent a whole section getting a term off this package's
+consumers; this would have put a heavier one back.
+
+**Recorded rather than quietly avoided**, because the next person to want a data grid will reach
+for the same package for the same good reasons, and the licence is not visible from the NuGet
+listing or from the package name.
+
+### 27.2 What the evidence asks for, which is smaller than a data grid
+
+The §26.1 survey was extended to cover this, over all five consumers:
+
+- **Zero `DataGrid`s. Zero `TreeView`s. Zero hierarchical views of any kind.** Six `ListBox`es, one
+  of which carries an `ItemTemplate` — the hand-built row §21.2 already recorded.
+- The one place a columnar view exists is **not in a consumer of this toolkit yet**. It is
+  `bima/viewer.py:460`, in the Python application `BIMA-C` is porting:
+
+      self.tree.setHeaderLabels(["name", "type", "pg"])
+      …
+      QTreeWidgetItem(self.tree, [f.name, f.type, str(f.page + 1)])
+
+  A `QTreeWidget` with every row added at the top level: **a three-column list with the tree part
+  unused.** `BIMA-C`'s `docs/Port.md` stage 4 is the window, and this list is in it.
+
+So the thing to build is a flat list with columns, and `LunaTable<T>` is exactly that and nothing
+more. A hierarchical view has **no** evidence behind it in any repository, and building one
+speculatively is what §21's rule exists to stop.
+
+**One site is one site**, and §21 calls that a hazard note rather than a roadmap entry. What makes
+this different from a speculative control is that the site is a specification rather than a
+sighting: it is the UI a scheduled port has to reproduce, so the alternative to building it here is
+`BIMA-C` hand-rolling it there — which is the exact shape of every item in §21.
+
+### 27.3 A generic control cannot be styled by name, and the trap in the workaround
+
+`LunaTable<T>` needs a header row, so unlike `LunaList<T>` it cannot borrow `ListBox`'s theme and
+be done. It needs a template, and a template comes from a style, and **a style selector cannot
+name a generic type**. The answer is a non-generic abstract base — `LunaTable`, same name,
+different arity — that the theme can select and the generic half derives from.
+
+**And the first draft of that style matched nothing at all.** `Selector="luna|LunaTable"` is an
+EXACT type match in Avalonia: it selects instances whose type is precisely `LunaTable`, and every
+instance there will ever be is a `LunaTable<T>` deriving from it. The selector has to be
+`:is(luna|LunaTable)`. The symptom was §5.5's symptom for the fourth time in this document — a
+control with no template, no exception, and nothing on screen.
+
+Every other style in `Controls.axaml` names a type that is instantiated directly, which is why
+this trap has not appeared here before and why it is worth its own paragraph: **the moment a
+control is subclassed or made generic, a bare type selector stops reaching it.**
+
+The same exactness is why `luna-table` is **not** in the CSS theme vocabulary. `CssTheme` compiles
+an element name to `OfType(...)`, so a `luna-table { … }` rule would silently match no instances;
+`LunaList<T>` is absent from that vocabulary for the same reason and always has been. Making the
+CSS compiler use `Is(...)` instead would change what every existing element name matches, which is
+a bigger decision than this control needs.
+
+### 27.4 What a reader hears, and what the control declines to claim
+
+A row is a `Grid` of `TextBlock`s, which announces as its concatenated text at best — *"Site text
+1"* — three values with nothing to say which column each came from. So every row is given a name
+built from its own cells paired with their headers: **"name: Site, type: text, pg: 1"**. That is
+the information the column layout is carrying visually, and it is the half of a table a reader
+actually needs.
+
+**The control reports itself as a `Group`, deliberately not as `DataGrid` or `Table`.** Those UIA
+types come with `IGridProvider` and `ITableProvider` — the patterns that let assistive technology
+ask for "row 4, column 2" and navigate a grid as a grid. This control implements neither, because
+it is a list of rows that happen to be laid out in columns. Claiming the type would advertise
+navigation that is not there, which is worse than the honest smaller claim: §5.3's argument about
+`RgbaImageView` refusing to invent alt text is the same argument.
+
+### 27.5 What it does not do
+
+- **No hierarchy, no expanders.** The evidence is a flat list; a tree is a different control.
+- **No sorting**, by header click or otherwise, and no column reordering or drag-resizing.
+- **No cell editing**, no multi-column selection, no frozen columns.
+- **It does virtualise**, and that is measured rather than assumed: the gallery's table sits below
+  the fold of a scrolled page and realises exactly **one** row container, which is why the gallery
+  test asserts "at least one row" and `TableTests` asserts all three against a table on screen.
+- **Column widths are the caller's**, given as GridLength strings. `Auto` works — every column is
+  put in a shared size group and the root is a shared size scope, because a header grid and a row
+  grid are separate grids that would otherwise size an `Auto` column independently and line
+  nothing up.
+
+### 27.6 The guards, and a defect a render found
+
+Five sabotages, each run against the suite:
+
+| Sabotage | Turned red |
+|---|---|
+| the style goes back to an exact type selector | 9 of 12 table tests, all with "no matching element" for `PART_Header` |
+| columns stop sharing a size group with the header | `Columns_share_a_size_group_with_their_header` |
+| a row stops naming its cells by column | `A_row_announces_its_cells_with_the_column_they_are_in` |
+| `Refresh` stops restoring the selection | 2 tests |
+| a selection made before the template is dropped | `A_row_selected_before_the_template_existed_is_still_selected` |
+
+**The last one is a defect the tests did not find and a picture did.** A window in this toolkit is
+built in its constructor — fill the table, select a row, show the window — and `Select` returned
+quietly when there was no template yet, so the selection was thrown away. Twelve passing tests, and
+the render dump showed a table with nothing highlighted. `FilterBar.SetFacets` holds pending facets
+for precisely this reason (§14.2), which is the second time this toolkit has needed that pattern
+and the first time it was noticed by looking rather than by asserting.
+
+Worth stating as a general point, because §10 is a whole section about a headless suite: **a render
+pass proves a window is not blank; it does not prove the window is right.** Looking at the picture
+is still a separate act.
+
+**And a separate act is not a guard**, which is what §28.2 does about it: the same script is run
+before the template and after it, and the two runs are each other's expected value. That turns
+"somebody has to look" into an assertion, and the sabotage table in §28.3 puts this exact defect
+back to prove it fails.
+
+---
+
+## 28. Two traps, and the guards that end them
+
+§27 closed with two findings, and both had the same shape: a defect this repository has met
+several times, fixed each time, and each time written up as a paragraph asking the next author to
+remember something. **A paragraph is not a guard.** The evidence is in the count — the style-key
+trap has now been recorded four times (§5.5, §14.1, §26.11, §27.3) and the before-the-template
+trap three (§5.6, §14.2, §27.6), each time by somebody noticing, never by the suite.
+
+This section is what replaced the two paragraphs. Neither guard asks anybody to remember anything:
+both find their subjects by reflection, so a control added tomorrow is covered the moment it
+compiles.
+
+### 28.1 A style that matches nothing, found by reflection rather than by memory
+
+`tests/EmuSen.LunaP.Tests/TemplateReachTests.cs`. Every concrete templated control in the kit is
+found by reflection, put in a `ToolWindow`, shown, and required to have visual children. That is
+the whole assertion, because that is the whole symptom: a control whose style never matched has no
+template, no exception, and nothing on screen.
+
+**Twenty-three controls are swept**, which is every public non-abstract `TemplatedControl` in
+`EmuSen.LunaP.Controls`. `TemplatedControl` is exactly the right net rather than a convenient one:
+`ContentControl`, `ItemsControl`, `Menu` and `TabControl` all derive from it, so `Card`, `ToolBar`,
+`MenuBar` and `Tabs` are in; `SectionHeader`, `HintText` and `MonoText` are `TextBlock`s styled by
+property setters, with no template to fail to get, and fall outside by construction rather than by
+an exclusion list somebody has to maintain.
+
+Generic controls are closed over `string`, which satisfies both `where T : class` constraints in
+the kit. Which argument is used does not matter, and that is the point: §27.3's trap is that no
+selector can name `LunaTable<T>` for *any* `T`.
+
+**The first attempt was a lint over the selector text, and it was abandoned for two reasons.** It
+would only have caught the one cause — `luna|X` where `:is(luna|X)` was needed — while "no
+template" also comes from a missing `StyleKeyOverride`, a style file not included, or a renamed
+part. And then the decisive one, which is a fact about Avalonia worth recording on its own:
+
+> **Avalonia's XAML compiler strips compiled `.axaml` from the resource blob.** Enumerating
+> `AssetLoader.GetAssets(new Uri("avares://EmuSen.LunaP"), null)` on a built LunaP returns exactly
+> one entry, `avares://EmuSen.LunaP/!AvaloniaResourceXamlInfo`. `Controls.axaml` is compiled to IL
+> and is not there. Reading it would have meant reading the developer's working copy and calling
+> it the shipped artefact.
+
+**What the sweep is worth, measured rather than assumed.** Removing all eight `StyleKeyOverride`
+pins in the kit at once turns **six of the eight** red: `Tabs`, `MenuBar`, `LunaList<T>`,
+`LunaSwitch`, `ActionMenuItem` and `Dropdown`. The two that stay green are `ActionButton` and
+`ActionToggle` — which is §26.11's finding reproduced exactly, from the other direction and
+without anybody choosing what to test. Avalonia finds `Button` and `ToggleButton` subclasses a
+theme anyway; why it does was not established then and is not established now. **The sweep is
+therefore not a complete guard against the style-key trap and is not claimed as one.** It is a
+complete guard against a control rendering nothing, which is the symptom that matters.
+
+**The CSS vocabulary gets the same rule by the other route.** `CssTheme.TryCompile` builds
+`OfType(spec.Target)`, which is the same exact type match, so an element name for a subclassed type
+would let a host write a rule that parses, warns about nothing, and styles nothing — worse than a
+rule that was refused, because the host has no way to tell. §27.3 left the `OfType`-versus-`Is`
+choice open rather than change what every existing element name matches; a test now asserts that no
+type in the vocabulary is subclassed, which is what makes leaving it open safe. The day that stops
+being true the choice gets made, rather than discovered by a theme author whose rule does nothing.
+
+### 28.2 State set before the template, found by running it in both orders
+
+`tests/EmuSen.LunaP.Tests/TemplateOrderTests.cs`. A window in this toolkit is built in its
+constructor — make the control, fill it, select something, and only then show it. So every
+imperative method on a control is called **before** its template exists at least as often as
+after, and a method that writes straight to a template part does nothing at all on that path.
+
+§27.6 concluded that a render pass proves a window is not blank but not that it is right, and that
+looking at the picture is still a separate act. That is true, and it is not something a suite can
+rely on. **This is the same finding turned into an assertion**: run the identical script before the
+template and after it, and require the same answer. There is no baseline to eyeball and no picture
+to interpret, because the two runs are each other's expected value — which is also what makes a
+new case cheap, since nobody has to compute an expected result and then keep it true.
+
+Nine cases, covering every imperative method in the kit that can reach a template part:
+`ConsolePane.AppendLine`/`Clear`, `FilterBar.SetFacets`, `LunaTable.Column`/`Refresh`/`Select`,
+`LunaList.Refresh`/`Select`, `Dropdown.Fill`, `Tabs.Add`/`RemoveFrom`, `MenuBar.SetMenus`,
+`ToolBar.SetActions`, `RgbaImageView.SetFrame`/`Clear`.
+
+**Styled properties are not covered, and that is not a gap.** Avalonia stores them on the control
+and the template binds to them, so order cannot matter and there is nothing to guard. Only
+imperative methods can drop state.
+
+**Every imperative method is covered or explicitly excused.** A second test reflects over every
+public, non-inherited, non-accessor instance method on a kit control and requires it to be either
+in the case list or in an `Exempt` table with a stated reason. Four are excused today —
+`ConsolePane.FocusInput` and `FilterBar.FocusSearch` (moving focus is an act, not state),
+`ConsolePane.ResetHistoryRecall` (one private field the template never sees) and
+`SplitPane.SaveNow` (writes to the settings store, not to the control's appearance). Static methods
+never reach the list at all, having no control and therefore no part to miss. **A method added
+tomorrow fails this test until somebody decides which it is**, which is the difference between a
+registry and a wish.
+
+**Two things the harness had to learn, both found by the guard failing on its own first draft.**
+
+- **A dispatcher drain is not a layout pass.** `RunJobs` applies templates, but a `TabControl` does
+  not realise its `TabItem`s into the visual tree until something lays the strip out, so the `Tabs`
+  case read back an empty string in *both* orders. It captures a frame now, which is the public way
+  to force layout and the same one `UiTest.AssertLaidOut` uses.
+- **A comparison of two empty reads passes while asserting nothing.** That is §26.11's hollow guard
+  in a new costume, and it is guarded against explicitly: each case checks that the after-the-
+  template read is non-empty and does not begin with a zero count *before* comparing the two. It
+  earned its place immediately — the first draft of the `Tabs` case called `RemoveFrom(0)`, and
+  `RemoveFrom` means "drop everything from here on", not "drop the one at this index", so the case
+  emptied the control and would otherwise have compared two blanks and passed.
+
+### 28.3 The guards, and what each sabotage turned red
+
+Seven deliberate breakages, run against the suite.
+
+| Sabotage | Turned red |
+|---|---|
+| `:is(luna|LunaTable)` reverted to the exact selector `luna|LunaTable` | the sweep, for `LunaTable<T>` — *"was shown and has no visual children"* |
+| all eight `StyleKeyOverride` pins removed at once | the sweep, for **six of eight**: `Tabs`, `MenuBar`, `LunaList<T>`, `LunaSwitch`, `ActionMenuItem`, `Dropdown`. `ActionButton` and `ActionToggle` stayed green (§28.1) |
+| `LunaTable.Select` drops a selection made before the template — §27.6's defect, put back | `LunaTable.Column/Refresh/Select`, reporting *"0 row selected, model "* against *"1 row selected, model beta"* |
+| `ConsolePane` stops flushing its buffer on `OnApplyTemplate` | `ConsolePane.AppendLine/Clear`, reporting an empty pane against two lines |
+| `FilterBar` stops applying its pending facets | `FilterBar.SetFacets`, reporting *"0 items, showing "* against *"3 items, showing Video"* |
+| a new `public void Poke()` added to `SplitPane` | `Every_imperative_method_on_a_control_is_covered_or_excused`, naming `SplitPane.Poke` |
+| `ActionButton`'s factory removed from the sweep's table | `Every_kind_can_be_constructed_or_has_a_factory`, **and** the sweep itself for `ActionButton` |
+
+The three middle rows are the ones worth reading twice: each is a defect this repository has
+actually shipped, put back deliberately, and each is now caught by a test rather than by somebody
+looking at a picture.
+
+### 28.4 What this does not do
+
+- **It does not prove a control looks right**, only that it was templated and that its state does
+  not depend on call order. §10's render baselines and §7's gallery pass remain what they were.
+- **It does not catch every style-key removal**, measured at six of eight (§28.1).
+- **It does not cover windows.** `ToolWindow`, `PollingWindow`, `AppWindow` and `MessageWindow` are
+  `Window`s with their own lifecycle; `ShellTests` and `WindowingTests` cover those, and folding
+  them into a sweep that shows a control inside a window would mean showing a window inside a
+  window.
+- **It does not cover a control's own template parts being renamed** — a part renamed in both the
+  theme and the code is consistent and invisible to both guards, which is what `LunaPControlTests`
+  and the per-control suites are for.
+
+---
+
+## 29. One file per control, and a style that was never applied
+
+`Theme/Controls.axaml` had reached 508 lines and 23 selectors, and it grew every time a control was
+added — §26 put five elements into it, §27 a sixth. Nothing was wrong with any line of it. The
+problem was the shape: a file that accumulates has no natural place to stop, and "where does this
+style go" had exactly one answer, which meant the answer carried no information.
+
+`Theme/CssTheme.cs` had the same curve for the same reason, at 547 lines.
+
+### 29.1 The rule: the theme file mirrors the source file
+
+`Controls/` was already almost one file per control, so the split takes that structure rather than
+inventing one. `Theme/Controls/SplitPane.axaml` sits opposite `Controls/SplitPane.cs`, and CLAUDE.md's
+"a change that does not belong in any existing file wants a new file" now applies unchanged to both
+halves. Sixteen files came out of the one:
+
+| File | Selectors | Mirrors |
+|---|---|---|
+| `TextControls.axaml` | 3 | `Controls/TextControls.cs` |
+| `EmptyState.axaml` | 1 | `Controls/EmptyState.cs` |
+| `MeterRow.axaml` | 4 | `Controls/MeterRow.cs` |
+| `MeterList.axaml` | 1 | `Controls/MeterList.cs` |
+| `RgbaImageView.axaml` | 1 | `Controls/RgbaImageView.cs` |
+| `FieldRow.axaml` | 1 | `Controls/FieldRow.cs` |
+| `PathPickerRow.axaml` | 1 | `Controls/PathPickerRow.cs` |
+| `Bars.axaml` | 2 | `Controls/Bars.cs` |
+| `FilterBar.axaml` | 1 | `Controls/FilterBar.cs` |
+| `MenuBar.axaml` | 1 | `Controls/MenuBar.cs` |
+| `ToolBar.axaml` | 2 | `Controls/ToolBar.cs` |
+| `Card.axaml` | 1 | `Controls/Card.cs` |
+| `SplitPane.axaml` | 1 | `Controls/SplitPane.cs` |
+| `LunaTable.axaml` | 2 | `Controls/LunaTable.cs` |
+| `SidePanel.axaml` | 1 | `Controls/SidePanel.cs` |
+| `ConsolePane.axaml` | 1 | `Controls/ConsolePane.cs` |
+
+**Three control files have no style file, and that is the informative part of the table rather than
+an omission from it.** `ActionControls`, `LunaList` and `Widgets` (`LunaSwitch`, `Dropdown`, `Tabs`)
+all carry `StyleKeyOverride` and borrow FluentTheme's templates wholesale, so they have no styles of
+their own. Before the split that fact was invisible; now it is the absence of a file.
+
+`LunaTheme.axaml` becomes the index, and the order in it is the order the single file had. That
+order is **not** load-bearing — every style names a distinct control type, so none overrides another
+— but keeping it makes the split diffable against what it replaced, which is worth more than an
+alphabet.
+
+### 29.2 What each omission costs, measured
+
+The split introduces a failure mode the single file did not have: a style file that exists, compiles,
+and is not named in the index does nothing at all. That is the §5.5 symptom — no template, no error,
+nothing on screen — now reachable by forgetting one line.
+
+So it was measured rather than reasoned about. Each `StyleInclude` was deleted in turn and the suite
+run against the result:
+
+| Omission | Turned red |
+|---|---|
+| `SplitPane.axaml` | **11 tests** — `TemplateReachTests` naming `SplitPane`, nine `ShellTests`, and the gallery pass |
+| `TextControls.axaml` | **13 tests** — three `LunaPControlTests`, four `ThemeTests`, six `CssThemeTests` |
+| `MenuBar.axaml` | **nothing** — see §29.3; **1 test** after §30 fixed what that uncovered |
+
+The first two are the two mechanisms, and it is worth knowing they are different ones.
+`TemplateReachTests` catches a templated control because it requires a visual tree (§28.1). It cannot
+catch `SectionHeader`, `HintText` or `MonoText` at all — those are `TextBlock`s styled by property
+setters, with no template to fail to get, and §28.1 says so explicitly. What catches those is
+`LunaPControlTests`, which reads the palette back off a realised header. Fifteen of the sixteen files
+were covered, by one guard or the other, without anybody having written a guard for the split itself.
+
+**The sixteenth was not covered, and chasing that is what found §30.** It is covered now, by a third
+guard written for the defect rather than for the split.
+
+### 29.3 The sixteenth file, and the defect it was hiding
+
+`MenuBar.axaml` turned nothing red, and the reason is not a gap in the guards.
+
+**The style in it has never applied.** `MenuBar` sets `StyleKeyOverride` to `typeof(Menu)`, and it
+must — without that the Fluent `ControlTheme` never reaches it and the bar draws no menus at all
+(§5.5, §14.1, and `MenuBar.cs` records it as load-bearing and measured). But Avalonia matches a type
+selector against the **style key**, not the runtime type. So `luna|MenuBar` asks for a control whose
+style key is `MenuBar`, and by construction there is no such control. The same override that makes
+the menu bar render is what stops its own style from ever selecting it.
+
+Measured three ways, on Avalonia 12.1.0:
+
+- Setting the `Background` setter to `Red` and reading the property back off a realised `MenuBar`
+  returns **`Transparent`**. Neither setter arrives.
+- The same probe run against the tree **before** the split returns `Background=Transparent
+  Padding=0,0,0,0` — identical. The split did not cause this and did not change it.
+- Changing the selector to `Menu.luna-menu-bar` and adding that class in the constructor makes
+  `Background` apply — the probe returns `Red`.
+
+**The bar looks correct anyway, which is why nothing caught it.** `Transparent` is Avalonia's own
+`Menu` default, so the intent in the comment and the appearance on screen agree by luck. They would
+part company the moment FluentTheme changed that default, and the `Padding="2,0"` never arrived at
+all.
+
+#### 29.3.1 A correction, recorded because the wrong version was written down first
+
+This section originally ended by saying the defect was **left unfixed**, on the grounds that the
+class fix made `Background` apply but `Padding` still read `0,0,0,0` — "a second cause that has not
+been isolated". **That was wrong, and it was wrong because of how it was measured.** Reading
+`bar.Padding` off a control in one probe run and comparing it against a different probe run's build
+is not a measurement; the second cause never existed.
+
+`AvaloniaObject.GetDiagnostic` settles it, and is the tool that should have been reached for first:
+
+| Property | Before the fix | After |
+|---|---|---|
+| `Padding` | `0,0,0,0`, priority **`Unset`** | `2,0,2,0`, priority `StyleTrigger` |
+| `Background` | `Transparent`, priority `Style` | `Transparent`, priority `StyleTrigger` |
+
+`Unset` is the whole answer. **Nothing anywhere was setting `Padding`** — not LunaP, not Fluent — so
+there was no competing value to lose to, and one cause explains both setters. `Background` read
+`Transparent` at `Style` priority from FluentTheme, which is the coincidence that hid the defect.
+§30 records the fix, which turned out to be the one this section had already found and mistrusted.
+
+**This is a limit of §28.1 worth stating in its own terms.** That sweep catches a control that
+renders *nothing*. It cannot catch a control that renders *the wrong thing*, and a control which
+borrows a template through `StyleKeyOverride` always has a visual tree no matter what its own style
+does. That hole was found by sabotage rather than by reading, and §30 shows it was never confined to
+`MenuBar`.
+
+### 29.4 `CssTheme`, split four ways and still one type
+
+547 lines became four files, chosen by what makes each of them change:
+
+- **`Css/CssTheme.cs`** — the entry point, `CssThemeResult`, and the vocabulary queries `man theme`
+  reads back. Changes when the public surface does.
+- **`Css/CssVocabulary.cs`** — the element and property allow-lists. **This is the half that grows
+  with the control kit**, and it is also what a consumer's documentation test reads through
+  `ElementNames`, so an addition here is an addition to a published vocabulary (§26.13).
+- **`Css/CssParser.cs`** — the parse itself. Changes only when the grammar's shape does.
+- **`Css/CssValues.cs`** — text to Avalonia values: colours, numbers, font lists, resource keys.
+
+It stays **one `partial` type**, and the namespace stays `EmuSen.LunaP.Theme` even though the files
+now sit in `Theme/Css/`. Both are deliberate. `Parser` reaches the private allow-lists and the
+private converters, and nesting it inside the partial class is what keeps all three `private` rather
+than promoting them to `internal` so that separate types could see each other. And `CssTheme` is a
+public name a consumer has already written a `using` for — moving it to match a directory would be a
+breaking change bought with nothing but tidiness.
+
+### 29.5 What this does not do
+
+- **It does not change a single rendered pixel.** 339 tests passed before and after, and the
+  `MenuBar` probe returns the same two values on both trees. This is a move, not a repair.
+- **It does not guard the index directly.** There is no test asserting that every file in
+  `Theme/Controls/` is included, and there cannot easily be one: §28.1 established that Avalonia
+  strips compiled `.axaml` from the resource blob, so the shipped assembly cannot be asked what
+  style files exist. Enumerating the directory would mean reading the developer's working copy and
+  calling it the shipped artefact — the same reasoning that rejected linting selector text. The
+  coverage in §29.2 is indirect, and it is fifteen of sixteen rather than sixteen.
+- **It does not fix `MenuBar`.** §29.3 records the defect, the mechanism, and the half-fix that
+  works, and leaves the decision.
+- **It does not split `Palette.axaml` or `LunaPalette.cs`.** At 127 and 79 lines they are flat
+  key-value pairs a reader reads top to bottom, and §2.1's whole point is that the two halves are
+  compared against each other — splitting either would make that comparison harder to see.
+
+---
+
+## 30. A type selector matches the style key, and four elements that styled nothing
+
+§29.3 found one dead style on `MenuBar` and treated it as a fact about `MenuBar`. It was not. It is a
+fact about **`StyleKeyOverride`**, and the moment that is stated properly the question becomes: what
+else in this toolkit pins a style key?
+
+Eight controls do — `ActionMenuItem`, `ActionButton`, `ActionToggle`, `MenuBar`, `LunaList<T>`,
+`LunaSwitch`, `Dropdown` and `Tabs` — and every one of them does it for the reason §5.5 and §14.1
+record, which is that without it the stock Fluent theme never reaches the subclass and the control
+renders as nothing, or in `LunaSwitch`'s case throws on `PART_MovingKnobs`. The override is correct
+and stays.
+
+But it is not free, and the price was never written down: **a control styled as `Menu` cannot be
+selected as a `MenuBar`.** Avalonia resolves a type selector against the style key, so the same line
+that buys the template spends the type.
+
+### 30.1 What that cost, measured across the vocabulary
+
+Four of the eight are published CSS element names: `menu-bar`, `luna-switch`, `dropdown` and `tabs`.
+`CssTheme.TryCompile` built `OfType(spec.Target)` for all of them, which asks for a control whose
+style key is `Dropdown` — and there is never one.
+
+Measured by writing a real theme, loading it through `LunaTheme.Apply`, and reading the property
+back off a realised control:
+
+| Element | Rule | Theme loaded | Foreground after |
+|---|---|---|---|
+| `section-header` | `color: #FF00FF` | yes | **Fuchsia** |
+| `menu-bar` | `color: #FF00FF` | yes | White |
+| `luna-switch` | `color: #FF00FF` | yes | White |
+| `dropdown` | `color: #FF00FF` | yes | White |
+| `tabs` | `color: #FF00FF` | yes | White |
+
+**No warning was raised for any of them**, and that is what makes this the worst failure this format
+has. §12.2 chose non-fatal warnings so a theme written against a newer LunaP still loads, and the
+whole value of that choice is that a theme author is told what was skipped. Here the rule parsed,
+compiled to a `Style`, was added to `Application.Styles`, matched nothing, and reported success. A
+refused rule tells the author something. A rule that is accepted and silently does nothing tells
+them their CSS is correct and their eyes are wrong.
+
+**These four have been in the vocabulary since different releases** — `luna-switch`, `dropdown` and
+`tabs` since the format existed, `menu-bar` since §26.13 sold it as part of 0.7.0's new vocabulary.
+Every one of them was advertised and none of them worked.
+
+### 30.2 Why the existing test passed throughout
+
+`CssThemeTests` has had `A_rule_block_becomes_a_style_that_really_applies` since §12. It is a good
+test. It is written against `section-header`.
+
+`SectionHeader` is a `TextBlock` that pins no style key, so it is precisely the case that works, and
+one example was taken as covering a vocabulary of twenty-one. This is the same shape as §26.11's
+finding that dropping `StyleKeyOverride` turns tests red for `Menu` and `MenuItem` and turns nothing
+red for `Button` and `ToggleButton`: **a mechanism sampled once is a mechanism assumed uniform.**
+
+### 30.3 The fix, and why it is a class rather than a cleverer selector
+
+The style key cannot be given up — it is what makes these controls render. So the selector has to
+name the style-key type and then narrow it back down, and a style class is what Avalonia has for
+that:
+
+- Each affected control adds a class to itself in its constructor and publishes it as a
+  `public const string StyleClass` — `luna-menu-bar`, `luna-switch`, `luna-dropdown`, `luna-tabs`.
+  A const because the XAML, the C# and the CSS vocabulary all spell the same string, and a literal
+  in three places is a typo waiting for a release.
+- `ElementSpec` gains `StyleKey` and `StyleClass`. `TryCompile` builds
+  `OfType(StyleKey ?? Target)` and adds `.Class(StyleClass)` when there is one, so
+  `ToggleSwitch.luna-switch` reaches a `LunaSwitch` and never a host's own `ToggleSwitch`.
+- `Theme/Controls/MenuBar.axaml` becomes `Menu.luna-menu-bar` for the same reason.
+
+**What was rejected.** Selecting the bare style-key type (`Menu { … }`) would reach every menu in the
+consumer's application, which is a toolkit reaching outside itself. Dropping `StyleKeyOverride` and
+writing a full `ControlTheme` per control is what §14.1 already declined, and §26.11 measured what
+removing the override costs. `:is(luna|MenuBar)` does not help: `Is` matches the style key too, so it
+asks the same impossible question in a longer form.
+
+### 30.4 The guard, and what it turned red
+
+`Every_element_in_the_vocabulary_can_actually_be_styled` in `CssThemeTests`. It takes its subjects
+from `CssTheme.ElementNames` — the published list, not a copy of it — writes `element { color:
+#FF00FF; }`, loads it as a real theme, and requires the control's `Foreground` to have changed.
+Twenty-one cases, one per element, and a new element joins the sweep the moment it is published.
+
+The property is resolved with `AvaloniaPropertyRegistry.FindRegistered`, the same lookup `CssTheme`
+itself uses, so a control whose `Foreground` comes from `TextElement` rather than `TemplatedControl`
+is read back through the mechanism that set it rather than through a guess.
+
+Sabotaged by restoring `OfType(spec.Target)`:
+
+| Sabotage | Turned red |
+|---|---|
+| `TryCompile` selects `spec.Target` again | **4 of 21** — `menu-bar`, `luna-switch`, `dropdown`, `tabs`, and no others |
+| `MenuBar.axaml` dropped from the index | `A_menu_bar_is_styled_by_the_kit_and_not_only_by_fluent` |
+
+A third guard, `StyleKeyTests`, enforces the class itself rather than its effect - §30.6 records what
+it covers that this sweep does not, and why that gap was the one the original defect came through.
+
+The second row is the one §29.2 could not produce. That omission cost nothing before this section;
+it costs a red test now, which closes the last of the sixteen style files and makes §29.2's table
+complete.
+
+### 30.5 What this does not do
+
+- ~~**It does not cover template parts.**~~ The sweep tests each element, not `card .header` or
+  `console-pane .output`. A part whose selector reaches nothing would still be silent, and the same
+  argument that justifies this test justifies extending it — it has not been. **Closed by §39, which
+  found thirteen broken pairs from three separate causes — including this same style-key defect one
+  layer down (§39.3).**
+- ~~**It does not cover the other four overriding controls.**~~ **Superseded by §30.6**, which
+  enforces the class on all eight rather than on the four the vocabulary happens to name.
+- **It does not make the warning list catch this.** A rule that compiles against a real element name
+  still produces no warning when it matches no instance, because nothing in the parse knows what is
+  on screen. The sweep catches it at test time; a host loading a bad theme at runtime is not told.
+- **It changes rendering**, unlike §29. The menu bar gains its `2,0` padding, and a CSS theme naming
+  any of the four elements starts doing what it always said it did — which for a consumer who wrote
+  such a rule and worked around its not applying is a visible change. `CHANGELOG.md` says so.
+
+### 30.6 The gap §30.5 named, closed
+
+§30.5 ended its third bullet with *"it needs a class first, and nothing enforces that yet"*. That
+sentence is the exact shape §28 exists to abolish — a trap written up as a paragraph asking the next
+author to remember — and it was written knowing that, which makes leaving it worse rather than
+better. So it is an assertion now: `tests/EmuSen.LunaP.Tests/StyleKeyTests.cs`.
+
+**What was actually uncovered, stated precisely,** because §30.4 already covers more than the bullet
+implied. A control that pins a style key can lose its styling two ways:
+
+| It gains… | Caught by | Before §30.6 |
+|---|---|---|
+| a CSS vocabulary entry | `Every_element_in_the_vocabulary_can_actually_be_styled` (§30.4) | **covered** |
+| an `.axaml` style file | nothing | **uncovered** |
+
+The second row is not hypothetical — **it is what actually happened.** `MenuBar` gained a style file
+in §26 with a `luna|MenuBar` selector, and it was dead on arrival for four releases. `TemplateReachTests`
+structurally cannot see it, because a control that borrows a template always has a visual tree
+however dead its own style is (§28.4 says as much). And the `.axaml` cannot be read back to lint the
+selector, because Avalonia's compiler strips it from the resource blob (§28.1).
+
+So the rule is enforced from the other end, and made uniform rather than conditional: **every control
+that pins `StyleKeyOverride` declares `public const string StyleClass` and adds it to itself.** All
+eight, including the four with nothing to style today. The class costs a string, and the day one of
+them gains a style file or an element name, the selector already has something that can match and the
+idiom is sitting there to copy. Conditional rules are the ones that get forgotten; this one cannot be,
+because the test finds its subjects by reflecting for a declared `StyleKeyOverride` override rather
+than reading a list.
+
+`ActionMenuItem`, `ActionButton`, `ActionToggle` and `LunaList<T>` gained classes here. Nothing
+selects them yet, and that is the point.
+
+**The sabotages, and what each turned red:**
+
+| Sabotage | Turned red |
+|---|---|
+| `Tabs` declares `StyleClass` and never adds it | the sweep, naming `Tabs` and quoting `Classes.Add(StyleClass)` as the remedy |
+| `Tabs.StyleClass` deleted outright | **the build** — `CssVocabulary.cs` names it, so a vocabulary member's class cannot be removed at all |
+| `ActionButton.StyleClass` deleted outright | the sweep, naming `ActionButton` |
+
+The middle row is worth keeping: for the four controls in the vocabulary the const is load-bearing at
+compile time, so the test is the guard only for the four that are not. Both halves were needed, and
+neither was obvious before it was tried.
+
+A second assertion keeps the sweep honest about its own subjects. A `[Theory]` with no cases is a
+pass, so a refactor that removed every override would turn this file green by emptying it;
+`The_sweep_has_subjects` requires at least the eight that existed when this was written, and says so
+in its message rather than leaving a bare number.
+
+---
+
+## 31. The package shipped the code and kept the explanation
+
+This document, and the comment blocks it is cited from, exist because of a claim CLAUDE.md makes in
+its first paragraph: a consumer cannot patch this, so the reasoning is the deliverable as much as
+the code. `Threading/Suppressor.cs` carries six lines above the type explaining what it replaces and
+why it is deliberately not thread-safe. `Theme/Controls/SplitPane.axaml` explains why the rule is a
+separate un-hit-testable border rather than the splitter's own paint.
+
+**None of it reached anybody.** A consumer who stepped into `SplitPane` from their own application
+got decompiled IL: correct behaviour, every comment gone, no file to open. The package shipped the
+code and kept the explanation, and had done since 0.2.0.
+
+### 31.1 What was missing, and what it costs
+
+Nothing exotic — four properties nobody had written:
+
+| Property | What a consumer gets without it |
+|---|---|
+| `IncludeSymbols` + `SymbolPackageFormat=snupkg` | no symbols at all; no line numbers in a stack trace through LunaP |
+| `PublishRepositoryUrl` | a PDB naming file paths on the machine that built it |
+| `EmbedUntrackedSources` | generated sources — every `Theme/Controls/*.axaml` — unresolvable |
+| `ContinuousIntegrationBuild` | published PDBs pointing at a CI runner's scratch directory |
+
+**And none of it costs a `PackageReference`**, which is the reason this was cheap enough to be
+embarrassing. SourceLink used to be a set of NuGet packages; since .NET 8 it ships inside the SDK —
+`Microsoft.SourceLink.GitHub` is a directory under `Sdks/` in the installed SDK, and
+`PublishRepositoryUrl` is enough to turn it on. §1's layering rule is untouched and there is no
+licence to record, which is not true of most things that improve a package.
+
+### 31.2 One file, because two would drift
+
+`Directory.Build.props` at the repository root, not six lines duplicated into two `.csproj` files.
+The argument is the one §2.1 makes about the palette in reverse: the palette is spelled twice **and
+guarded by a test that fails the moment the halves disagree**, which is what makes duplication safe
+there. There is no comparable guard for publication settings, and a symbol package produced for the
+toolkit but not the harness is a defect nobody notices until somebody steps into the wrong half. So
+it is spelled once, and both `.csproj` files carry a comment saying where it went.
+
+### 31.3 Deterministic under CI and nowhere else
+
+`ContinuousIntegrationBuild` is conditioned on `GITHUB_ACTIONS`, which is a decision rather than a
+convenience. It normalises source paths, which is exactly what a published package wants and exactly
+what a developer debugging their working copy does not — turned on locally it sends the debugger
+looking for `/_/src/…` instead of the file open in the editor.
+
+Measured by packing both ways and reading the SourceLink map out of the PDB:
+
+| Build | `documents` mapping |
+|---|---|
+| local | `/home/red/Projects/EmuSen.LunaP/*` → `raw.githubusercontent.com/RedQuE3n/EmuSen.LunaP/9019fa4…/*` |
+| `GITHUB_ACTIONS=true` | `/_/*` → the same URL |
+
+The commit in that URL is the commit being packed, so a consumer debugging 0.7.0 fetches the source
+0.7.0 was built from rather than whatever `main` says today.
+
+### 31.4 Packing is part of the build now
+
+Until this section, `dotnet pack` ran for the first time **in `publish.yml`, on a tag** — the worst
+moment to find a missing README, a wrong `PackagePath`, or a symbol package that was never produced.
+`ci.yml` packs both projects on every push and throws the output away; what is being tested is that
+both packages can be made at all.
+
+It then asserts that every `.nupkg` has a `.snupkg` beside it, because **nothing else in the build
+would fail if `IncludeSymbols` were deleted.** That is the whole reason the assertion exists rather
+than a comment asking somebody not to delete it.
+
+**The sabotages:**
+
+| Sabotage | Result |
+|---|---|
+| a `.snupkg` removed from the output folder | the check exits 1, naming the package that lost it |
+| `IncludeSymbols` set to `false` in `Directory.Build.props` | `dotnet pack` succeeds, produces **only** the `.nupkg`, and the check catches it |
+
+The second row is the one that matters: the build stays green, the package still installs, and the
+only visible difference is the one a consumer would find years later with a debugger. That is
+precisely the failure this repository keeps saying it does not want to ship.
+
+### 31.5 What this does not do
+
+- **It does not put the symbols in the main package.** They are a separate `.snupkg` on nuget.org's
+  symbol server, so a consumer needs symbol servers enabled in their debugger. That is the standard
+  arrangement and the alternative — `DebugType=embedded` — puts megabytes into every consumer's
+  build output to serve the few who step in.
+- **It does not backfill 0.2.0–0.6.0.** Those are published without symbols and stay that way;
+  nuget.org does not accept a symbol package for an already-published version (§25 records the same
+  constraint about licence metadata).
+- **It does not verify SourceLink end to end.** What is asserted in CI is that a symbol package
+  exists. That the URL inside it resolves was checked by hand, once, at this commit — a real check
+  would need network access from a test, which is not something this suite has ever wanted.
+- **It says nothing about the source being readable.** A consumer can now fetch the file; whether
+  the comment they find explains anything is the subject of every other section here.
+
+---
+
+## 32. The public surface, written down
+
+CLAUDE.md's first paragraph says a consumer cannot patch this and can only take a version. Every
+convention in this repository follows from that sentence — the layering rule, the man page, the
+changelog, §31's symbols. And the thing that sentence is actually about, the surface a consumer
+compiles against, was the one thing nothing checked.
+
+Sixty-three public types and around six hundred members, and a renamed parameter, a widened return
+type or a property quietly turned `internal` would have shipped in a version bump with the first
+report arriving from somebody whose build broke.
+
+### 32.1 A reflected snapshot, and not `PublicApiAnalyzers`
+
+`Microsoft.CodeAnalysis.PublicApiAnalyzers` is the obvious tool and was the plan. It was not taken,
+for three reasons in order of weight:
+
+1. **It is a `PackageReference`**, and CLAUDE.md is explicit that one is a decision carrying a `§`
+   and a licence. It would be `PrivateAssets="all"` and reach no consumer, so §1's rule survives —
+   but *no dependency at all* is strictly better than *a dependency that does not escape*, and here
+   it costs about eighty lines.
+2. **This repository already has the mechanism.** `EMUSEN_UI_BASELINE` regenerates render baselines
+   from an environment variable (§10.2). `EMUSEN_API_APPROVE=1 dotnet test` regenerates this one the
+   same way, so there is one convention for "rewrite the thing I am asserting against" and not two.
+3. **The guards this suite already trusts find their own subjects by reflection** — §28.1, §28.2,
+   §30.6. This is the fourth of the same shape, and a reader who understands one understands all.
+
+What is given up is real and worth naming: no IDE code fix, and no built-in shipped/unshipped split.
+The second matters least here because `CHANGELOG.md` already carries the release story.
+
+### 32.2 This baseline is committed, unlike the other one
+
+§10.2 says `*.png` and `*.frame` are never committed, because a render baseline is one machine's
+font rendering — worthless elsewhere and misleading in a diff. This looks like the same kind of
+artefact and is the opposite kind.
+
+**An API surface is identical on every machine that compiles the code.** So it is not a local
+artefact but a reviewable document, and the diff on it *is* the review: a version bump that changes
+`ApiSurface/EmuSen.LunaP.txt` is a version bump whose consumer-visible surface changed, visible in
+the pull request rather than discovered later.
+
+### 32.3 Two things deliberately left out
+
+**The XAML compiler's public types.** Avalonia's compiler emits
+`CompiledAvaloniaXaml.!AvaloniaResources` with a `Build:/` and a `Populate:/` method **per `.axaml`
+file**, plus `!XamlLoader` and two `XamlIlContext` helpers. Nothing can call them — the names contain
+`:` and `!` — and they change whenever a theme file is added or renamed, which §29 did sixteen times
+in one commit. Left in, a refactor that changed no API would have churned thirty-odd lines, and a
+baseline that cries wolf is a baseline somebody approves without reading. They are excluded by
+namespace rather than by keeping only `EmuSen.LunaP.*`, deliberately: a public type appearing in some
+third namespace is exactly the leak this file should show.
+
+**Inherited interfaces.** `Type.GetInterfaces()` is transitive, so every control listed the fifteen
+interfaces it inherits from Avalonia's `Control` — unreadable, and worse, an Avalonia upgrade adding
+one interface to a base class would have churned every line. What a LunaP type declares is a LunaP
+decision; what it inherits is Avalonia's, and is recorded once as the base type.
+
+### 32.4 The guard, and the reporting bug the first sabotage found
+
+The interesting entry is not that the guard caught the change. It is that **it could not explain it.**
+
+The first version compared the two files as flat sets of lines. The first sabotage — `public void
+Poke()` added to `Card` — turned the test red and reported *"(only ordering changed)"*, naming
+nothing. `Threading.Debounce` already has a method with that exact signature, and a set difference
+cannot see that one line became two.
+
+That is a defect in the half of a guard that matters second-most: a test that fails without saying
+why sends the next person to a six-hundred-line file with no starting point. **A member signature is
+only unique within its type**, so the report is now built the way the file is — grouped by type,
+with member counts compared as multisets rather than sets.
+
+| Sabotage | Reported |
+|---|---|
+| `public void Poke()` added to `Card` | `Card` → `NEW: public void Poke()` |
+| a member present in the baseline and not in the code | `Card` → `GONE: public void Removed()` |
+| `Card`'s base changed to `ContentControl` | `Card` → `was:` / `now:`, with both base types |
+
+The third row is the one no member-by-member check would have caught. A control that stops deriving
+from `HeaderedContentControl` breaks every `is` check and every selector a consumer wrote, and the
+member list can be identical either side of it.
+
+### 32.5 What this does not do
+
+- ~~**It does not capture nullability.**~~ `string?` and `string` are the same line here, so
+  tightening a parameter from nullable to non-nullable — a source-breaking change for a consumer with
+  `<Nullable>enable</Nullable>` — passes silently. `NullabilityInfoContext` could read it; that is
+  the first extension this file should get. **Closed by §32.6.**
+- **It does not capture attributes.** Adding `[Obsolete]` is invisible to it, and so is removing one.
+- **It does not distinguish shipped from unshipped.** There is one baseline, at the surface as it
+  stands. `CHANGELOG.md` is where a release says what moved, and §32.1 accepted that trade.
+- **It does not check behaviour**, only shape. A method that keeps its signature and changes what it
+  does is a worse break than a rename and is invisible here; that is what the other 370 tests are.
+- **It cannot tell an intended change from an accident.** It can only make somebody look. The
+  approval is a committed file, so the looking happens in review rather than in a dialog box.
+
+### 32.6 The gap §32.5 named, closed
+
+`string?` and `string` are different lines now. The snapshot reads annotations through
+`NullabilityInfoContext`, and the regeneration moved **104 lines** in `EmuSen.LunaP` and 2 in the
+harness — every one of them a promise a consumer was already relying on and this file could not see.
+
+**Read state or write state is a real choice, not a detail.** A member can differ in the two:
+`string? Name { get; set; }` on a type that never returns null reads non-null and writes nullable.
+The file reports **what a consumer is promised**, because that is what breaks them — `ReadState` for
+returns, fields, properties and `out` parameters, `WriteState` for ordinary parameters. Backwards,
+and the guard would call the wrong direction of change safe.
+
+It recurses. `Func<string, string?>` and `Func<string?, string>` are different contracts and neither
+is `Func<string, string>`, so the walk follows `NullabilityInfo.GenericTypeArguments` and
+`ElementType` the way the type walk follows generic arguments and array elements. Real lines it now
+carries:
+
+```
+public LunaAutomationPeer(Control owner, AutomationControlType type,
+    System.Func<string?>? name = null, System.Func<string?>? help = null, ...)
+public System.Func<T, object?> Key { get; set; }
+public static readonly DirectProperty<RgbaImageView, Avalonia.Media.IImage?> SourceProperty
+public abstract string Directory(string? category)
+```
+
+**The baseline cannot guard its own renderer**, which is the trap this could have fallen into.
+Delete the nullability walk, regenerate, and the file agrees with itself again while silently saying
+less than it did — the exact failure §32.5 described, reintroduced by the fix for it. So
+`The_snapshot_records_nullability_in_both_directions` asserts three properties against the
+description directly, each chosen to break a different plausible shortcut: a non-null return beside a
+nullable parameter *on one member*, a `?` inside a generic argument, and no `??` anywhere (a `?`
+asked of both `Nullable<T>` and the annotation renders `int??`).
+
+**The sabotage:** making `Suffix` return `string.Empty` turns it red on the first assertion.
+
+### 32.7 What §32.6 still does not do
+
+- **Attributes remain invisible**, per §32.5. Adding or removing `[Obsolete]` moves no line.
+- **`NullabilityState.Unknown` is rendered as nothing**, which is right — an unannotated context
+  promises neither — but it means a project that turned `<Nullable>` off would quietly lose every
+  annotation rather than failing. Both `.csproj` files enable it, and nothing asserts that they do.
+
+---
+
+## 33. Sixty-three public types, and an empty tooltip
+
+§31 got the source to a consumer's debugger. This is the same gap one step earlier: what a consumer
+sees before they ever reach a debugger, which is whatever their editor pops up when they type
+`new LunaAction(`.
+
+Until this section that was nothing at all. `GenerateDocumentationFile` was off, so no `.xml` was
+built and none was packed, and all sixty-three public types offered IntelliSense a bare name.
+
+### 33.1 The convention was right and had a blind spot
+
+CLAUDE.md says the convention is `//` and not `///`, and that is not a mistake to be corrected — it
+is why `Threading/Suppressor.cs` can spend six lines explaining what it replaces and why it
+deliberately is not thread-safe. XML doc comments are a bad container for that: `<summary>` is
+rendered in a tooltip, and a tooltip is not where an argument goes.
+
+**The blind spot is who the convention serves.** Every word of it is addressed to somebody with the
+file open. A consumer resolving `EmuSen.LunaP` from nuget.org has a DLL and, now, a symbol package —
+and their editor reads exactly one thing, the `.xml` beside the assembly.
+
+So the amendment is additive rather than a reversal. The `//` block keeps the *why* at whatever
+length it needs. A one-line `///` summary above the declaration says *what*. **Two readers, two
+containers**, and the summary never tries to carry the argument.
+
+### 33.2 Why members are not required, which is the real decision
+
+Turning on `CS1591` would have demanded a sentence for **all 460 public members**. Counted rather
+than estimated:
+
+| Members | |
+|---:|---|
+| 460 | public members across both packages |
+| 41 | Avalonia `StyledProperty` / `DirectProperty` fields |
+| 58 | protected overrides of `OnApplyTemplate`, `OnPropertyChanged`, `OnCreateAutomationPeer` |
+
+Ninety-nine of them have no sentence available except the one that restates the name.
+*"Gets or sets the Text."* teaches nobody anything, and this repository's own position — a comment
+that has drifted is worse than none because it is believed — applies with more force to filler,
+which is that failure arriving pre-drifted.
+
+So `CS1591` is suppressed in both `.csproj` files with the reason written beside the switch, and the
+rule is enforced where it carries information: **every public type, and members whose names do not
+already say it.**
+
+### 33.3 The guard
+
+`tests/EmuSen.LunaP.Tests/DocumentationTests.cs`, two assertions per package:
+
+- **Every public type has a `<summary>`.** Subjects come from reflecting over the assembly and the
+  answer from parsing the generated `.xml`, so a type added tomorrow is in the sweep the moment it
+  compiles. It uses the same exclusion §32.3 uses, for the same reason — the XAML compiler's
+  generated types are public, uncallable, and not ours to document.
+- **No summary is empty or a placeholder.** The failure this guard most invites is a `///` added to
+  silence it, so a summary under twelve characters, or literally `TODO`, fails. The threshold is
+  deliberately low: it catches an empty tag or a stub, not prose somebody thought about.
+
+A third check falls out of the first: if `GenerateDocumentationFile` is ever turned off, there is no
+`.xml` to parse and the tests say so by name. Nothing else in the build would have noticed.
+
+**Verified end to end** by packing and reading the result out of the `.nupkg` rather than out of the
+build directory — `lib/net10.0/` now contains `EmuSen.LunaP.xml` beside the DLL, and
+`T:EmuSen.LunaP.Commands.LunaAction` in it reads *"One command object standing behind a menu item, a
+toolbar button, a context-menu entry and a key binding."*
+
+### 33.4 What this does not do
+
+- **It does not document members**, by design, and that is the part most likely to be revisited. The
+  argument above is about the 99 that cannot be usefully documented; it is not an argument against
+  documenting `Refresh`, `Fill` or `SetMenus`, which have real semantics a tooltip could carry. That
+  work is open, and the guard will not ask for it.
+- **It does not check that a summary is TRUE.** It checks that one exists and is not a stub. A
+  summary that drifts from its type is exactly the failure CLAUDE.md warns about, and no test here
+  catches it.
+- **It does not cover `<param>`, `<returns>` or `<exception>`.** `LunaTable<T>.Column` takes a header
+  and a projection and says so in neither.
+- **It does not backfill the packages already on nuget.org.** 0.2.0–0.6.0 shipped without a `.xml`
+  and cannot gain one, the same constraint §31.5 and §25 both hit.
+
+---
+
+## 34. What "production ready" still means here
+
+§31, §32 and §33 closed the three things that made this package worse than the code inside it: a
+consumer could not read the reasoning, could not be protected from an accidental break, and got a
+blank tooltip. **This section is the register of what is still open**, written down because the
+alternative is remembering it — and §28 exists precisely because this project has watched four
+paragraphs of "the next author should" go unread.
+
+It is a register, not a roadmap. Items leave it by being done and struck through with the `§` that
+did it, the way §30.6 closed §30.5's third bullet. Nothing earns a place here by being a good idea;
+it earns one by being a gap somebody can already point at.
+
+### 34.1 The documentation debt, which is the largest item
+
+~~**Every public type now says what it is; almost no member does.**~~ **Closed by §41.** §33.2 argued that 99 of the 460
+members — Avalonia `StyledProperty` fields and protected framework overrides — have no sentence
+available except one restating the name, and that argument stands. **It says nothing about the other
+~361**, which is the real job:
+
+- `LunaTable<T>.Column`, `LunaList<T>.Refresh`, `Dropdown.Fill`, `MenuBar.SetMenus`,
+  `ConsolePane.AppendLine`, `SplitPane.PaneKey` — every one has semantics a caller has to get right
+  and can currently only learn by reading the source.
+- **No `<param>`, `<returns>` or `<exception>` anywhere.** `Column` takes a header and a projection
+  and a width string, and the `.xml` says so for none of them.
+- The delegate seams are where this bites hardest, because they are the whole design: a control
+  takes `Func<T, string>` or `Action<LunaAction>`, and *when* it is called and *on which thread* is
+  the contract. `LunaList<T>.Key` defaulting to reference identity — right for a cached model, wrong
+  for rows rebuilt on every poll — is documented in a `//` comment a consumer never sees.
+
+`DocumentationTests` deliberately will not ask for any of this. When it is done, it should. **It does now — `MemberDocumentationTests`, added in §41, asks for all four.**
+
+### 34.2 The rest of the register
+
+| Open | Where it is already argued | Note |
+|---|---|---|
+| ~~Member-level API docs~~ | **closed by §41** | 379 entries ship, with 212 `<param>`, 85 `<returns>` and 14 `<exception>`; the guard finds its own subjects, and excuses only what §33.2's argument covers |
+| ~~Version decision~~ | **closed by §42** | 0.7.0, because it was never published; nothing was removed since 0.6.0, measured. Tagging is a person's decision and has not been done |
+| ~~Nullability absent from the API snapshot~~ | **closed by §32.6** | 104 lines gained annotations; read state vs write state was the part that needed deciding, not the reflection |
+| ~~CI runs on one Linux runner~~ | **closed by §35** | matrix added; the audit found one platform branch, and it turned out to be untested, undocumented here, and currently a no-op (§35.1) |
+| Trimming: **measured, not fixed** (AOT: never a stated goal, see §36.4) | §36 | ~~`CssTheme` is the problem~~ — **that guess was wrong (§36)**. Three real sites: the JSON settings seam and runtime `.axaml` theme loading. Trim-safe is reachable, AOT-safe is not while the default store is reflection JSON; §36.3 sets out the two designs |
+| `net10.0` only | — | Avalonia 12.1.0 ships `net8.0` too, so LunaP is stricter than its own dependency — but .NET 8 leaves support around 2026-11-10 and .NET 9 already has, so multi-targeting buys a dying LTS. **Decided against, recorded so it is not re-derived.** |
+| ~~CSS template parts unswept~~ | **closed by §39** | 14 parts swept for two colours; 13 broken pairs found and fixed, one exemption that expires. Fonts are still unswept (§39.5) |
+| A theme rule that matches nothing at runtime is silent | §30.5 | the parse cannot know what is on screen; the sweep catches it at test time, a host loading a bad theme is not told |
+| No icons | §26.12 | needs an icon system, not a property; `Icon=` was used zero times across five repositories |
+| No native macOS menu bar | §26.12 | a genuine platform defect rather than a missing feature — macOS puts a menu strip in the window where the platform expects one at the top of the screen |
+| Contrast shortfall | §23.4 | measured and left alone |
+| `LunaSettings` process-global statics | §21.3 | every consumer suite inherits the race; the harness ships the refusal, the hazard is structural |
+| Nothing enforces that a cited `§` resolves | `CLAUDE.md` | the rule is stated and was checked by hand at §38 — all 100-odd citations in `src/` resolve to a heading. It is a `grep`, a `comm` and a `Fail`, and until it is written the rule holds only as long as somebody remembers to check |
+| macOS first-draw warm-up: **scope narrowed, mechanism inferred** | §38.4, §38.6 | not per-process and not per-window; `Redraw` is correct under any mechanism with that scope, so this is characterisation debt rather than a defect |
+| `ConsolePane` cannot announce line by line | §24.4 | the trade is recorded; a live region would re-read the whole buffer |
+
+### 34.3 Versioning, when this is called done
+
+**0.7.0 is not released.** There is no `v0.7.0` tag, so everything since 0.6.0 — the shell (§26), the
+table (§27), the two reflection guards (§28), the theme split (§29), the style-key defect and its
+fix (§30), and §31 through §33 — is unpublished and currently rides in 0.7.0.
+
+Two things to do at that point, in this order:
+
+1. **Both `<Version>` elements move together.** The toolkit's and the harness's, because §22.8's
+   rule is that the harness tracks the toolkit rather than keeping its own number, and a consumer
+   pairing two different ones has a question nobody wants to answer. The `.csproj` value is only the
+   default for a local `dotnet pack`; the published number comes from the tag.
+2. **`CHANGELOG.md` says what it means to somebody who cannot patch it**, which for this release
+   includes one entry that is not additive: §30's fix changes rendering, because four CSS elements
+   and the menu bar's own style start doing what they always claimed to.
+
+~~**Whether it is 0.7.0 or 0.8.0 is a real question and is deliberately not answered here.**~~ The
+version was set to 0.7.0 when §26 was the whole story. What has landed since is larger than that
+number was chosen for, and §30 in particular repairs behaviour that has been wrong since 0.2.0 —
+which a consumer reading a minor bump would not expect to find. **Answered in §42: 0.7.0, because it
+was never published and skipping it would invent a release that never existed. The worry above is
+real and belongs in the `CHANGELOG`, which now opens with it.**
+
+---
+
+## 35. One runner, and a correction nobody can read
+
+§34.2 listed "CI runs on one Linux runner" as an open item on the grounds that a cross-platform UI
+toolkit had never been built on Windows or macOS. Closing it turned out to be four lines of YAML.
+Auditing *before* writing them is what produced this section.
+
+### 35.1 The audit, and the one line it could not verify
+
+**The portability audit came back nearly empty, which is the good outcome.** No hard-coded POSIX
+paths anywhere in `src` or `tests`; no `HOME`, `XDG_*` or `USERPROFILE`; every settings path already
+goes through `LunaSettings.Store` and `Path.Combine`. Exactly **one** `OperatingSystem.Is*` branch
+exists in the whole toolkit, and it is the `UseX11()` call in `LunaApp.Configure`.
+
+That one line turned out to be three problems stacked on each other.
+
+**It was untested, and structurally so.** `LunaApp.Configure` had no test at all — the only public
+entry point in the toolkit without one. The reason is not carelessness: the headless suite builds
+its own `AppBuilder` through `LunaHeadless.BuildApp` so that the harness and a real frontend share a
+theme (§3.1), which is right, and which means the sequence a consumer's `Program.cs` actually calls
+is never executed by anything. Every consumer's first line of Avalonia code was unguarded.
+
+**Its justification is unreachable.** The comment cited `EmuSen_Project_Overview_v2.md §2a` — a
+document that stayed behind when LunaP left EmuSen (§19, §20). §3 in this document defers to the
+same missing file. So the measurement behind the correction cannot be read by anybody working here,
+which makes it exactly the kind of claim §21.6 and §29.3.1 exist to flag rather than repeat.
+
+**And on Avalonia 12.1.0 it is a no-op.** Measured by reflecting the builder's private
+`WindowingSubsystemInitializer` on this machine:
+
+| Builder | Windowing initializer |
+|---|---|
+| `AppBuilder.Configure<T>().UsePlatformDetect()` | `<UseX11>b__0_0` |
+| `LunaApp.Configure<T>()` — i.e. `…UsePlatformDetect().UseX11()` | `<UseX11>b__0_0` |
+
+**Identical.** Platform detection already chooses X11 on Linux, so the explicit call changes nothing
+observable at the builder.
+
+The consequence for testing is the important part, and it is why this section exists rather than a
+new assertion. The obvious test — *"on Linux the windowing subsystem is X11"* — **passes with the
+`UseX11()` call deleted.** That is a test that cannot fail, and §22.5's rule is that one of those is
+not a test. It was written, run, and thrown away.
+
+**The line stays.** The original correction was made against a real symptom on a real session; the
+failure it prevents would appear at `Setup` on somebody's Wayland desktop rather than in any suite
+here; and removing a guard because its justification became hard to read is how the symptom comes
+back. What `LunaApp.cs` says now is what is actually known, including that it is currently
+unobservable. **Retiring it honestly needs one thing this repository cannot do from a test: a real
+window on a real Wayland session, on the Avalonia version in use.** Until somebody does that, it is
+a hazard note and not a behaviour.
+
+### 35.2 What is asserted instead
+
+`BootstrapTests` pins the parts of the sequence that *can* fail:
+
+- **`UsePlatformDetect` is in the chain**, proven through what it installs rather than its own name —
+  it is what brings Skia and HarfBuzz, so `RenderingSubsystemName` and `TextShapingSubsystemName` are
+  the evidence. Removing the call turns two tests red.
+- **The application type survives both overloads**, including the `Func<TApp>` one `EmuSen.Hotaru`
+  needs because its `Main` resolves a ROM before any Avalonia type is touched. An overload that
+  silently skipped the shared setup would hand that application a window with no theme.
+
+All three assertions stop at the builder and never call `Setup` or `Start`, which is what lets them
+run inside a headless session without a second `Application` fighting the session's own.
+
+### 35.3 The matrix, and the step that would have failed on Windows
+
+`ci.yml` now runs on `ubuntu-latest`, `windows-latest` and `macos-latest`, with **`fail-fast: false`**
+— "fails on macOS only" is the single most useful thing this matrix can say, and fail-fast would
+hide it behind whichever runner finished first.
+
+Writing it surfaced a defect in §31's own work. The symbol-package assertion is a bash loop using
+`${pkg%.nupkg}` and `[ -f ]`, and **GitHub defaults `windows-latest` to PowerShell**, where that is
+not a syntax error but a different language. The step would have failed on Windows for a reason
+having nothing to do with the packages — a red matrix cell pointing at the wrong thing, which is
+worse than no matrix. It carries `shell: bash` now.
+
+A `.gitattributes` came with it, for one reason worth stating: `ApiSurface/*.txt` is pinned to `eol=lf`
+because its whole value is that the diff is the review (§32.2), and a Windows checkout rewriting it
+to CRLF would make a regeneration there look like a six-hundred-line change containing nothing.
+
+### 35.4 A correction: the matrix has still never run
+
+**§35.4 below says "the matrix's first run happens on the next push". That is wrong**, and checking
+rather than assuming is what found it.
+
+`ci.yml` triggers on `push` to `main` and on `pull_request` targeting `main`. **`shell-and-actions`
+is neither.** Pushing this branch runs nothing, and `gh run list --branch shell-and-actions` returns
+no rows at all — not a failure, not a queue, nothing. Every commit in this arc (§26 through §36) has
+been verified on exactly one machine, and the three-runner matrix added above has never executed on
+any of them.
+
+That is a larger statement than it looks. Everything this document says about these changes being
+green is a local result. **The matrix is a change to a file, not yet evidence about Windows or
+macOS**, and it becomes evidence at the moment a pull request against `main` is opened and not
+before.
+
+Whether CI should also run on branch pushes is a separate question with a real trade — the current
+arrangement keeps runner minutes for merges and pull requests, which is the ordinary choice — but it
+means a long-lived working branch gets no cross-platform signal at all, which is exactly the
+situation this section was written in.
+
+### 35.5 What this does not do
+
+- ~~**It does not prove the suite passes on Windows or macOS.**~~ **It ran on PR #5 and found
+  something: Windows green, macOS red on a render-stability assertion. §37 is the measurement and
+  the fix.** The original caveat stands as written — this section could not know — and §35.4
+  corrects how it put the mechanism. The audit is an argument
+  for expecting green, not a substitute for seeing it. **If a runner comes back red, that result
+  belongs in §35.5 and the audit above is what should be read sceptically.**
+- **It does not test the X11 branch**, per §35.1, and no headless suite can.
+- **It does not cover packaging on Windows beyond `dotnet pack` succeeding** — the `.nupkg` contents
+  are asserted only for the symbol package, not compared across runners.
+- **It says nothing about rendering differences between platforms.** §10.2 already keeps render
+  baselines out of the repository because they are one machine's font rendering; a matrix makes that
+  argument stronger, not weaker.
+
+---
+
+## 36. Trim and AOT, measured — and the register was wrong about where
+
+§25 rejected LGPL partly because this is "a platform that ships trimmed and AOT'd", and §34.2 carried
+"trim/AOT unverified" as an open item with a guess attached: *"`CssTheme` resolves properties through
+`AvaloniaPropertyRegistry` at runtime, which a trimmer cannot see."*
+
+**That guess was wrong, and measuring it is the point of this section.** Turning on
+`IsAotCompatible` — which enables the trim, AOT and single-file analyzers together — produces six
+warnings across three sites, and `CssTheme` is not among them. `AvaloniaPropertyRegistry.FindRegistered`
+is a dictionary lookup against a registry Avalonia populates at type initialisation, not reflection
+over members, so there is nothing for the trimmer to fail to see. The register entry has been
+corrected rather than quietly deleted.
+
+### 36.1 What is actually dynamic
+
+| Site | Warning | Cause |
+|---|---|---|
+| `Settings/JsonSettingsStore.Load<T>` | IL2026, IL3050 | `JsonSerializer.Deserialize<T>` — reflection over `T`'s members |
+| `Settings/JsonSettingsStore.Save<T>` | IL2026, IL3050 | `JsonSerializer.Serialize<T>` |
+| `Theme/LunaTheme.Read` | IL2026, IL3050 | `AvaloniaRuntimeXamlLoader.Load` — runtime XAML compilation |
+
+**Neither has a cheap fix, and they fail for opposite reasons.**
+
+The JSON one cannot be source-generated *by LunaP*, because `T` is the host's type. That is §19's
+entire design: `ISettingsStore` is the seam, and LunaP deliberately does not know what a host
+persists. A `JsonSerializerContext` can only be written by somebody who knows the types, which is the
+host.
+
+The XAML one cannot be fixed at all. Compiling a theme a user wrote after the application shipped is
+dynamic by definition.
+
+### 36.2 The finding worth keeping: the CSS format is the AOT-safe one
+
+`LunaTheme.Read` branches on the file extension — `.css` goes to `ReadCss`, anything else to
+`AvaloniaRuntimeXamlLoader`. So **§12.2's restricted CSS dialect is AOT-safe and the `.axaml` theme
+format is not**, because the CSS path is LunaP's own parser producing `Style` objects by hand while
+the XAML path is a compiler.
+
+Nobody argued that when the CSS format was introduced. §12.2 justified it on grammar and blast-radius
+grounds — a syntax error refuses one file rather than taking the application down — and this is a
+second, unplanned argument for the same decision, found by measuring something else.
+
+### 36.3 Why nothing was annotated, measured rather than assumed
+
+The obvious next step is `[RequiresUnreferencedCode]` on the two seams, which propagates the warning
+to callers instead of hiding it. **It was tried, and the cascade is the reason it is not in this
+commit.** Annotating `ISettingsStore.Load<T>`/`Save<T>` — on the interface, because an implementation
+may not add `RequiresUnreferencedCode` its interface lacks (IL2046) — took the build from 6 warnings
+to 28, across seven sites:
+
+| Site | Feature it makes AOT-unsafe |
+|---|---|
+| `Theme/LunaTheme.cs:110,115` | the remembered theme (§12) |
+| `Windowing/WindowPlacementStore.cs:28,37` | remembered window placement (§8.1) |
+| `Windowing/PaneLayoutStore.cs:38,62` | remembered pane layout (§26.6) |
+| `Theme/LunaTheme.cs:176` | `.axaml` themes (pre-existing) |
+
+That is not an explosion, it is a **boundary**: every "remember what the user did" feature in the
+toolkit is reflection-JSON-backed, and all three are opt-in. Propagating the attributes further means
+annotating `ToolWindow`, `SplitPane.PaneKey` and `LunaTheme.ApplySaved` — public API a consumer sees.
+
+**Two designs are available and this section picks neither**, because choosing between them is an API
+decision and not a build-flag one:
+
+1. **`[DynamicallyAccessedMembers]` on `T` rather than `Requires*`.** A constraint, not a warning:
+   the trimmer preserves whatever `T` each call site names, and LunaP's own calls name concrete
+   POCOs (`WindowPlacement`, `PaneLayout`, `ThemeChoice`), so the cascade disappears. This makes
+   LunaP **trim-safe**. It does **not** make it AOT-safe — reflection-based `System.Text.Json` needs
+   dynamic code regardless — so IL3050 would have to be suppressed, and suppressing it would be a
+   lie.
+2. **Propagate `Requires*` to the public API**, which is honest and tells an AOT consumer exactly
+   which three features to avoid, at the cost of annotations on types most consumers use.
+
+**The likely truth is that LunaP can be trim-safe and cannot be AOT-safe while the default store is
+reflection JSON**, and that is a sentence worth being sure of before it is written into attributes a
+consumer compiles against.
+
+### 36.4 A correction: nobody ever chose AOT
+
+**This section opens by saying §25 "rejected LGPL partly because this is a platform that ships
+trimmed and AOT'd", and that is an overstatement of what §25 says.** Read it back:
+
+> LGPL-3.0 … gets there by requiring the user be able to relink against a modified version. **A
+> modern Avalonia desktop application ships trimmed, often AOT-compiled, sometimes single-file** —
+> deployment shapes in which "relink against a different LunaP" ranges from awkward to meaningless.
+
+That is an observation about what Avalonia applications **in general** do, made to show that LGPL's
+central mechanism is hollow on this platform. It is not a decision that LunaP targets AOT, and no
+such decision appears anywhere in this document. §34.2's register entry — "trim/AOT unverified" —
+invented the requirement by summarising that sentence as a goal, and this section then cited §34.2
+back as though it were one.
+
+**The two halves are not equally supported, and the measurement above is worth keeping for one of
+them.** §25 says "ships trimmed" flatly, so a consumer trimming their application is a real
+expectation and knowing which three features break under it is real information. "Often
+AOT-compiled" is hedged and about other people's applications; nothing here has ever asked LunaP to
+be AOT-clean.
+
+So §36 stands as a **measurement of what happens if a consumer does this**, not as progress against
+a goal. Which is also why §36.3's conclusion is the useful part: trim-safe is reachable and worth
+reaching, AOT-safe is not currently reachable and nobody has said it must be.
+
+### 36.5 What this does not do
+
+- **It does not declare `IsAotCompatible`, and deliberately.** Setting it would silence nothing and
+  claim something untrue; §34's register now says so with the measurement attached.
+- **It does not run a real AOT publish.** Everything above is analyzer output at compile time. A
+  `PublishAot` build of a sample consumer would be the stronger evidence and needs a toolchain this
+  machine has not been asked for.
+- **It leaves the analyzers off.** Turning them on permanently would add six warnings to a build that
+  currently emits none, and §31.4's argument is that a warning nobody can act on trains people to
+  ignore the log. They go on with the fix, not before it.
+- **The API baseline would not have caught the annotation change**, which is worth noting where it
+  will be read: §32.5 already records that attributes are invisible to the surface snapshot, and this
+  is the first time that gap had teeth — adding `[RequiresUnreferencedCode]` to a public interface is
+  a real change to what a consumer compiles against, and `ApiSurface/*.txt` would not have moved.
+
+---
+
+## 37. macOS renders the first frame differently, measured
+
+§35 added a three-platform matrix and §35.4 recorded that it had never run. Opening PR #5 ran it, and
+it produced the result it was added to find: **`ubuntu-latest` and `windows-latest` green,
+`macos-latest` red**, on `GalleryRenderTests.The_gallery_renders_the_same_way_twice`.
+
+`fail-fast: false` is why that sentence can be written. With the default, one runner's failure would
+have cancelled the others and "macOS only" — the whole diagnosis — would have been invisible.
+
+### 37.1 The first failure named the wrong cause
+
+`AssertStable` rendered twice and, on a mismatch, **stated a cause**: *"it shows something live (a
+clock, a pid, a counter). It is not a valid baseline target."*
+
+That is a hypothesis, and it was wrong. The gallery has no clock, no pid and no counter — grepping it
+for `DateTime`, `Now`, `Random`, `Guid` and `Stopwatch` returns nothing — and the identical binary is
+stable on two other runners and across three consecutive local runs. **An assertion that names a
+cause it has not measured sends its reader to look for something that is not there**, which is
+§29.3.1's failure wearing a different costume.
+
+So it was rebuilt to report rather than assume: three renders, and a verdict derived from which ones
+match. One CI round-trip then produced the answer.
+
+| | |
+|---|---|
+| hashes | `15EFF8639918669A`, `DB3C094C0223FB27`, `DB3C094C0223FB27` |
+| frame 1 vs 2 | **12,741 of 3,225,600 bytes — 0.39%** |
+| frame 2 vs 3 | **0 of 3,225,600 bytes — byte-identical** |
+| size | 720×1120 throughout |
+
+**The first render differs from the steady state; every render after it is identical.** A 0.39%
+difference spread across a page full of labels is the shape of glyph-edge antialiasing, and the
+cause is a warm-up — font rasterisation caches and lazily realised platform resources — not live
+content. Linux and Windows show none of it.
+
+### 37.2 The fix, and why discarding a frame is not weakening the test
+
+`AssertStable` renders once and throws the frame away before it starts comparing.
+
+That sounds like sanding off a failure and is not, because of what the method exists to answer:
+**"can this window be compared against a baseline?"** On macOS the answer is *yes, from the second
+frame onwards*. A comparison that included the cold frame would report every macOS window as
+unstable and be wrong about all of them. What the assertion still catches is exactly what it caught
+before — a window whose **steady state** moves — and the three-frame message survives for when that
+happens.
+
+**The message is the part worth keeping.** It now carries three hashes, the frame sizes and the count
+of differing bytes, because two frames differing in forty bytes along one glyph edge and two
+differing in half the buffer are different problems, and the old message could not tell them apart.
+`AssertStable` ships in `EmuSen.LunaP.Testing`, so a consumer's failures get that too.
+
+### 37.3 The hazard this leaves on the baseline path
+
+`AssertMatchesBaseline` compares whatever frame it is handed, so the warm-up `AssertStable` now does
+for itself is **the caller's job** there. On macOS a baseline written from a cold frame and compared
+against a warm one mismatches on twelve thousand bytes of antialiasing with nothing actually wrong.
+
+It is a hazard rather than a defect: the baseline machinery is opt-in behind two environment
+variables, off in CI, and §10.2 already keeps `.frame` files out of the repository because they are
+one machine's font rendering. This is that finding arriving from a new direction — **the same
+machine renders differently on its first frame**, which §10.2 did not know. The method's comment says
+so where somebody will be standing when it bites.
+
+### 37.4 What this does not do
+
+- ~~**It does not explain the 0.39% at the pixel level.**~~ The cause is inferred from the shape of
+  the difference and from renders two and three being byte-identical. Nobody has dumped the two
+  frames and diffed them visually, which `EMUSEN_UI_DUMP` exists to make possible. **§38.5 closes
+  this: the failure message now reports the bounding box and the peak channel delta, which is the
+  distinction that mattered, and `AssertStable` dumps all three frames when asked.**
+- ~~**It does not establish whether the warm-up is per-process or per-window.**~~ One discarded
+  render before each comparison is enough either way, and cheap. **§38.4 establishes it — both of
+  those answers are wrong, and the evidence was already in this section when it was written.**
+- ~~**It does not fix `AssertMatchesBaseline`**, per §37.3 — that path takes a frame rather than
+  building one, so warming it would mean changing its signature.~~ **Fixed in §38.3, and the
+  signature never had to change: an overload that takes the window does the rasterising itself.**
+- **It says nothing about Windows**, which passed both runs without a warm-up frame and is not
+  covered by the discard being there.
+
+---
+
+## 38. What a draw actually is, and the fix that would have been a no-op
+
+§37 left three things open, and closing them turned out to need something nobody here had
+established: **when does Avalonia actually draw?** The answer changed the fix.
+
+The obvious repair for §37.3 was to capture the window twice and keep the second frame. It compiles,
+it reads correctly, it costs one extra capture, and **it does nothing at all.**
+
+### 38.1 Counting draws, which needs the right unit
+
+`Control.Render` does not draw. It records a **draw list**, which is why it is called once and stays
+called once however many frames come out. A **custom draw operation** runs during the real Skia
+pass. So a custom operation that increments a counter counts draws, and everything below is in those
+units — measured on Avalonia 12.1.0, headless with `UseSkia()`, Linux.
+
+| action on a shown, unchanged window | draws | `Control.Render` calls |
+|---|---|---|
+| the first capture | 1 | 1 |
+| capture it again | **1** | 1 |
+| capture it a third time | **1** | 1 |
+| `InvalidateVisual()` on the grandparent `Border`, then capture | **1** | 1 |
+| `InvalidateVisual()` on the parent `StackPanel`, then capture | **1** | 1 |
+| `InvalidateVisual()` on **every visual**, then capture | **2** | 2 |
+| `InvalidateVisual()` on the drawing control itself, then capture | **3** | 3 |
+
+Two findings, and both are load-bearing:
+
+- **Capturing an unchanged window does not draw it.** `CaptureRenderedFrame` runs the dispatcher and
+  forces render-timer ticks, then calls `GetLastRenderedFrame` — which **copies** the bitmap the
+  window impl is already holding. Two captures of a clean window are the same picture *by
+  construction*, not by agreement. The Avalonia source says so directly: `Lock()` allocates a fresh
+  `WriteableBitmap` per real draw, and `GetLastRenderedFrame` locks the stored one and copies it out.
+- **Invalidation does not travel down the tree.** Every visual owns its own draw list, so dirtying an
+  ancestor leaves its children's lists — and their glyphs — untouched.
+
+A first probe looked like it had answered this and had not: each capture returns a *different*
+`WriteableBitmap` instance, which reads as "a new frame was produced". It is the copy on the way out.
+**Object identity was measuring the wrong thing**, and only counting draw operations settled it.
+
+### 38.2 So the fix that suggested itself was a no-op
+
+Had `Redraw` been written as "capture twice, keep the second", it would have returned **the same
+cold frame**, and §37.3 would have been recorded as closed while nothing changed. That is the worst
+category of defect this project can produce: a consumer cannot patch it, and the document would have
+said it was fixed.
+
+What forces a real second pass is invalidating **every visual in the window** and then capturing. It
+is the whole of `UiTest.Redraw`, and deleting the one loop turns it back into a copy.
+
+This is also why `AssertStable` throws away a whole *build* rather than calling `Redraw`: a freshly
+constructed window has genuinely never been drawn, so its capture is a real pass. It keeps the build
+for a second reason — comparing two separately constructed windows also catches construction that is
+not deterministic, which redrawing one window cannot see.
+
+### 38.3 What is fixed
+
+- **`UiTest.Redraw(Window)`** — forces a genuine pass and captures that. New public API on the
+  harness.
+- **`UiTest.AssertMatchesBaseline(string, Window)`** — an overload that owns the rasterisation, so it
+  cannot be handed a first draw. §37.4 said fixing this "would mean changing its signature"; it meant
+  adding an overload, and the frame-taking one stays for callers who already hold a frame.
+- **`UiTest.AssertLaidOut`** now rasterises through the same path, because it ends by handing its
+  frame to `AssertMatchesBaseline`. The colour count never cared; the baseline comparison is the
+  reason.
+
+`RenderPassTests` pins every row of the table in §38.1. **This is a pin on Avalonia, not on anything
+LunaP owns**: if a future version redraws clean windows or propagates invalidation downward, those
+assertions go red, which is the notice that `Redraw` is doing unnecessary work and that the reasoning
+in its comment has gone stale.
+
+**The sabotage.** Removing the invalidation loop from `Redraw` turns `A_redraw_draws` red with
+`Expected: 2, Actual: 1` — the no-op stated in draw passes. The other four stay green, correctly:
+they assert Avalonia's behaviour, not LunaP's.
+
+### 38.4 The warm-up is neither per-process nor per-window
+
+§37.4 recorded this as unestablished and not worth establishing. Both halves were wrong: **the
+evidence was already in the CI log**, and it rules out both of the answers that were offered.
+
+- **Not per-process.** `TemplateOrderTests` calls `UiTest.Capture` on freshly shown `ToolWindow`s —
+  real first draws, containing text — and it ran at positions **40 through 48** of the 379 results on
+  that macOS run. The gallery's stability failure was at position **285**. Well over a hundred real
+  draws happened first, and the gallery's first frame was *still* different from its second. A
+  one-time, content-independent warm-up would have been consumed long before.
+- **Not per-window either.** `AssertStable` builds a **new** `GalleryWindow` for every frame, so all
+  three captures are first draws of their own instance. Under a per-window effect all three would be
+  cold in the same way and frames one and two would have matched. Frames two and three were
+  byte-identical to each other and different from frame one.
+
+What survives is **process-global but content-dependent**: state that outlives a window being closed,
+yet was not warmed by a hundred draws of *different* windows. That is the shape of a glyph or
+typeface cache, which is what §37 guessed — but the *scope* above is established by elimination from
+measurements, while the *mechanism* remains an inference. The distinction is the point: `Redraw`
+warms the specific window it is handed, so it is correct under any mechanism with that scope.
+
+### 38.5 The failure message describes the shape now
+
+§37.4 wanted somebody to dump the frames and look at them. The reason was never curiosity — it was
+that a byte count cannot tell these apart:
+
+| | pixels | spread | peak channel delta |
+|---|---|---|---|
+| antialiasing | many | most of the image | small |
+| content that moved | many | one tight box | large |
+
+So `AssertStable` reports the differing **pixel** count, the **bounding box**, and the **peak
+per-channel delta** alongside the byte count, and a reader gets the shape without opening anything.
+`EMUSEN_UI_DUMP` now also yields `<name>.render1/2/3.png` from a failing run, and the message says
+so, which is the part that was missing — the facility existed and the failure never mentioned it.
+
+### 38.6 What this does not do
+
+- **It does not explain the macOS warm-up at the pixel level.** §38.4 narrows the scope by
+  elimination; nothing here dumps a macOS frame and inspects the glyph edges, because no macOS
+  machine is available to this repository outside CI.
+- **It does not make `AssertMatchesBaseline(string, RenderedFrame)` safe.** That overload still
+  compares whatever it is handed. It cannot rasterise — it has no window — so the fix is the
+  overload beside it and a comment saying which to reach for.
+- **It does not warm anything automatically.** A consumer who calls `window.CaptureRenderedFrame()`
+  directly and compares frames by hand is outside the harness and gets a first draw.
+- **The §38.1 table is one platform.** The draw-counting was measured on Linux. It is a statement
+  about Avalonia's headless renderer, which is shared code, but no runner has confirmed the counts
+  on Windows or macOS — `RenderPassTests` runs everywhere, so the matrix answers this on the next
+  push rather than leaving it to argument.
+
+---
+
+## 39. Every template part, swept — and three ways a part selector dies
+
+§30.5's first bullet: *"It does not cover template parts. The sweep tests each element, not
+`card .header` or `console-pane .output`. A part whose selector reaches nothing would still be
+silent, and the same argument that justifies this test justifies extending it — it has not been."*
+
+It has been now. **Fourteen parts across seven elements**, of which exactly one — `meter-row .bar` —
+had a test. The sweep found **thirteen broken (part, property) pairs**, from three unrelated causes.
+
+The bullet understated the risk, and the reason is worth keeping. A part selector is strictly more
+fragile than an element one: it is `Template()` **plus** a type **plus** a `PART_` name, and each of
+the three can be wrong independently. **The case with more ways to fail was the one going
+unchecked.**
+
+### 39.1 The sweep asks the parser what to test
+
+Cases are generated, not listed: for every element, for every part, for `background` and `color`.
+Both colours, because one is not a proxy for the other — a part whose template pins `Foreground` and
+not `Background` passes one and fails the other, and the first draft of this sweep tested only
+`background` and would have reported nine of these thirteen as fine.
+
+**Inapplicable combinations are not defects and are never emitted.** `CssTheme.Parse` already refuses
+them — `'color' does not apply to 'split-pane .rule'`, because a `Border` has no `Foreground` — so
+the generator parses each candidate first and drops the ones the vocabulary itself rejects. The
+product's own validation decides the subjects, and a part that gains a property gains its case on the
+same commit.
+
+That leaves **26 cases**: 14 parts × 2 colours, less that one refusal and less the one exemption in
+§39.4. `The_part_sweep_has_subjects` guards the count, because a `[Theory]` with no cases is a pass
+(§30.6 learned that once already).
+
+**The assertion is deliberately not "look up `PART_Header` and read it back".** That would prove the
+*test* can find the part, not that the *selector* can — and a selector naming the wrong type is
+precisely the defect being swept for. So it applies the rule and asks whether anything inside the
+control now carries the sentinel colour, which is the only claim the rule actually makes.
+
+### 39.2 A value written into a `ControlTemplate` outranks any theme
+
+Nine of the thirteen, and the finding worth taking away from this section.
+
+`Background="{DynamicResource LunaBorder}"` written as an **attribute inside a `ControlTemplate`**
+binds at `BindingPriority.Template`. A style — including every rule a host theme can write — binds at
+`BindingPriority.Style`, which is **lower**. So the rule parsed, produced a valid selector, matched
+the part, and lost.
+
+Measured with `GetDiagnostic` rather than reasoned about, because §29.3.1 is the record of what
+asserting an unmeasured cause costs here:
+
+| after applying the rule | part found | value | priority |
+|---|---|---|---|
+| `split-pane .rule { background }` | `PART_Rule` (`Border`) | `#ff6e6e6e` | **`Template`** |
+| `card .header { color }` | `PART_Header` (`ContentPresenter`) | `#ff9cdcfe` | **`Template`** |
+| `console-pane .output { color }` | `PART_Output` (`SelectableTextBlock`) | `#ffd4d4d4` | **`Template`** |
+| `empty-state .message { color }` | `PART_Message` (`TextBlock`) | `Gray` | **`Template`** |
+| `side-panel .close { background }` | `PART_Close` (`Button`) | `Transparent` | **`Template`** |
+
+**The fix is where the value is written, not what it is.** Each moved out of the template and into a
+style setter targeting the part:
+
+```xml
+<Style Selector="luna|SplitPane /template/ Border#PART_Rule">
+    <Setter Property="Background" Value="{DynamicResource LunaBorder}" />
+</Style>
+```
+
+**The defaults did not change, and that was checked rather than assumed.** With no host theme
+applied, every one of the thirteen values is byte-identical to what it was as an attribute — only the
+priority moved:
+
+| | as an attribute | as a setter |
+|---|---|---|
+| `card` `PART_Header` `Foreground` | `#ff9cdcfe @Template` | `#ff9cdcfe @Style` |
+| `console-pane` `PART_Input` `Background` | `#ff252526 @Template` | `#ff252526 @Style` |
+| `side-panel` `PART_Close` `Background` | `Transparent @Template` | `Transparent @Style` |
+| `split-pane` `PART_Rule` `Background` | `#ff6e6e6e @Template` | `#ff6e6e6e @Style` |
+
+What changed is **who is allowed to override them**, which is the whole point.
+
+Every property the CSS vocabulary publishes was moved, not only the two the sweep tests — so
+`console-pane .input { font-family }` works for the same reason even though nothing asserts it yet
+(§39.5). `CaretBrush` stays an attribute on purpose: no CSS property maps to it, so nothing can be
+competing for it, and moving it would only suggest otherwise.
+
+### 39.3 `PART_Facet` was declared a `TextBlock` and is a `Dropdown`
+
+Two of the thirteen, and **§30's defect in a new place.** The vocabulary said
+`["facet"] = new(typeof(TextBlock), "PART_Facet")`. The template contains a `Dropdown`. The selector
+asked for a `TextBlock` named `PART_Facet`, which cannot exist, so `filter-bar .facet` had never done
+anything in any release that shipped it.
+
+The correction is **`ComboBox`**, which looks wrong and is not, for the reason §30 exists: `Dropdown`
+pins `StyleKeyOverride` to `ComboBox`, and **a type selector matches the style key, not the runtime
+type**. Naming `Dropdown` here would have been dead in exactly the same way for a different reason —
+the same trap, one layer down, caught the same afternoon it was written.
+
+No style class is needed as it is for element selectors: the `PART_` name already makes it unique.
+
+### 39.4 One exemption, and it expires
+
+`meter-row .bar { color }` cannot be made to work, and should not be.
+
+The bar takes its colour from three state styles — `:nominal`, `:busy`, `:hot` — and **a selector
+carrying a pseudo-class binds at `StyleTrigger`, which outranks `Style`.** Measured: after applying
+the rule the bar is `LimeGreen` at priority `StyleTrigger`. No stateless rule can win. A meter whose
+colour stopped tracking its load would be a worse control, so the limit is correct; a host that wants
+other colours names the state, and `A_rule_can_reach_a_state_and_a_template_part` has proved that
+form works since §12.
+
+It is an entry in an `Exempt` table with that reason, following §28.2 — never a quiet deletion from
+the sweep. **And the exemption asserts that its own limitation is still real.**
+`An_exemption_is_still_needed` requires the stateless rule to keep failing, so if some future change
+makes it work, the test turns red saying *delete this entry* rather than leaving a stale excuse in a
+table nobody rereads. An exemption list that cannot expire is how the four dead selectors in §30
+survived four releases.
+
+### 39.5 What this does not do
+
+- ~~**It sweeps two properties, not six.**~~ `background` and `color`; `font-family`, `font-size` and
+  `font-weight` are generated the same way and are not tested. The selector reach is
+  property-independent, so §30.5's actual gap is closed — but a template that pins `FontFamily` as an
+  attribute would block `font-family` while `color` passed, which is a real and untested hole. It is
+  narrowed rather than open: every CSS-settable property in the six templates touched here was moved
+  to a setter. Widening `Colours` is a two-line change and a sentinel per property. **Widened in
+  §40.2 — 65 cases now, and the hole this bullet describes was already closed by the fixes above,
+  which is why it found nothing new.**
+- **It does not sweep states.** `meter-row.hot .bar` has one test; the other state × part
+  combinations do not.
+- **It does not check the value is correct**, only that the part received it. A rule that sets the
+  wrong shade is indistinguishable from one that works.
+- **It cannot see a part that is never realised.** `Configure` gives `Card` a header and `SidePanel`
+  a title because those parts collapse when empty (§26.9) — correct behaviour that would otherwise
+  read as a dead selector. A part that no configuration realises would still be invisible here.
+- **It says nothing about a host's own `.axaml` styles.** The priority rule found in §39.2 applies to
+  anything a consumer writes as a template attribute in their own controls, and nothing here can
+  reach that.
+
+---
+
+## 40. The exemption was the wrong answer, and this file said so already
+
+§39.4 exempted `meter-row .bar { color: … }` from the sweep, documented why it cannot win, and built
+an expiring-exemption test so the entry could not rot. All of that machinery was answering the wrong
+question.
+
+**The rule still parsed.** A host could write it, get no warning, and see nothing happen — which is
+the defect §30 exists to abolish, arrived at from the other direction. And this repository had
+already written the rule that settles it, in the failure message of the element sweep, where it has
+sat since §30:
+
+> *"A rule that is accepted and does nothing is worse than one that is refused."*
+
+The exemption made the **test** honest about a promise the **product** was still making.
+
+### 40.1 Refused, with the two spellings that work
+
+`PartSpec` gained a `Shadowed` map: CSS property → what overrides it. The parser checks it after the
+property resolves and warns instead of emitting a setter.
+
+```
+meter-row .bar { color: #FF00FF; }
+  warning: 'color' on 'meter-row .bar' is always overridden by the :nominal, :busy and :hot
+  state styles. Name the state - 'meter-row.busy .bar { color: ... }' - or restyle all three
+  at once by setting the --luna-nominal, --luna-busy and --luna-hot tokens
+```
+
+**A bare refusal would not have been enough.** Whoever wrote that rule cannot tell a shadowed
+property from a typo, and the two things want opposite responses. So the warning names both working
+spellings — and the tokens are named first among equals because they are what the host almost always
+wants: `--luna-nominal`/`--luna-busy`/`--luna-hot` restyle the meter in every state at once, and were
+the designed path before the part vocabulary existed.
+
+**Three properties of the refusal are pinned**, because each is a way this could be subtly wrong:
+
+| | |
+|---|---|
+| `meter-row .bar { color }` | refused, one warning, naming the state form and the tokens |
+| `meter-row.busy .bar { color }` | **accepted, no warning** — it binds at `StyleTrigger` like the style shadowing it, and being applied later it wins. Warning about the spelling that works would be worse than silence |
+| `meter-row .bar { background }` | **accepted, no warning** — the shadow is per property, not a ban on the part |
+
+The sweep needs no exemption logic at all now: it already skips whatever the parser rejects, so the
+case removes itself. §39.4's `Exempt` table, `Exemptions()` and `An_exemption_is_still_needed` are
+gone, replaced by the three assertions above.
+
+**This is not a retraction of §39.4's reasoning, only of its conclusion.** The priority argument
+there is correct and is why the refusal is right rather than a workaround: the rule genuinely cannot
+win, so the only question was whether to say so.
+
+### 40.2 Every themeable property, swept
+
+§39.5's first bullet named the remaining hole: a template pinning `FontFamily` blocks `font-family`
+while `color` passes. The sweep now covers all five, with a sentinel per property that cannot be a
+default — `Probe Sentinel Mono`, `33.5`, `black` — compared as Avalonia values rather than as text.
+
+**65 cases**: 14 parts × 5 properties, less the 5 the parser refuses — four on `split-pane .rule`,
+since a `Border` has no `Foreground` and no font at all, and the shadowed one above.
+
+**It found nothing new, and that is a result rather than an anticlimax.** §39.2 moved *every*
+CSS-settable property in the six templates it touched, not only the two under test, so the hole was
+closed before this could measure it. What matters is that the claim is now asserted rather than
+argued.
+
+**A sweep that finds nothing has to be shown capable of finding something.** Putting
+`FontFamily="{DynamicResource LunaMonoFont}"` back as an attribute on `PART_Output` turns exactly one
+case red — `console-pane .output`, `font-family` — and nothing else.
+
+### 40.3 What this does not do
+
+- **`Shadowed` is a hand-maintained list of one**, and nothing derives it. It does, however, expire:
+  the sentence that stood here said "a test *could* assert the shadow is still real the way the
+  exemption did", which is precisely the paragraph-asking-the-next-author-to-remember that §28 exists
+  to abolish — four of those had already been written before they became assertions. So
+  `The_shadow_on_the_meter_bar_is_still_real` asserts the *reason*: the bar's `Foreground` arrives at
+  priority `StyleTrigger`. If MeterRow ever stops colouring its bar from state styles that drops to
+  `Style`, a stateless rule starts winning, and the test turns red asking for the entry to be
+  removed. A refusal that outlives its reason is worse than the silence it replaced.
+- **It only covers what the vocabulary publishes.** A host writing a rule that loses to something
+  other than a state style still gets silence; nothing in the parse knows about priorities in
+  general, and §30.5's third bullet still stands.
+- **The sweep still does not check the value is correct**, only that the part received it.
+- **States other than `meter-row.hot` remain unswept**, per §39.5.
+
+---
+
+## 41. Every member says what it does, and what its arguments mean
+
+§33 documented sixty-three public types and stopped, on an argument that was right: `CS1591` would
+have demanded a sentence for all 460 public members, and 99 of them are Avalonia property fields and
+protected framework overrides where the only available sentence restates the name. §34.1 wrote down
+what that left — *"almost no member does"* — and called it the largest item in the register.
+
+It is done. **The shipped `EmuSen.LunaP.xml` now carries 379 entries**, read out of the `.nupkg`
+rather than the build directory:
+
+| | |
+|---:|---|
+| 63 | types |
+| 144 | methods and constructors |
+| 109 | properties |
+| 51 | fields and constants |
+| 12 | events |
+| **212** | `<param>` tags, across 122 members |
+| **85** | `<returns>` |
+| **14** | `<exception>` |
+
+§34.1's own example, `LunaTable<T>.Column`, now ships a summary, a sentence for each of its three
+parameters, and what it hands back.
+
+### 41.1 The rule, chosen so filler cannot satisfy it
+
+1. Every member that is not excused has a `<summary>`.
+2. **Every parameter has a `<param>`.** This is the half that was entirely absent and carries the
+   most: a name and a type do not say whether a `Func` is called once or on every row.
+3. Every non-void return has a `<returns>`.
+4. None of the above is empty, `TODO`, or under twelve characters.
+
+The threshold caught one of my own: `<param name="text">The label.</param>` is ten characters and
+says nothing the parameter name did not.
+
+### 41.2 What is excused, and why none of it is laziness
+
+§33.2's argument extended rather than repeated. A member is excused when the only available sentence
+restates something the reader already has:
+
+| Excused | Why |
+|---|---|
+| `StyledProperty` / `DirectProperty` fields | the backing field for a property that carries the sentence (§33.2) |
+| protected framework overrides | `OnApplyTemplate`'s contract is Avalonia's; restating it here is how it comes to disagree with Avalonia's |
+| **overridden properties** | `StyleKeyOverride`, on all eight controls that borrow a stock template — the same argument, and the methods-only rule missed it |
+| **enum `value__`** | the storage the compiler emits. There is nowhere to put a `///` on it |
+| **parameterless constructors** | `new ButtonBar()` takes no arguments and makes the type it is named after |
+| property and event accessors | the property carries the sentence |
+
+**Excused means not required, not forbidden.** `ToolWindow()` is a parameterless constructor and does
+carry something — *"restores its own position and closes on Escape"* — so it has one.
+
+### 41.3 The delegate seams, which is where this was worth most
+
+§34.1 said the seams bite hardest, and named the case: `LunaList<T>.Key` defaulting to reference
+identity, *"right for a cached model, wrong for rows rebuilt on every poll"*, documented in a `//`
+comment a consumer never sees. It is a `<remarks>` on both `LunaList<T>.Key` and `LunaTable<T>.Key`
+now, in those words.
+
+The same applies wherever a delegate crosses the boundary — `Label` and `text` are called for every
+item on every `Refresh`, so they must be cheap and free of side effects; `HistorySource` is called
+each time recall starts, so a live list needs no notification; `WindowSlot.create` runs **only** when
+nothing is open and `refresh` runs either way, which is the whole reason both parameters exist.
+
+### 41.4 The guard on the guard
+
+`MemberDocumentationTests` builds XML documentation IDs from reflection — generic arity as `` `1 ``,
+a type's generic argument as `` `0 `` and a method's as ``` ``0 ```, byref as `@`. **A bug in that
+construction would report every member as undocumented forever, or worse, match nothing and pass.**
+
+So `Every_documented_member_is_one_this_test_knows_about` walks the other way: every `M:`/`P:`/`F:`/`E:`
+key in the `.xml` must be one this file also generated. It earned its place twice — first on `T:`
+keys, which belong to `DocumentationTests`, and then on `ActionSync`, an **internal** type whose
+members are documented deliberately. Documenting an internal type is good practice and must not fail
+here, so the check tolerates any member of a non-public type while still catching an ID it cannot
+construct.
+
+**The sabotages:** deleting the summary on `Card.HasHeader` names it; deleting one `<param>` from
+`LunaTable<T>.Column` reports *"no `<param>` for: width"* — the member and the parameter, not just a
+count.
+
+### 41.5 What this does not do
+
+- **It does not check that a sentence is TRUE.** Twelve characters of confident nonsense passes. This
+  is the same exposure every comment in the repository has, and CLAUDE.md's answer applies here with
+  more force, because a consumer reads these without the code beside them.
+- **`<exception>` is documented where the toolkit throws, and nothing enforces that.** Fourteen tags,
+  found by grepping for `throw new` and checking each public member. A new guard clause added
+  tomorrow gets no tag and nothing says so — reflection cannot see a `throw`, so this would need
+  Roslyn or an analyzer.
+- **It does not require `<remarks>`, `<example>` or `<see cref>`.** They are used where they carry
+  something and are nowhere enforced.
+- **Nothing renders this as browsable documentation.** It reaches IntelliSense, which was the point;
+  a docs site is a separate decision nobody has made.
+- **The twelve-character threshold is arbitrary and deliberately low.** It catches an empty tag or a
+  stub, not a sentence somebody thought about and got wrong.
+
+---
+
+## 42. The version, decided: 0.7.0
+
+§34.3 left this open on purpose: *"Whether it is 0.7.0 or 0.8.0 is a real question and is
+deliberately not answered here."* The reason it gave was that the number was chosen when §26 was the
+whole story, and what landed since is larger than that — §30 in particular repairing behaviour wrong
+since 0.2.0, *"which a consumer reading a minor bump would not expect to find."*
+
+That observation is correct and points at the wrong instrument. **It is 0.7.0.**
+
+### 42.1 Because 0.7.0 was never claimed
+
+Checked rather than assumed, against nuget.org and against the tags:
+
+| | |
+|---|---|
+| `EmuSen.LunaP` on nuget.org | 0.2.0, 0.3.0, 0.4.0, 0.5.0, **0.6.0** |
+| `EmuSen.LunaP.Testing` on nuget.org | 0.3.0, 0.4.0, 0.5.0, **0.6.0** |
+| git tags | `v0.2.0` … `v0.6.0` |
+
+**Nobody has 0.7.0.** It is not published, not tagged, and not resolvable. Skipping it would leave a
+permanent hole in the sequence that implies a release which never existed, and a consumer scanning
+the version list would reasonably wonder what 0.7.0 was and whether they had missed it.
+
+**A version number identifies a release; it does not express magnitude.** Under 0.x semantics minor
+is the only lever there is — it carries features and breaking changes alike, and there is no such
+thing as a bigger minor. Reaching for 0.8.0 to signal "this one is substantial" would be using the
+version to say something the `CHANGELOG` is for, and creating a phantom release to say it.
+
+So §34.3's worry is answered where it belongs: the 0.7.0 entry now **opens** with the fact that the
+release is not purely additive, and names both places, before it gets to the shell.
+
+### 42.2 Nothing was removed, measured
+
+The question a consumer actually asks of a version bump is whether their code still compiles.
+`git diff v0.6.0..HEAD` over `src/` reports eleven public declarations removed — and all eleven are
+`CssTheme` and `CssThemeResult` members that §29.4 **moved between files** when the 547-line theme
+file was split. The type and its namespace deliberately did not change (§29.4 says why), and all
+eleven are present in the committed API baseline today.
+
+**No public member was removed or renamed since 0.6.0.** The release is additive in surface, and
+changes behaviour in the two places §42.1 names.
+
+### 42.3 Why not 1.0.0, which is the question this arc invites
+
+The whole arc from §31 to §41 was "make this production ready", and 1.0.0 is what that usually gets
+called. It would be wrong, because **1.0.0 is a promise that a breaking change requires 2.0.0**, and
+§34.2's register still holds items that cannot be delivered without one:
+
+- **No icons.** §26.12 is explicit that this needs an icon *system* rather than a property, and a
+  system reaches `LunaAction`, `ToolBar` and `Menus` at once. `Icon=` was used zero times across five
+  repositories, which is why it was deferred — not because it is small.
+- **`LunaSettings` process-global statics** (§21.3). Every consumer suite inherits the race; the
+  harness ships a refusal rather than a fix because the hazard is structural. Fixing it changes the
+  seam.
+- **No native macOS menu bar** (§26.12), recorded as a genuine platform defect rather than a missing
+  feature. Fixing it changes how `AppWindow` builds its menu.
+
+Calling this 1.0.0 would freeze a surface three open register entries say has to move. 0.x is not a
+lack of confidence in what is here; it is an accurate statement about what is not.
+
+### 42.4 What this does not do
+
+- **It does not tag or publish.** The tag is what publishes (`publish.yml`), a version on nuget.org
+  cannot be replaced, and that is a decision for a person rather than a side effect of a pass.
+- **Both `<Version>` elements already read 0.7.0** and are unchanged, so there is no bump here — only
+  a decision, and a `CHANGELOG` that now leads with what the number cannot say. §22.8's rule that the
+  harness tracks the toolkit still holds, and both still agree.
+- **It does not re-derive the register.** §34.2 is where the open work lives; §42.3 quotes three
+  entries from it and does not restate the rest.

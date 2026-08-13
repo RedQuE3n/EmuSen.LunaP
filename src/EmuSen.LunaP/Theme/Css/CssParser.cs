@@ -1,123 +1,24 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using System.Text;
 using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using Avalonia.Styling;
-using EmuSen.LunaP.Controls;
 
 namespace EmuSen.LunaP.Theme
 {
-    // What a .css theme compiled to: palette resources, control styles, and every declaration that was skipped.
-    public sealed class CssThemeResult
+    // THE PARSE ITSELF: text in, a CssThemeResult out. Split from the vocabulary and the value
+    // conversions at §29.4, because those two change for different reasons - the vocabulary grows
+    // with the control kit, the conversions grow with the CSS the grammar admits, and this file
+    // changes only when the grammar's SHAPE does.
+    //
+    // Nested inside CssTheme, as it was before the split: the parser reaches the private allow-lists
+    // in CssVocabulary.cs and the private converters in CssValues.cs, and nesting is what keeps all
+    // three private rather than making them internal so a sibling type could see them.
+    public static partial class CssTheme
     {
-        public ResourceDictionary Resources { get; } = new();
-
-        public Styles Styles { get; } = new();
-
-        // Not fatal by design: a theme written against a newer LunaP still loads - see docs/LunaP.md §12.2.
-        public List<string> Warnings { get; } = new();
-    }
-
-    // The restricted CSS a theme may be written in - see docs/LunaP.md §12.2 for the grammar and its limits.
-    public static class CssTheme
-    {
-        public const string RootSelector = ":root";
-        public const string TokenPrefix = "--luna-";
-
-        // A syntax error refuses the whole file, the way a malformed .axaml theme already does.
-        public static CssThemeResult Parse(string css) => new Parser(css ?? string.Empty).Run();
-
-        // The vocabulary, read out of the real allow-lists so `man theme` and its drift test cannot describe a format that does not exist.
-        public static IReadOnlyList<string> ElementNames => Elements.Keys.OrderBy(n => n, StringComparer.Ordinal).ToList();
-
-        public static IReadOnlyList<string> PropertyNames => Properties.Keys.OrderBy(n => n, StringComparer.Ordinal).ToList();
-
-        public static IReadOnlyList<string> StatesOf(string element) =>
-            Elements.TryGetValue(element, out ElementSpec? spec) ? spec.Classes.Keys.ToList() : Array.Empty<string>();
-
-        public static IReadOnlyList<string> PartsOf(string element) =>
-            Elements.TryGetValue(element, out ElementSpec? spec) ? spec.Parts.Keys.ToList() : Array.Empty<string>();
-
-        // LunaSectionHeader becomes --luna-section-header; the inverse of what a :root declaration is read as.
-        public static string TokenFor(string resourceKey) => TokenPrefix[..2] + Kebab(resourceKey);
-
-        // Which control each element name selects, and the pseudo-classes and template parts it admits.
-        private sealed record ElementSpec(
-            Type Target,
-            IReadOnlyDictionary<string, string> Classes,
-            IReadOnlyDictionary<string, PartSpec> Parts);
-
-        private sealed record PartSpec(Type Target, string Name);
-
-        private static readonly IReadOnlyDictionary<string, string> NoClasses = new Dictionary<string, string>();
-        private static readonly IReadOnlyDictionary<string, PartSpec> NoParts = new Dictionary<string, PartSpec>();
-
-        private static readonly IReadOnlyDictionary<string, ElementSpec> Elements = BuildElements();
-
-        // Named after the control, so a rename moves the CSS name with it rather than leaving a selector that matches nothing.
-        private static IReadOnlyDictionary<string, ElementSpec> BuildElements()
-        {
-            var specs = new[]
-            {
-                Element(typeof(SectionHeader)),
-                Element(typeof(HintText)),
-                Element(typeof(MonoText)),
-                Element(typeof(MeterRow),
-                    classes: new Dictionary<string, string> { ["nominal"] = ":nominal", ["busy"] = ":busy", ["hot"] = ":hot" },
-                    parts: new Dictionary<string, PartSpec> { ["bar"] = new(typeof(ProgressBar), "PART_Bar") }),
-                Element(typeof(MeterList)),
-                Element(typeof(FieldRow)),
-                Element(typeof(PathPickerRow)),
-                Element(typeof(ButtonBar)),
-                Element(typeof(StatusBar)),
-                Element(typeof(FilterBar), parts: new Dictionary<string, PartSpec>
-                {
-                    ["search"] = new(typeof(TextBox), "PART_Search"),
-                    ["facet"] = new(typeof(TextBlock), "PART_Facet"),
-                }),
-                Element(typeof(ConsolePane), parts: new Dictionary<string, PartSpec>
-                {
-                    ["output"] = new(typeof(SelectableTextBlock), "PART_Output"),
-                    ["input"] = new(typeof(TextBox), "PART_Input"),
-                    ["prompt"] = new(typeof(TextBlock), "PART_Prompt"),
-                }),
-                Element(typeof(EmptyState), parts: new Dictionary<string, PartSpec>
-                {
-                    ["message"] = new(typeof(TextBlock), "PART_Message"),
-                    ["detail"] = new(typeof(TextBlock), "PART_Detail"),
-                }),
-                Element(typeof(RgbaImageView)),
-                Element(typeof(LunaSwitch)),
-                Element(typeof(Dropdown)),
-                Element(typeof(Tabs)),
-            };
-
-            return specs.ToDictionary(s => Kebab(s.Target.Name), s => s, StringComparer.Ordinal);
-        }
-
-        private static ElementSpec Element(
-            Type target,
-            IReadOnlyDictionary<string, string>? classes = null,
-            IReadOnlyDictionary<string, PartSpec>? parts = null) =>
-            new(target, classes ?? NoClasses, parts ?? NoParts);
-
-        private static readonly IReadOnlyDictionary<string, string> Properties = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["color"] = "Foreground",
-            ["background"] = "Background",
-            ["background-color"] = "Background",
-            ["font-family"] = "FontFamily",
-            ["font-size"] = "FontSize",
-            ["font-weight"] = "FontWeight",
-        };
-
         private sealed class Parser
         {
             private readonly string _css;
@@ -231,7 +132,8 @@ namespace EmuSen.LunaP.Theme
                     string selectorText = text.Trim();
                     if (selectorText.Length == 0) continue;
 
-                    if (!TryCompile(selectorText, out Selector? selector, out Type? target, out string why))
+                    if (!TryCompile(selectorText, out Selector? selector, out Type? target,
+                            out IReadOnlyDictionary<string, string>? shadowed, out string why))
                     {
                         Warn(block.Line, $"'{selectorText}': {why}");
                         continue;
@@ -253,6 +155,16 @@ namespace EmuSen.LunaP.Theme
                             continue;
                         }
 
+                        // Refused rather than accepted and ignored. This one WOULD compile to a
+                        // valid selector that matches the real part, and then lose the priority
+                        // contest every time - which is indistinguishable from a typo to whoever
+                        // wrote it. The advice names the two spellings that do work (§40).
+                        if (shadowed is not null && shadowed.TryGetValue(name, out string? instead))
+                        {
+                            Warn(line, $"'{name}' on '{selectorText}' is always overridden by {instead}");
+                            continue;
+                        }
+
                         if (!TryValue(property, value, out object? converted, out string reason))
                         {
                             Warn(line, $"'{value}': {reason}");
@@ -266,10 +178,12 @@ namespace EmuSen.LunaP.Theme
                 }
             }
 
-            private static bool TryCompile(string text, out Selector? selector, out Type? target, out string why)
+            private static bool TryCompile(string text, out Selector? selector, out Type? target,
+                out IReadOnlyDictionary<string, string>? shadowed, out string why)
             {
                 selector = null;
                 target = null;
+                shadowed = null;
 
                 string[] words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 if (words.Length > 2)
@@ -285,7 +199,12 @@ namespace EmuSen.LunaP.Theme
                     return false;
                 }
 
-                Selector built = ((Selector?)null).OfType(spec.Target);
+                // The style-key type when the control borrows one, narrowed by the class it adds to
+                // itself; its own type otherwise. §30 - selecting spec.Target here reached nothing
+                // for the four controls that pin StyleKeyOverride, and said so to nobody.
+                Selector built = ((Selector?)null).OfType(spec.StyleKey ?? spec.Target);
+                if (spec.StyleClass is not null) built = built.Class(spec.StyleClass);
+
                 foreach (string name in head.Skip(1))
                 {
                     if (!spec.Classes.TryGetValue(name, out string? pseudo))
@@ -309,6 +228,12 @@ namespace EmuSen.LunaP.Theme
 
                     built = built.Template().OfType(part.Target).Name(part.Name);
                     target = part.Target;
+
+                    // ONLY WHEN NO STATE WAS NAMED. `meter-row.busy .bar { color: … }` carries a
+                    // pseudo-class of its own, so it binds at StyleTrigger alongside the style that
+                    // shadows the stateless form - and being applied later, it wins. Warning about
+                    // the spelling that works would be worse than saying nothing.
+                    if (head.Length == 1) shadowed = part.Shadowed;
                 }
 
                 selector = built;
@@ -418,105 +343,6 @@ namespace EmuSen.LunaP.Theme
             }
 
             private static FormatException Fail(int line, string what) => new($"line {line}: {what}.");
-        }
-
-        // --luna-section-header becomes LunaSectionHeader, the key Palette.axaml already spells.
-        private static string ResourceKey(string token)
-        {
-            var sb = new StringBuilder();
-            foreach (string word in token[2..].Split('-', StringSplitOptions.RemoveEmptyEntries))
-            {
-                sb.Append(char.ToUpperInvariant(word[0])).Append(word[1..].ToLowerInvariant());
-            }
-
-            return sb.ToString();
-        }
-
-        private static string Kebab(string name)
-        {
-            var sb = new StringBuilder();
-            for (int i = 0; i < name.Length; i++)
-            {
-                if (char.IsUpper(name[i]) && i > 0) sb.Append('-');
-                sb.Append(char.ToLowerInvariant(name[i]));
-            }
-
-            return sb.ToString();
-        }
-
-        private static string FontList(string text) =>
-            string.Join(',', text.Split(',').Select(part => part.Trim().Trim('"', '\'')).Where(part => part.Length > 0));
-
-        private static bool TryNumber(string text, out double value)
-        {
-            string trimmed = text.EndsWith("px", StringComparison.OrdinalIgnoreCase) ? text[..^2] : text;
-            return double.TryParse(trimmed.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out value);
-        }
-
-        // CSS channel order, not Avalonia's: #RRGGBBAA and #RGBA put alpha last, which is what someone writing CSS expects.
-        private static bool TryColour(string text, out Color colour)
-        {
-            colour = default;
-            text = text.Trim();
-
-            if (text.StartsWith("rgb(", StringComparison.OrdinalIgnoreCase) ||
-                text.StartsWith("rgba(", StringComparison.OrdinalIgnoreCase))
-            {
-                return TryRgb(text, out colour);
-            }
-
-            if (text.Length is 9 or 5 && text[0] == '#')
-            {
-                string digits = text[1..];
-                int step = digits.Length / 4;
-                if (!Nibbles(digits, 0, step, out byte r) || !Nibbles(digits, step, step, out byte g) ||
-                    !Nibbles(digits, step * 2, step, out byte b) || !Nibbles(digits, step * 3, step, out byte a))
-                {
-                    return false;
-                }
-
-                colour = Color.FromArgb(a, r, g, b);
-                return true;
-            }
-
-            return Color.TryParse(text, out colour);
-        }
-
-        private static bool Nibbles(string digits, int start, int length, out byte value)
-        {
-            value = 0;
-            if (!byte.TryParse(digits.AsSpan(start, length), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out byte parsed))
-                return false;
-
-            value = length == 1 ? (byte)(parsed * 17) : parsed;
-            return true;
-        }
-
-        private static bool TryRgb(string text, out Color colour)
-        {
-            colour = default;
-            int open = text.IndexOf('(');
-            if (!text.EndsWith(")", StringComparison.Ordinal)) return false;
-
-            string[] parts = text[(open + 1)..^1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length is not (3 or 4)) return false;
-
-            var channels = new byte[3];
-            for (int i = 0; i < 3; i++)
-            {
-                if (!byte.TryParse(parts[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out channels[i])) return false;
-            }
-
-            byte alpha = 255;
-            if (parts.Length == 4)
-            {
-                // CSS spells alpha 0..1, unlike every other channel.
-                if (!double.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out double fraction)) return false;
-                alpha = (byte)Math.Round(Math.Clamp(fraction, 0, 1) * 255);
-            }
-
-            colour = Color.FromArgb(alpha, channels[0], channels[1], channels[2]);
-            return true;
         }
     }
 }

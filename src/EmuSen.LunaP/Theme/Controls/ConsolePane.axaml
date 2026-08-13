@@ -1,0 +1,75 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <Style Selector="luna|ConsolePane">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <DockPanel>
+                    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*" Margin="0,8,0,0">
+                        <TextBlock Grid.Column="0"
+                                   Name="PART_Prompt"
+                                   Text="{TemplateBinding Prompt}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,4,0" />
+                        <!-- Not named from Prompt. A prompt is "> " or "diana$ ",
+                             which is a sigil and reads as punctuation. -->
+                        <TextBox Grid.Column="1"
+                                 Name="PART_Input"
+                                 AutomationProperties.Name="Console input"
+                                 CaretBrush="{DynamicResource LunaText}"
+                                 BorderThickness="1" />
+                    </Grid>
+
+                    <ScrollViewer Name="PART_Scroll">
+                        <!-- A tab stop by virtue of being selectable, which is
+                             worth keeping: it is how a keyboard selects and
+                             copies output.
+
+                             DELIBERATELY NOT GIVEN AutomationProperties.Name,
+                             because on a text block it would do nothing.
+                             Avalonia 12.1.0's TextBlockAutomationPeer overrides
+                             GetNameCore to return Text and never consults the
+                             attached property, so the name here is the output
+                             itself - which is what a reader wants from a console
+                             anyway - and an empty console has no name at all.
+                             Measured, with the reproduction, in §24.5. Setting
+                             the attribute would read as a fix and be one line of
+                             ignored XAML. -->
+                        <SelectableTextBlock Name="PART_Output"
+                                             TextWrapping="Wrap" />
+                    </ScrollViewer>
+                </DockPanel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- Every property the CSS vocabulary publishes for these parts is set here
+         rather than on the elements above, and that is not a style preference.
+
+         A value written into a ControlTemplate binds at priority Template, which
+         OUTRANKS Style - measured, §39.2. So `console-pane .output { color: … }`
+         parsed, matched PART_Output, and lost to the attribute, leaving the part
+         at #ffd4d4d4 with priority Template. As setters these are Style priority
+         and a host theme applied afterwards wins in the ordinary way.
+
+         CaretBrush stays an attribute deliberately: no CSS property maps to it,
+         so nothing can be competing for it and moving it would only suggest
+         otherwise. -->
+    <Style Selector="luna|ConsolePane /template/ TextBlock#PART_Prompt">
+        <Setter Property="FontFamily" Value="{DynamicResource LunaMonoFont}" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
+    </Style>
+
+    <Style Selector="luna|ConsolePane /template/ TextBox#PART_Input">
+        <Setter Property="FontFamily" Value="{DynamicResource LunaMonoFont}" />
+        <Setter Property="Background" Value="{DynamicResource LunaInputSurface}" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
+    </Style>
+
+    <Style Selector="luna|ConsolePane /template/ SelectableTextBlock#PART_Output">
+        <Setter Property="FontFamily" Value="{DynamicResource LunaMonoFont}" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
+    </Style>
+
+</Styles>

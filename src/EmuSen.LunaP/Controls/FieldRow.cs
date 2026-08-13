@@ -8,6 +8,7 @@ using EmuSen.LunaP.Automation;
 namespace EmuSen.LunaP.Controls
 {
     // A settings field: bold label, optional grey explanation, then whatever control the caller puts in Content - see docs/LunaP.md §5.4.
+    /// <summary>A settings field: a bold label, an optional explanation, and whatever control the caller supplies.</summary>
     public class FieldRow : ContentControl
     {
         public static readonly StyledProperty<string> LabelProperty =
@@ -21,6 +22,7 @@ namespace EmuSen.LunaP.Controls
 
         private TextBlock? _labelBlock;
 
+        /// <summary>The label to the left of the field.</summary>
         public string Label
         {
             get => GetValue(LabelProperty);
@@ -28,12 +30,14 @@ namespace EmuSen.LunaP.Controls
         }
 
         // Left empty, the hint collapses rather than reserving blank space.
+        /// <summary>An explanation shown under the field. Empty collapses the row rather than leaving a blank line.</summary>
         public string Hint
         {
             get => GetValue(HintProperty);
             set => SetValue(HintProperty, value);
         }
 
+        /// <summary>Whether a hint was given, which is what collapses the hint row when none was.</summary>
         public bool HasHint => !string.IsNullOrEmpty(Hint);
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

@@ -21,6 +21,7 @@ namespace EmuSen.LunaP.Controls
     // delegate - a meter row takes (string, double, string), never a DebugLoadInfo - and a list
     // that demanded an IListItem would be a list only an application that had adopted LunaP's
     // vocabulary could use. Label and Key are Funcs for the same reason.
+    /// <summary>A single-selection list that keeps hold of the model type it was given.</summary>
     public class LunaList<T> : ListBox where T : class
     {
         // ListBox's own theme, not a subclass's: a control's style key defaults to its runtime type,
@@ -29,33 +30,56 @@ namespace EmuSen.LunaP.Controls
         // the form where it throws rather than degrading to blank.
         protected override Type StyleKeyOverride => typeof(ListBox);
 
+        // A style key spent is a type a selector can no longer name (§30), so every control
+        // that pins one publishes the class that names it instead. Uniform rather than
+        // added-when-needed: the class costs nothing, and the day this control gains a style
+        // file or a CSS element name the selector already has something to match. Enforced by
+        // StyleKeyTests, which is why this cannot be forgotten on the next one.
+        /// <summary>The style class this control adds to itself, so a selector can reach it despite its style key being ListBox.</summary>
+        public const string StyleClass = "luna-list";
+
         private readonly Suppressor _filling = new();
         private IReadOnlyList<T> _items = Array.Empty<T>();
 
         // What each row reads as. Defaults to ToString(), so a list of strings needs no ceremony.
+        /// <summary>How a model becomes the text of its row. Called for every item on every Refresh, so it should be cheap and must not have side effects.</summary>
         public Func<T, string> Label { get; set; } = item => item?.ToString() ?? "";
 
         // What makes two items "the same item" across a refresh. Defaults to reference identity,
         // which is right for a cached model and wrong for rows rebuilt from a database on every
         // poll - those need a real key, and the whole point of Refresh is that it then works.
+        /// <summary>How a row is matched to a model across a Refresh, so a selection survives a rebuild.</summary>
+        /// <remarks>
+        /// Defaults to the item itself, which means REFERENCE IDENTITY for a class. That is right for a
+        /// cached model handed back unchanged, and wrong for rows rebuilt on every poll - there, every
+        /// item is a new object, nothing matches, and the selection is lost on each refresh. Give a stable
+        /// key (an id, a path) when the models are rebuilt rather than reused.
+        /// </remarks>
         public Func<T, object?> Key { get; set; } = item => item;
 
         // Raised only for a real user choice, never for the selection restored during a refresh -
         // the same distinction Dropdown.Chose draws, and for the same reason.
+        /// <summary>Raised when the user picks a row, with the model rather than the row. Not raised for a selection restored by Refresh, so a poll loop cannot look like a click.</summary>
         public event Action<T?>? Chose;
 
-        public LunaList() => SelectionChanged += (_, _) =>
+        public LunaList()
         {
-            if (!_filling.IsSuppressing) Chose?.Invoke(Selected);
-        };
+            Classes.Add(StyleClass);
+            SelectionChanged += (_, _) =>
+            {
+                if (!_filling.IsSuppressing) Chose?.Invoke(Selected);
+            };
+        }
 
         // NOT `Items`, which would shadow ItemsControl.Items and leave two properties of the same
         // name meaning different things - the rows on one, the models on the other - depending on
         // which type the caller happens to be holding.
+        /// <summary>The models currently shown, in order.</summary>
         public IReadOnlyList<T> Models => _items;
 
         // The selected model, not the row. This is the whole point: no shadow array, no index
         // arithmetic, and nothing to parse back out of a label.
+        /// <summary>The selected model, or null when nothing is selected.</summary>
         public T? Selected
         {
             get
@@ -75,6 +99,9 @@ namespace EmuSen.LunaP.Controls
         // Three sites wrote that dance separately (§21.1's A3). It belongs here rather than in a
         // helper beside them, because "rebuild the list" and "keep the selection" are one operation
         // that only looks like two.
+        /// <summary>Replaces every row, keeping the selection if Key still matches something.</summary>
+        /// <param name="items">The new models, in display order. Safe to call before the control has a template.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="items"/> is null.</exception>
         public void Refresh(IEnumerable<T> items)
         {
             if (items is null) throw new ArgumentNullException(nameof(items));
@@ -97,6 +124,8 @@ namespace EmuSen.LunaP.Controls
 
         // Selects by model rather than by index. Does not raise Chose - a caller setting the
         // selection already knows what it set.
+        /// <summary>Selects a model without raising Chose.</summary>
+        /// <param name="item">The model to select, matched by Key. Null clears the selection. Safe to call before the control has a template.</param>
         public void Select(T? item)
         {
             using (_filling.Suppress())

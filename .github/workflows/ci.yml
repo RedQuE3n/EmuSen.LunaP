@@ -14,7 +14,24 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # THREE RUNNERS, because this is a cross-platform UI toolkit that was verified
+    # on one Linux box until §35. Nothing in the suite is platform-specific - the
+    # audit found no hard-coded paths and one guarded OperatingSystem.IsLinux()
+    # branch in the whole toolkit - which is an argument for expecting green, not
+    # a substitute for knowing.
+    #
+    # The suite stays headless everywhere, so no runner needs a display or a
+    # package installed. If one ever does, that is a sign the suite stopped being
+    # headless rather than a sign this file needs a step.
+    strategy:
+      # Not cancelled on first failure: "fails on macOS only" is the single most
+      # useful thing this matrix can tell us, and fail-fast would hide it behind
+      # whichever runner happened to finish first.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -29,3 +46,38 @@ jobs:
       - run: dotnet build --no-restore
 
       - run: dotnet test --no-build --verbosity normal
+
+      # PACKING IS PART OF THE BUILD, not part of the release. Until this step
+      # existed, `dotnet pack` ran for the first time in publish.yml - on a tag,
+      # which is the worst moment to discover a missing README, a bad
+      # PackagePath, or a symbol package that was never produced. The output is
+      # thrown away; what is being tested is that both packages can be made.
+      #
+      # Both, and at the same version, for the reason publish.yml packs both:
+      # the harness asserts about the toolkit's controls (§22.8).
+      - name: Pack both packages
+        run: |
+          dotnet pack src/EmuSen.LunaP/EmuSen.LunaP.csproj -c Release -o nupkgs
+          dotnet pack src/EmuSen.LunaP.Testing/EmuSen.LunaP.Testing.csproj -c Release -o nupkgs
+
+      # The symbol package is the whole point of §31 and is the part most easily
+      # lost to a property somebody moves - it is produced by IncludeSymbols in
+      # Directory.Build.props, and nothing else in the build would fail if that
+      # line were deleted. So it is asserted rather than assumed.
+      #
+      # `shell: bash` IS LOAD-BEARING NOW THAT THIS RUNS ON THREE RUNNERS. GitHub
+      # defaults windows-latest to PowerShell, where this loop is not a syntax
+      # error but a different language - ${pkg%.nupkg} and [ -f ] mean nothing
+      # there, and the step would have failed on Windows for a reason that has
+      # nothing to do with the packages. Bash is present on all three.
+      - name: Every package ships symbols
+        shell: bash
+        run: |
+          for pkg in nupkgs/*.nupkg; do
+            sym="${pkg%.nupkg}.snupkg"
+            if [ ! -f "$sym" ]; then
+              echo "::error::$pkg has no $sym - see docs/LunaP.md §31"
+              exit 1
+            fi
+            echo "ok: $(basename "$sym")"
+          done

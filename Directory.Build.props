@@ -1,0 +1,58 @@
+<Project>
+
+  <!-- HOW BOTH PACKAGES ARE BUILT FOR PUBLICATION. Everything here is about what
+       a consumer receives alongside the DLL, rather than about what the DLL
+       does, which is why it is one file instead of two copies in two .csproj
+       files that would eventually disagree. A symbol package published for one
+       package and not the other is a defect nobody would notice until somebody
+       tried to step into the wrong half.
+
+       THE REASON THIS FILE EXISTS AT ALL. This repository's stated position is
+       that the reasoning is the deliverable as much as the code - CLAUDE.md
+       opens with it, and Threading/Suppressor.cs is the house example of a
+       block above a type carrying the whole argument. None of that reached a
+       consumer. Without a symbol package and source links, somebody who steps
+       into SplitPane from their own application gets decompiled IL: correct
+       behaviour, every comment gone. The package shipped the code and kept the
+       explanation. See docs/LunaP.md §31.
+
+       NO PackageReference IS NEEDED FOR ANY OF IT, which is the reason it is
+       this cheap. SourceLink used to be a set of NuGet packages; since .NET 8
+       it ships inside the SDK - Microsoft.SourceLink.GitHub is a directory
+       under Sdks/ in the installed SDK, and PublishRepositoryUrl is enough to
+       turn it on. So §1's layering rule is untouched and there is no licence to
+       record, which is not true of most things that improve a package. -->
+  <PropertyGroup>
+
+    <!-- Puts the repository URL and the exact commit into the .nuspec, and is
+         what SourceLink reads to build the per-file source URLs. Without it the
+         PDB knows the file paths on the machine that built it and nothing a
+         consumer's debugger can fetch. -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+
+    <!-- Sources that are NOT in git go into the PDB itself rather than being
+         linked. That is generated code - the XAML compiler's output for every
+         Theme/Controls/*.axaml, and AssemblyInfo - which exists in no commit
+         and would otherwise be the one part of a stack trace that cannot be
+         resolved. -->
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+
+    <!-- The symbol package. snupkg rather than the legacy .symbols.nupkg
+         because it is what nuget.org's symbol server accepts; `dotnet nuget
+         push` uploads the matching .snupkg alongside the .nupkg on its own, so
+         publish.yml needs no second push step. -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!-- ONLY UNDER CI, AND DELIBERATELY NOT LOCALLY. This normalises source
+         paths to deterministic placeholders, which is exactly what a published
+         package wants and exactly what a developer debugging their own working
+         copy does not - locally it would send the debugger looking for
+         /_/src/... instead of the file open in the editor. GitHub Actions sets
+         GITHUB_ACTIONS=true, so the published artefact gets it and nobody has
+         to remember a flag. -->
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+
+  </PropertyGroup>
+
+</Project>

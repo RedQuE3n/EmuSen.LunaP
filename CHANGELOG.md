@@ -11,6 +11,173 @@ answer.
 
 ---
 
+## 0.7.0
+
+**A shell, and a class of theme rule that never worked.**
+
+The shell is the headline: actions, menus, a toolbar, context menus, keyboard
+shortcuts, a draggable splitter, docked side panels, a card surface, and an
+`AppWindow` that puts them where they go (`§26`). A table (`§27`). Symbols and
+source links in the package (`§31`), a guarded public API surface (`§32`), and
+IntelliSense for all 379 members of it rather than none (`§33`, `§41`).
+
+**But this release is not purely additive, and the two places it is not are
+worth reading before you take it.**
+
+1. **Seventeen CSS theme rules did nothing and now work** — four element names
+   since 0.2.0, and thirteen template parts (`§30`, `§39`). If you wrote one and
+   worked around its not applying, the workaround is now doubled. If you wrote
+   none, nothing moves: every default was measured before and after.
+2. **One rule is now refused rather than silently ignored**: `meter-row .bar
+   { color: … }` could never win against the state styles, so it warns and tells
+   you what to write instead (`§40`). The theme still loads.
+
+An earlier draft of this entry said *"everything is additive: if you upgrade and
+change nothing, nothing changes."* That was true when the shell was the whole
+release and is not true now — the sentence is corrected here rather than
+deleted, because it is the one a consumer would have relied on.
+
+### Added
+
+- **`LunaAction` — one command object behind a menu item, a toolbar button, a
+  context-menu entry and a key binding.** It is an `ICommand`, so it also drops
+  into any Avalonia control that takes one. Changing its label or its enabled
+  state changes every surface showing it, which is the four-declarations problem
+  it exists to remove (`§26.3`).
+- **`ActionGroup`**, for mutually exclusive checkable actions — a theme picker,
+  a view mode. Qt's `QActionGroup` (`§26.3`).
+- **`MenuBar`, `ToolBar`, and `Menus.Context(...)`**, all built from the same
+  actions. `ToolBar` is not `ButtonBar`: one is built from actions and follows
+  them, the other is a run of buttons you own (`§26.4`).
+- **`Menus.BindShortcuts`, which is what actually makes a shortcut work.**
+  `MenuItem.InputGesture` draws "Ctrl+S" in the menu and binds nothing, so a
+  menu can advertise a key that does nothing at all. `AppWindow` binds every
+  action in its menus and toolbar for you (`§26.5`).
+- **`SplitPane`** — a draggable divider with one fixed pane and one elastic one,
+  remembered in pixels under an opt-in `PaneKey`. The divider is keyboard
+  operable and now says what it is (`§26.6`, `§26.11`).
+- **`SidePanel`** — a titled, closable panel docked to an edge, with a
+  `ToggleAction` for your View menu that is the *same object* as its close
+  button. `QDockWidget` without the floating; `§26.7` says what that leaves out.
+- **`Card`** — a titled surface on LunaP's own key. If you were painting a
+  `Border` with FluentTheme's `SystemChromeLowColor`, this is that, except a
+  theme can reach it (`§26.9`).
+- **`AppWindow`** — menu bar, toolbar, central content, status line, panels. It
+  extends `ToolWindow` and changes nothing it inherited: empty, it lays out
+  identically to a plain `ToolWindow` (`§26.8`).
+- **`LunaTable<T>`** — a list with columns. Columns are `(header, projection)` pairs, the model
+  comes back on selection, and `Refresh` keeps the selection across a rebuild, exactly as
+  `LunaList<T>` does. Flat: no tree, no sorting, no cell editing (`§27`).
+- **`LunaBorder`**, one new palette token, in both variants and both halves of
+  the palette. Chosen against WCAG 1.4.11's 3:1 rather than by eye, because the
+  splitter it draws is a control you have to see to use — the subtle value a
+  dark theme reaches for measures 1.51:1 (`§26.9`).
+- **IntelliSense for the whole surface, not just the type names.** The shipped
+  `EmuSen.LunaP.xml` went from 63 entries to 379: every member now says what it
+  does, with a sentence for every parameter (212 of them), what it returns (85),
+  and what it throws (14). The delegate seams say when they are called and how
+  often — `LunaList<T>.Key` and `LunaTable<T>.Key` in particular, whose
+  reference-identity default loses the selection on every refresh when rows are
+  rebuilt rather than reused (`§41`).
+- **`UiTest.Redraw(window)` and `UiTest.AssertMatchesBaseline(name, window)`**, in
+  `EmuSen.LunaP.Testing`. On macOS a window's **first** draw is not its steady
+  state, so a render baseline written from one and compared against any later
+  frame mismatches with nothing wrong. `Redraw` forces a genuine second pass and
+  captures that; the new `AssertMatchesBaseline` overload does it for you. Note
+  that capturing twice does **not** work — a capture of an unchanged window
+  copies the frame already drawn (`§38`).
+
+### Changed
+
+- **The gallery is an `AppWindow` now.** A menu bar is not something you look at
+  next to a meter row, so the gallery *is* a shell with the samples inside it.
+- `LunaSettings.Diagnostics` now also carries "two commands claim one shortcut",
+  alongside the "this file would not load" it already carried (`§26.5`).
+
+- **IntelliSense now says something.** Both packages ship an XML documentation file, so every one
+  of the sixty-three public types describes itself in your editor instead of appearing as a bare
+  name. Members are documented where the name does not already say it, and deliberately not
+  otherwise — 99 of the 460 are Avalonia property fields and framework overrides where the only
+  available sentence restates the name (`§33`).
+- **The public surface of both packages is pinned by a test.** Sixty-three types and their members
+  are written down in `tests/…/ApiSurface/`, and any change to them — a rename, a widened return
+  type, a changed base class, a property turned `internal` — fails the build until somebody
+  regenerates the file and commits it. It is a promise about future versions rather than a feature:
+  an accidental break can no longer reach you in a version bump without having been reviewed
+  (`§32`).
+- **Both packages now ship symbols and source links.** A `.snupkg` goes to nuget.org's symbol
+  server with every release, and the PDBs carry SourceLink pointing at the exact commit the package
+  was built from — so stepping into LunaP gives you the real file, with the comments that explain
+  why the code is the way it is, instead of decompiled IL. Nothing was missing but four build
+  properties, and none of them costs a dependency: SourceLink ships inside the .NET SDK. Symbols
+  cannot be added to 0.2.0–0.6.0 retroactively, so this starts here (`§31`).
+- **`StyleClass` on the eight controls that pin a style key** — `MenuBar`, `LunaSwitch`, `Dropdown`,
+  `Tabs`, `ActionMenuItem`, `ActionButton`, `ActionToggle`, `LunaList<T>`. Each adds its class to
+  itself, so `ToggleSwitch.luna-switch` reaches a `LunaSwitch` and not your own `ToggleSwitch`. If
+  you have been trying to style one of these from your own `.axaml` and finding that
+  `luna|Dropdown` matched nothing, this is the selector you needed and `§30` is why it did not work.
+
+### Fixed
+
+- **Four CSS element names have never worked, and now do: `luna-switch`, `dropdown`, `tabs` and
+  `menu-bar`.** If you wrote `dropdown { color: … }` in a `.css` theme, the theme loaded, **no
+  warning was raised**, and nothing changed. The first three have been broken since the CSS format
+  shipped in 0.2.0; `menu-bar` since 0.7.0 advertised it. The cause is one line of Avalonia
+  semantics: a type selector matches a control's **style key**, and these four pin
+  `StyleKeyOverride` to a stock control so that they get a template at all — so the selector asked
+  for a control that cannot exist. They now select their style-key type narrowed by a class each
+  control adds to itself (`§30`).
+- **The menu bar's own styling now applies at all.** `Theme/Controls/MenuBar.axaml` used a
+  `luna|MenuBar` selector that matched nothing, so its `Padding="2,0"` never arrived — measured at
+  priority `Unset`, meaning nothing anywhere was setting it. Its background looked right only
+  because Avalonia paints a `Menu` transparent anyway (`§29.3`, `§30`).
+- **This is a visible change if you worked around any of the above.** A rule you wrote that quietly
+  did nothing will start doing what it says, and the menu bar gains 2px of horizontal padding.
+- **`UiTest.AssertLaidOut` no longer compares a first draw against your baseline**, which on macOS
+  could fail on ~0.4% of the buffer with nothing actually wrong. If you keep `.frame` baselines,
+  regenerate them once: frames written by the old code came from a different render pass than the
+  ones the new code compares (`§37`, `§38`).
+- **`UiTest.AssertStable` failures now report the differing pixel count, the bounding box and the
+  peak channel delta**, and name the `EMUSEN_UI_DUMP` variable that gets the frames out. A byte
+  count alone cannot tell antialiasing from content that moved (`§38.5`).
+- **Thirteen CSS template-part rules did nothing and now work.** If you wrote
+  `card .header { color: … }`, `console-pane .output { color: … }`, `side-panel .title { color: … }`,
+  `split-pane .rule { background: … }`, `filter-bar .facet { … }` or any of the others, the theme
+  loaded, no warning was raised, and the part kept its default. Two causes: the default was written
+  as an attribute inside the `ControlTemplate`, which binds at a **higher priority than any style**,
+  and `filter-bar .facet` named the wrong type outright — the same style-key defect as above, one
+  layer down (`§39.2`, `§39.3`).
+- **Nothing changes if you wrote no such rule.** Every default was checked before and after: same
+  values, only the priority moved, so the rendered result is identical (`§39.2`).
+- **`meter-row .bar { color: … }` is now refused with a warning instead of silently doing nothing.**
+  The bar's colour comes from its `:nominal`/`:busy`/`:hot` state styles, which outrank a stateless
+  rule, so it never could work. The warning names both spellings that do: `meter-row.busy .bar
+  { color: … }`, or the `--luna-nominal`/`--luna-busy`/`--luna-hot` tokens to restyle all three at
+  once. **The theme still loads** — warnings are not fatal — but a rule that is accepted and does
+  nothing is worse than one that is refused (`§40`).
+
+### Known
+
+- **`Avalonia.Controls.TreeDataGrid` was considered for the table and rejected: it requires a paid
+  Avalonia Accelerate licence.** No `<license>` in its nuspec, a `AvaloniaUILicenseKeyProduct`
+  build property, a dependency on `AvaloniaUI.Licensing`, and its own README saying so since
+  11.2.0. Taking it would have meant every LunaP consumer needing a key to ship a LunaP control,
+  which is the term `§25` spent a whole section removing. LunaP's dependencies are still all MIT
+  (`§27.1`).
+- **If you consume LunaP and check its vocabulary against your own docs, this
+  release will turn that test red.** One new palette token and five new CSS
+  elements (`menu-bar`, `tool-bar`, `card`, `split-pane`, `side-panel`). EmuSen
+  has exactly such a test and `§21.5` predicted this invoice.
+- **`panes.json` is a new file**, written next to `windows.json` for any pane or
+  panel you give a key. Nothing is written without one.
+- **No icons.** An action has no icon property, so a toolbar is a row of words.
+  This needs an icon system rather than a property, and there isn't one
+  (`§26.12`).
+- **No floating or re-dockable panels, no MDI, no native macOS menu bar, and no
+  hierarchical tree view.** `§26.12` and `§27.5` are the honest lists.
+
+---
+
 ## 0.6.0
 
 **Both packages are now MIT.** No code changed — this release exists only to

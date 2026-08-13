@@ -10,6 +10,7 @@ using EmuSen.LunaP.Automation;
 namespace EmuSen.LunaP.Controls
 {
     // A terminal-shaped pane: scrolling output, a prompt, an input box with history recall. Knows nothing about DianaOS - see docs/LunaP.md §5.6.
+    /// <summary>A terminal-shaped pane with scrolling output, a prompt, and an input box with history recall.</summary>
     public class ConsolePane : TemplatedControl
     {
         public static readonly StyledProperty<string> PromptProperty =
@@ -45,11 +46,14 @@ namespace EmuSen.LunaP.Controls
         private string _pendingInputText = "";
 
         // Raised on Enter, with the line as typed; the caller decides what running it means.
+        /// <summary>Raised when a line is entered. The pane does not echo or interpret it - append whatever should appear.</summary>
         public event Action<string>? Submitted;
 
         // Oldest-first. A delegate because one caller reads a live core's history and the other its own interpreter's.
+        /// <summary>Supplies the lines Up and Down walk through, newest last. Called each time recall starts, so a caller returning a live list needs no notification. Null disables recall.</summary>
         public Func<IReadOnlyList<string>>? HistorySource { get; set; }
 
+        /// <summary>The sigil before the input, such as "&gt; ". Punctuation rather than a label, so it is not what a screen reader announces the box as.</summary>
         public string Prompt
         {
             get => GetValue(PromptProperty);
@@ -57,12 +61,14 @@ namespace EmuSen.LunaP.Controls
         }
 
         // Lines kept before the oldest is dropped. Zero or less means unlimited.
+        /// <summary>How many output lines to keep. Older ones are dropped from the top once this is exceeded.</summary>
         public int MaxLines
         {
             get => GetValue(MaxLinesProperty);
             set => SetValue(MaxLinesProperty, value);
         }
 
+        /// <summary>Everything currently in the output, newline separated.</summary>
         public string OutputText => _joined ??= string.Join("\n", _lines);
 
         // A Group over two named parts, named in the template - "Console output" and "Console
@@ -93,6 +99,8 @@ namespace EmuSen.LunaP.Controls
             Flush();
         }
 
+        /// <summary>Adds a line of output, scrolling to it if the view was already at the bottom.</summary>
+        /// <param name="text">The line. Not interpreted: a caller echoing input adds it themselves.</param>
         public void AppendLine(string text)
         {
             // Asked BEFORE the text changes. Once the new line is in, the extent has already grown
@@ -118,6 +126,7 @@ namespace EmuSen.LunaP.Controls
             if (follow) _scroll?.ScrollToEnd();
         }
 
+        /// <summary>Empties the output. Does not touch what is typed in the input.</summary>
         public void Clear()
         {
             _lines.Clear();
@@ -142,6 +151,11 @@ namespace EmuSen.LunaP.Controls
         // no-op and the wiring cannot be observed at all - §22.6 records the measurement.
         //
         // "Follows" as in follows the tail: true means new output should scroll into view.
+        /// <summary>Whether a scroller at this position counts as being at the bottom, and so should follow new output.</summary>
+        /// <param name="offsetY">Current vertical scroll offset.</param>
+        /// <param name="extentHeight">Total scrollable height.</param>
+        /// <param name="viewportHeight">Visible height.</param>
+        /// <returns>True when it is at the bottom within a small tolerance. Public because the tolerance is the whole behaviour, and a test that cannot reach it cannot pin it.</returns>
         public static bool Follows(double offsetY, double extentHeight, double viewportHeight)
         {
             double hidden = extentHeight - viewportHeight;
@@ -154,9 +168,11 @@ namespace EmuSen.LunaP.Controls
             return offsetY >= hidden - 1.0;
         }
 
+        /// <summary>Puts the keyboard in the input box.</summary>
         public void FocusInput() => _input?.Focus();
 
         // Resets recall too: after a target swap the old history is gone and a half-finished recall would point at nothing.
+        /// <summary>Forgets where Up and Down had walked to, so the next Up starts at the newest line again.</summary>
         public void ResetHistoryRecall() => _historyIndex = -1;
 
         private void OnInputKeyDown(object? sender, KeyEventArgs e)

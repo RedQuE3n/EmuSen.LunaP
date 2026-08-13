@@ -7,6 +7,7 @@ using EmuSen.LunaP.Theme;
 namespace EmuSen.LunaP.Controls
 {
     // One row of a load/level dashboard: a label, a percentage bar, a value - see docs/LunaP.md §5.2.
+    /// <summary>One dashboard row: a label, a percentage bar coloured by load band, and a value.</summary>
     public class MeterRow : TemplatedControl
     {
         public static readonly StyledProperty<string> LabelProperty =
@@ -18,6 +19,7 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<string> ValueTextProperty =
             AvaloniaProperty.Register<MeterRow, string>(nameof(ValueText), string.Empty);
 
+        /// <summary>What the meter is measuring, shown at the left.</summary>
         public string Label
         {
             get => GetValue(LabelProperty);
@@ -25,6 +27,7 @@ namespace EmuSen.LunaP.Controls
         }
 
         // Drives both the bar and, through the :nominal/:busy/:hot pseudo-classes, its colour.
+        /// <summary>How full the bar is, 0 to 100. This also picks the colour band, through the nominal, busy and hot thresholds.</summary>
         public double Percent
         {
             get => GetValue(PercentProperty);
@@ -32,6 +35,7 @@ namespace EmuSen.LunaP.Controls
         }
 
         // Shown verbatim; the caller decides whether that is "62.0%" or "13/128".
+        /// <summary>The reading shown at the right. Free text, so a byte count or a temperature can sit beside a percentage bar.</summary>
         public string ValueText
         {
             get => GetValue(ValueTextProperty);
