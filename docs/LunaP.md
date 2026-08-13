@@ -4,7 +4,7 @@
 
 *Sections still say `EmuSen.Mistress`, `EmuSen.Hotaru` and `EmuSen.Serenity`. Those are the three applications this toolkit was built for, and their names are left in place rather than generalised, because a record that has been tidied to look like it was always general is a record nobody can check.*
 
-*Revision history, most recent first: **the table sorts** — a column can carry a comparison, headings that sort are buttons so a keyboard can reach them, and the cycle has a third state because the order `Refresh` was given is worth being able to get back to (§27.8); **the audit that followed** — every recorded sabotage re-read to ask whether it broke an outcome or only the wiring the assertion named, which found a shortcut bound to entirely the wrong action (§46); **a guard that could not fail, and six pixels it never saw** — `LunaTable`'s columns were never sharing a size, because Avalonia registers a shared size group on Add and not on assignment; the test watching it asserted the group names, which stayed correct throughout, on data that contained no `Auto` column at all (§27.7); **two traps turned into guards** — the style-key trap had been written up four times and the before-the-template trap three, each time as a paragraph asking the next author to remember; both are now swept by reflection, so a control added later is covered without anybody reading the paragraph (§28); **a table, and a dependency refused** — `Avalonia.Controls.TreeDataGrid` turns out to require a paid licence, so `LunaTable<T>` is built on stock Avalonia instead (§27); **a shell** — actions, menus, a toolbar, a splitter, docked panels and an `AppWindow` to hold them (§26), chosen by asking what Qt6 offers and then, belatedly, by running the survey that should have come first (§26.1); the relicence to MIT (§25); accessibility, and nine controls that were not in the automation tree (§24); the light column (§23); **the toolkit left EmuSen** (§20); the settings seam and the two files that had to move for it (§19); a theme may be written in CSS, and building that turned up an Avalonia behaviour sitting under the theme system unnoticed — mutating `Application.Styles` at runtime strips every already-realized control of its styling (§12.2, §12.3); the widget set and user themes from disk; the migration, which removed 863 net lines from two frontends.*
+*Revision history, most recent first: **what the evidence rule governs** — §21 answers what is missing and answers it well; it was never asked when a control that already earned its place is finished, and that is a boundary rather than a fault (§47); **the table sorts** — a column can carry a comparison, headings that sort are buttons so a keyboard can reach them, and the cycle has a third state because the order `Refresh` was given is worth being able to get back to (§27.8); **the audit that followed** — every recorded sabotage re-read to ask whether it broke an outcome or only the wiring the assertion named, which found a shortcut bound to entirely the wrong action (§46); **a guard that could not fail, and six pixels it never saw** — `LunaTable`'s columns were never sharing a size, because Avalonia registers a shared size group on Add and not on assignment; the test watching it asserted the group names, which stayed correct throughout, on data that contained no `Auto` column at all (§27.7); **two traps turned into guards** — the style-key trap had been written up four times and the before-the-template trap three, each time as a paragraph asking the next author to remember; both are now swept by reflection, so a control added later is covered without anybody reading the paragraph (§28); **a table, and a dependency refused** — `Avalonia.Controls.TreeDataGrid` turns out to require a paid licence, so `LunaTable<T>` is built on stock Avalonia instead (§27); **a shell** — actions, menus, a toolbar, a splitter, docked panels and an `AppWindow` to hold them (§26), chosen by asking what Qt6 offers and then, belatedly, by running the survey that should have come first (§26.1); the relicence to MIT (§25); accessibility, and nine controls that were not in the automation tree (§24); the light column (§23); **the toolkit left EmuSen** (§20); the settings seam and the two files that had to move for it (§19); a theme may be written in CSS, and building that turned up an Avalonia behaviour sitting under the theme system unnoticed — mutating `Application.Styles` at runtime strips every already-realized control of its styling (§12.2, §12.3); the widget set and user themes from disk; the migration, which removed 863 net lines from two frontends.*
 
 ---
 
@@ -4220,3 +4220,144 @@ sabotages that were worth running.
   question that catches these was not being asked yet.
 - **It did not re-run the historical sabotages.** §46.1 reads them as written. A table entry that
   was recorded inaccurately would survive this audit intact.
+
+---
+
+## 47. What §21's rule governs, and the one widening it does not cover
+
+**This section exists because four commits broke a rule this document states, and there were two
+honest responses: undo them, or say what the rule actually governs.** This is the second, and it is
+written as a clarification rather than a repeal, because the rule is right about the thing it was
+written for.
+
+### 47.1 The commits, and the count they do not have
+
+§27.8 gave `LunaTable<T>` sorting. §27.11 gave it draggable column widths and a remembered layout.
+**Neither carries a count**, and §21's rule is explicit:
+
+> an item earns a place here by having been written more than once, by somebody who was not trying
+> to write a toolkit … So every item below carries its sites, and the count *is* the argument.
+
+There is no count for a hand-rolled column resize across the five consumers, and there was never
+going to be one. The only columnar site the survey found is `bima/viewer.py:460` (§27.2) — a
+three-column list in a Python application that has not been ported yet. Sorting was argued from
+usefulness; resizing and persistence were argued from neither.
+
+So: either those commits were a mistake, or §21's rule does not govern them. Saying which is the
+whole point of this section, because leaving it unsaid is how a rule quietly stops meaning anything
+while still being quoted.
+
+### 47.2 The rule answers "what is missing", and answers it well
+
+§21 is the forward-looking section — *"where the toolkit is thin"* — and its rule is a rule about
+**entry to that section**. It answers one question: *what is evidence that this toolkit lacks
+something?* It answers it well, and its record is the argument for leaving it exactly as it is. A
+consumer who needs a thing and does not have it builds it badly, in public, where it can be counted
+— and counting is what produced `LunaAction` out of twenty-nine hand-declared `MenuItem`s and seven
+`SubmenuOpened` handlers (§26.1), what kept a hierarchical view out of `LunaTable<T>` when not one
+consumer asked for one (§27.2), and what turned refusing `Avalonia.Controls.TreeDataGrid` into a
+measurement instead of a preference (§27.1). A rule with that record is not one to loosen.
+
+**What it does not answer is a second question that looks like the same one: when is a control that
+already earned its place finished?**
+
+`LunaTable<T>` earned its place on evidence — one site, recorded as the single exception §21 admits
+to. What it earned was *a place*, not a feature list. "Should this toolkit have a table" was settled
+by counting. "Does that table sort" is a question about a control that already exists, and it is a
+different question in a way worth stating exactly:
+
+> A consumer who needs sorting and does not have it **does not hand-roll a sort**. They reach for a
+> different control, or they ship without it. Either way they leave nothing behind to count.
+
+**That is a boundary rather than a fault, and knowing where it runs makes the rule stronger.** A
+method that is precise about what it can see is a method whose silence carries information: when the
+survey finds nothing, that is now a specific claim — nobody is hand-building this — rather than a
+vague one. §26.1 was already close to saying so, and `PLAN-general-purpose.md` arrived at the same
+place from the other end: the five consumers are all one kind of application, so an absent office-app
+feature is a fact about the sample rather than about the toolkit.
+
+**So the rule is kept, unchanged, for exactly what it was written for: a new kind of control.** What
+follows is not a replacement for it. It is an answer to the question it was never asked.
+
+*Written by somebody who had just built three uncounted things, which is worth knowing while reading
+it. The part to argue with is the test in §47.3, because that is the part which will be applied to
+cases this section did not have in mind.*
+
+### 47.3 The boundary, because "completing" is elastic
+
+Left there, "completion" would license anything — `LunaTable<T>` could be *completed* all the way
+into the package §27.1 refused. So the boundary is stated as a test rather than a sentiment:
+
+> **A completion adds a property to something the caller already declares. A new kind adds a noun
+> the caller has to learn.**
+
+| | | |
+|---|---|---|
+| Sorting | a column already had a heading and a projection; it gains a comparison | completion |
+| Column widths | already declared as a string; they become draggable | completion |
+| Remembered layout | the same widths, and the sort, written down under an opt-in key | completion |
+| Cell editing | a column gains a way to write back what it already reads | completion |
+| **Hierarchy** | expansion state, a parent/child model, a path to address a row by | **new kind** |
+| **Cell selection** | a second selection model beside the row one, and a cell coordinate | **new kind** |
+
+The last two are exactly what §27.4 already declined and §27.9 listed as still absent, so this test
+agrees with the decisions the document had already made by instinct. That is the main reason to
+trust it: it was derived to explain choices that were made before it existed, and it does not
+overturn any of them.
+
+### 47.4 The one arc in the general-purpose plan that this does *not* cover
+
+Everything in that plan is a completion under §47.3 — inputs and the theme seam complete a theme
+whose gaps §21.2 counted; validation completes `FieldRow`; fullscreen and cursor handling complete
+the window layer; the table work is done.
+
+**Except one.** A GPU surface — `OpenGlControlBase`, a render callback, a consumer bringing their own
+graphics library — is a new noun in every sense: a new control, a new lifecycle, a new threading
+story, and a seam of a kind the toolkit has exactly one precedent for (`ISettingsStore`, §19.1).
+No count licenses it and none ever will, for the §47.2 reason twice over: nobody hand-rolls a
+graphics surface badly inside an Avalonia window; they write a different application.
+
+**That decision is named here and deliberately not taken.** What taking it would require, so that it
+is a decision rather than a drift when somebody does take it:
+
+- **A stated first consumer.** Not a hypothetical game — a named repository that will use it, because
+  §21's whole method exists to stop this toolkit growing features for an imagined user.
+- **The `§1` argument in writing**, since a graphics seam is the second thing ever to need one, and
+  a seam that names no library is the only shape that keeps the rule.
+- **The hazards recorded before the code**, in the §12.3 style: `NativeControlHost`'s airspace
+  problem and its pointer-event issues are already known and already written down in the plan.
+
+### 47.5 The standard that replaces "count first" for completions
+
+`PLAN-general-purpose.md` proposed one: *the gallery must contain a plausible office-app screen and a
+plausible game shell, built only from LunaP.* **That is rejected here, before it was ever adopted,
+for two reasons that would have made it worse than nothing.**
+
+- **"Built only from LunaP" is false by design.** The plan's own §47 arc is to *re-skin* `TextBox`,
+  `CheckBox`, `Slider` and the rest through styles rather than wrap them — so an office application
+  built on this toolkit calls `new TextBox()`, by intention. The standard would have failed on its
+  first day for a reason that is not a failure.
+- **"Plausible" is not assertable**, and §7's gallery rule works precisely because reflection checks
+  it. A standard judged by the person meeting it is a standard that gets met.
+
+**What replaces it is one layer down and already planned:** sweep every control in a live headless
+application and require its resolved brushes to trace to `LunaPalette` rather than to Fluent's
+defaults. Mechanical, falsifiable, and it states the promise a general-purpose LunaP is actually
+making — *whatever you build out of it looks like one application.* A control added next year that
+nobody remembered to style fails it without anybody remembering to check.
+
+### 47.6 What this does not license
+
+- **§21 is not repealed and not weakened.** A new kind of control still needs its sites counted, and
+  §21's own warning still stands over everything in it — *"a doc that says the remaining option is X
+  is recording what was considered, not what is possible. Re-derive before building on it."* That
+  warning applies to `PLAN-general-purpose.md` with force: two of its claims have already been
+  falsified — `Avalonia.Controls.DataGrid` is MIT and maintained, so "both dependency routes are
+  closed" is wrong, and a propagation measurement it rested on described code that a later fix had
+  already invalidated (§27.11).
+- **It does not license the deferred list.** Printing, undo/redo, trees, MDI and an embedded browser
+  are new kinds every one, and they stay where §27.9 and the plan put them.
+- **It does not make completions automatic.** A completion still has to be worth its code, still
+  goes in the gallery (§7) and the automation tree (§24), and still needs guards that were made to
+  fail on purpose — §27.11 records two that did not, on the first try, and what each one turned out
+  to mean.
