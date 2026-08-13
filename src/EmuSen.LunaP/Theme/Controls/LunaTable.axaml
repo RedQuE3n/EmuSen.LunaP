@@ -49,6 +49,54 @@
         </Setter>
     </Style>
 
+    <!-- A SORTABLE HEADING IS A BUTTON WEARING NOTHING. LunaTable.Heading makes
+         one for any column with a comparison, because a heading that answers
+         only a click is a sort a keyboard user does not have (§24) - a Button
+         brings focus, Tab, Space, Enter and an invoke peer for free.
+
+         What it also brings is Fluent's chrome, and all of this is taking it
+         off again: the heading has to sit on the same baseline and the same x
+         as the plain TextBlock in the column beside it, or a table with one
+         sortable column among three has a heading row that steps up and down.
+
+         Background is set on the ContentPresenter and not on the Button. Fluent
+         paints a Button's fill in its template, so a Setter on the control is
+         overridden by the theme the moment a pointer enters; the pointerover and
+         pressed rules below reach the presenter, which is what actually draws. -->
+    <Style Selector=":is(luna|LunaTable) Button.heading">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+
+    <Style Selector=":is(luna|LunaTable) Button.heading /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <!-- The hover affordance, and the only one: a heading that looks identical
+         whether it sorts or not gives a mouse user nothing to discover. The
+         glyph tells them afterwards; this is what tells them before. -->
+    <Style Selector=":is(luna|LunaTable) Button.heading:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource LunaInputSurface}" />
+    </Style>
+
+    <Style Selector=":is(luna|LunaTable) Button.heading:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource LunaInputSurface}" />
+    </Style>
+
+    <!-- The sort direction. Hidden entirely in the third state rather than shown
+         as a neutral mark, so the cycle reads as two sorted states and off. -->
+    <Style Selector=":is(luna|LunaTable) TextBlock.sort">
+        <Setter Property="Foreground" Value="{DynamicResource LunaInfo}" />
+    </Style>
+
     <!-- The other half of the alignment. Fluent's ListBoxItem padding is not the
          header's, so left alone the columns start at two different x positions;
          this pins both to 12. The vertical figure is smaller than Fluent's

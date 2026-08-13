@@ -82,8 +82,18 @@ namespace EmuSen.LunaP.Controls
     public class LunaTable<T> : LunaTable where T : class
     {
         private readonly List<ColumnSpec> _columns = new();
+        private readonly List<Head> _heads = new();
         private readonly Suppressor _filling = new();
+
+        // _items is the order the caller gave to Refresh and never changes under a sort. _view is
+        // what is on screen. They are the same list until a header is clicked, and keeping them
+        // apart is what makes the third click - back to arrival order - possible at all.
         private IReadOnlyList<T> _items = Array.Empty<T>();
+        private IReadOnlyList<T> _view = Array.Empty<T>();
+
+        // Which column is sorted, and which way. -1 is the third state and the initial one.
+        private int _sortColumn = -1;
+        private bool _sortDescending;
 
         // A selection asked for before there was anywhere to put it. Null is a real value here -
         // "select nothing" - so the flag rather than the field says whether one is waiting.
@@ -106,8 +116,12 @@ namespace EmuSen.LunaP.Controls
         /// <summary>Raised when the user picks a row, with the model rather than the row. Not raised for a selection restored by Refresh.</summary>
         public event Action<T?>? Chose;
 
-        /// <summary>The models currently shown, in order.</summary>
-        public IReadOnlyList<T> Models => _items;
+        // The DISPLAYED order, which is the arrival order until a header is clicked and the sorted
+        // order afterwards. A caller reading this back to write a report gets what the user is
+        // looking at rather than what was handed in, which is the only reading of "currently shown"
+        // that stays true once the table can sort.
+        /// <summary>The models currently shown, in the order they are displayed in.</summary>
+        public IReadOnlyList<T> Models => _view;
 
         // The selected model. Unlike LunaList<T>, which puts STRINGS in its ListBox and has to map
         // an index back, this one puts the models in directly - so there is no index arithmetic
@@ -131,12 +145,27 @@ namespace EmuSen.LunaP.Controls
         /// <param name="width">An Avalonia column width - "*", "Auto", or a number of pixels. Headers and cells share a size group, so they stay aligned.</param>
                 /// <returns>The same table, so columns can be chained.</returns>
         /// <exception cref="System.ArgumentNullException"><paramref name="header"/> or <paramref name="text"/> is null.</exception>
-        public LunaTable<T> Column(string header, Func<T, string> text, string width = "*")
-        {
-            if (header is null) throw new ArgumentNullException(nameof(header));
-            if (text is null) throw new ArgumentNullException(nameof(text));
+        public LunaTable<T> Column(string header, Func<T, string> text, string width = "*") =>
+            Column(new LunaColumn<T>(header, text) { Width = width });
 
-            _columns.Add(new ColumnSpec(header, text, GridLength.Parse(width)));
+        // The form that carries behaviour, and the LAST Column overload that will ever be added -
+        // anything a column grows from here is an init-only property on LunaColumn<T>, which is
+        // additive by construction.
+        //
+        // THE TERSE OVERLOAD ABOVE DELEGATES HERE ON PURPOSE. Two ways to declare a column is a
+        // deliberate convenience (§27), but two ways to BUILD one would be a defect waiting to
+        // happen: the day a column gains a fifth property, the form somebody forgot to update
+        // silently produces a different column. There is one path to a ColumnSpec, and a test
+        // asserts the two forms are indistinguishable.
+        /// <summary>Adds a column described by a LunaColumn&lt;T&gt;, which is how a column carries a sort.</summary>
+        /// <param name="column">The column. Its Header and Text are required; Width and Sort have defaults.</param>
+        /// <returns>The same table, so columns can be chained.</returns>
+        /// <exception cref="System.ArgumentNullException"><paramref name="column"/> is null.</exception>
+        public LunaTable<T> Column(LunaColumn<T> column)
+        {
+            if (column is null) throw new ArgumentNullException(nameof(column));
+
+            _columns.Add(new ColumnSpec(column.Header, column.Text, GridLength.Parse(column.Width), column.Sort));
             Rebuild();
             return this;
         }
@@ -151,21 +180,55 @@ namespace EmuSen.LunaP.Controls
         {
             if (items is null) throw new ArgumentNullException(nameof(items));
 
-            object? wasSelected = Selected is { } previous ? Key(previous) : null;
             _items = items.ToList();
+            Show();
+        }
+
+        // Puts _view in the ListBox and the selection back on top of it. Refresh and a header click
+        // are the same operation from here down: both replace what is displayed and both have to
+        // leave the selection where the user put it.
+        //
+        // THE SORT IS RE-APPLIED, WHICH IS THE POINT. New rows arriving under an active sort land in
+        // sorted order - a table that quietly reverted to arrival order on the next poll would be a
+        // table whose sort lasted until the data moved, which for a polling window is about a second.
+        private void Show()
+        {
+            object? wasSelected = Selected is { } previous ? Key(previous) : null;
+
+            _view = Ordered();
 
             if (Rows is null) return;
 
             using (_filling.Suppress())
             {
-                Rows.ItemsSource = _items;
+                Rows.ItemsSource = _view;
 
                 // Null when the previously selected row is gone, which is a real answer rather
                 // than a failure to restore: selecting its neighbour would be a guess.
                 Rows.SelectedItem = wasSelected is null
                     ? null
-                    : _items.FirstOrDefault(item => Equals(Key(item), wasSelected));
+                    : _view.FirstOrDefault(item => Equals(Key(item), wasSelected));
             }
+        }
+
+        // ORDERBY AND NOT List<T>.Sort, and the difference is visible rather than academic.
+        // List<T>.Sort is an unstable introsort: rows that compare equal come out in an arbitrary
+        // order that changes between runs, so a table sorted by a column with ties reshuffles its
+        // equal rows every time it is refreshed. LINQ's OrderBy is documented stable, so ties keep
+        // the order the caller gave to Refresh.
+        //
+        // It also projects rather than reorders: _items stays in arrival order, so the third click
+        // on a header has somewhere to return to. Sorting in place would make the unsorted state
+        // unreachable, which is most of why §27 chose a three-state cycle at all.
+        private IReadOnlyList<T> Ordered()
+        {
+            if (_sortColumn < 0 || _sortColumn >= _columns.Count) return _items;
+            if (_columns[_sortColumn].Sort is not { } comparison) return _items;
+
+            var comparer = Comparer<T>.Create(comparison);
+            return _sortDescending
+                ? _items.OrderByDescending(item => item, comparer).ToList()
+                : _items.OrderBy(item => item, comparer).ToList();
         }
 
         // Selects by model. Does not raise Chose - a caller setting the selection knows what it set.
@@ -192,7 +255,7 @@ namespace EmuSen.LunaP.Controls
             {
                 Rows.SelectedItem = item is null
                     ? null
-                    : _items.FirstOrDefault(candidate => Equals(Key(candidate), Key(item)));
+                    : _view.FirstOrDefault(candidate => Equals(Key(candidate), Key(item)));
             }
         }
 
@@ -209,7 +272,7 @@ namespace EmuSen.LunaP.Controls
 
             // Items set before the template existed - a caller filling the table from its
             // constructor, which is the normal way a window is built in this toolkit.
-            if (_items.Count > 0) Refresh(_items);
+            if (_items.Count > 0) Show();
 
             if (!_hasPending) return;
 
@@ -228,22 +291,134 @@ namespace EmuSen.LunaP.Controls
 
             Define(HeaderGrid, scope);
             HeaderGrid.Children.Clear();
+            _heads.Clear();
 
             for (int i = 0; i < _columns.Count; i++)
             {
-                var label = new TextBlock
-                {
-                    Text = _columns[i].Header,
-                    FontWeight = Avalonia.Media.FontWeight.Bold,
-                    TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis,
-                    VerticalAlignment = VerticalAlignment.Center,
-                };
-
-                Grid.SetColumn(label, i);
-                HeaderGrid.Children.Add(label);
+                Control cell = Heading(i);
+                Grid.SetColumn(cell, i);
+                HeaderGrid.Children.Add(cell);
             }
 
             Rows.ItemTemplate = new FuncDataTemplate<T>((item, _) => Row(item, scope), supportsRecycling: true);
+            ShowSortState();
+        }
+
+        // A SORTABLE HEADING IS A BUTTON; AN UNSORTABLE ONE STAYS A TEXTBLOCK.
+        //
+        // The button is not for the look - it is styled flat, and the theme spends more lines taking
+        // Fluent's chrome off it than putting anything on. It is there because a heading that only
+        // responds to a click is a sort a keyboard user does not have, and §24 is the section about
+        // exactly this class of miss. A Button brings focus, Tab, Space and Enter, an invoke peer and
+        // a focus adorner, all of which would otherwise be hand-built on a TextBlock and half of
+        // which would be forgotten.
+        //
+        // The converse matters as much: a column with no comparison is left a plain TextBlock rather
+        // than made into a button that does nothing. An inert tab stop costs a keyboard user a press
+        // and tells them nothing, which is worse than not being a stop at all.
+        private Control Heading(int index)
+        {
+            ColumnSpec column = _columns[index];
+
+            var label = new TextBlock
+            {
+                Text = column.Header,
+                FontWeight = Avalonia.Media.FontWeight.Bold,
+                TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+
+            if (column.Sort is null)
+            {
+                _heads.Add(new Head(label, null));
+                return label;
+            }
+
+            // Hidden rather than blank in the unsorted state, and never a neutral "sortable" mark.
+            // Three states with a glyph in all three reads as three sorts; two glyphs and nothing
+            // reads as what it is - two sorted states and off.
+            //
+            // Raw in the automation tree because a screen reader announcing "black up-pointing
+            // triangle" after the column name is noise. The state is carried on the button's own
+            // name instead, where a reader will actually meet it.
+            var glyph = new TextBlock
+            {
+                FontWeight = Avalonia.Media.FontWeight.Bold,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(4, 0, 0, 0),
+                IsVisible = false,
+            };
+
+            glyph.Classes.Add("sort");
+            AutomationProperties.SetAccessibilityView(glyph, AccessibilityView.Raw);
+
+            var button = new Button
+            {
+                Content = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Children = { label, glyph },
+                },
+            };
+
+            button.Classes.Add("heading");
+
+            int clicked = index;
+            button.Click += (_, _) => Cycle(clicked);
+
+            _heads.Add(new Head(button, glyph));
+            return button;
+        }
+
+        // ASCENDING, DESCENDING, THEN BACK TO THE ORDER REFRESH WAS GIVEN.
+        //
+        // Two states is the commoner convention and this departs from it knowingly. The order a
+        // caller hands to Refresh carries meaning in this toolkit far more often than in a database
+        // front end - log order, file order, the order a scan found things in - and a two-state
+        // cycle makes that order unreachable the moment somebody clicks a header. The cost is a
+        // third click that will surprise somebody; the alternative is a table that can lose
+        // information the caller deliberately put in it. docs/LunaP.md §27.
+        private void Cycle(int index)
+        {
+            if (_sortColumn != index)
+            {
+                _sortColumn = index;
+                _sortDescending = false;
+            }
+            else if (!_sortDescending)
+            {
+                _sortDescending = true;
+            }
+            else
+            {
+                _sortColumn = -1;
+                _sortDescending = false;
+            }
+
+            Show();
+            ShowSortState();
+        }
+
+        // UPDATES THE HEADINGS IN PLACE AND NEVER REBUILDS THEM, which is a keyboard requirement
+        // rather than a performance one. A user who reached a heading with Tab and pressed Space is
+        // focused on that button; replacing it with a new one drops focus to the top of the window
+        // and leaves them nowhere, having just used the control exactly as intended.
+        private void ShowSortState()
+        {
+            for (int i = 0; i < _heads.Count && i < _columns.Count; i++)
+            {
+                if (_heads[i].Glyph is not { } glyph) continue;
+
+                bool sorted = i == _sortColumn;
+                glyph.IsVisible = sorted;
+                glyph.Text = sorted ? (_sortDescending ? "▼" : "▲") : string.Empty;
+
+                AutomationProperties.SetName(
+                    _heads[i].Cell,
+                    sorted
+                        ? $"{_columns[i].Header}, sorted {(_sortDescending ? "descending" : "ascending")}"
+                        : $"{_columns[i].Header}, not sorted");
+            }
         }
 
         private Control Row(T? item, string scope)
@@ -312,6 +487,11 @@ namespace EmuSen.LunaP.Controls
             }
         }
 
-        private readonly record struct ColumnSpec(string Header, Func<T, string> Text, GridLength Width);
+        private readonly record struct ColumnSpec(
+            string Header, Func<T, string> Text, GridLength Width, Comparison<T>? Sort);
+
+        // The heading control for a column, and its glyph when it has one. Held so that a sort can
+        // update what is already on screen rather than building it again - see ShowSortState.
+        private readonly record struct Head(Control Cell, TextBlock? Glyph);
     }
 }

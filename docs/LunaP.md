@@ -4,7 +4,7 @@
 
 *Sections still say `EmuSen.Mistress`, `EmuSen.Hotaru` and `EmuSen.Serenity`. Those are the three applications this toolkit was built for, and their names are left in place rather than generalised, because a record that has been tidied to look like it was always general is a record nobody can check.*
 
-*Revision history, most recent first: **a guard that could not fail, and six pixels it never saw** — `LunaTable`'s columns were never sharing a size, because Avalonia registers a shared size group on Add and not on assignment; the test watching it asserted the group names, which stayed correct throughout, on data that contained no `Auto` column at all (§27.7); **two traps turned into guards** — the style-key trap had been written up four times and the before-the-template trap three, each time as a paragraph asking the next author to remember; both are now swept by reflection, so a control added later is covered without anybody reading the paragraph (§28); **a table, and a dependency refused** — `Avalonia.Controls.TreeDataGrid` turns out to require a paid licence, so `LunaTable<T>` is built on stock Avalonia instead (§27); **a shell** — actions, menus, a toolbar, a splitter, docked panels and an `AppWindow` to hold them (§26), chosen by asking what Qt6 offers and then, belatedly, by running the survey that should have come first (§26.1); the relicence to MIT (§25); accessibility, and nine controls that were not in the automation tree (§24); the light column (§23); **the toolkit left EmuSen** (§20); the settings seam and the two files that had to move for it (§19); a theme may be written in CSS, and building that turned up an Avalonia behaviour sitting under the theme system unnoticed — mutating `Application.Styles` at runtime strips every already-realized control of its styling (§12.2, §12.3); the widget set and user themes from disk; the migration, which removed 863 net lines from two frontends.*
+*Revision history, most recent first: **the table sorts** — a column can carry a comparison, headings that sort are buttons so a keyboard can reach them, and the cycle has a third state because the order `Refresh` was given is worth being able to get back to (§27.8); **the audit that followed** — every recorded sabotage re-read to ask whether it broke an outcome or only the wiring the assertion named, which found a shortcut bound to entirely the wrong action (§46); **a guard that could not fail, and six pixels it never saw** — `LunaTable`'s columns were never sharing a size, because Avalonia registers a shared size group on Add and not on assignment; the test watching it asserted the group names, which stayed correct throughout, on data that contained no `Auto` column at all (§27.7); **two traps turned into guards** — the style-key trap had been written up four times and the before-the-template trap three, each time as a paragraph asking the next author to remember; both are now swept by reflection, so a control added later is covered without anybody reading the paragraph (§28); **a table, and a dependency refused** — `Avalonia.Controls.TreeDataGrid` turns out to require a paid licence, so `LunaTable<T>` is built on stock Avalonia instead (§27); **a shell** — actions, menus, a toolbar, a splitter, docked panels and an `AppWindow` to hold them (§26), chosen by asking what Qt6 offers and then, belatedly, by running the survey that should have come first (§26.1); the relicence to MIT (§25); accessibility, and nine controls that were not in the automation tree (§24); the light column (§23); **the toolkit left EmuSen** (§20); the settings seam and the two files that had to move for it (§19); a theme may be written in CSS, and building that turned up an Avalonia behaviour sitting under the theme system unnoticed — mutating `Application.Styles` at runtime strips every already-realized control of its styling (§12.2, §12.3); the widget set and user themes from disk; the migration, which removed 863 net lines from two frontends.*
 
 ---
 
@@ -1908,7 +1908,7 @@ Two guards were added alongside it:
   and the notice that `Define`'s comment has become history rather than a live hazard. It is not to
   be deleted to make a version bump green.
 
-#### The same shape, latent, in the fluent surface
+#### The same shape, latent, in the fluent surface (§27.7)
 
 `Ui.Cols` and `Ui.Rows` assign their definitions the same way. **Nothing there is broken**: those
 definitions are parsed from a comma-separated string, which has no syntax for a `SharedSizeGroup`,
@@ -1916,6 +1916,118 @@ so nothing is trying to share. It is a trap rather than a defect — and it sits
 arises, since `Ui.Rows`'s own comment cites §21.2, *"a header-and-body table ends up keeping two
 column strings in step by hand"*, which is the problem shared sizing exists to solve. Both populate
 now, at no behavioural cost, so the trap is not there for the first person to find.
+
+### 27.8 The table sorts, and both decisions were argued rather than defaulted
+
+`LunaTable<T>` sorts by column. §27.5 listed *"No sorting, by header click or otherwise"* as the
+first thing it did not do; that entry is now wrong, and it stays where it is, because what it
+recorded is what makes this section a change rather than a description.
+
+#### A column grew a second declaration form, and it is the last one
+
+`Column(header, text, width)` fits a heading, a projection and a width, and reads well. Sorting is
+the first thing that does not fit — per-column, optional, and the first of several, with editing and
+alignment behind it. Carrying on down the signature means three more optional parameters and then an
+overload per combination.
+
+`LunaColumn<T>` is the answer, and it is the last overload `Column` gets: anything a column grows
+from here is an init-only property, which needs no new method and breaks no call site.
+
+**Both forms are kept, and that was the decision, not the default.** There is no external consumer
+of this package today, so the argument that originally produced the descriptor — a binary-compatible
+growth path — no longer applies, and the shape had to stand on its own or be replaced by a single
+uniform form. It stands: the terse call is what every existing site and the whole gallery use, most
+columns genuinely have no behaviour, and the measured shape is three columns of strings (§27.2).
+
+**But one rule keeps two forms from becoming two behaviours: the terse overload delegates.** There is
+a single path from a declaration to a `ColumnSpec`. Two builders would diverge the first time a
+column gained a fifth property and somebody updated one of them.
+
+#### Ascending, descending, then the order `Refresh` was given
+
+Three states, against a two-state convention that almost every other application follows.
+
+The order a caller hands to `Refresh` carries meaning here more often than in a database front end —
+log order, file order, the order a scan found things in — and a two-state cycle makes that order
+unreachable the moment a header is clicked. The cost is a third click that will surprise somebody
+used to other software; the alternative is a table that can lose information the caller deliberately
+put into it.
+
+Two consequences fall out of the choice and both are in the control:
+
+- **The glyph is absent in the third state**, not a neutral "sortable" mark. Three states with a
+  glyph in each reads as three sorts; two glyphs and nothing reads as what it is.
+- **The heading's automation name carries the state** — *"pg, sorted ascending"*, *"pg, not sorted"*
+  — because the glyph is `AccessibilityView.Raw` and a reader never sees it. A screen-reader user
+  cycling three states with no way to tell which one they are in is the version of this feature that
+  would have shipped without saying it out loud.
+
+#### A sortable heading is a Button; an unsortable one is not
+
+Not for the look — the theme spends more lines taking Fluent's chrome off the button than putting
+anything on it. It is a `Button` because a heading that answers only a click is a sort a keyboard
+user does not have, and §24 is the section about that class of miss. A button brings focus, Tab,
+Space, Enter and an invoke peer; hand-building those on a `TextBlock` means building four things and
+forgetting two.
+
+**The converse is the part worth stating:** a column with no comparison stays a plain `TextBlock`. An
+inert tab stop costs a keyboard user a press and tells them nothing, which is worse than never having
+been a stop.
+
+And the headings are **updated in place, never rebuilt**. That is a keyboard requirement rather than
+a performance one: a user who tabbed to a heading and pressed Space is focused on that button, and
+replacing it drops them to the top of the window having just used the control exactly as intended.
+
+#### Two implementation notes that are easy to get wrong
+
+- **`OrderBy`, not `List<T>.Sort`.** `List<T>.Sort` is an unstable introsort, so rows that compare
+  equal come out in an order that changes between runs — invisible until somebody sorts a column
+  with repeats. LINQ's `OrderBy` is documented stable, so ties keep the order `Refresh` was given.
+- **The sort projects; it does not reorder.** `_items` stays in arrival order and `_view` is what is
+  on screen. Sorting in place would make the third state unreachable, which is most of the argument
+  above.
+- **The sort is re-applied on `Refresh`.** New rows arriving under an active sort land sorted. A
+  table that reverted to arrival order on the next poll would be a table whose sort lasted about a
+  second in a `PollingWindow`.
+
+### 27.9 The guards, and what each sabotage turned red
+
+Eight deliberate breakages, run one at a time. Each was chosen under §46.3 — **it had to break the
+outcome while leaving the mechanism looking right.**
+
+| Sabotage | Turned red |
+|---|---|
+| the third click returns to ascending — a two-state cycle | the cycle test, the automation-name test and the glyph test |
+| `Refresh` clears the active sort | `A_sort_survives_a_refresh` |
+| the sort reorders `_items` in place instead of projecting | the cycle test, at the third click |
+| every heading is a `Button`, sortable or not | `A_column_with_no_comparison_has_no_button_to_press`, and two older heading tests with it |
+| `Cycle` rebuilds the headings instead of updating them | the automation-name test, the glyph test, and `Sorting_from_the_keyboard_leaves_the_focus_on_the_heading` |
+| the selection is not restored after a sort | `A_sort_keeps_the_selected_row`, and the two older selection tests |
+| the terse overload builds its own `ColumnSpec` instead of delegating | `The_terse_column_form_and_the_descriptor_build_the_same_column`, and `Column_widths_are_what_the_caller_wrote` |
+| an unstable sort — equal rows reversed | `Rows_that_compare_equal_keep_the_order_they_arrived_in` |
+
+**Two of these are worth reading twice.**
+
+**The in-place sabotage did not catch instability, and the eighth exists because of it.** Replacing
+`OrderBy` with `List<T>.Sort` turned the *cycle* test red — because it destroyed arrival order — and
+left the stability test green. `List<T>.Sort` falls back to insertion sort below sixteen elements,
+which is stable, so a three-row fixture cannot expose the introsort underneath. The stability guard
+therefore had to be sabotaged directly, by reversing equal rows, or it would have been a guard
+certified by a sabotage that never reached it. That is §46.3 catching a second case in the same
+month it was written down.
+
+**The fixture is part of the cycle guard.** The rows arrive at pages 20, 30, 10 — neither ascending
+nor descending. Given a fixture that happened to arrive sorted, a two-state implementation passes
+the three-state assertion, because its third click lands on ascending and ascending is the arrival
+order. A guard whose data cannot distinguish the two implementations is the §27.7 shape wearing
+different clothes.
+
+#### What it still does not do
+
+§27.5's list loses its first entry and keeps the rest. No cell editing, no multi-column selection,
+no frozen columns, no column reordering or drag-resizing, no hierarchy. **No programmatic `SortBy`
+either** — the sort is a user gesture, and adding a method to set it without a caller asking would be
+the speculative build §21 exists to stop. It arrives when persistence needs it, and not before.
 
 ---
 

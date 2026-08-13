@@ -6,6 +6,9 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Headless;
 using Avalonia.VisualTree;
 using EmuSen.LunaP.Controls;
@@ -145,6 +148,315 @@ namespace EmuSen.LunaP.Tests
                         + "LunaTable.Define.");
                 }
             });
+
+        // SORTING - see docs/LunaP.md §27.
+        //
+        // The fixture arrives in an order that is NEITHER ascending NOR descending, and that is a
+        // load-bearing property rather than an aesthetic one (§46.3). Every assertion below about
+        // returning to arrival order would also pass against a two-state implementation if the rows
+        // happened to arrive sorted, because a two-state cycle's third click lands on ascending. The
+        // fixture is part of the guard.
+        private static readonly Field[] Unordered =
+        {
+            new("Beta", "text", 20),
+            new("Alpha", "text", 30),
+            new("Gamma", "text", 10),
+        };
+
+        private static LunaTable<Field> Sortable()
+        {
+            var table = new LunaTable<Field> { Key = f => f.Name };
+            table.Column("name", f => f.Name, "2*")
+                 .Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
+                 {
+                     Width = "60",
+                     Sort = (a, b) => a.Page.CompareTo(b.Page),
+                 });
+            table.Refresh(Unordered);
+            return table;
+        }
+
+        private static Button Heading(LunaTable<Field> table, string text) =>
+            table.FindNamed<Grid>("PART_Header").Children.OfType<Button>()
+                .First(b => b.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == text));
+
+        private static string[] Shown(LunaTable<Field> table) =>
+            table.Models.Select(f => f.Name).ToArray();
+
+        // Raises the Click event rather than synthesising a pointer press, which keeps these tests
+        // about the sort instead of about Avalonia's hit testing. The real input path is covered
+        // once, separately, by A_heading_can_be_sorted_from_the_keyboard_alone - which sends a key
+        // and lets Button turn it into a click, so nothing here assumes that step works.
+        private static void Click(Button heading)
+        {
+            heading.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        }
+
+        // The whole cycle in one test, because the states are only meaningful against each other.
+        [Fact]
+        public Task A_header_click_cycles_ascending_then_descending_then_back_to_arrival_order() => Realised(
+            make: Sortable,
+            assert: table =>
+            {
+                Assert.Equal(new[] { "Beta", "Alpha", "Gamma" }, Shown(table));
+
+                Button pg = Heading(table, "pg");
+
+                Click(pg);
+                Assert.Equal(new[] { "Gamma", "Beta", "Alpha" }, Shown(table));
+
+                Click(pg);
+                Assert.Equal(new[] { "Alpha", "Beta", "Gamma" }, Shown(table));
+
+                // The third state, and the one a two-state cycle cannot produce: 20, 30, 10 is
+                // neither sorted direction, so nothing but a return to arrival order gives it.
+                Click(pg);
+                Assert.Equal(new[] { "Beta", "Alpha", "Gamma" }, Shown(table));
+
+                Click(pg);
+                Assert.Equal(new[] { "Gamma", "Beta", "Alpha" }, Shown(table));
+            });
+
+        // A sort is a rebuild, and every rebuild in this control keeps the selection (§27).
+        [Fact]
+        public Task A_sort_keeps_the_selected_row() => Realised(
+            make: Sortable,
+            assert: table =>
+            {
+                table.Select(Unordered[1]);
+                Assert.Equal("Alpha", table.Selected!.Name);
+
+                Click(Heading(table, "pg"));
+
+                Assert.Equal("Alpha", table.Selected!.Name);
+                Assert.Single(table.FindNamed<ListBox>("PART_Rows")
+                    .GetVisualDescendants().OfType<ListBoxItem>(), i => i.IsSelected);
+            });
+
+        // The trap that makes a sort worthless in a polling window: new rows arriving under an
+        // active sort must land sorted, or the sort lasts until the next poll and no longer.
+        [Fact]
+        public Task A_sort_survives_a_refresh() => Realised(
+            make: Sortable,
+            assert: table =>
+            {
+                Click(Heading(table, "pg"));
+                Assert.Equal(new[] { "Gamma", "Beta", "Alpha" }, Shown(table));
+
+                table.Refresh(new[]
+                {
+                    new Field("Delta", "text", 40),
+                    new Field("Epsilon", "text", 5),
+                });
+
+                Assert.Equal(new[] { "Epsilon", "Delta" }, Shown(table));
+            });
+
+        // Ties keep the order Refresh was given. List<T>.Sort is an unstable introsort and would
+        // shuffle them, which is invisible until somebody sorts a column with repeats.
+        [Fact]
+        public Task Rows_that_compare_equal_keep_the_order_they_arrived_in() => Realised(
+            make: () =>
+            {
+                var table = new LunaTable<Field>();
+                table.Column("name", f => f.Name)
+                     .Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
+                     {
+                         Sort = (a, b) => a.Page.CompareTo(b.Page),
+                     });
+                table.Refresh(new[]
+                {
+                    new Field("first", "text", 1),
+                    new Field("second", "text", 1),
+                    new Field("third", "text", 1),
+                });
+                return table;
+            },
+            assert: table =>
+            {
+                Click(Heading(table, "pg"));
+                Assert.Equal(new[] { "first", "second", "third" }, Shown(table));
+            });
+
+        // A column with no comparison is a label, not a button that does nothing. An inert tab stop
+        // costs a keyboard user a press and tells them nothing.
+        [Fact]
+        public Task A_column_with_no_comparison_has_no_button_to_press() => Realised(
+            make: Sortable,
+            assert: table =>
+            {
+                Grid header = table.FindNamed<Grid>("PART_Header");
+
+                Assert.Single(header.Children.OfType<Button>());
+                Assert.Single(header.Children.OfType<TextBlock>());
+                Assert.Equal("name", header.Children.OfType<TextBlock>().Single().Text);
+            });
+
+        // WHAT A READER GETS, since the glyph is explicitly hidden from them. A sighted user sees
+        // the triangle; the state has to reach everybody else through the name.
+        [Fact]
+        public Task A_sorted_heading_says_which_way_it_is_sorted() => Realised(
+            make: Sortable,
+            assert: table =>
+            {
+                Button pg = Heading(table, "pg");
+                Assert.Equal("pg, not sorted", AutomationProperties.GetName(pg));
+
+                Click(pg);
+                Assert.Equal("pg, sorted ascending", AutomationProperties.GetName(pg));
+
+                Click(pg);
+                Assert.Equal("pg, sorted descending", AutomationProperties.GetName(pg));
+
+                Click(pg);
+                Assert.Equal("pg, not sorted", AutomationProperties.GetName(pg));
+            });
+
+        // The glyph is absent in the third state rather than neutral, so the cycle reads as two
+        // sorted states and off rather than as three sorts.
+        [Fact]
+        public Task The_sort_glyph_is_absent_until_the_column_is_sorted() => Realised(
+            make: Sortable,
+            assert: table =>
+            {
+                Button pg = Heading(table, "pg");
+                TextBlock Glyph() => pg.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("sort"));
+
+                Assert.False(Glyph().IsVisible);
+
+                Click(pg);
+                Assert.True(Glyph().IsVisible);
+                Assert.Equal("▲", Glyph().Text);
+
+                Click(pg);
+                Assert.Equal("▼", Glyph().Text);
+
+                Click(pg);
+                Assert.False(Glyph().IsVisible);
+            });
+
+        // A heading has to be reachable and operable without a mouse, or the sort is a feature
+        // keyboard users do not have. §24 is the section about this class of miss.
+        [Fact]
+        public Task A_heading_can_be_sorted_from_the_keyboard_alone() => Realised(
+            make: Sortable,
+            assert: table =>
+            {
+                Button pg = Heading(table, "pg");
+
+                Assert.True(pg.Focusable, "A sortable heading that is not focusable cannot be reached by Tab.");
+                Assert.True(pg.Focus(), "The heading refused focus.");
+
+                // Both halves of the press, because Button's default ClickMode is Release: Space on
+                // key DOWN only sets IsPressed, and the click happens on key UP. Sending the down
+                // alone passes for a control that never clicks at all.
+                pg.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Space });
+                pg.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyUpEvent, Key = Key.Space });
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+                Assert.Equal(new[] { "Gamma", "Beta", "Alpha" }, Shown(table));
+            });
+
+        // THE CLAIM ShowSortState MAKES, WHICH WOULD OTHERWISE BE A COMMENT AND NOTHING ELSE.
+        //
+        // The headings are updated in place rather than rebuilt, and the reason given is keyboard
+        // focus: a user who tabbed to a heading and pressed Space is focused on that button, and
+        // replacing it drops them to the top of the window having just used the control correctly.
+        // A rebuild would pass every other test in this file, because nothing else looks at focus.
+        [Fact]
+        public Task Sorting_from_the_keyboard_leaves_the_focus_on_the_heading() => Realised(
+            make: Sortable,
+            assert: table =>
+            {
+                Button pg = Heading(table, "pg");
+                Assert.True(pg.Focus(), "The heading refused focus.");
+
+                Click(pg);
+
+                Assert.True(pg.IsFocused,
+                    "Focus left the heading when it was sorted. The headings are being rebuilt rather "
+                    + "than updated - see LunaTable.ShowSortState.");
+                Assert.Same(pg, Heading(table, "pg"));
+            });
+
+        // Two tables on one page must not sort each other, the same way they already must not size
+        // each other's columns.
+        [Fact]
+        public Task Two_tables_do_not_sort_each_other() => Session.Dispatch(() =>
+        {
+            LunaTable<Field> left = Sortable();
+            LunaTable<Field> right = Sortable();
+
+            var window = new ToolWindow
+            {
+                Width = 700,
+                Height = 400,
+                Content = new StackPanel { Children = { left, right } },
+            };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Click(Heading(left, "pg"));
+
+            Assert.Equal(new[] { "Gamma", "Beta", "Alpha" }, Shown(left));
+            Assert.Equal(new[] { "Beta", "Alpha", "Gamma" }, Shown(right));
+
+            window.Close();
+        }, default);
+
+        // THE TWO DECLARATION FORMS MUST BUILD THE SAME COLUMN. Keeping the terse overload is a
+        // convenience (§27); keeping two ways to BUILD a column would be a defect waiting for the
+        // day one of them stops being updated. The terse form delegates, and this is what says so.
+        [Fact]
+        public Task The_terse_column_form_and_the_descriptor_build_the_same_column() => Session.Dispatch(() =>
+        {
+            static LunaTable<Field> Terse()
+            {
+                var table = new LunaTable<Field>();
+                table.Column("name", f => f.Name, "2*").Column("pg", f => f.Page.ToString(), "60");
+                table.Refresh(Unordered);
+                return table;
+            }
+
+            static LunaTable<Field> Descriptor()
+            {
+                var table = new LunaTable<Field>();
+                table.Column(new LunaColumn<Field>("name", f => f.Name) { Width = "2*" })
+                     .Column(new LunaColumn<Field>("pg", f => f.Page.ToString()) { Width = "60" });
+                table.Refresh(Unordered);
+                return table;
+            }
+
+            static string Describe(LunaTable<Field> table)
+            {
+                Grid header = table.FindNamed<Grid>("PART_Header");
+                Grid row = table.FindNamed<ListBox>("PART_Rows")
+                    .GetVisualDescendants().OfType<ListBoxItem>().First()
+                    .GetVisualDescendants().OfType<Grid>().First();
+
+                return string.Join(" | ",
+                    string.Join(",", header.ColumnDefinitions.Select(c => c.Width.ToString())),
+                    string.Join(",", header.Children.OfType<TextBlock>().Select(t => t.Text)),
+                    string.Join(",", row.Children.OfType<TextBlock>().Select(t => t.Text)),
+                    AutomationProperties.GetName(row));
+            }
+
+            string terse = "", descriptor = "";
+
+            foreach ((LunaTable<Field> table, bool isTerse) in new[] { (Terse(), true), (Descriptor(), false) })
+            {
+                var window = new ToolWindow { Width = 500, Height = 300, Content = table };
+                window.Show();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+                if (isTerse) terse = Describe(table); else descriptor = Describe(table);
+                window.Close();
+            }
+
+            Assert.False(string.IsNullOrWhiteSpace(terse), "The description was empty, so the comparison asserts nothing.");
+            Assert.Equal(terse, descriptor);
+        }, default);
 
         // The wiring, kept as a smaller claim than it used to make. This one localizes a failure -
         // if the names have gone wrong, the positional test above cannot say why - but it is no
