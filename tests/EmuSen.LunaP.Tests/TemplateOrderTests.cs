@@ -269,6 +269,10 @@ namespace EmuSen.LunaP.Tests
                 "sets one private field the template never sees; history recall is keyboard state, not display.",
             [(typeof(SplitPane), nameof(SplitPane.SaveNow))] =
                 "writes the divider position to the settings store; nothing about the control's own appearance.",
+            [(typeof(LunaTable<>), "SaveNow")] =
+                "as SplitPane.SaveNow - writes column widths and the sort to the settings store. The other "
+                + "half, restoring, is reachable before the template and is covered: TableKey and Column both "
+                + "call Restore, and A_saved_layout_is_restored_whichever_order_it_is_set_in pins both orders.",
         };
 
         // The half that makes the registry above impossible to forget. Every public imperative
