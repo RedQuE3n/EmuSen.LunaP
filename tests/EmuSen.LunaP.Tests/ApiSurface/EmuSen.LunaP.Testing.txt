@@ -42,5 +42,5 @@ public static class EmuSen.LunaP.Testing.UiTest
 public static class EmuSen.LunaP.Testing.VisualQuery
     public static System.Collections.Generic.IEnumerable<T> FindParts<T>(Avalonia.Visual root)
     public static T FindNamed<T>(Avalonia.Visual root, string name)
-    public static T FindPart<T>(Avalonia.Visual root)
+    public static T? FindPart<T>(Avalonia.Visual root)
     public static int CountParts<T>(Avalonia.Visual root)

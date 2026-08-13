@@ -25,14 +25,23 @@
                              it without demanding the caller pass a control. -->
                         <ContentPresenter Name="PART_Header"
                                           Content="{TemplateBinding Header}"
-                                          IsVisible="{TemplateBinding HasHeader}"
-                                          TextElement.FontWeight="Bold"
-                                          TextElement.Foreground="{DynamicResource LunaSectionHeader}" />
+                                          IsVisible="{TemplateBinding HasHeader}" />
                         <ContentPresenter Name="PART_Content" Content="{TemplateBinding Content}" />
                     </StackPanel>
                 </Border>
             </ControlTemplate>
         </Setter>
+    </Style>
+
+    <!-- Set from a style so `card .header` can override it. As attributes on the
+         presenter these bound at priority Template, which outranks Style, and a
+         host rule that matched the part lost to them - measured, §39.2.
+
+         Still TextElement, for the reason given above: the header is usually a
+         string, and the TextBlock the presenter makes for it inherits these. -->
+    <Style Selector="luna|Card /template/ ContentPresenter#PART_Header">
+        <Setter Property="TextElement.FontWeight" Value="Bold" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource LunaSectionHeader}" />
     </Style>
 
 </Styles>

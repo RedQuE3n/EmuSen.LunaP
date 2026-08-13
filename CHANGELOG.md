@@ -114,6 +114,18 @@ nothing, nothing changes (`§26`).
 - **`UiTest.AssertStable` failures now report the differing pixel count, the bounding box and the
   peak channel delta**, and name the `EMUSEN_UI_DUMP` variable that gets the frames out. A byte
   count alone cannot tell antialiasing from content that moved (`§38.5`).
+- **Thirteen CSS template-part rules did nothing and now work.** If you wrote
+  `card .header { color: … }`, `console-pane .output { color: … }`, `side-panel .title { color: … }`,
+  `split-pane .rule { background: … }`, `filter-bar .facet { … }` or any of the others, the theme
+  loaded, no warning was raised, and the part kept its default. Two causes: the default was written
+  as an attribute inside the `ControlTemplate`, which binds at a **higher priority than any style**,
+  and `filter-bar .facet` named the wrong type outright — the same style-key defect as above, one
+  layer down (`§39.2`, `§39.3`).
+- **Nothing changes if you wrote no such rule.** Every default was checked before and after: same
+  values, only the priority moved, so the rendered result is identical (`§39.2`).
+- **`meter-row .bar { color: … }` still does nothing, and that is deliberate.** The bar's colour comes
+  from its `:nominal`/`:busy`/`:hot` state styles, which outrank a stateless rule. Name the state —
+  `meter-row.busy .bar { color: … }` — which has always worked (`§39.4`).
 
 ### Known
 
