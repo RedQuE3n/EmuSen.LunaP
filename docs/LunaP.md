@@ -4350,11 +4350,13 @@ nobody remembered to style fails it without anybody remembering to check.
 
 - **§21 is not repealed and not weakened.** A new kind of control still needs its sites counted, and
   §21's own warning still stands over everything in it — *"a doc that says the remaining option is X
-  is recording what was considered, not what is possible. Re-derive before building on it."* That
-  warning applies to `PLAN-general-purpose.md` with force: two of its claims have already been
-  falsified — `Avalonia.Controls.DataGrid` is MIT and maintained, so "both dependency routes are
-  closed" is wrong, and a propagation measurement it rested on described code that a later fix had
-  already invalidated (§27.11).
+  is recording what was considered, not what is possible. Re-derive before building on it."* The
+  working plans this arc was drafted from have each already produced a falsified claim.
+  `PLAN-general-purpose.md` said "both dependency routes are closed" when
+  `Avalonia.Controls.DataGrid` is MIT, maintained, and targets this toolkit's exact Avalonia version
+  — it is closed on §1 and on performance, not on licence. `PLAN-table.md` recorded a propagation
+  measurement that described code a later fix had already invalidated, and it was load-bearing for a
+  design when it was re-taken (§27.11).
 - **It does not license the deferred list.** Printing, undo/redo, trees, MDI and an embedded browser
   are new kinds every one, and they stay where §27.9 and the plan put them.
 - **It does not make completions automatic.** A completion still has to be worth its code, still
