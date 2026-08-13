@@ -2619,6 +2619,7 @@ available except one restating the name, and that argument stands. **It says not
 | Open | Where it is already argued | Note |
 |---|---|---|
 | ~~Member-level API docs~~ | **closed by §41** | 379 entries ship, with 212 `<param>`, 85 `<returns>` and 14 `<exception>`; the guard finds its own subjects, and excuses only what §33.2's argument covers |
+| ~~Version decision~~ | **closed by §42** | 0.7.0, because it was never published; nothing was removed since 0.6.0, measured. Tagging is a person's decision and has not been done |
 | ~~Nullability absent from the API snapshot~~ | **closed by §32.6** | 104 lines gained annotations; read state vs write state was the part that needed deciding, not the reflection |
 | ~~CI runs on one Linux runner~~ | **closed by §35** | matrix added; the audit found one platform branch, and it turned out to be untested, undocumented here, and currently a no-op (§35.1) |
 | Trimming: **measured, not fixed** (AOT: never a stated goal, see §36.4) | §36 | ~~`CssTheme` is the problem~~ — **that guess was wrong (§36)**. Three real sites: the JSON settings seam and runtime `.axaml` theme loading. Trim-safe is reachable, AOT-safe is not while the default store is reflection JSON; §36.3 sets out the two designs |
@@ -2649,10 +2650,12 @@ Two things to do at that point, in this order:
    includes one entry that is not additive: §30's fix changes rendering, because four CSS elements
    and the menu bar's own style start doing what they always claimed to.
 
-**Whether it is 0.7.0 or 0.8.0 is a real question and is deliberately not answered here.** The
+~~**Whether it is 0.7.0 or 0.8.0 is a real question and is deliberately not answered here.**~~ The
 version was set to 0.7.0 when §26 was the whole story. What has landed since is larger than that
 number was chosen for, and §30 in particular repairs behaviour that has been wrong since 0.2.0 —
-which a consumer reading a minor bump would not expect to find.
+which a consumer reading a minor bump would not expect to find. **Answered in §42: 0.7.0, because it
+was never published and skipping it would invent a release that never existed. The worry above is
+real and belongs in the `CHANGELOG`, which now opens with it.**
 
 ---
 
@@ -3420,3 +3423,75 @@ count.
   a docs site is a separate decision nobody has made.
 - **The twelve-character threshold is arbitrary and deliberately low.** It catches an empty tag or a
   stub, not a sentence somebody thought about and got wrong.
+
+---
+
+## 42. The version, decided: 0.7.0
+
+§34.3 left this open on purpose: *"Whether it is 0.7.0 or 0.8.0 is a real question and is
+deliberately not answered here."* The reason it gave was that the number was chosen when §26 was the
+whole story, and what landed since is larger than that — §30 in particular repairing behaviour wrong
+since 0.2.0, *"which a consumer reading a minor bump would not expect to find."*
+
+That observation is correct and points at the wrong instrument. **It is 0.7.0.**
+
+### 42.1 Because 0.7.0 was never claimed
+
+Checked rather than assumed, against nuget.org and against the tags:
+
+| | |
+|---|---|
+| `EmuSen.LunaP` on nuget.org | 0.2.0, 0.3.0, 0.4.0, 0.5.0, **0.6.0** |
+| `EmuSen.LunaP.Testing` on nuget.org | 0.3.0, 0.4.0, 0.5.0, **0.6.0** |
+| git tags | `v0.2.0` … `v0.6.0` |
+
+**Nobody has 0.7.0.** It is not published, not tagged, and not resolvable. Skipping it would leave a
+permanent hole in the sequence that implies a release which never existed, and a consumer scanning
+the version list would reasonably wonder what 0.7.0 was and whether they had missed it.
+
+**A version number identifies a release; it does not express magnitude.** Under 0.x semantics minor
+is the only lever there is — it carries features and breaking changes alike, and there is no such
+thing as a bigger minor. Reaching for 0.8.0 to signal "this one is substantial" would be using the
+version to say something the `CHANGELOG` is for, and creating a phantom release to say it.
+
+So §34.3's worry is answered where it belongs: the 0.7.0 entry now **opens** with the fact that the
+release is not purely additive, and names both places, before it gets to the shell.
+
+### 42.2 Nothing was removed, measured
+
+The question a consumer actually asks of a version bump is whether their code still compiles.
+`git diff v0.6.0..HEAD` over `src/` reports eleven public declarations removed — and all eleven are
+`CssTheme` and `CssThemeResult` members that §29.4 **moved between files** when the 547-line theme
+file was split. The type and its namespace deliberately did not change (§29.4 says why), and all
+eleven are present in the committed API baseline today.
+
+**No public member was removed or renamed since 0.6.0.** The release is additive in surface, and
+changes behaviour in the two places §42.1 names.
+
+### 42.3 Why not 1.0.0, which is the question this arc invites
+
+The whole arc from §31 to §41 was "make this production ready", and 1.0.0 is what that usually gets
+called. It would be wrong, because **1.0.0 is a promise that a breaking change requires 2.0.0**, and
+§34.2's register still holds items that cannot be delivered without one:
+
+- **No icons.** §26.12 is explicit that this needs an icon *system* rather than a property, and a
+  system reaches `LunaAction`, `ToolBar` and `Menus` at once. `Icon=` was used zero times across five
+  repositories, which is why it was deferred — not because it is small.
+- **`LunaSettings` process-global statics** (§21.3). Every consumer suite inherits the race; the
+  harness ships a refusal rather than a fix because the hazard is structural. Fixing it changes the
+  seam.
+- **No native macOS menu bar** (§26.12), recorded as a genuine platform defect rather than a missing
+  feature. Fixing it changes how `AppWindow` builds its menu.
+
+Calling this 1.0.0 would freeze a surface three open register entries say has to move. 0.x is not a
+lack of confidence in what is here; it is an accurate statement about what is not.
+
+### 42.4 What this does not do
+
+- **It does not tag or publish.** The tag is what publishes (`publish.yml`), a version on nuget.org
+  cannot be replaced, and that is a decision for a person rather than a side effect of a pass.
+- **Both `<Version>` elements already read 0.7.0** and are unchanged, so there is no bump here — only
+  a decision, and a `CHANGELOG` that now leads with what the number cannot say. §22.8's rule that the
+  harness tracks the toolkit still holds, and both still agree.
+- **It does not re-derive the register.** §34.2 is where the open work lives; §42.3 quotes three
+  entries from it and does not restate the rest.
