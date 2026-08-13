@@ -2031,6 +2031,79 @@ the speculative build §21 exists to stop. It arrives when persistence needs it,
 
 ---
 
+### 27.10 Correction: the alignment fix cost the table its width, for a day
+
+§27.7 fixed an `Auto` column that was six pixels out of line by putting every column into a shared
+size group that actually registered. **It also stopped the table filling itself, and nothing noticed
+for a day.**
+
+#### The measurement
+
+A shared size group makes a **star** column behave as `Auto`. Two otherwise identical grids, one
+inside a scope and one outside:
+
+| | resolved width of a `2*` column |
+|---|---|
+| not in a shared size scope | **360.0** |
+| in a shared size scope | **36.0** |
+
+In `LunaTable` that read as a three-column table — `2*`, `Auto`, `40` — whose columns totalled
+**145.0** inside a header grid **476.0** wide. The `name` column had shrunk to its longest name and
+the whole table sat in the left third of its own width.
+
+This is [AvaloniaUI/Avalonia#19114](https://github.com/AvaloniaUI/Avalonia/issues/19114), *"Grid.IsSharedSizeScope
+makes star-width columns not work"*, open since 2025-06-24, and
+[#6455](https://github.com/AvaloniaUI/Avalonia/issues/6455) said the same thing in 2021. Neither was
+read closely enough when #21848 was found; the search that produced them was looking for the
+assignment defect and stopped when it found it.
+
+#### The fix is what should have been written the first time
+
+**Only `Auto` columns join the group.** Not a workaround — the correct rule, and §27.7's own
+measurement contained the argument for it before the cause was understood:
+
+> | col | width | heading x | cell x | delta |
+> |---|---|---|---|---|
+> | 0 `name` | `2*` | 12.0 | 12.0 | **0.0** |
+> | 1 `type` | **`Auto`** | 416.0 | 422.0 | **6.0** |
+> | 2 `pg` | `40` | 448.0 | 448.0 | **0.0** |
+
+The star and absolute columns were **already aligned with nothing shared**. Absolute columns are
+identical in both grids by definition; a star column resolves from whatever the others leave over,
+so once the `Auto` columns agree the remainder agrees and star follows without being told. Only the
+`Auto` column ever needed the group, and grouping the other two bought nothing and cost the layout.
+
+After the correction, the same table: `2*` at **404.0** in both grids, `Auto` at **32.0** in both,
+`40` at **40.0**, totalling **476.0** — the full width. Alignment and fill, together.
+
+#### Why twenty-six tests said nothing
+
+**Every assertion in the file asked where a column STARTS. None asked how wide it ended up.**
+
+That is not the §27.7 failure repeating — the alignment guard was a good guard and it did its job
+throughout, including through the regression. It is the narrower and more ordinary one: a property
+was fixed, a *different* property was broken, and the suite had no opinion about the second because
+nobody had needed one. §46.4 said this in advance and it took a day to be proved right —
+*"a guard in a file with a healthy ratio can still be reading its own wiring, and this sweep would
+not have seen it."*
+
+`The_columns_fill_the_width_they_are_given` sums the resolved widths and requires them to equal the
+grid's own. Summing rather than singling out the star column is deliberate: it needs no arithmetic
+about what the remainder ought to be, and it fails the same way for any column type that stops
+taking its share. Sabotaged by putting every column back in the group: **red, "the columns resolve
+to 175.0 in a header grid 476.0 wide, so 301.0 of the table is empty."**
+
+`Columns_share_a_size_group_name_with_their_header` became
+`Only_auto_columns_share_a_size_group_name_with_their_header`, because "every column has a group" is
+no longer a true statement about this control — it is the defect.
+
+#### The habit worth keeping from this
+
+A fix aimed at one property is a change to all of them. The alignment work measured alignment before
+and after and never measured width at all, which is how a six-pixel improvement shipped alongside a
+three-hundred-pixel regression. **The question to ask of a layout fix is not "is the thing I fixed
+fixed" but "what else does this grid decide."**
+
 ## 28. Two traps, and the guards that end them
 
 §27 closed with two findings, and both had the same shape: a defect this repository has met

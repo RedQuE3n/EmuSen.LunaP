@@ -149,6 +149,47 @@ namespace EmuSen.LunaP.Tests
                 }
             });
 
+        // THE ASSERTION THAT WAS MISSING WHEN THE ALIGNMENT FIX SHIPPED, AND THE REASON IT COST
+        // SOMETHING - see docs/LunaP.md §27.10.
+        //
+        // Putting every column in a shared size group made the Auto columns line up and made the
+        // STAR columns stop filling: a shared size group forces a star column to behave as Auto
+        // (Avalonia #19114). Measured at the time on two otherwise identical grids - 360.0 outside a
+        // scope, 36.0 inside one - so the table's "name" column shrank to its longest name and the
+        // whole table clumped into the left third of its own width.
+        //
+        // Twenty-six tests in this file said nothing, because every one of them asked where a column
+        // STARTS and none asked how wide it ended up. Alignment and fill are different properties
+        // and the suite only had the first.
+        //
+        // Summing the columns rather than checking the star one is deliberate: it needs no arithmetic
+        // about what the remainder should be, and it fails the same way for any column type that
+        // stops taking its share.
+        [Fact]
+        public Task The_columns_fill_the_width_they_are_given() => Realised(
+            make: () =>
+            {
+                var table = new LunaTable<Field>();
+                table.Column("name", f => f.Name, "2*")
+                     .Column("type", f => f.Type, "Auto")
+                     .Column("pg", f => f.Page.ToString(), "40");
+                table.Refresh(Fields);
+                return table;
+            },
+            assert: table =>
+            {
+                Grid header = table.FindNamed<Grid>("PART_Header");
+                double total = header.ColumnDefinitions.Sum(c => c.ActualWidth);
+
+                Assert.True(header.Bounds.Width > 100,
+                    $"The header grid is only {header.Bounds.Width:F1} wide, so this asserts nothing.");
+
+                Assert.True(Math.Abs(total - header.Bounds.Width) < 1.0,
+                    $"The columns resolve to {total:F1} in a header grid {header.Bounds.Width:F1} wide, so "
+                    + $"{header.Bounds.Width - total:F1} of the table is empty. A star column that stops "
+                    + "filling is a star column in a shared size group - see LunaTable.Define.");
+            });
+
         // SORTING - see docs/LunaP.md §27.
         //
         // The fixture arrives in an order that is NEITHER ascending NOR descending, and that is a
@@ -461,19 +502,40 @@ namespace EmuSen.LunaP.Tests
         // The wiring, kept as a smaller claim than it used to make. This one localizes a failure -
         // if the names have gone wrong, the positional test above cannot say why - but it is no
         // longer mistaken for evidence that the sharing works.
+        //
+        // ONLY THE AUTO COLUMN CARRIES A GROUP, and this asserts that rather than "every column has
+        // one", which is what it used to say and what cost the table its width (§27.10). A star
+        // column in a shared size group behaves as Auto, so a group name on one is a defect and not
+        // a formality.
         [Fact]
-        public Task Columns_share_a_size_group_name_with_their_header() => Realised(table =>
-        {
-            Grid header = table.FindNamed<Grid>("PART_Header");
-            Grid row = table.FindNamed<ListBox>("PART_Rows")
-                .GetVisualDescendants().OfType<ListBoxItem>().First()
-                .GetVisualDescendants().OfType<Grid>().First();
+        public Task Only_auto_columns_share_a_size_group_name_with_their_header() => Realised(
+            make: () =>
+            {
+                var table = new LunaTable<Field>();
+                table.Column("name", f => f.Name, "2*")
+                     .Column("type", f => f.Type, "Auto")
+                     .Column("pg", f => f.Page.ToString(), "40");
+                table.Refresh(Fields);
+                return table;
+            },
+            assert: table =>
+            {
+                Grid header = table.FindNamed<Grid>("PART_Header");
+                Grid row = table.FindNamed<ListBox>("PART_Rows")
+                    .GetVisualDescendants().OfType<ListBoxItem>().First()
+                    .GetVisualDescendants().OfType<Grid>().First();
 
-            Assert.All(header.ColumnDefinitions, c => Assert.False(string.IsNullOrEmpty(c.SharedSizeGroup)));
-            Assert.Equal(
-                header.ColumnDefinitions.Select(c => c.SharedSizeGroup),
-                row.ColumnDefinitions.Select(c => c.SharedSizeGroup));
-        });
+                Assert.True(string.IsNullOrEmpty(header.ColumnDefinitions[0].SharedSizeGroup),
+                    "The star column is in a shared size group, which makes it size as Auto.");
+                Assert.False(string.IsNullOrEmpty(header.ColumnDefinitions[1].SharedSizeGroup),
+                    "The Auto column is in no group, so it sizes independently in the header and the rows.");
+                Assert.True(string.IsNullOrEmpty(header.ColumnDefinitions[2].SharedSizeGroup),
+                    "The absolute column is in a group it does not need.");
+
+                Assert.Equal(
+                    header.ColumnDefinitions.Select(c => c.SharedSizeGroup),
+                    row.ColumnDefinitions.Select(c => c.SharedSizeGroup));
+            });
 
         // The assumption the whole "no cell virtualization needed" argument rests on: rows are
         // virtualized by the ListBox under PART_Rows, and because cells are built by the row's data
