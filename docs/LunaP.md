@@ -4363,3 +4363,142 @@ nobody remembered to style fails it without anybody remembering to check.
   goes in the gallery (§7) and the automation tree (§24), and still needs guards that were made to
   fail on purpose — §27.11 records two that did not, on the first try, and what each one turned out
   to mean.
+
+## 48. The form controls were Fluent's, and one number nothing had measured
+
+**LunaP ships `<FluentTheme />` and always will.** Third-party Avalonia controls assume it is
+present — `Avalonia.Controls.TreeDataGrid` [does not render at all without
+it](https://github.com/AvaloniaUI/Avalonia.Controls.TreeDataGrid/issues/246) — so dropping it to own
+the whole look would make this toolkit unusable beside the ecosystem it is trying to sit inside.
+
+The consequence is the subject of this section. Every stock control an application reaches for — a
+`TextBox`, a `CheckBox`, a `Slider` — works, and paints in **Fluent's** palette rather than this
+one. Its accent is `#0078D7`, measured out of the live application, and it appears through
+`SystemAccentColor` and every key derived from it. An application built mostly of form controls
+therefore came out mostly Fluent, and the join showed in exactly the places a reader's eye goes:
+accents, borders, the focus ring. §21.2 caught the same seam from the other side — three consumer
+sites reaching for `SystemChromeLowColor`, *"a key LunaP's theme cannot reach"*.
+
+### 48.1 Values, not templates
+
+The obvious fix is a style per control and it is the wrong one. Fluent paints most of these colours
+on template **parts** — the border inside a `TextBox`, the ellipse inside a `RadioButton` — which a
+style on the control cannot reach without replacing the template, and replacing the template means
+owning Fluent's keyboard handling, its focus adorners and its accessibility behaviour forever, for a
+colour.
+
+So `Theme/FluentBridge.axaml` does the opposite: it leaves every template exactly as Fluent wrote it
+and changes the **values** those templates look up. Fluent resolves them with `DynamicResource`, so
+overriding the key repaints every control that reads it — including controls this toolkit has never
+heard of, and controls added to Avalonia next year. **46 keys**, and the merge order in
+`LunaTheme.axaml` is load-bearing: the bridge is merged *after* `Palette.axaml`, because every brush
+in it points at a Luna colour key that has to be in scope already.
+
+`Theme/Controls/FormControls.axaml` is the remainder — the controls that read no key at all. There
+is **one**: `ProgressBar` names no resource for either half of itself, taking its `Foreground` as the
+filled part and its `Background` as the track, both set directly by Fluent's `ControlTheme`.
+`MeterRow` is unaffected, and that is worth knowing before somebody simplifies it away — its bar
+takes a colour from the load ramp in code (§2.2), and a local value beats a style.
+
+### 48.2 A list of remembered names is not a measurement
+
+**This is the entry worth keeping.** The first two rounds of this work named likely resource keys
+from memory and probed them against the live application. That looks like measurement and is not:
+a probe over a recalled list can only find the names already thought of, and its silence means
+nothing. Three of the nine swept controls kept painting one panel `#1F1F1F` and two rounds of naming
+never found it.
+
+Enumerating the actual resource tree found it immediately. Walking `Application.Styles` — merged
+dictionaries, theme dictionaries and `StyleInclude.Loaded` alike — reaches **2,052 entries**, and
+asking which of them carry `#1F1F1F` in the dark variant returns **nine keys** rather than a guess.
+Printing the stray's visual ancestry then named the part: `Panel(PART_ScrollBarsSeparator)`, inside
+the `ScrollViewer` inside a `TextBox`. `NumericUpDown` and `CalendarDatePicker` paint it for the same
+reason, because both contain a `TextBox`. One key, three controls.
+
+The same method found the last control still showing Fluent's accent. A `ComboBox` kept its blue
+after every key with `ComboBox` in its name had been mapped, because the part is
+`Border(HighlightBackground)` and the key is `ComboBoxBackgroundUnfocused` — the two words do not
+appear in each other, and no amount of recall was going to bridge that.
+
+**`CLAUDE.md` gained a rule from this**, and it is the rule rather than the bug that matters:
+probing a guessed list is still guessing, and a recorded shortfall is not a substitute for a cause.
+Enumerate the real structure and search it for the value in question; it is the same work, done
+honestly.
+
+All 46 keys were re-checked against the enumerated tree afterwards. **Every one is a key FluentTheme
+actually defines**, and none is duplicated — a key that stops existing in a later Avalonia becomes a
+silent no-op, which is why `FormControlTests` asserts the outcome rather than the overrides.
+
+### 48.3 Corrections: three contrast figures, and one that was invented
+
+The two tokens this arc added — `LunaAccent` and `LunaOnAccent`, the first tokens in this palette
+for something the toolkit does not draw itself — were written up with four contrast figures beside
+them. **Three were wrong, and they were wrong in two different ways that are worth telling apart.**
+
+| Claimed | Measured | |
+|---|---|---|
+| `LunaAccent` on the dark surface, 3.70:1 | **3.70:1** | correct |
+| `LunaAccent` on the light surface, 5.69:1 | **5.68:1** | rounding, `5.68497` |
+| `LunaOnAccent` on the dark accent, 4.50:1 | **4.51:1** | rounding, `4.51056` |
+| `LunaOnAccent` on the light accent, 6.98:1 | **6.31:1** | **nothing measured this** |
+
+The first two are slips. The fourth is the failure this document exists to record: a plausible number
+in a comment, in a file that ships, which a reader has no reason to doubt and every reason to build
+on. It is corrected in place with the old value named, per the house rule that corrections are stated
+rather than quietly fixed.
+
+**The fourth claim was worse than wrong — it was unpinned.** The comment beside `LunaOnAccent` said
+the token was *held* to a floor while nothing held it to anything. `PaletteVariantTests` now does, at
+**4.5:1 and not 3:1**: a tick inside a checkbox and the knob of a switch are shapes you read, which
+is WCAG 1.4.3's bar rather than 1.4.11's. Both columns clear it.
+
+*Made to fail on purpose, per §22.5.* Setting the dark column's `LunaOnAccentColor` to `#8899AA`
+turned it red with *"LunaOnAccent on the Dark accent is 1.54:1, below 4.5:1"* while the light case
+stayed green — which is the part worth checking, since a theory that resolved one variant for both
+cases would pass this sabotage in one of them and look like a working guard.
+
+**And one claim about a control, which is the substantive one.** The bridge said of the two slider
+tracks that *"they have to be told apart at 3:1 or the control cannot be read. Accent against border
+does that."* It does not. Accent against border measures **1.13:1 dark and 1.88:1 light**, confirmed
+in the rendered control: `PART_DecreaseButton` paints `#007ACC` and `PART_IncreaseButton` paints
+`#6E6E6E`.
+
+The standard invoked was also the wrong one, and **no theme meets it**. Fluent's own pair is
+`#0078D7` against `#66FFFFFF`, which composites to `#787878` on this surface and measures **1.02:1**
+— worse than ours. A blue accent and a neutral track sit at nearly the same relative luminance by
+construction: clearing 3:1 against `#007ACC` needs a track at `L >= 0.65` (near-white) or
+`L <= 0.03` (near-black), and a near-black track disappears into the surface instead.
+
+What 1.4.11 actually asks is that the component be distinguishable from its **adjacent background**,
+and both tracks clear that — accent 3.70:1 dark and 5.68:1 light, border 3.27:1 and 3.03:1, each
+already pinned. Between the two tracks the difference carried is hue, and the value is carried by the
+thumb's position, which is what every other theme relies on. **The colours did not change; the claim
+did.**
+
+### 48.4 The guard, and what it does not prove
+
+§47.5 rejected *"the gallery must contain a plausible office-app screen"* as a standard, because
+"plausible" is judged by whoever is meeting it. `FormControlTests` is what replaced it, and it is
+worth having because it is mechanical: show each form control in a live headless application and
+require every colour it actually resolves — background, foreground, border — to be either fully
+transparent or a colour that appears in `LunaPalette`, read by reflection so a palette that gains a
+colour needs no edit here. **Nine controls**, plus a tenth test asserting the sweep still has
+subjects, because a `TheoryData` that quietly emptied would report a pass (§26.11 caught that shape
+before).
+
+Reading the **resolved** brush rather than the style that set it is the point: a `Setter` that names
+the right resource and never matches is the §5.5 symptom, and it reads identically to a correctly
+styled control right up until somebody looks.
+
+**Two things it does not prove, stated because passing it feels like more than it is.** It checks
+provenance, not legibility — the slider in §48.3 passes it, because both colours are palette colours
+and the guard has no opinion about the pair. And it covers three properties on nine named controls,
+so a colour reaching a control through any other property is outside it.
+
+### 48.5 What this leaves
+
+The seam is closed for the controls an office application is mostly made of. `DataValidationErrors`
+has no LunaP answer yet — Avalonia has the mechanism and this toolkit has no error state anywhere,
+and a `FieldRow` that can show an invalid state with a message is the piece an office application
+cannot fake. It is named here rather than built, and it is a completion under §47.3 rather than a new
+kind.

@@ -67,6 +67,24 @@ namespace EmuSen.LunaP.Theme
         /// <summary>An outcome worth reading that is neither success nor failure.</summary>
         public static readonly ISolidColorBrush Info = Brush("#DAA520");
 
+        // The interactive accent: a checked box, a filled slider track, a focused border. Added in
+        // §48 for a job this palette had never had a colour for - every stock Avalonia control
+        // painted these in FluentTheme's #0078D7, and the nearest LunaP token was SectionHeader,
+        // which means "a heading" and would have been borrowed for a second job it does not mean.
+        //
+        // The dark value is VS Code's own accent, the same source as Surface, Text and
+        // SectionHeader. It is held to 3:1 rather than 4.5:1, because it is a fill you have to see
+        // to use a control rather than a colour anyone reads words in - WCAG 1.4.11, not 1.4.3.
+        /// <summary>The accent an interactive control paints its active state in: a checked box, a filled track, a focused border.</summary>
+        public static readonly ISolidColorBrush Accent = Brush("#007ACC");
+
+        // The same value in both theme columns, because the accent is dark in both - a light-mode
+        // accent still carries a white glyph. Held to 4.5:1 against the accent it sits on, not the
+        // accent's own 3:1: a tick or a knob is a shape you read, which is WCAG 1.4.3's bar rather
+        // than 1.4.11's. 4.51:1 dark, 6.31:1 light, both pinned by PaletteVariantTests (§48.3).
+        /// <summary>What is drawn on top of the accent: the tick in a checked box, the knob of a switch that is on.</summary>
+        public static readonly ISolidColorBrush OnAccent = Brush("#FFFFFF");
+
         /// <summary>A meter working normally, at the bottom of the load ramp.</summary>
         public static readonly ISolidColorBrush Nominal = Brush("#32CD32");
         /// <summary>A meter working hard, in the middle of the load ramp.</summary>

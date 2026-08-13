@@ -473,6 +473,7 @@ public static class EmuSen.LunaP.Theme.LunaPalette
     public static Avalonia.Media.ISolidColorBrush ForLoad(double percent)
     public static EmuSen.LunaP.Theme.LoadLevel LevelFor(double percent)
     public static readonly Avalonia.Media.FontFamily MonoFont
+    public static readonly Avalonia.Media.ISolidColorBrush Accent
     public static readonly Avalonia.Media.ISolidColorBrush Border
     public static readonly Avalonia.Media.ISolidColorBrush Busy
     public static readonly Avalonia.Media.ISolidColorBrush Error
@@ -482,6 +483,7 @@ public static class EmuSen.LunaP.Theme.LunaPalette
     public static readonly Avalonia.Media.ISolidColorBrush MeterText
     public static readonly Avalonia.Media.ISolidColorBrush Muted
     public static readonly Avalonia.Media.ISolidColorBrush Nominal
+    public static readonly Avalonia.Media.ISolidColorBrush OnAccent
     public static readonly Avalonia.Media.ISolidColorBrush SectionHeader
     public static readonly Avalonia.Media.ISolidColorBrush Success
     public static readonly Avalonia.Media.ISolidColorBrush Surface

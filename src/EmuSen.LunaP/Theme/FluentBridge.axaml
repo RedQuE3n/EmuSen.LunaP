@@ -1,0 +1,168 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- LUNAP'S COLOURS, HANDED TO FLUENTTHEME'S OWN RESOURCE KEYS - see
+         docs/LunaP.md §48.
+
+         WHY THIS FILE IS NOT A PILE OF STYLES. LunaP keeps <FluentTheme />, and
+         always will: third-party Avalonia controls assume it is there, and
+         dropping it to own the whole look would make this toolkit unusable
+         beside the ecosystem it is trying to sit in. The consequence is that
+         every stock control an application reaches for - a TextBox, a CheckBox,
+         a Slider - works and renders in FLUENT's palette, so an application
+         built mostly of form controls comes out mostly Fluent. §21.2 caught the
+         same seam from the other side: three consumer sites reaching for
+         SystemChromeLowColor, "a key LunaP's theme cannot reach".
+
+         The obvious fix is a style per control, and it is the wrong one. Fluent
+         paints most of these colours on template PARTS - the border inside a
+         TextBox, the ellipse inside a RadioButton - which a style on the control
+         cannot reach without replacing the template, and replacing the template
+         means owning Fluent's keyboard handling, its focus adorners and its
+         accessibility behaviour forever.
+
+         So this does the opposite: it leaves every template exactly as Fluent
+         wrote it and changes the VALUES those templates look up. Fluent's
+         templates resolve these keys with DynamicResource, so overriding them
+         here repaints every control that uses them, including ones this toolkit
+         has never heard of and ones added to Avalonia next year.
+
+         THE KEYS WERE READ OUT OF THE LIVE APPLICATION, not copied from a blog
+         post: a probe resolved each candidate against Avalonia 12.1.0 and
+         reported which existed and whether it was a Color or a Brush. Every key
+         below resolved. A key that stops existing in a later Avalonia is a
+         silent no-op, which is why FormControlTests asserts the OUTCOME - the
+         colours a control actually paints with - rather than asserting that
+         these overrides exist.
+
+         The brushes sit outside any theme dictionary on purpose, exactly as
+         Palette.axaml's do: each points at a Luna colour key that is already
+         variant-keyed, so one declaration serves both columns and there is no
+         second place for the two to drift apart (§2.1). -->
+
+    <!-- Text entry. TextControlBackgroundFocused is deliberately the same
+         surface as the unfocused one: Fluent flips it to solid black on focus,
+         which reads as a different control rather than as the same one with the
+         caret in it. The focus signal is the border, which is what the accent is
+         for. -->
+    <SolidColorBrush x:Key="TextControlBackground" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="TextControlForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="TextControlBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{DynamicResource LunaAccentColor}" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="{DynamicResource LunaAccentColor}" />
+
+    <!-- A dropdown's list is a surface floating over the window, so it takes the
+         window surface rather than the input surface - the same distinction
+         Card and SidePanel already make. -->
+    <SolidColorBrush x:Key="ComboBoxBackground" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="ComboBoxForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="{DynamicResource LunaSurfaceColor}" />
+
+    <!-- Checked states take the accent and the glyph on top of it takes
+         LunaOnAccent, which is the pairing that token exists for. -->
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="{DynamicResource LunaAccentColor}" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUnchecked" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="{DynamicResource LunaOnAccentColor}" />
+    <SolidColorBrush x:Key="CheckBoxForegroundUnchecked" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="CheckBoxForegroundChecked" Color="{DynamicResource LunaTextColor}" />
+
+    <SolidColorBrush x:Key="RadioButtonForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFill" Color="{DynamicResource LunaAccentColor}" />
+
+    <!-- A slider's two tracks: filled is where the value is, unfilled is where it
+         is not.
+
+         AN EARLIER VERSION OF THIS COMMENT CLAIMED THE TWO ARE TOLD APART AT
+         3:1, AND THEY ARE NOT - accent against border measures 1.13:1 dark and
+         1.88:1 light. The claim was never measured. It is corrected here rather
+         than deleted because the number it invented is the kind a reader would
+         have believed and built on. §48.3.
+
+         The standard it invoked was also the wrong one, and no theme meets it:
+         Fluent's own pair is #0078D7 against #66FFFFFF, which composites to
+         #787878 on this surface and measures 1.02:1 - worse than ours. A blue
+         accent and a neutral track sit at almost the same relative luminance by
+         construction, so clearing 3:1 between them would need a track that is
+         near-white (L >= 0.65) or near-black (L <= 0.03), and a near-black track
+         disappears into the surface instead.
+
+         WHAT 1.4.11 ACTUALLY ASKS is that the control be distinguishable from
+         its ADJACENT background, and both tracks clear that: accent 3.70:1 dark
+         and 5.68:1 light on the surface, border 3.27:1 and 3.03:1, each pinned
+         by PaletteVariantTests. Between the two tracks the difference carried is
+         hue, and the value itself is carried by the thumb's position - which is
+         the same thing every other theme relies on. -->
+    <SolidColorBrush x:Key="SliderTrackFill" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="SliderTrackValueFill" Color="{DynamicResource LunaAccentColor}" />
+    <SolidColorBrush x:Key="SliderThumbBackground" Color="{DynamicResource LunaAccentColor}" />
+
+    <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="{DynamicResource LunaAccentColor}" />
+    <SolidColorBrush x:Key="ToggleSwitchStrokeOff" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="{DynamicResource LunaOnAccentColor}" />
+
+    <SolidColorBrush x:Key="ButtonBackground" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="ButtonForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="ButtonBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+
+    <SolidColorBrush x:Key="ScrollBarPanningThumbBackground" Color="{DynamicResource LunaBorderColor}" />
+
+    <SolidColorBrush x:Key="ScrollBarTrackFill" Color="{DynamicResource LunaSurfaceColor}" />
+
+    <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumBrush" Color="{DynamicResource LunaSurfaceColor}" />
+
+    <!-- THE GAP BETWEEN A SCROLLVIEWER'S TWO SCROLLBARS, and it is here because
+         of how it was found rather than because it is interesting. Three of the
+         nine swept controls painted one Panel in #1F1F1F; two rounds of naming
+         likely keys missed it, because a list of remembered names can only find
+         what was already thought of.
+ 
+         Enumerating the resource tree instead - 2,052 entries reachable from
+         Application.Styles - gave nine keys carrying that colour, and printing the
+         stray's visual ancestry named the part: Panel(PART_ScrollBarsSeparator),
+         inside the ScrollViewer inside a TextBox. NumericUpDown and
+         CalendarDatePicker paint it for the same reason, because both contain a
+         TextBox. One key, three controls.
+ 
+         Mapped to the surface rather than to the border, which is what Fluent
+         does with it: #1F1F1F on #1E1E1E dark and #E6E6E6 on #F3F3F3 light is a
+         filler that all but disappears, not a rule that divides anything. -->
+    <SolidColorBrush x:Key="ScrollViewerScrollBarsSeparatorBackground" Color="{DynamicResource LunaSurfaceColor}" />
+
+    <!-- The ComboBox's Border(HighlightBackground), found the same way. The first
+         of these is #0078D7 in Fluent - the accent, reached through a key whose
+         name says "Unfocused" - and it is why a ComboBox was the last control
+         still showing Fluent's accent after every key with ComboBox in its name
+         had been mapped: neither key has "Highlight" in it and the part does.
+         The second is #66FFFFFF, an overlay rather than the accent, and it takes
+         the border because that is the job it does. -->
+    <SolidColorBrush x:Key="ComboBoxBackgroundUnfocused" Color="{DynamicResource LunaAccentColor}" />
+    <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushUnfocused" Color="{DynamicResource LunaBorderColor}" />
+
+    <!-- The dropdown list. Selected takes the accent and its text takes what
+         goes on the accent; the pointer-over is the input surface, which is the
+         same "this row, not that one" signal LunaList already uses. -->
+    <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="{DynamicResource LunaAccentColor}" />
+    <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="ComboBoxItemForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="{DynamicResource LunaOnAccentColor}" />
+    <SolidColorBrush x:Key="ComboBoxDropDownGlyphForeground" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+
+    <!-- The little button inside a TextBox that clears it. -->
+    <SolidColorBrush x:Key="TextControlButtonForeground" Color="{DynamicResource LunaMutedColor}" />
+
+    <SolidColorBrush x:Key="CalendarDatePickerBackground" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="CalendarDatePickerBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="CalendarDatePickerForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="CalendarDatePickerTextForeground" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="CalendarDatePickerCalendarGlyphForeground" Color="{DynamicResource LunaMutedColor}" />
+
+    <!-- An accent button is the one Fluent paints in the accent by design, which
+         is the one case where taking the accent is the correct answer rather
+         than an inherited one. -->
+    <SolidColorBrush x:Key="AccentButtonBackground" Color="{DynamicResource LunaAccentColor}" />
+
+</ResourceDictionary>

@@ -72,10 +72,19 @@
 
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/ConsolePane.axaml" />
 
+    <!-- The form controls a stock Avalonia application is mostly made of. Almost
+         all of that work is resource overrides in Theme/FluentBridge.axaml; this
+         file is only the handful whose colours no resource key can reach. §48. -->
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/FormControls.axaml" />
+
     <Styles.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://EmuSen.LunaP/Theme/Palette.axaml" />
+                <!-- AFTER Palette.axaml, and that order is load-bearing: every
+                     brush in the bridge points at a Luna colour key, so those
+                     colours have to be in scope by the time it is merged. §48. -->
+                <ResourceInclude Source="avares://EmuSen.LunaP/Theme/FluentBridge.axaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Styles.Resources>

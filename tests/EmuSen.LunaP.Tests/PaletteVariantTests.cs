@@ -142,6 +142,50 @@ namespace EmuSen.LunaP.Tests
             Assert.True(ratio >= floor, $"{key} on the dark surface is {ratio:F2}:1, below {floor:F1}:1.");
         }, default);
 
+        // The accent is a FILL rather than text, so it answers to WCAG 1.4.11's 3:1 for "visual
+        // information required to identify user interface components" and not to 1.4.3's 4.5:1.
+        // A checked CheckBox, a Slider's filled track and a focused TextBox border are all things
+        // you must be able to see in order to use the control, and none of them is read as words.
+        [Theory]
+        [InlineData("Dark")]
+        [InlineData("Light")]
+        public Task The_accent_clears_three_to_one_against_the_surface(string variantName) => Session.Dispatch(() =>
+        {
+            ThemeVariant variant = variantName == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light;
+
+            Application.Current!.TryGetResource("LunaAccentColor", variant, out object? accent);
+            Application.Current!.TryGetResource("LunaSurfaceColor", variant, out object? surface);
+
+            double ratio = Contrast((Color)accent!, (Color)surface!);
+            Assert.True(ratio >= 3.0, $"LunaAccent on the {variantName} surface is {ratio:F2}:1, below 3:1.");
+        }, default);
+
+        // THE PAIR THE ACCENT EXISTS AS ONE HALF OF, and it went unpinned when the two tokens were
+        // added. LunaOnAccent is the tick inside a checked box and the knob of a switch that is on,
+        // so it is drawn ON the accent and nowhere else - a floor against the SURFACE would be
+        // measuring a pair that never appears on screen.
+        //
+        // 4.5:1 rather than 3:1, and that is not the accent's own bar being raised. A glyph is a
+        // shape you read, which is 1.4.3 and not 1.4.11 - the tick in a checkbox is closer to text
+        // than to the box around it. Both columns clear it: 4.51:1 dark, 6.31:1 light.
+        //
+        // Worth pinning because the comment on the token already claimed it was held to a floor
+        // while nothing held it to anything, and because the two figures first written beside it
+        // were 4.50 and 6.98 - the second measured by nothing. See docs/LunaP.md §48.3.
+        [Theory]
+        [InlineData("Dark")]
+        [InlineData("Light")]
+        public Task What_sits_on_the_accent_clears_four_and_a_half_to_one(string variantName) => Session.Dispatch(() =>
+        {
+            ThemeVariant variant = variantName == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light;
+
+            Application.Current!.TryGetResource("LunaOnAccentColor", variant, out object? onAccent);
+            Application.Current!.TryGetResource("LunaAccentColor", variant, out object? accent);
+
+            double ratio = Contrast((Color)onAccent!, (Color)accent!);
+            Assert.True(ratio >= 4.5, $"LunaOnAccent on the {variantName} accent is {ratio:F2}:1, below 4.5:1.");
+        }, default);
+
         // A DIFFERENT FLOOR FOR A DIFFERENT KIND OF THING. Everything above is WCAG 1.4.3, which
         // is about reading text. The border token is not text: it is the edge of a card, the rule
         // under a panel header, and the divider a splitter is dragged by - and that last one is a

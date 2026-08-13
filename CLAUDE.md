@@ -128,6 +128,20 @@ Three habits this project keeps:
   "reports itself to a screen reader" is a hazard until a test pins it.
 - **No invented results, ever.** A render count, a contrast ratio, a passing
   suite — measured or not stated.
+- **No guessing.** Guessing is permissible only when there is genuinely no other
+  way to get the answer, and then it is labelled as a guess. This is the rule
+  above applied to *method* rather than to results: if the real value can be
+  enumerated, reflected over, read out of a package or measured, do that.
+
+  **Probing a guessed list is still guessing.** Testing sixty recalled resource
+  key names against a live application looks like measurement and is not — it can
+  only find the names already thought of, and its silence means nothing.
+  Enumerating the actual resource tree and searching it for the value in question
+  is the same work done honestly.
+
+  **A recorded shortfall is not a substitute for a cause.** "These four values
+  remain" is an honest entry once the cause is known and leaving it is a decision;
+  reaching for it because the search got tedious is the failure mode.
 
 ## Structure
 
