@@ -202,6 +202,59 @@ namespace EmuSen.LunaP.Tests
             Assert.Empty(window.KeyBindings);
         }, default);
 
+        // AND THE ONE ABOVE COUNTS BINDINGS, WHICH IS NOT THE SAME AS BINDING ANYTHING.
+        //
+        // Found by the §46 audit. Every assertion this file made about shortcuts was about the
+        // KeyBinding objects on the window - two of them, then none - and nothing anywhere pressed a
+        // key. A binding carrying a null Command, a Command wired to the wrong action, a Gesture
+        // parsed into the wrong key, or an Avalonia release that changed how Window.KeyBindings
+        // dispatch would all have left the count at two and the suite green.
+        //
+        // That is the shape §27.7 records: the mechanism was asserted and the outcome never was.
+        // The whole point of a shortcut is that a key runs a handler, so that is what this presses.
+        //
+        // The window has to be shown - KeyBindings dispatch from a real input event through a real
+        // focus scope, and a window that was never shown has neither.
+        [Fact]
+        public Task A_bound_shortcut_actually_runs_its_action_when_the_key_is_pressed() => Session.Dispatch(() =>
+        {
+            int opened = 0, saved = 0;
+
+            var menu = new LunaMenu("File",
+                new LunaAction("Open", () => opened++) { Shortcut = KeyGesture.Parse("Ctrl+O") },
+                new LunaAction("Save", () => saved++) { Shortcut = KeyGesture.Parse("Ctrl+S") });
+
+            var window = new Window { Width = 400, Height = 300 };
+            IReadOnlyList<KeyBinding> bound = Menus.BindShortcuts(window, new[] { menu });
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            window.KeyPress(Key.O, RawInputModifiers.Control, PhysicalKey.O, string.Empty);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.True(opened == 1 && saved == 0,
+                $"Ctrl+O ran Open {opened} times and Save {saved}. Two KeyBindings exist on the window - "
+                + "the question this asks is whether pressing the key reaches the action behind one.");
+
+            window.KeyPress(Key.S, RawInputModifiers.Control, PhysicalKey.S, string.Empty);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.True(opened == 1 && saved == 1,
+                $"Ctrl+S ran Open {opened} times and Save {saved}. Each gesture must reach its own action.");
+
+            // And Unbind has the same problem in reverse: an empty KeyBindings collection is not
+            // proof that the key stopped doing anything.
+            Menus.Unbind(window, bound);
+            window.KeyPress(Key.O, RawInputModifiers.Control, PhysicalKey.O, string.Empty);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.True(opened == 1,
+                $"Open ran {opened} times after Unbind. The collection being empty is the mechanism; "
+                + "the key doing nothing is the outcome.");
+
+            window.Close();
+        }, default);
+
         // TWO COMMANDS ON ONE KEY, which Avalonia resolves by running the first and ignoring the
         // second - in silence, while the menu goes on showing the shortcut beside both of them.
         [Fact]
