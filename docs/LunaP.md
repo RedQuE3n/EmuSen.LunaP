@@ -3819,3 +3819,101 @@ packaged.
 Both `<Version>` elements read 0.7.1 and agree, per §22.8. As with §42.4: this
 records a decision and does not tag or publish, because a version on nuget.org
 cannot be replaced and that is a person's call.
+
+---
+
+## 46. The audit §27.7 asked for
+
+§27.7 recorded a guard that could not fail, and the uncomfortable part was not the guard. It was
+that **§22.5's method had already been applied to it and had passed.** *"Make the guard fail on
+purpose"* is this project's oldest testing rule, and it certified a test for the one defect it was
+blind to, because the sabotage broke the same wiring the assertion read.
+
+So the suite was swept, once, asking two questions of every guard in it:
+
+1. **If the mechanism under test silently did nothing, would this still pass?**
+2. **Did its recorded sabotage break the outcome, or only the mechanism the assertion happens to
+   name?**
+
+The second question is the new one, and it is answerable from this document alone, because the
+sabotages are all written down here.
+
+### 46.1 The sabotage tables held, with one exception
+
+Eight tables reviewed — §22.5, §22.6, §24.6, §26.11, §27.6, §28.3, §30.4 and §32.4.
+
+**Every one except §27.6 breaks an outcome.** `Drain`'s ordering, `Suppressor`'s depth, `FilterBar`
+ignoring its delay, a peer removed so a control leaves the control view, a style key dropped so a
+control has no visual children, `Select` throwing away a selection, a base type changed under an API
+baseline — in each case the sabotage produces a wrong *result*, and the assertion reads the result.
+
+§27.6 is the single collapse: *"columns stop sharing a size group with the header"* against an
+assertion that read the group names. Both halves were the same claim, and both were satisfied while
+the columns shared nothing.
+
+**§26.11 is the model entry, and it did not need this audit to be one.** Twelve sabotages, of which
+*two turned nothing red*, and it says so in the table rather than quietly dropping them: dropping
+`StyleKeyOverride` from `ActionButton` and `ActionToggle` broke nothing, which is how §28.1 came to
+know the trap does not bite uniformly. A sabotage table that reports only its successes is a table
+that has been curated.
+
+### 46.2 The one real hole, and the sabotage that proves it
+
+The profile: **29 test files, 598 `Assert.` calls, 105 references** to bounds, geometry, visual
+descendants, a render capture, a template part lookup, or a raised input event.
+
+Six files assert no visual outcome at all, and five of those are correct to: `CitationTests`,
+`DocumentationTests`, `MemberDocumentationTests` and `LayeringTests` are meta-guards whose subject
+*is* the wiring — a citation, a summary, an assembly reference — and `LunaPaletteTests` resolves
+every key from the live application, which is the effect even though nothing is measured on screen.
+The sixth, `StyleKeyTests`, is a wiring guard **by design**, and its own header argues the case at
+length: `TemplateReachTests` cannot see this defect class because a borrowed template always exists,
+and the CSS sweep only covers controls in the vocabulary, which four of the eight are not.
+
+**The hole was in shortcuts.** `Menus.BindShortcuts` was guarded by
+`Binding_shortcuts_puts_one_key_binding_on_the_window_per_gesture`, which asserted that two
+`KeyBinding` objects were on the window and, after `Unbind`, that none were. Nothing in the suite had
+ever pressed a key. A binding carrying a null `Command`, a `Command` wired to the wrong action, a
+gesture parsed to the wrong key, or an Avalonia release that changed how `Window.KeyBindings`
+dispatch would every one of them have left the count at two and the suite green.
+
+`A_bound_shortcut_actually_runs_its_action_when_the_key_is_pressed` shows a real window, presses
+Ctrl+O and Ctrl+S through the headless input path, and asserts that each ran its own handler once —
+then unbinds and presses again, because an empty collection is the mechanism and a key that does
+nothing is the outcome.
+
+**The sabotage was chosen to discriminate, which is the whole point of §46:**
+
+| Sabotage | Turned red |
+|---|---|
+| every gesture bound to the first claimed action rather than its own — **the binding count unchanged** | `A_bound_shortcut_actually_runs_its_action_when_the_key_is_pressed`, reporting *"Ctrl+S ran Open 2 times and Save 0"* |
+| the same | `Binding_shortcuts_puts_one_key_binding_on_the_window_per_gesture` — **nothing; it stayed green** |
+
+Two bindings existed, on the right window, for the right gestures, wired to entirely the wrong
+actions, and the old guard could not tell that from correct. That is §27.7's finding reproduced on a
+different part of the toolkit, found by asking the question rather than by shipping the defect.
+
+The suite is **491**.
+
+### 46.3 The rule this leaves behind
+
+> **A sabotage must break the outcome, not the mechanism the assertion names.** If breaking it turns
+> the guard red for the same reason the guard exists to watch, the sabotage has proved only that the
+> assertion can see what it reads.
+
+The practical test when choosing one: **can the sabotage be built so that the guard's own assertion
+is still satisfied?** If yes, that is the sabotage to run. Binding every shortcut to the wrong action
+keeps the count at two; reverting `Define` to an assignment keeps every `SharedSizeGroup` name
+correct. Both leave the mechanism looking exactly as the test describes it, and both are the only
+sabotages that were worth running.
+
+### 46.4 What this audit does not claim
+
+- **It is one pass by one reader**, not a proof. It asked its two questions of the eight recorded
+  sabotage tables and of the files with no visual assertion; a guard in a file with a healthy ratio
+  can still be reading its own wiring, and this sweep would not have seen it.
+- **It found one hole.** That is a good result for a suite of this size and it is not a clean bill —
+  the same sweep before §27 would also have reported nothing wrong with `LunaTable`, because the
+  question that catches these was not being asked yet.
+- **It did not re-run the historical sabotages.** §46.1 reads them as written. A table entry that
+  was recorded inaccurately would survive this audit intact.
