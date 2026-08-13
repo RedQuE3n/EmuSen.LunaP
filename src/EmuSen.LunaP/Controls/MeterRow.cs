@@ -7,6 +7,7 @@ using EmuSen.LunaP.Theme;
 namespace EmuSen.LunaP.Controls
 {
     // One row of a load/level dashboard: a label, a percentage bar, a value - see docs/LunaP.md §5.2.
+    /// <summary>One dashboard row: a label, a percentage bar coloured by load band, and a value.</summary>
     public class MeterRow : TemplatedControl
     {
         public static readonly StyledProperty<string> LabelProperty =

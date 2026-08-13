@@ -11,6 +11,7 @@ using EmuSen.LunaP.Automation;
 namespace EmuSen.LunaP.Controls
 {
     // Shows a raw RGBA buffer, reusing its bitmap across frames - the one surviving implementation of three - see docs/LunaP.md §5.3.
+    /// <summary>Displays a raw RGBA pixel buffer, reusing its bitmap across frames.</summary>
     public class RgbaImageView : TemplatedControl
     {
         public static readonly StyledProperty<Stretch> StretchProperty =

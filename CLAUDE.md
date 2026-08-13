@@ -65,8 +65,28 @@ time the file is read. `Threading/Suppressor.cs` is the house example: a block
 above the type explaining what it replaces, why it counts instead of flagging,
 and why it is deliberately not thread-safe.
 
-The convention here is `//`, not `///`, and a block above the type carrying the
-argument, with short notes beside the members that need one. Keep it.
+The convention here is `//` for the argument — a block above the type, with
+short notes beside the members that need one. Keep it. It is the whole of how
+this codebase explains itself, and `///` does not replace any of it.
+
+**Amended at §33: every public type also carries a one-line `///` summary,
+directly above the declaration, under the `//` block.** They serve two different
+readers and are not two attempts at one job. The `//` block is for somebody with
+the file open, and says *why*, at whatever length the argument needs. The
+`///` summary is for a consumer who has the DLL and nothing else, and says
+*what*, in one sentence — until §33 their IntelliSense was blank for all
+sixty-three public types.
+
+Two rules keep that from turning into noise:
+
+- **Types must have one; members need one only when the name does not already
+  say it.** `CS1591` is suppressed in both `.csproj` files for exactly this
+  reason, written beside the switch. Of 460 public members, 99 are Avalonia
+  `StyledProperty` fields and protected framework overrides where the only
+  available sentence restates the name — and filler rots as fast as prose.
+- **`DocumentationTests` enforces it**, so a new public type fails the build
+  until it has a summary, and a summary that is empty or a placeholder fails
+  too.
 
 Rules that follow:
 

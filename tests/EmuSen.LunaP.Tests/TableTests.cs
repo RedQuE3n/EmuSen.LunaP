@@ -186,7 +186,7 @@ namespace EmuSen.LunaP.Tests
             {
                 Assert.Equal("Approved", table.Selected!.Name);
                 Assert.Single(table.FindNamed<ListBox>("PART_Rows")
-                    .GetVisualDescendants().OfType<ListBoxItem>().Where(i => i.IsSelected));
+                    .GetVisualDescendants().OfType<ListBoxItem>(), i => i.IsSelected);
             });
 
         // WHAT A READER HEARS. Three bare TextBlocks in a grid announce as three values with

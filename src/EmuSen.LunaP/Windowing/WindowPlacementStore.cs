@@ -7,6 +7,7 @@ using EmuSen.LunaP.Settings;
 namespace EmuSen.LunaP.Windowing
 {
     // Where a remembered window was, as plain data - see docs/LunaP.md §8.1.
+    /// <summary>Where a remembered window was, as plain data.</summary>
     public sealed class WindowPlacement
     {
         public int X { get; set; }
@@ -17,6 +18,7 @@ namespace EmuSen.LunaP.Windowing
     }
 
     // One windows.json keyed by ToolWindow.WindowKey; opt-in, so a window without a key is never remembered.
+    /// <summary>Reads and writes remembered window placement, keyed by a window's opt-in key.</summary>
     public static class WindowPlacementStore
     {
         public const string FileName = "windows.json";

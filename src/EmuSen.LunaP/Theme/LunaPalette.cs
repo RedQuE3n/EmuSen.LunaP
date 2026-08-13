@@ -4,6 +4,7 @@ using Avalonia.Media.Immutable;
 namespace EmuSen.LunaP.Theme
 {
     // How hard something is working, in the three bands every dashboard shares.
+    /// <summary>How hard something is working, in the three bands a dashboard colours by.</summary>
     public enum LoadLevel
     {
         Nominal,
@@ -22,6 +23,7 @@ namespace EmuSen.LunaP.Theme
     //
     // This is not a gap waiting to be filled with a second set of fields. It is what a static is:
     // the answer for code that has no resource host to ask, and the wrong tool for code that has.
+    /// <summary>The C# half of the palette, for controls built in code rather than in XAML.</summary>
     public static class LunaPalette
     {
         public static readonly ISolidColorBrush Surface = Brush("#1E1E1E");

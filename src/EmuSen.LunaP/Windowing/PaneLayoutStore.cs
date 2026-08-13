@@ -5,6 +5,7 @@ using EmuSen.LunaP.Settings;
 namespace EmuSen.LunaP.Windowing
 {
     // Where a divider was left, and whether a panel was open - see docs/LunaP.md §26.6.
+    /// <summary>Where a divider was left and whether a panel was open, as plain data.</summary>
     public sealed class PaneLayout
     {
         // The fixed pane's size in device-independent pixels. Not a fraction of the window, and
@@ -25,6 +26,7 @@ namespace EmuSen.LunaP.Windowing
     // Opt-in, on the same principle: a pane without a key is never remembered, so a toolkit that
     // suddenly started writing files on behalf of every window that happened to have a splitter in
     // it is not what a consumer gets by upgrading.
+    /// <summary>Reads and writes remembered pane layout, keyed by a pane's opt-in key.</summary>
     public static class PaneLayoutStore
     {
         public const string FileName = "panes.json";

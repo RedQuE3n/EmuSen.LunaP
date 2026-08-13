@@ -11,6 +11,7 @@ using EmuSen.LunaP.Windowing;
 namespace EmuSen.LunaP.Controls
 {
     // Which edge of the shell a panel lives on.
+    /// <summary>Which edge of a shell window a side panel is docked to.</summary>
     public enum PanelSide
     {
         Left,
@@ -34,6 +35,7 @@ namespace EmuSen.LunaP.Controls
     // QDockWidget::toggleViewAction() for exactly this reason: the View menu entry that shows and
     // hides a panel must be the same object as the panel's own close button, or the menu's tick
     // and the panel's state drift apart the first time somebody uses the button.
+    /// <summary>A titled panel docked to one edge, which can be closed and comes back where it was.</summary>
     public class SidePanel : ContentControl
     {
         public static readonly StyledProperty<string> TitleProperty =

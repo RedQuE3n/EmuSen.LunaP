@@ -26,6 +26,7 @@ namespace EmuSen.LunaP.Windowing
     // content. §9.1 refused a base class that altered behaviour by being inherited, and §21.4
     // found six windows in one application that had already refused ToolWindow itself - a shell
     // that imposed chrome on anybody who derived from it would earn the same treatment.
+    /// <summary>A window with a menu bar, a toolbar, a status line, dockable side panels and central content.</summary>
     public class AppWindow : ToolWindow
     {
         private readonly MenuBar _menuBar = new();

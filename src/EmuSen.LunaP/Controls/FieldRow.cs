@@ -8,6 +8,7 @@ using EmuSen.LunaP.Automation;
 namespace EmuSen.LunaP.Controls
 {
     // A settings field: bold label, optional grey explanation, then whatever control the caller puts in Content - see docs/LunaP.md §5.4.
+    /// <summary>A settings field: a bold label, an optional explanation, and whatever control the caller supplies.</summary>
     public class FieldRow : ContentControl
     {
         public static readonly StyledProperty<string> LabelProperty =

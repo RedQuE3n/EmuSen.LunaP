@@ -61,6 +61,11 @@ nothing, nothing changes (`§26`).
 - `LunaSettings.Diagnostics` now also carries "two commands claim one shortcut",
   alongside the "this file would not load" it already carried (`§26.5`).
 
+- **IntelliSense now says something.** Both packages ship an XML documentation file, so every one
+  of the sixty-three public types describes itself in your editor instead of appearing as a bare
+  name. Members are documented where the name does not already say it, and deliberately not
+  otherwise — 99 of the 460 are Avalonia property fields and framework overrides where the only
+  available sentence restates the name (`§33`).
 - **The public surface of both packages is pinned by a test.** Sixty-three types and their members
   are written down in `tests/…/ApiSurface/`, and any change to them — a rename, a widened return
   type, a changed base class, a property turned `internal` — fails the build until somebody

@@ -16,6 +16,7 @@ namespace EmuSen.LunaP.Controls
     // Message and Detail rather than one string, because every hand-rolled version wanted both:
     // what is missing, and what to do about it. Detail is optional and hidden when empty, so a
     // bare "No results" does not leave a gap where a second line would be.
+    /// <summary>A centred message saying that there is nothing to show, and why.</summary>
     public class EmptyState : TemplatedControl
     {
         public static readonly StyledProperty<string> MessageProperty =

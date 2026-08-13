@@ -7,6 +7,7 @@ using EmuSen.LunaP.Automation;
 namespace EmuSen.LunaP.Controls
 {
     // A right-aligned run of buttons. Buttons go in as ordinary children - see docs/LunaP.md §5.5.
+    /// <summary>A right-aligned horizontal run of buttons, which go in as ordinary children.</summary>
     public class ButtonBar : ItemsControl
     {
         // ToolBar, not List, and the correction is worth the line. ItemsControl's stock peer reports
@@ -18,6 +19,7 @@ namespace EmuSen.LunaP.Controls
     }
 
     // The bottom strip: a status message on the left, a ButtonBar's worth of actions on the right.
+    /// <summary>The bottom strip of a window: a status message on the left, content on the right.</summary>
     public class StatusBar : ContentControl
     {
         public static readonly StyledProperty<string> StatusProperty =

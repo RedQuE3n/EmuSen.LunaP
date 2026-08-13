@@ -12,6 +12,7 @@ using EmuSen.LunaP.Threading;
 namespace EmuSen.LunaP.Controls
 {
     // A search box, optionally preceded by a labelled facet dropdown - see docs/LunaP.md §14.2.
+    /// <summary>A search box, optionally preceded by a labelled facet dropdown.</summary>
     public class FilterBar : TemplatedControl
     {
         public static readonly StyledProperty<string> SearchTextProperty =

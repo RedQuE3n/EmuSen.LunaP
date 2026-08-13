@@ -7,6 +7,7 @@ using Avalonia.VisualTree;
 namespace EmuSen.LunaP.Testing
 {
     // Typed visual-tree lookups, so a control test asserts about a rendered part rather than a field it happens to hold.
+    /// <summary>Typed visual-tree lookups, for asserting about a rendered template part rather than a field a control happens to hold.</summary>
     public static class VisualQuery
     {
         public static T? FindPart<T>(this Visual root) where T : Visual =>

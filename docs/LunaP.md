@@ -2456,3 +2456,83 @@ member list can be identical either side of it.
   does is a worse break than a rename and is invisible here; that is what the other 370 tests are.
 - **It cannot tell an intended change from an accident.** It can only make somebody look. The
   approval is a committed file, so the looking happens in review rather than in a dialog box.
+
+---
+
+## 33. Sixty-three public types, and an empty tooltip
+
+§31 got the source to a consumer's debugger. This is the same gap one step earlier: what a consumer
+sees before they ever reach a debugger, which is whatever their editor pops up when they type
+`new LunaAction(`.
+
+Until this section that was nothing at all. `GenerateDocumentationFile` was off, so no `.xml` was
+built and none was packed, and all sixty-three public types offered IntelliSense a bare name.
+
+### 33.1 The convention was right and had a blind spot
+
+CLAUDE.md says the convention is `//` and not `///`, and that is not a mistake to be corrected — it
+is why `Threading/Suppressor.cs` can spend six lines explaining what it replaces and why it
+deliberately is not thread-safe. XML doc comments are a bad container for that: `<summary>` is
+rendered in a tooltip, and a tooltip is not where an argument goes.
+
+**The blind spot is who the convention serves.** Every word of it is addressed to somebody with the
+file open. A consumer resolving `EmuSen.LunaP` from nuget.org has a DLL and, now, a symbol package —
+and their editor reads exactly one thing, the `.xml` beside the assembly.
+
+So the amendment is additive rather than a reversal. The `//` block keeps the *why* at whatever
+length it needs. A one-line `///` summary above the declaration says *what*. **Two readers, two
+containers**, and the summary never tries to carry the argument.
+
+### 33.2 Why members are not required, which is the real decision
+
+Turning on `CS1591` would have demanded a sentence for **all 460 public members**. Counted rather
+than estimated:
+
+| Members | |
+|---:|---|
+| 460 | public members across both packages |
+| 41 | Avalonia `StyledProperty` / `DirectProperty` fields |
+| 58 | protected overrides of `OnApplyTemplate`, `OnPropertyChanged`, `OnCreateAutomationPeer` |
+
+Ninety-nine of them have no sentence available except the one that restates the name.
+*"Gets or sets the Text."* teaches nobody anything, and this repository's own position — a comment
+that has drifted is worse than none because it is believed — applies with more force to filler,
+which is that failure arriving pre-drifted.
+
+So `CS1591` is suppressed in both `.csproj` files with the reason written beside the switch, and the
+rule is enforced where it carries information: **every public type, and members whose names do not
+already say it.**
+
+### 33.3 The guard
+
+`tests/EmuSen.LunaP.Tests/DocumentationTests.cs`, two assertions per package:
+
+- **Every public type has a `<summary>`.** Subjects come from reflecting over the assembly and the
+  answer from parsing the generated `.xml`, so a type added tomorrow is in the sweep the moment it
+  compiles. It uses the same exclusion §32.3 uses, for the same reason — the XAML compiler's
+  generated types are public, uncallable, and not ours to document.
+- **No summary is empty or a placeholder.** The failure this guard most invites is a `///` added to
+  silence it, so a summary under twelve characters, or literally `TODO`, fails. The threshold is
+  deliberately low: it catches an empty tag or a stub, not prose somebody thought about.
+
+A third check falls out of the first: if `GenerateDocumentationFile` is ever turned off, there is no
+`.xml` to parse and the tests say so by name. Nothing else in the build would have noticed.
+
+**Verified end to end** by packing and reading the result out of the `.nupkg` rather than out of the
+build directory — `lib/net10.0/` now contains `EmuSen.LunaP.xml` beside the DLL, and
+`T:EmuSen.LunaP.Commands.LunaAction` in it reads *"One command object standing behind a menu item, a
+toolbar button, a context-menu entry and a key binding."*
+
+### 33.4 What this does not do
+
+- **It does not document members**, by design, and that is the part most likely to be revisited. The
+  argument above is about the 99 that cannot be usefully documented; it is not an argument against
+  documenting `Refresh`, `Fill` or `SetMenus`, which have real semantics a tooltip could carry. That
+  work is open, and the guard will not ask for it.
+- **It does not check that a summary is TRUE.** It checks that one exists and is not a stub. A
+  summary that drifts from its type is exactly the failure CLAUDE.md warns about, and no test here
+  catches it.
+- **It does not cover `<param>`, `<returns>` or `<exception>`.** `LunaTable<T>.Column` takes a header
+  and a projection and says so in neither.
+- **It does not backfill the packages already on nuget.org.** 0.2.0–0.6.0 shipped without a `.xml`
+  and cannot gain one, the same constraint §31.5 and §25 both hit.

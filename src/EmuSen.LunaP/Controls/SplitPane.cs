@@ -13,6 +13,7 @@ using EmuSen.LunaP.Windowing;
 namespace EmuSen.LunaP.Controls
 {
     // Which pane keeps its size when the window is resized.
+    /// <summary>Which pane of a split keeps its size when the window is resized.</summary>
     public enum SplitSide
     {
         First,
@@ -38,6 +39,7 @@ namespace EmuSen.LunaP.Controls
     // survives a window resize by moving the divider, which is exactly the thing the user was
     // being precise about when they dragged it: they made the sidebar wide enough for the longest
     // filename, not wide enough for 22% of a window they may never open at that size again.
+    /// <summary>Two panes and a divider the user can drag, with the position optionally remembered.</summary>
     public class SplitPane : TemplatedControl
     {
         public static readonly StyledProperty<Orientation> OrientationProperty =

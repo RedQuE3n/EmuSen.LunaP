@@ -16,6 +16,7 @@ namespace EmuSen.LunaP.Controls
     // command and cannot be invoked, checked, disabled or bound to a key. Giving it an action so
     // that one type covered both would mean every menu bar carried three actions nobody could
     // trigger, each of which would then turn up in the shortcut binder's walk.
+    /// <summary>The menu strip along the top of a window, built from LunaMenu models.</summary>
     public class MenuBar : Menu
     {
         // Menu's own theme, not a subclass's. Without this the Fluent ControlTheme never reaches

@@ -5,6 +5,7 @@ using EmuSen.LunaP.Threading;
 namespace EmuSen.LunaP.Windowing
 {
     // "At most one of these, else bring it forward" - the pattern seven call sites hand-wrote - see docs/LunaP.md §8.3.
+    /// <summary>Keeps at most one window of a kind open, bringing the existing one forward instead of making a second.</summary>
     public sealed class WindowSlot<TWindow> where TWindow : Window
     {
         public TWindow? Current { get; private set; }

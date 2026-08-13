@@ -15,6 +15,7 @@ namespace EmuSen.LunaP.Fluent
     // attached form was used ZERO times (§21.4), and a fluent chain that breaks to call a static
     // setter on the line between `.Width(200)` and `.Margin(8)` is a chain a person stops writing.
     // Naming a control has to cost one call in the middle of a builder or it does not get done.
+    /// <summary>Fluent setters for the properties that make a control reachable by a screen reader.</summary>
     public static class AccessibilityExtensions
     {
         // AutomationProperties.Name: what a screen reader calls this control.

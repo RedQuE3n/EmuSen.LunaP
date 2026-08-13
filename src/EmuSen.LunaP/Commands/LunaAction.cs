@@ -28,6 +28,7 @@ namespace EmuSen.LunaP.Commands
     // one - and an `object Icon` property would be an invitation to put a raw Bitmap in a toolkit
     // that could not restyle it with the theme. Text and a shortcut are what the kit can render
     // honestly today. §26.12 records this as a gap rather than a decision that closed.
+    /// <summary>One command object standing behind a menu item, a toolbar button, a context-menu entry and a key binding.</summary>
     public sealed class LunaAction : ICommand
     {
         private string _text;
@@ -202,6 +203,7 @@ namespace EmuSen.LunaP.Commands
     // has to move when the theme changes from anywhere - a hotkey, a settings window, a theme file
     // going missing at startup. Setting IsChecked on the new member is the whole of it, and every
     // other member follows.
+    /// <summary>A set of mutually exclusive checkable actions, of which at most one is checked at a time.</summary>
     public sealed class ActionGroup
     {
         private readonly System.Collections.Generic.List<LunaAction> _members = new();

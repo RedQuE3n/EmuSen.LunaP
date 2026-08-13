@@ -34,6 +34,7 @@ namespace EmuSen.LunaP.Automation
     // subclasses would be nine places for that answer to drift. The control type is a constructor
     // argument and the strings are delegates, so a control reports its live property rather than
     // whatever the string was when the peer was built.
+    /// <summary>What a LunaP control reports itself as to a screen reader.</summary>
     public class LunaAutomationPeer : ControlAutomationPeer
     {
         private readonly AutomationControlType _type;

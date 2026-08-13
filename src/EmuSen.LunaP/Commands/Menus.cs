@@ -13,6 +13,7 @@ namespace EmuSen.LunaP.Commands
     // never writes back, and nothing built here is kept - a caller that wants the menu to change
     // changes the ACTION. That is what keeps a menu bar, a context menu and a key binding built
     // from the same File menu from being three copies that drift.
+    /// <summary>Builds the Avalonia controls that show actions, and the key bindings that make their shortcuts work.</summary>
     public static class Menus
     {
         // One menu's worth of entries. Separators become Avalonia's Separator, which is a control
