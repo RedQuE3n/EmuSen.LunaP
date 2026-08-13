@@ -10,6 +10,7 @@ namespace EmuSen.LunaP.Testing
 {
     // Finding the one headless session a suite dispatches onto, and refusing to hand it over when
     // the suite is configured in a way that is known to corrupt it - see docs/LunaP.md §22.8.
+    /// <summary>The one headless Avalonia session a test assembly dispatches onto.</summary>
     public static class UiSession
     {
         private static HeadlessUnitTestSession? _session;
@@ -118,6 +119,7 @@ namespace EmuSen.LunaP.Testing
     // piece. §3.1 is why the theme include matters more than it looks: without the real theme,
     // templated controls have no template, render as nothing, and every assertion over them
     // silently passes. §17 records that shipping without it has happened once.
+    /// <summary>The headless application a LunaP suite runs against, with the toolkit's theme already applied.</summary>
     public static class LunaHeadless
     {
         public static AppBuilder BuildApp() => BuildApp(_ => { });

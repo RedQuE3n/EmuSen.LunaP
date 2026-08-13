@@ -21,6 +21,24 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+
+    <!-- The .xml beside the .dll, which is the only thing a consumer's IntelliSense
+         reads. Sixty-three public types offered it nothing until §33.
+
+         CS1591 ("missing XML comment") IS SUPPRESSED ON PURPOSE, and that is the
+         decision rather than an oversight. Turning it on demands a sentence for
+         all 460 public members, including 41 Avalonia StyledProperty fields and
+         58 protected overrides of OnApplyTemplate and friends, where the only
+         sentence available restates the name. This repository's position is that
+         a comment which has drifted is worse than none because it is believed,
+         and filler is the same failure arriving pre-drifted.
+
+         So the rule is enforced where it carries information and nowhere else:
+         EVERY PUBLIC TYPE HAS A SUMMARY, and DocumentationTests fails the build
+         if one does not. Members get a summary when the name does not already
+         say it. See docs/LunaP.md §33. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup>

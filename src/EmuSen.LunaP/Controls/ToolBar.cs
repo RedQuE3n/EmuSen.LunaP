@@ -18,6 +18,7 @@ namespace EmuSen.LunaP.Controls
     // A checkable action becomes a pressed-in ActionToggle rather than a button, because that is
     // the only thing that distinguishes "grid is showing" from "show the grid" on a strip with no
     // room for words.
+    /// <summary>The run of action buttons under the menu bar.</summary>
     public class ToolBar : ItemsControl
     {
         private IReadOnlyList<LunaAction> _actions = Array.Empty<LunaAction>();

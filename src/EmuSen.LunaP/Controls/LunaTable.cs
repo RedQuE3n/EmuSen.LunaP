@@ -23,6 +23,7 @@ namespace EmuSen.LunaP.Controls
     // So the parts and the look live on this class, which XAML can select, and the models live on
     // the generic one below. An Avalonia style selector matches subclasses, so a style written for
     // `luna|LunaTable` reaches every `LunaTable<T>` there will ever be.
+    /// <summary>The non-generic base of LunaTable&lt;T&gt;, which exists so that a theme can name the type.</summary>
     public abstract class LunaTable : TemplatedControl
     {
         // The scrollbar is the reason this is worth a note. Fluent's ScrollViewer overlays its
@@ -74,6 +75,7 @@ namespace EmuSen.LunaP.Controls
     // TAKES PROJECTIONS, NOT AN INTERFACE, exactly as LunaList<T> does and for the same §1 reason:
     // a column is a header and a Func<T, string>, so a caller's own model needs no attribute, no
     // base class and no knowledge that LunaP exists.
+    /// <summary>A flat list with columns, where each column is a header and a projection from the model.</summary>
     public class LunaTable<T> : LunaTable where T : class
     {
         private readonly List<ColumnSpec> _columns = new();

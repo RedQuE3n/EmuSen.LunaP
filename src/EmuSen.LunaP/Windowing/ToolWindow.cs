@@ -7,6 +7,7 @@ using EmuSen.LunaP.Theme;
 namespace EmuSen.LunaP.Windowing
 {
     // The base every LunaP window shares. Deliberately thin, and both of its features are opt-in - see docs/LunaP.md §8.
+    /// <summary>The thin base every LunaP window shares, whose extra features are all opt-in.</summary>
     public class ToolWindow : Window
     {
         public static readonly StyledProperty<bool> ClosesOnEscapeProperty =

@@ -7,6 +7,7 @@ using Avalonia.Styling;
 namespace EmuSen.LunaP.Theme
 {
     // What a .css theme compiled to: palette resources, control styles, and every declaration that was skipped.
+    /// <summary>What a CSS theme compiled to: palette resources, control styles, and every declaration that was skipped.</summary>
     public sealed class CssThemeResult
     {
         public ResourceDictionary Resources { get; } = new();
@@ -28,6 +29,7 @@ namespace EmuSen.LunaP.Theme
     // in EmuSen.LunaP.Theme, because `CssTheme` is a public name a consumer has already written a
     // `using` for - moving it to match the directory would be a breaking change bought with nothing
     // but tidiness.
+    /// <summary>The restricted CSS dialect a host may write a theme in.</summary>
     public static partial class CssTheme
     {
         public const string RootSelector = ":root";

@@ -18,6 +18,7 @@ namespace EmuSen.LunaP.Controls
     // So the card is not new chrome, it is the chrome those three already drew, given a Luna key
     // so a theme can reach it. The header is optional and collapses when absent - a card with no
     // title is a plain raised surface, which is what MainWindow's use of it actually was.
+    /// <summary>A titled surface for grouping related controls, painted from the toolkit's own palette.</summary>
     public class Card : HeaderedContentControl
     {
         // Whether there is a header at all. A direct property so the template can bind its

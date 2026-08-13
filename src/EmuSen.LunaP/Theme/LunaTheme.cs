@@ -11,12 +11,14 @@ using EmuSen.LunaP.Settings;
 namespace EmuSen.LunaP.Theme
 {
     // Which theme is in use, persisted next to the rest of the config.
+    /// <summary>Which theme is in use, as persisted alongside the rest of a host's configuration.</summary>
     public sealed class ThemeChoice
     {
         public string Name { get; set; } = LunaTheme.BuiltIn;
     }
 
     // Loads a user theme over the built-in palette - see docs/LunaP.md §12.
+    /// <summary>Loads and applies a user theme over the built-in palette.</summary>
     public static class LunaTheme
     {
         public const string BuiltIn = "Built-in";

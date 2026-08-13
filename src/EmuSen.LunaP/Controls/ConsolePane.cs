@@ -10,6 +10,7 @@ using EmuSen.LunaP.Automation;
 namespace EmuSen.LunaP.Controls
 {
     // A terminal-shaped pane: scrolling output, a prompt, an input box with history recall. Knows nothing about DianaOS - see docs/LunaP.md §5.6.
+    /// <summary>A terminal-shaped pane with scrolling output, a prompt, and an input box with history recall.</summary>
     public class ConsolePane : TemplatedControl
     {
         public static readonly StyledProperty<string> PromptProperty =

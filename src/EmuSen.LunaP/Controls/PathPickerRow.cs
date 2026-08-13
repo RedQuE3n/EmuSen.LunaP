@@ -8,6 +8,7 @@ using EmuSen.LunaP.Windowing;
 
 namespace EmuSen.LunaP.Controls
 {
+    /// <summary>Whether a path picker asks the platform for a file or for a directory.</summary>
     public enum PathPickerMode
     {
         Folder,
@@ -15,6 +16,7 @@ namespace EmuSen.LunaP.Controls
     }
 
     // A read-only path box and a Browse... button, which is all four of the frontends' picker rows were - see docs/LunaP.md §5.4.
+    /// <summary>A read-only path box with a Browse button that opens the platform picker.</summary>
     public class PathPickerRow : TemplatedControl
     {
         public static readonly StyledProperty<string> PathProperty =

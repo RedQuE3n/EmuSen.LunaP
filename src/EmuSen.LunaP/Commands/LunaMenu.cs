@@ -12,6 +12,7 @@ namespace EmuSen.LunaP.Commands
     //
     // Nesting goes through LunaAction.Submenu rather than through a list of mixed types, which is
     // the same choice Qt makes and the reason a menu here has exactly one item type. See §26.3.
+    /// <summary>A titled run of actions forming one top-level menu or one submenu.</summary>
     public sealed class LunaMenu
     {
         public LunaMenu(string title, params LunaAction[] items)

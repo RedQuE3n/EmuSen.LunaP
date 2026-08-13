@@ -19,6 +19,7 @@ namespace EmuSen.LunaP.Gallery
     // means anything when there is something for it to be beside. So the gallery IS a shell, with
     // the control samples as its central content - which also makes it the one place the whole
     // arrangement is exercised in a render pass.
+    /// <summary>Every control in the kit, shown once with sample data, as the visual reference.</summary>
     public class GalleryWindow : AppWindow
     {
         public GalleryWindow()

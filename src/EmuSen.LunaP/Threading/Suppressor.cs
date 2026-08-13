@@ -35,6 +35,7 @@ namespace EmuSen.LunaP.Threading
     // NOT THREAD-SAFE, deliberately. This guards UI event handlers, which are a UI-thread
     // concern; making it interlocked would invite use as a general mutual-exclusion primitive,
     // which it is not and should not become.
+    /// <summary>Marks a region in which a control's change handlers must not write back.</summary>
     public sealed class Suppressor
     {
         private int _depth;

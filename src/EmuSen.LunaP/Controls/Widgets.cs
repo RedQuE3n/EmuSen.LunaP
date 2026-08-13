@@ -9,6 +9,7 @@ using EmuSen.LunaP.Threading;
 namespace EmuSen.LunaP.Controls
 {
     // Avalonia's ToggleSwitch, themed - see docs/LunaP.md §14.1.
+    /// <summary>A themed toggle switch whose label is also its accessible name.</summary>
     public class LunaSwitch : ToggleSwitch
     {
         // Without this the Fluent ToggleSwitch theme never reaches a subclass and ToggleSwitch.OnApplyTemplate throws on PART_MovingKnobs - see §14.1.
@@ -79,6 +80,7 @@ namespace EmuSen.LunaP.Controls
     }
 
     // Avalonia's ComboBox, themed, with the selection reported as a plain callback rather than an event-args dance.
+    /// <summary>A themed combo box that reports a real user choice through a plain callback.</summary>
     public class Dropdown : ComboBox
     {
         protected override Type StyleKeyOverride => typeof(ComboBox);
@@ -116,6 +118,7 @@ namespace EmuSen.LunaP.Controls
     }
 
     // Avalonia's TabControl, themed, with the "append a tab" chore the frontends both hand-wrote.
+    /// <summary>A themed tab control with a one-call helper for appending a tab.</summary>
     public class Tabs : TabControl
     {
         protected override Type StyleKeyOverride => typeof(TabControl);

@@ -21,6 +21,7 @@ namespace EmuSen.LunaP.Controls
     // delegate - a meter row takes (string, double, string), never a DebugLoadInfo - and a list
     // that demanded an IListItem would be a list only an application that had adopted LunaP's
     // vocabulary could use. Label and Key are Funcs for the same reason.
+    /// <summary>A single-selection list that keeps hold of the model type it was given.</summary>
     public class LunaList<T> : ListBox where T : class
     {
         // ListBox's own theme, not a subclass's: a control's style key defaults to its runtime type,

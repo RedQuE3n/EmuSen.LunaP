@@ -72,6 +72,7 @@ namespace EmuSen.LunaP.Controls
     }
 
     // One menu entry, following one action.
+    /// <summary>A menu entry that follows one action's label, enabled state and checked state.</summary>
     public class ActionMenuItem : MenuItem
     {
         protected override Type StyleKeyOverride => typeof(MenuItem);
@@ -160,6 +161,7 @@ namespace EmuSen.LunaP.Controls
     }
 
     // One toolbar button, following one action. Not checkable - ActionToggle is that.
+    /// <summary>A toolbar button that follows one action; ActionToggle is the checkable version.</summary>
     public class ActionButton : Button
     {
         protected override Type StyleKeyOverride => typeof(Button);
@@ -211,6 +213,7 @@ namespace EmuSen.LunaP.Controls
     }
 
     // One toolbar button for a checkable action: pressed means on.
+    /// <summary>A toolbar button for a checkable action, where pressed means checked.</summary>
     public class ActionToggle : ToggleButton
     {
         protected override Type StyleKeyOverride => typeof(ToggleButton);

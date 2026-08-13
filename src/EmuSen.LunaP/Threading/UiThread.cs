@@ -15,6 +15,7 @@ namespace EmuSen.LunaP.Threading
     // Run is what almost everything wants. Post exists for the case where a caller must not
     // re-enter itself - raising an event from inside a layout pass, say - and needs the work to
     // happen after the current one finishes rather than inside it.
+    /// <summary>Getting work onto the UI thread from a worker, without each caller rediscovering how.</summary>
     public static class UiThread
     {
         // True when the caller is already the UI thread. Worth having in its own right: the

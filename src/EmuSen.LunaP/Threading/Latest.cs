@@ -18,6 +18,7 @@ namespace EmuSen.LunaP.Threading
     // Reference types only. The lock-free path below is Interlocked.Exchange over a field, which
     // needs a reference; boxing a struct to fit would allocate per offer and this exists to avoid
     // exactly that. A caller with a struct can wrap it in one.
+    /// <summary>Keeps only the newest value when a producer outruns the screen, and drops the rest.</summary>
     public sealed class Latest<T> where T : class
     {
         private readonly Action<T> _present;

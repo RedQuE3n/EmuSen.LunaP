@@ -4,6 +4,7 @@ using Avalonia;
 namespace EmuSen.LunaP
 {
     // The one Avalonia bootstrap sequence, previously spelled out in both frontends' Program.cs and a third time in WiseMan - see docs/LunaP.md §3.
+    /// <summary>The Avalonia bootstrap sequence an application's Program.cs would otherwise spell out.</summary>
     public static class LunaApp
     {
         public static AppBuilder Configure<TApp>() where TApp : Application, new() =>

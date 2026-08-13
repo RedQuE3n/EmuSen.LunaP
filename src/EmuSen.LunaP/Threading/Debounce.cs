@@ -20,6 +20,7 @@ namespace EmuSen.LunaP.Threading
     // caller never has to marshal; the cost is that Poke() must be called from the UI thread too.
     // That matches every use it was written for - they are all reacting to a keystroke - and a
     // worker-thread producer wants Latest<T> instead.
+    /// <summary>Waits until a burst of calls stops, then does the expensive work once.</summary>
     public sealed class Debounce
     {
         private readonly DispatcherTimer _timer;

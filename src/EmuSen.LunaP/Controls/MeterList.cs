@@ -8,9 +8,11 @@ using EmuSen.LunaP.Automation;
 namespace EmuSen.LunaP.Controls
 {
     // One meter, as plain data - the layering rule keeps core telemetry types out of here, so callers project onto this.
+    /// <summary>One row of a meter list: a label, a percentage, and the text shown beside it.</summary>
     public readonly record struct MeterEntry(string Label, double Percent, string ValueText);
 
     // A vertical run of MeterRows. Grouping stays with the caller: the group headers are core/DianaOS vocabulary - see docs/LunaP.md §5.2.
+    /// <summary>A vertical run of meter rows, rebuilt from a list of entries.</summary>
     public class MeterList : TemplatedControl
     {
         public static readonly StyledProperty<IReadOnlyList<MeterEntry>> MetersProperty =

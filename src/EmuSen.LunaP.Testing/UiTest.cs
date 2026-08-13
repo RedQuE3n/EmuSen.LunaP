@@ -13,6 +13,7 @@ using Xunit;
 namespace EmuSen.LunaP.Testing
 {
     // A captured window, as plain RGBA8888.
+    /// <summary>One captured frame: its raw RGBA pixels and the dimensions they came at.</summary>
     public readonly record struct RenderedFrame(byte[] Rgba, int Width, int Height)
     {
         // FNV-1a, which is enough to say "these two renders differ" and is not asked to do anything else.
@@ -41,6 +42,7 @@ namespace EmuSen.LunaP.Testing
     }
 
     // The one place a UI test dispatches, captures and asserts - see docs/LunaP.md §10.
+    /// <summary>The one place a UI test dispatches onto the session, captures a frame and asserts about layout.</summary>
     public static class UiTest
     {
         // EMUSEN_UI_DUMP names a directory; every capture in the run lands in it as <name>.png.
