@@ -45,6 +45,10 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
+  <!-- Symbols, SourceLink and the deterministic-under-CI switch are in
+       Directory.Build.props at the repository root, shared with the toolkit so
+       the two packages cannot drift apart on how they are published - see §31. -->
+
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
