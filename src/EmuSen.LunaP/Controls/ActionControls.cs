@@ -41,6 +41,10 @@ namespace EmuSen.LunaP.Controls
     // action while the menu was on screen would show a stale label for the first frame every time.
     internal static class ActionSync
     {
+        /// <summary>Wires a control to re-read an action whenever it changes, and applies it once now.</summary>
+        /// <param name="target">The control that should follow the action.</param>
+        /// <param name="action">The action to follow.</param>
+        /// <param name="apply">Copies whatever the control shows out of the action. Runs immediately and again on every change, so it must be safe to run repeatedly.</param>
         public static void Follow(Control target, LunaAction action, Action apply)
         {
             void OnChanged(LunaAction _) => apply();
@@ -64,6 +68,9 @@ namespace EmuSen.LunaP.Controls
         // "Save (Ctrl+S)", plus the help text on a second line where there is one. A toolbar button
         // is the one surface with no room to explain itself, and the shortcut is worth repeating
         // here because a user who never opens the menu has nowhere else to learn it.
+        /// <summary>The tooltip for a surface built from an action: its help text, with the shortcut appended when it has one.</summary>
+        /// <param name="action">The action to describe.</param>
+        /// <returns>The tooltip, or null when the action has neither help text nor a shortcut.</returns>
         public static string? Tip(LunaAction action)
         {
             string head = action.Shortcut is { } gesture ? $"{action.Text} ({gesture})" : action.Text;
@@ -82,6 +89,7 @@ namespace EmuSen.LunaP.Controls
         // added-when-needed: the class costs nothing, and the day this control gains a style
         // file or a CSS element name the selector already has something to match. Enforced by
         // StyleKeyTests, which is why this cannot be forgotten on the next one.
+        /// <summary>The style class this control adds to itself, so a selector can reach it despite its style key being MenuItem.</summary>
         public const string StyleClass = "luna-action-menu-item";
 
         private readonly LunaAction _action;
@@ -90,6 +98,9 @@ namespace EmuSen.LunaP.Controls
         // of the "do not echo my own write" flag the kit already owns (§21.1).
         private readonly Suppressor _syncing = new();
 
+        /// <summary>A menu item that follows an action rather than copying it.</summary>
+        /// <param name="action">The action to follow. Its label, enabled state, checked state and shortcut are all read from it.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="action"/> is null.</exception>
         public ActionMenuItem(LunaAction action)
         {
             Classes.Add(StyleClass);
@@ -114,6 +125,7 @@ namespace EmuSen.LunaP.Controls
             ActionSync.Follow(this, action, Apply);
         }
 
+        /// <summary>The action this item follows.</summary>
         public LunaAction Action => _action;
 
         private void OnClicked(object? sender, RoutedEventArgs e)
@@ -171,8 +183,12 @@ namespace EmuSen.LunaP.Controls
         // added-when-needed: the class costs nothing, and the day this control gains a style
         // file or a CSS element name the selector already has something to match. Enforced by
         // StyleKeyTests, which is why this cannot be forgotten on the next one.
+        /// <summary>The style class this control adds to itself, so a selector can reach it despite its style key being Button.</summary>
         public const string StyleClass = "luna-action-button";
 
+        /// <summary>A toolbar button that follows an action rather than copying it.</summary>
+        /// <param name="action">The action to follow.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="action"/> is null.</exception>
         public ActionButton(LunaAction action)
         {
             Classes.Add(StyleClass);
@@ -186,6 +202,7 @@ namespace EmuSen.LunaP.Controls
             ActionSync.Follow(this, action, Apply);
         }
 
+        /// <summary>The action this button follows.</summary>
         public LunaAction Action { get; }
 
         private void Apply()
@@ -223,10 +240,14 @@ namespace EmuSen.LunaP.Controls
         // added-when-needed: the class costs nothing, and the day this control gains a style
         // file or a CSS element name the selector already has something to match. Enforced by
         // StyleKeyTests, which is why this cannot be forgotten on the next one.
+        /// <summary>The style class this control adds to itself, so a selector can reach it despite its style key being ToggleButton.</summary>
         public const string StyleClass = "luna-action-toggle";
 
         private readonly Suppressor _syncing = new();
 
+        /// <summary>A toolbar toggle that follows a checkable action rather than copying it.</summary>
+        /// <param name="action">The checkable action to follow.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="action"/> is null.</exception>
         public ActionToggle(LunaAction action)
         {
             Classes.Add(StyleClass);
@@ -244,6 +265,7 @@ namespace EmuSen.LunaP.Controls
             ActionSync.Follow(this, action, Apply);
         }
 
+        /// <summary>The action this toggle follows.</summary>
         public LunaAction Action { get; }
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

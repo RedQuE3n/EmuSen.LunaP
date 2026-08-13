@@ -27,6 +27,7 @@ namespace EmuSen.LunaP.Controls
         public static readonly DirectProperty<Card, bool> HasHeaderProperty =
             AvaloniaProperty.RegisterDirect<Card, bool>(nameof(HasHeader), o => o.HasHeader);
 
+        /// <summary>Whether a header was given. False collapses the header row rather than leaving a blank line.</summary>
         public bool HasHeader => Header is string text ? !string.IsNullOrWhiteSpace(text) : Header is not null;
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

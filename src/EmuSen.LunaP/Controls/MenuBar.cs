@@ -28,6 +28,7 @@ namespace EmuSen.LunaP.Controls
         // uniformly - see the comment at the top of Controls/ActionControls.cs and §26.11.
         protected override Type StyleKeyOverride => typeof(Menu);
 
+        /// <summary>The style class this control adds to itself, so a selector can reach it despite its style key being Menu.</summary>
         public const string StyleClass = "luna-menu-bar";
 
         public MenuBar() => Classes.Add(StyleClass);
@@ -36,14 +37,20 @@ namespace EmuSen.LunaP.Controls
 
         // What this bar is currently showing. Kept so AppWindow can hand the same list to the
         // shortcut binder without the caller having to remember it too.
+        /// <summary>The menus currently shown, in order.</summary>
         public IReadOnlyList<LunaMenu> Menus => _menus;
 
+        /// <summary>Replaces the menus, written inline.</summary>
+        /// <param name="menus">The menus, left to right.</param>
         public void SetMenus(params LunaMenu[] menus) => SetMenus((IEnumerable<LunaMenu>)menus);
 
         // Replaces the whole bar. Rebuilt wholesale rather than diffed for the same reason
         // MeterList is (§5.2): the list is a handful of items, it changes when the application's
         // shape changes rather than per frame, and a diff would be more code than the thing it
         // optimises.
+        /// <summary>Replaces the menus. Items follow their actions from then on, so labels and enabled state need no further wiring.</summary>
+        /// <param name="menus">The menus, left to right. Shortcuts are not bound by this - see Menus.BindShortcuts, which AppWindow calls for you.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="menus"/> is null.</exception>
         public void SetMenus(IEnumerable<LunaMenu> menus)
         {
             if (menus is null) throw new ArgumentNullException(nameof(menus));

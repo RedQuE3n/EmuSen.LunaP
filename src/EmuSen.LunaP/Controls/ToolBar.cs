@@ -23,6 +23,7 @@ namespace EmuSen.LunaP.Controls
     {
         private IReadOnlyList<LunaAction> _actions = Array.Empty<LunaAction>();
 
+        /// <summary>The actions currently shown, in order.</summary>
         public IReadOnlyList<LunaAction> Actions => _actions;
 
         // ToolBar, which is UIA's own name for a run of commands, rather than ItemsControl's stock
@@ -31,8 +32,13 @@ namespace EmuSen.LunaP.Controls
         protected override AutomationPeer OnCreateAutomationPeer() =>
             new LunaAutomationPeer(this, AutomationControlType.ToolBar);
 
+        /// <summary>Replaces the toolbar contents, written inline.</summary>
+        /// <param name="actions">The actions, left to right. Use LunaAction.Separator for a divider.</param>
         public void SetActions(params LunaAction[] actions) => SetActions((IEnumerable<LunaAction>)actions);
 
+        /// <summary>Replaces the toolbar contents. Buttons follow their actions, and a checkable action becomes a toggle rather than a button.</summary>
+        /// <param name="actions">The actions, left to right.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="actions"/> is null.</exception>
         public void SetActions(IEnumerable<LunaAction> actions)
         {
             if (actions is null) throw new ArgumentNullException(nameof(actions));

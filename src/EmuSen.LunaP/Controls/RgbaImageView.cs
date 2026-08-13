@@ -25,12 +25,14 @@ namespace EmuSen.LunaP.Controls
         private int _width;
         private int _height;
 
+        /// <summary>How the frame fills the control. Defaults to preserving the aspect ratio, which is what a pixel-accurate view of a framebuffer needs.</summary>
         public Stretch Stretch
         {
             get => GetValue(StretchProperty);
             set => SetValue(StretchProperty, value);
         }
 
+        /// <summary>The current frame as an image, or null before one is set. For binding and for tests; the way to change it is SetFrame.</summary>
         public IImage? Source => _bitmap;
 
         // An Image, and unnamed on purpose. This shows a live buffer of pixels - a game frame, a
@@ -48,6 +50,10 @@ namespace EmuSen.LunaP.Controls
         }
 
         // A 0x0 or short buffer clears the view rather than throwing - a core with no tile memory reports exactly that.
+        /// <summary>Shows a frame of raw pixels, reusing the existing bitmap when the size has not changed.</summary>
+        /// <param name="rgba">The pixels, four bytes each in R, G, B, A order, row by row from the top. Copied, so the caller may reuse the array immediately.</param>
+        /// <param name="width">Frame width in pixels.</param>
+        /// <param name="height">Frame height in pixels.</param>
         public void SetFrame(byte[] rgba, int width, int height)
         {
             if (width <= 0 || height <= 0 || rgba.Length < width * height * 4)
@@ -75,8 +81,11 @@ namespace EmuSen.LunaP.Controls
             _image?.InvalidateVisual();
         }
 
+        /// <summary>Shows a frame given as one tuple, for a producer that hands back all three together.</summary>
+        /// <param name="frame">The pixels and their dimensions.</param>
         public void SetFrame((byte[] Rgba, int Width, int Height) frame) => SetFrame(frame.Rgba, frame.Width, frame.Height);
 
+        /// <summary>Drops the current frame, leaving the control empty.</summary>
         public void Clear()
         {
             if (_bitmap is null) return;

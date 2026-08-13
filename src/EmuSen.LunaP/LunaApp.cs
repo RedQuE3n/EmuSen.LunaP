@@ -7,10 +7,17 @@ namespace EmuSen.LunaP
     /// <summary>The Avalonia bootstrap sequence an application's Program.cs would otherwise spell out.</summary>
     public static class LunaApp
     {
+        /// <summary>The Avalonia bootstrap sequence, with LunaP theme applied after setup.</summary>
+        /// <typeparam name="TApp">Your Application type, constructed by Avalonia.</typeparam>
+        /// <returns>A builder to call StartWithClassicDesktopLifetime on.</returns>
         public static AppBuilder Configure<TApp>() where TApp : Application, new() =>
             Finish(AppBuilder.Configure<TApp>());
 
         // Hotaru hands Avalonia an already-constructed App (its Main resolves a ROM before any Avalonia type is touched).
+        /// <summary>The same bootstrap for an application that must be constructed by the caller.</summary>
+        /// <typeparam name="TApp">Your Application type.</typeparam>
+        /// <param name="factory">Builds the application. For a Main that has to resolve something before any Avalonia type is touched.</param>
+        /// <returns>A builder to call StartWithClassicDesktopLifetime on.</returns>
         public static AppBuilder Configure<TApp>(Func<TApp> factory) where TApp : Application =>
             Finish(AppBuilder.Configure(factory));
 

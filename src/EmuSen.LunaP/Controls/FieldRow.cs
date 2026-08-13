@@ -22,6 +22,7 @@ namespace EmuSen.LunaP.Controls
 
         private TextBlock? _labelBlock;
 
+        /// <summary>The label to the left of the field.</summary>
         public string Label
         {
             get => GetValue(LabelProperty);
@@ -29,12 +30,14 @@ namespace EmuSen.LunaP.Controls
         }
 
         // Left empty, the hint collapses rather than reserving blank space.
+        /// <summary>An explanation shown under the field. Empty collapses the row rather than leaving a blank line.</summary>
         public string Hint
         {
             get => GetValue(HintProperty);
             set => SetValue(HintProperty, value);
         }
 
+        /// <summary>Whether a hint was given, which is what collapses the hint row when none was.</summary>
         public bool HasHint => !string.IsNullOrEmpty(Hint);
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
