@@ -2536,3 +2536,74 @@ toolbar button, a context-menu entry and a key binding."*
   and a projection and says so in neither.
 - **It does not backfill the packages already on nuget.org.** 0.2.0–0.6.0 shipped without a `.xml`
   and cannot gain one, the same constraint §31.5 and §25 both hit.
+
+---
+
+## 34. What "production ready" still means here
+
+§31, §32 and §33 closed the three things that made this package worse than the code inside it: a
+consumer could not read the reasoning, could not be protected from an accidental break, and got a
+blank tooltip. **This section is the register of what is still open**, written down because the
+alternative is remembering it — and §28 exists precisely because this project has watched four
+paragraphs of "the next author should" go unread.
+
+It is a register, not a roadmap. Items leave it by being done and struck through with the `§` that
+did it, the way §30.6 closed §30.5's third bullet. Nothing earns a place here by being a good idea;
+it earns one by being a gap somebody can already point at.
+
+### 34.1 The documentation debt, which is the largest item
+
+**Every public type now says what it is; almost no member does.** §33.2 argued that 99 of the 460
+members — Avalonia `StyledProperty` fields and protected framework overrides — have no sentence
+available except one restating the name, and that argument stands. **It says nothing about the other
+~361**, which is the real job:
+
+- `LunaTable<T>.Column`, `LunaList<T>.Refresh`, `Dropdown.Fill`, `MenuBar.SetMenus`,
+  `ConsolePane.AppendLine`, `SplitPane.PaneKey` — every one has semantics a caller has to get right
+  and can currently only learn by reading the source.
+- **No `<param>`, `<returns>` or `<exception>` anywhere.** `Column` takes a header and a projection
+  and a width string, and the `.xml` says so for none of them.
+- The delegate seams are where this bites hardest, because they are the whole design: a control
+  takes `Func<T, string>` or `Action<LunaAction>`, and *when* it is called and *on which thread* is
+  the contract. `LunaList<T>.Key` defaulting to reference identity — right for a cached model, wrong
+  for rows rebuilt on every poll — is documented in a `//` comment a consumer never sees.
+
+`DocumentationTests` deliberately will not ask for any of this. When it is done, it should.
+
+### 34.2 The rest of the register
+
+| Open | Where it is already argued | Note |
+|---|---|---|
+| Member-level API docs | §33.4, §34.1 | the largest, and the one a consuming dev feels first |
+| Nullability absent from the API snapshot | §32.5 | `string?` and `string` are one line; `NullabilityInfoContext` reads it |
+| CI runs on one Linux runner | — | a cross-platform UI toolkit never built on Windows or macOS; a three-way matrix is nearly free since the suite is headless |
+| Trim/AOT unverified | §25 | `CssTheme` resolves properties through `AvaloniaPropertyRegistry` at runtime, which a trimmer cannot see; neither project declares `IsTrimmable` or `IsAotCompatible` |
+| `net10.0` only | — | Avalonia 12.1.0 ships `net8.0` too, so LunaP is stricter than its own dependency — but .NET 8 leaves support around 2026-11-10 and .NET 9 already has, so multi-targeting buys a dying LTS. **Decided against, recorded so it is not re-derived.** |
+| CSS template parts unswept | §30.5 | §30.4 proves every *element* reaches its control; `card .header` and friends are still unproven |
+| A theme rule that matches nothing at runtime is silent | §30.5 | the parse cannot know what is on screen; the sweep catches it at test time, a host loading a bad theme is not told |
+| No icons | §26.12 | needs an icon system, not a property; `Icon=` was used zero times across five repositories |
+| No native macOS menu bar | §26.12 | a genuine platform defect rather than a missing feature — macOS puts a menu strip in the window where the platform expects one at the top of the screen |
+| Contrast shortfall | §23.4 | measured and left alone |
+| `LunaSettings` process-global statics | §21.3 | every consumer suite inherits the race; the harness ships the refusal, the hazard is structural |
+| `ConsolePane` cannot announce line by line | §24.4 | the trade is recorded; a live region would re-read the whole buffer |
+
+### 34.3 Versioning, when this is called done
+
+**0.7.0 is not released.** There is no `v0.7.0` tag, so everything since 0.6.0 — the shell (§26), the
+table (§27), the two reflection guards (§28), the theme split (§29), the style-key defect and its
+fix (§30), and §31 through §33 — is unpublished and currently rides in 0.7.0.
+
+Two things to do at that point, in this order:
+
+1. **Both `<Version>` elements move together.** The toolkit's and the harness's, because §22.8's
+   rule is that the harness tracks the toolkit rather than keeping its own number, and a consumer
+   pairing two different ones has a question nobody wants to answer. The `.csproj` value is only the
+   default for a local `dotnet pack`; the published number comes from the tag.
+2. **`CHANGELOG.md` says what it means to somebody who cannot patch it**, which for this release
+   includes one entry that is not additive: §30's fix changes rendering, because four CSS elements
+   and the menu bar's own style start doing what they always claimed to.
+
+**Whether it is 0.7.0 or 0.8.0 is a real question and is deliberately not answered here.** The
+version was set to 0.7.0 when §26 was the whole story. What has landed since is larger than that
+number was chosen for, and §30 in particular repairs behaviour that has been wrong since 0.2.0 —
+which a consumer reading a minor bump would not expect to find.
