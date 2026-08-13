@@ -54,6 +54,12 @@
     <PackageTags>avalonia;ui;toolkit;theme;controls</PackageTags>
   </PropertyGroup>
 
+  <!-- Symbols, SourceLink and the deterministic-under-CI switch are in
+       Directory.Build.props at the repository root, which applies to this
+       project and to the harness together - see §31. They are not repeated here
+       because the two packages must carry identical publication settings, and
+       two copies is how they would stop. -->
+
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>

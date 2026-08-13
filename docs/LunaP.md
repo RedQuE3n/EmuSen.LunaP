@@ -2266,3 +2266,97 @@ A second assertion keeps the sweep honest about its own subjects. A `[Theory]` w
 pass, so a refactor that removed every override would turn this file green by emptying it;
 `The_sweep_has_subjects` requires at least the eight that existed when this was written, and says so
 in its message rather than leaving a bare number.
+
+---
+
+## 31. The package shipped the code and kept the explanation
+
+This document, and the comment blocks it is cited from, exist because of a claim CLAUDE.md makes in
+its first paragraph: a consumer cannot patch this, so the reasoning is the deliverable as much as
+the code. `Threading/Suppressor.cs` carries six lines above the type explaining what it replaces and
+why it is deliberately not thread-safe. `Theme/Controls/SplitPane.axaml` explains why the rule is a
+separate un-hit-testable border rather than the splitter's own paint.
+
+**None of it reached anybody.** A consumer who stepped into `SplitPane` from their own application
+got decompiled IL: correct behaviour, every comment gone, no file to open. The package shipped the
+code and kept the explanation, and had done since 0.2.0.
+
+### 31.1 What was missing, and what it costs
+
+Nothing exotic — four properties nobody had written:
+
+| Property | What a consumer gets without it |
+|---|---|
+| `IncludeSymbols` + `SymbolPackageFormat=snupkg` | no symbols at all; no line numbers in a stack trace through LunaP |
+| `PublishRepositoryUrl` | a PDB naming file paths on the machine that built it |
+| `EmbedUntrackedSources` | generated sources — every `Theme/Controls/*.axaml` — unresolvable |
+| `ContinuousIntegrationBuild` | published PDBs pointing at a CI runner's scratch directory |
+
+**And none of it costs a `PackageReference`**, which is the reason this was cheap enough to be
+embarrassing. SourceLink used to be a set of NuGet packages; since .NET 8 it ships inside the SDK —
+`Microsoft.SourceLink.GitHub` is a directory under `Sdks/` in the installed SDK, and
+`PublishRepositoryUrl` is enough to turn it on. §1's layering rule is untouched and there is no
+licence to record, which is not true of most things that improve a package.
+
+### 31.2 One file, because two would drift
+
+`Directory.Build.props` at the repository root, not six lines duplicated into two `.csproj` files.
+The argument is the one §2.1 makes about the palette in reverse: the palette is spelled twice **and
+guarded by a test that fails the moment the halves disagree**, which is what makes duplication safe
+there. There is no comparable guard for publication settings, and a symbol package produced for the
+toolkit but not the harness is a defect nobody notices until somebody steps into the wrong half. So
+it is spelled once, and both `.csproj` files carry a comment saying where it went.
+
+### 31.3 Deterministic under CI and nowhere else
+
+`ContinuousIntegrationBuild` is conditioned on `GITHUB_ACTIONS`, which is a decision rather than a
+convenience. It normalises source paths, which is exactly what a published package wants and exactly
+what a developer debugging their working copy does not — turned on locally it sends the debugger
+looking for `/_/src/…` instead of the file open in the editor.
+
+Measured by packing both ways and reading the SourceLink map out of the PDB:
+
+| Build | `documents` mapping |
+|---|---|
+| local | `/home/red/Projects/EmuSen.LunaP/*` → `raw.githubusercontent.com/RedQuE3n/EmuSen.LunaP/9019fa4…/*` |
+| `GITHUB_ACTIONS=true` | `/_/*` → the same URL |
+
+The commit in that URL is the commit being packed, so a consumer debugging 0.7.0 fetches the source
+0.7.0 was built from rather than whatever `main` says today.
+
+### 31.4 Packing is part of the build now
+
+Until this section, `dotnet pack` ran for the first time **in `publish.yml`, on a tag** — the worst
+moment to find a missing README, a wrong `PackagePath`, or a symbol package that was never produced.
+`ci.yml` packs both projects on every push and throws the output away; what is being tested is that
+both packages can be made at all.
+
+It then asserts that every `.nupkg` has a `.snupkg` beside it, because **nothing else in the build
+would fail if `IncludeSymbols` were deleted.** That is the whole reason the assertion exists rather
+than a comment asking somebody not to delete it.
+
+**The sabotages:**
+
+| Sabotage | Result |
+|---|---|
+| a `.snupkg` removed from the output folder | the check exits 1, naming the package that lost it |
+| `IncludeSymbols` set to `false` in `Directory.Build.props` | `dotnet pack` succeeds, produces **only** the `.nupkg`, and the check catches it |
+
+The second row is the one that matters: the build stays green, the package still installs, and the
+only visible difference is the one a consumer would find years later with a debugger. That is
+precisely the failure this repository keeps saying it does not want to ship.
+
+### 31.5 What this does not do
+
+- **It does not put the symbols in the main package.** They are a separate `.snupkg` on nuget.org's
+  symbol server, so a consumer needs symbol servers enabled in their debugger. That is the standard
+  arrangement and the alternative — `DebugType=embedded` — puts megabytes into every consumer's
+  build output to serve the few who step in.
+- **It does not backfill 0.2.0–0.6.0.** Those are published without symbols and stay that way;
+  nuget.org does not accept a symbol package for an already-published version (§25 records the same
+  constraint about licence metadata).
+- **It does not verify SourceLink end to end.** What is asserted in CI is that a symbol package
+  exists. That the URL inside it resolves was checked by hand, once, at this commit — a real check
+  would need network access from a test, which is not something this suite has ever wanted.
+- **It says nothing about the source being readable.** A consumer can now fetch the file; whether
+  the comment they find explains anything is the subject of every other section here.

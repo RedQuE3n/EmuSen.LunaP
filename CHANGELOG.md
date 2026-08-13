@@ -61,6 +61,12 @@ nothing, nothing changes (`§26`).
 - `LunaSettings.Diagnostics` now also carries "two commands claim one shortcut",
   alongside the "this file would not load" it already carried (`§26.5`).
 
+- **Both packages now ship symbols and source links.** A `.snupkg` goes to nuget.org's symbol
+  server with every release, and the PDBs carry SourceLink pointing at the exact commit the package
+  was built from — so stepping into LunaP gives you the real file, with the comments that explain
+  why the code is the way it is, instead of decompiled IL. Nothing was missing but four build
+  properties, and none of them costs a dependency: SourceLink ships inside the .NET SDK. Symbols
+  cannot be added to 0.2.0–0.6.0 retroactively, so this starts here (`§31`).
 - **`StyleClass` on the eight controls that pin a style key** — `MenuBar`, `LunaSwitch`, `Dropdown`,
   `Tabs`, `ActionMenuItem`, `ActionButton`, `ActionToggle`, `LunaList<T>`. Each adds its class to
   itself, so `ToggleSwitch.luna-switch` reaches a `LunaSwitch` and not your own `ToggleSwitch`. If

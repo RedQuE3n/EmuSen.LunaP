@@ -29,3 +29,31 @@ jobs:
       - run: dotnet build --no-restore
 
       - run: dotnet test --no-build --verbosity normal
+
+      # PACKING IS PART OF THE BUILD, not part of the release. Until this step
+      # existed, `dotnet pack` ran for the first time in publish.yml - on a tag,
+      # which is the worst moment to discover a missing README, a bad
+      # PackagePath, or a symbol package that was never produced. The output is
+      # thrown away; what is being tested is that both packages can be made.
+      #
+      # Both, and at the same version, for the reason publish.yml packs both:
+      # the harness asserts about the toolkit's controls (§22.8).
+      - name: Pack both packages
+        run: |
+          dotnet pack src/EmuSen.LunaP/EmuSen.LunaP.csproj -c Release -o nupkgs
+          dotnet pack src/EmuSen.LunaP.Testing/EmuSen.LunaP.Testing.csproj -c Release -o nupkgs
+
+      # The symbol package is the whole point of §31 and is the part most easily
+      # lost to a property somebody moves - it is produced by IncludeSymbols in
+      # Directory.Build.props, and nothing else in the build would fail if that
+      # line were deleted. So it is asserted rather than assumed.
+      - name: Every package ships symbols
+        run: |
+          for pkg in nupkgs/*.nupkg; do
+            sym="${pkg%.nupkg}.snupkg"
+            if [ ! -f "$sym" ]; then
+              echo "::error::$pkg has no $sym - see docs/LunaP.md §31"
+              exit 1
+            fi
+            echo "ok: $(basename "$sym")"
+          done
