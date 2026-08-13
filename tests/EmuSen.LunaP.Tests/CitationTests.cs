@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
 namespace EmuSen.LunaP.Tests
@@ -25,19 +24,33 @@ namespace EmuSen.LunaP.Tests
         private static readonly Regex Heading = new(@"^#{2,4}\s+(?:§\s*)?(\d+(?:\.\d+)*)\.?\s", RegexOptions.Multiline);
         private static readonly Regex Citation = new(@"§\s*(\d+(?:\.\d+)*)");
 
-        // The repo, found from this file's own compile-time path. There is no other route: the man
-        // page is not copied to the output directory, and neither is the source being scanned.
-        private static string RepoRoot([CallerFilePath] string here = "")
+        // The repo, found by walking up from the test binary until docs/LunaP.md appears. The man
+        // page is not copied to the output directory and neither are the sources being scanned, so
+        // something has to bridge from `bin` back to the tree.
+        //
+        // NOT [CallerFilePath], WHICH IS WHAT THIS WAS AND WHICH CI KILLED ON ALL THREE PLATFORMS.
+        // §31 turned on SourceLink and symbol packages, and CI sets ContinuousIntegrationBuild=true,
+        // which enables deterministic source paths - every embedded source path is rewritten to `/_`
+        // so that a build is byte-identical regardless of where it was checked out. So
+        // [CallerFilePath] compiled to `/_/tests/EmuSen.LunaP.Tests/CitationTests.cs`, a path that
+        // exists nowhere, and the walk found no repository at all. That is a real property of this
+        // package's own build settings, not a CI quirk, and it would come back the moment anybody
+        // reached for the same trick. See docs/LunaP.md §44.1.
+        //
+        // AppContext.BaseDirectory is unaffected - it is resolved at run time from where the
+        // assembly actually sits, which is `<repo>/tests/EmuSen.LunaP.Tests/bin/<config>/net10.0`.
+        private static string RepoRoot()
         {
-            DirectoryInfo? dir = new FileInfo(here).Directory;
+            DirectoryInfo? dir = new DirectoryInfo(AppContext.BaseDirectory);
             while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "docs", "LunaP.md")))
             {
                 dir = dir.Parent;
             }
 
             Assert.True(dir is not null,
-                $"Walked up from {here} without finding docs/LunaP.md. This test reads the source tree "
-                + "rather than the build output, so it only works inside the repository.");
+                $"Walked up from {AppContext.BaseDirectory} without finding docs/LunaP.md. This test reads "
+                + "the source tree rather than the build output, so it only works when the tests are run "
+                + "from inside the repository. See docs/LunaP.md §44.1.");
 
             return dir!.FullName;
         }
