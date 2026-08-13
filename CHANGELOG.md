@@ -61,6 +61,12 @@ nothing, nothing changes (`§26`).
 - `LunaSettings.Diagnostics` now also carries "two commands claim one shortcut",
   alongside the "this file would not load" it already carried (`§26.5`).
 
+- **The public surface of both packages is pinned by a test.** Sixty-three types and their members
+  are written down in `tests/…/ApiSurface/`, and any change to them — a rename, a widened return
+  type, a changed base class, a property turned `internal` — fails the build until somebody
+  regenerates the file and commits it. It is a promise about future versions rather than a feature:
+  an accidental break can no longer reach you in a version bump without having been reviewed
+  (`§32`).
 - **Both packages now ship symbols and source links.** A `.snupkg` goes to nuget.org's symbol
   server with every release, and the PDBs carry SourceLink pointing at the exact commit the package
   was built from — so stepping into LunaP gives you the real file, with the comments that explain
