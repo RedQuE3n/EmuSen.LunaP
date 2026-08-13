@@ -61,10 +61,27 @@ namespace EmuSen.LunaP.Gallery
 
             // Three columns over a model, which is the shape the one piece of evidence for this
             // control actually has - a field list with a name, a type and a page number (§27).
+            //
+            // TWO SORTABLE AND ONE NOT, on purpose. A gallery that made every column sortable would
+            // show the feature and hide the choice; a heading with no comparison stays a plain
+            // label, and seeing the two side by side is the only way to notice that "sortable" is
+            // something a caller decides per column rather than something the table does.
+            //
+            // The page column sorts NUMERICALLY while displaying a string, which is the argument
+            // for Sort taking a comparison over the model: sorting the text would put "10" before
+            // "9" in a table whose whole job is to be read.
             var fields = new LunaTable<Field> { Key = f => f.Name };
-            fields.Column("name", f => f.Name, "2*")
+            fields.Column(new LunaColumn<Field>("name", f => f.Name)
+                  {
+                      Width = "2*",
+                      Sort = (a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCulture),
+                  })
                   .Column("type", f => f.Type)
-                  .Column("pg", f => f.Page.ToString(), "40");
+                  .Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
+                  {
+                      Width = "40",
+                      Sort = (a, b) => a.Page.CompareTo(b.Page),
+                  });
             fields.Refresh(new[]
             {
                 new Field("Site", "text", 1),

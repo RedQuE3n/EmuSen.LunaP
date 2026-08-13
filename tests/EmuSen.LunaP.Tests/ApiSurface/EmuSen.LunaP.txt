@@ -158,6 +158,13 @@ public class EmuSen.LunaP.Controls.FilterBar : Avalonia.Controls.Primitives.Temp
 public class EmuSen.LunaP.Controls.HintText : Avalonia.Controls.TextBlock
     public HintText()
 
+public sealed class EmuSen.LunaP.Controls.LunaColumn<T>
+    public LunaColumn<T>(string header, System.Func<T, string> text)
+    public System.Comparison<T>? Sort { get; set; }
+    public System.Func<T, string> Text { get; }
+    public string Header { get; }
+    public string Width { get; set; }
+
 public class EmuSen.LunaP.Controls.LunaList<T> : Avalonia.Controls.ListBox
     protected override System.Type StyleKeyOverride { get; }
     public LunaList<T>()
@@ -189,6 +196,7 @@ public abstract class EmuSen.LunaP.Controls.LunaTable : Avalonia.Controls.Primit
 
 public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTable
     protected override void OnPartsAttached()
+    public EmuSen.LunaP.Controls.LunaTable<T> Column(EmuSen.LunaP.Controls.LunaColumn<T> column)
     public EmuSen.LunaP.Controls.LunaTable<T> Column(string header, System.Func<T, string> text, string width = "*")
     public LunaTable<T>()
     public System.Collections.Generic.IReadOnlyList<T> Models { get; }

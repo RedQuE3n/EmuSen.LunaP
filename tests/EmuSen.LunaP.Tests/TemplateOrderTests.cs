@@ -70,16 +70,28 @@ namespace EmuSen.LunaP.Tests
                 }),
 
             // §27.6's: the one a render found and twelve tests did not.
+            //
+            // The sortable column is here because a column declared before the template has to
+            // produce a heading BUTTON afterwards, not just a label - the heading is built in
+            // Rebuild, which runs from OnPartsAttached on that path, and a sort declared into a
+            // control with no template yet would otherwise arrive as an inert TextBlock with no way
+            // to notice. The read counts buttons for that reason.
             new("LunaTable.Column/Refresh/Select",
                 () => new LunaTable<string>(),
                 c =>
                 {
                     var table = (LunaTable<string>)c;
-                    table.Column("name", s => s).Column("length", s => s.Length.ToString(), "60");
+                    table.Column("name", s => s)
+                         .Column(new LunaColumn<string>("length", s => s.Length.ToString())
+                         {
+                             Width = "60",
+                             Sort = (a, b) => a.Length.CompareTo(b.Length),
+                         });
                     table.Refresh(new[] { "alpha", "beta", "gamma" });
                     table.Select("beta");
                 },
                 c => $"{c.FindNamed<Grid>("PART_Header").ColumnDefinitions.Count} columns, "
+                    + $"{c.FindNamed<Grid>("PART_Header").Children.OfType<Button>().Count()} sortable, "
                     + $"{c.FindNamed<ListBox>("PART_Rows").GetVisualDescendants().OfType<ListBoxItem>().Count(i => i.IsSelected)} row selected, "
                     + $"model {((LunaTable<string>)c).Selected}"),
 
