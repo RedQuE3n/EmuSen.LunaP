@@ -11,6 +11,52 @@ answer.
 
 ---
 
+## 0.7.1
+
+**Your test suite was writing into a directory shared with every other project
+on the machine. It no longer is.**
+
+`JsonSettingsStore.ForApplication()` names itself after the entry assembly. Under
+`dotnet test` that is `testhost` — the same name for every project anybody has
+ever built — so window placement, pane layout and the saved theme name all went
+to one `testhost` folder in your real per-user configuration directory, shared
+with every other repository's test suite on that machine (`§43`).
+
+**Who this affected.** Any suite that showed a `ToolWindow` with a `WindowKey`
+set, or saved a theme, without assigning `LunaSettings.Store` first. It needed no
+mistake on your part; nothing said you had to. It was found by looking at a
+machine where one project's `windows.json` held another project's window keys.
+
+**The read is the part that bites.** `ToolWindow` restores from that same file by
+key, so two projects whose windows are both called `"main"` restored each other's
+geometry — a test that passes or fails according to what else has been built on
+the machine, with no local cause and no reproduction on a fresh checkout.
+
+**What you get instead.** When the entry assembly is a test runner *and* you
+passed no name, the store roots itself at `<your test project's bin>/lunap-settings`
+and says so through `LunaSettings.Diagnostics`. A name you pass is honoured
+whatever it says, including `"testhost"`.
+
+**Nothing moves for an application.** A real entry assembly is never named
+`testhost`, so no user's settings change location. If you already assign
+`LunaSettings.Store`, nothing changes for you either.
+
+**If you want the old files back**, they are in `~/.config/testhost` (or the
+platform equivalent) and can be deleted — but check what is in there first, as
+more than one project may have written it.
+
+### Fixed
+
+- The default settings root under a test runner (`§43`).
+
+### Internal
+
+- `CitationTests` fails the build on a `§` citation that does not resolve to a
+  section of `docs/LunaP.md`. 116 citations, all resolving (`§44`). No effect on
+  the packages.
+
+---
+
 ## 0.7.0
 
 **A shell, and a class of theme rule that never worked.**

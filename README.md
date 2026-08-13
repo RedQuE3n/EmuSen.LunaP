@@ -239,6 +239,13 @@ Set nothing and it writes indented JSON under `ApplicationData/<your entry
 assembly>`. Implement `ISettingsStore` — three methods — if you keep settings
 somewhere that is not a directory of JSON files.
 
+**Under a test runner it does something different, on purpose.** The entry
+assembly there is `testhost`, which is the same name for every project on the
+machine — so settings would land in one shared folder that every other
+repository's test suite also reads and writes. Instead the store roots itself
+under your test project's own `bin` directory and reports where through
+`Diagnostics`. A name you pass explicitly is always honoured. See `§43`.
+
 `Diagnostics` is where "this file would not load, and why" goes. Loading is
 best-effort and falls back to defaults either way; the hook only stops it
 happening in silence.

@@ -2629,8 +2629,8 @@ available except one restating the name, and that argument stands. **It says not
 | No icons | §26.12 | needs an icon system, not a property; `Icon=` was used zero times across five repositories |
 | No native macOS menu bar | §26.12 | a genuine platform defect rather than a missing feature — macOS puts a menu strip in the window where the platform expects one at the top of the screen |
 | Contrast shortfall | §23.4 | measured and left alone |
-| `LunaSettings` process-global statics | §21.3 | every consumer suite inherits the race; the harness ships the refusal, the hazard is structural |
-| Nothing enforces that a cited `§` resolves | `CLAUDE.md` | the rule is stated and was checked by hand at §38 — all 100-odd citations in `src/` resolve to a heading. It is a `grep`, a `comm` and a `Fail`, and until it is written the rule holds only as long as somebody remembers to check |
+| `LunaSettings` process-global statics | §21.3 | every consumer suite inherits the race; the harness ships the refusal, the hazard is structural. **The store's default root was a separate defect and is closed by §43** — the race is not |
+| ~~Nothing enforces that a cited `§` resolves~~ | **closed by §44** | 116 distinct citations, all resolving; `CitationTests` now fails the build on one that does not, with a second assertion so a scan that reads nothing cannot pass quietly |
 | macOS first-draw warm-up: **scope narrowed, mechanism inferred** | §38.4, §38.6 | not per-process and not per-window; `Redraw` is correct under any mechanism with that scope, so this is characterisation debt rather than a defect |
 | `ConsolePane` cannot announce line by line | §24.4 | the trade is recorded; a live region would re-read the whole buffer |
 
@@ -3495,3 +3495,175 @@ lack of confidence in what is here; it is an accurate statement about what is no
   harness tracks the toolkit still holds, and both still agree.
 - **It does not re-derive the register.** §34.2 is where the open work lives; §42.3 quotes three
   entries from it and does not restate the rest.
+
+---
+
+## 43. The default settings root was one directory shared by every project on the machine
+
+`JsonSettingsStore.ForApplication()` named itself after the entry assembly, so an application that
+never configures LunaP still got its own folder. Under `dotnet test` the entry assembly is
+`testhost` — and that is not a guess that happens to be wrong. It is **the same wrong answer for
+every project on the machine**.
+
+### 43.1 What was actually on the machine, and a correction to what was first said about it
+
+`~/.config/testhost/` on the development machine held three things:
+
+| File | Contents | Written by |
+|---|---|---|
+| `windows.json` | `pegasus`, `pegasus-signin` | **Pegasus's test suite** |
+| `luna.json` | `{"Name": "Probe"}` | a throwaway probe run while writing §39 |
+| `themes/Probe.css` | `side-panel .title { color: #FF00FF; }` | the same probe |
+
+**The first account of this was wrong and is corrected here rather than quietly replaced.** It was
+reported as *"LunaP's test suite writes into your real config directory"*, on the evidence that the
+files existed and LunaP's fixtures touch `LunaSettings.Store`. That is presence, not causation, and
+the two were never separated.
+
+They are separable, and the measurement is cheap: move the directory aside, run the suite, look. The
+directory was **not** recreated, and all 465 tests passed. LunaP's own suite redirects the store in
+every fixture that touches it — `WindowingTests`, `ShellTests`, `ThemeTests` and `CssThemeTests` all
+assign one in the constructor and reset it in `Dispose`. It was clean, and the claim that it was not
+was made without checking.
+
+**What the evidence actually showed was worse.** `pegasus` appears nowhere in this repository except
+one comment in `UiSession.cs`. Those keys were written by a *consumer* — `Shell.PegasusWindow` sets
+`WindowKey <- "pegasus"`, `UiTests.fs` shows the window and closes it, and `ToolWindow` saves
+placement on close through the default store. Pegasus is on LunaP 0.6.0, and its suite never touches
+`LunaSettings.Store` because nothing ever told it that it should.
+
+So the defect was never this suite's hygiene. It was **the toolkit handing every consumer's test
+suite a live write into a directory shared with every other project on the machine**, and it had
+already happened to somebody.
+
+### 43.2 The read is worse than the write, and it is why this is not merely untidy
+
+Litter in `~/.config` is a nuisance. The direction that matters is the other one: `ToolWindow`
+*restores* from the same file, keyed by `WindowKey`. Two projects whose windows are both called
+`"main"` — not a stretch — restore each other's geometry, and a test asserting a default size
+passes or fails according to **what else has been built on that machine, and when**. That is a
+failure with no local cause, no reproduction on a fresh checkout, and no reason for anybody to
+suspect the toolkit.
+
+`LunaTheme` reads the same way. A saved theme name lands in `luna.json` at the shared root, so one
+project's test suite can select a theme for another's.
+
+### 43.3 The fix, and the mistake that would have cost more than the bug
+
+The measurement first, because it decided the destination. Under VSTest:
+
+    entry.Name      = testhost
+    entry.Location  = <the test project's own bin>/testhost.dll
+    BaseDirectory   = <the test project's own bin>/
+    ApplicationData = /home/red/.config
+
+The entry assembly's *name* is shared; its *location* is not. So the diverted root is
+`AppContext.BaseDirectory` + `lunap-settings` — per-project by construction rather than by
+heuristic, already ignored by git, wiped by `dotnet clean`, and where somebody hunting for the file
+would think to look. A temp directory keyed by a hash of that same path was considered and rejected:
+identical isolation, none of the legibility.
+
+Three rules, each of which is an assertion in `SettingsRootTests`:
+
+- **A name the host passes is honoured whatever it says**, including `"testhost"`. Only a name that
+  was *guessed* is ever overridden.
+- **The divert is stated, not silent.** It reports through `LunaSettings.Report`, which is where
+  every other "carried on, but you should know" message in the toolkit goes (§26.5).
+- **The match is exact, or the name followed by a dot.** `testhost` ships `testhost.x86` and
+  `testhost.arm64`, which is why there is a suffix rule at all.
+
+That last one was first written as a bare `StartsWith`, which is wrong in the expensive direction.
+It matches an application genuinely called `TestHostApp`, and matching one would move a **real
+user's** settings out of their configuration directory and into a bin folder that the next
+`dotnet clean` deletes. Weigh the two errors: a missed runner litters a directory; a wrong match
+destroys somebody's window layout and theme. The false positive is far more costly, so the rule is
+the tight one.
+
+**And nothing else in the suite could have caught that**, which is the point worth keeping. Every
+assertion in `SettingsRootTests` runs inside a test host, so every one of them exercises the
+diverting branch — widen the match until real applications hit it too and all of them stay green.
+`Matching_is_tight_enough_not_to_catch_a_real_application` is a `[Theory]` over the predicate
+itself, reached by reflection because it is private and should stay private; adding public API to a
+package a consumer cannot patch, for the benefit of one test, is the wrong trade. `TestHostApp` and
+`testhostile` are cases in it so the bare-`StartsWith` version cannot come back.
+
+**Sabotage.** Replacing the predicate with `=> false` turns three of the six behavioural assertions
+red — the two about where the root is, and the one about the report — and correctly leaves the other
+three green, since a name the host passed does not go through that branch at all. Reverted; all
+pass.
+
+**Not a breaking change.** A real application's entry assembly is never named `testhost`, so no
+consumer's settings move. This is a patch.
+
+**Not fixed in the harness, deliberately.** The obvious place looked like `EmuSen.LunaP.Testing`,
+which already refuses to start a suite that has not disabled parallelisation (§22.8). It is the
+wrong place: Pegasus rolls its own harness in F# and never references that package, so a fix there
+would have missed the one consumer known to have hit this. The toolkit is what every consumer has.
+
+## 44. Every `§` now has to resolve
+
+CLAUDE.md has said "every `§` cited from code must resolve" since it existed, and §34.2's register
+has carried "a `§`-citation guard" as an open item for as long. Checking it took one pass over the
+tree: **116 distinct sections cited across the toolkit, the harness, the suite, `README.md`,
+`CHANGELOG.md` and `CLAUDE.md` — and every one of them resolved** against the 199 sections the man
+page defines.
+
+That is a good result, and on its own it would be an argument for leaving the rule as a rule. **The
+argument against that is §16.1, which is this document's own record of the rule failing badly.** At
+the time of the move: **68 citation sites across 43 files, of which 55 named a document that did not
+exist under that name**, fourteen pointed at section numbers that did not exist at all, and four
+numbers each resolved to two different headings, so a citation to any of them was undecidable. The
+file corrected *during* the move came out of it citing a section that resolved to nothing — the
+tidy-up introducing the defect it was tidying.
+
+**The suite was green throughout all of it.** Nothing in a build or a test run could see any of it,
+and it took a deliberate hand audit to find. That is the whole case: this is not a rule that has
+held because it is easy, it is a rule that has already been broken at scale, silently, and was
+restored by one person choosing to check.
+
+The likely cause is not a typo either — it is renumbering. Split a section, fold one into its
+neighbour, drop a number from a heading, and thirty pointers that were correct on Tuesday are wrong
+on Wednesday with nothing to say so.
+
+So it is `CitationTests` now, and the paragraph asking the next author to remember is deleted.
+
+**The trap it would otherwise have fallen into.** The assertion passes if the scan finds nothing at
+all — a renamed directory, a glob that quietly stops matching `.axaml`, a path that resolves
+somewhere empty. A guard that goes quiet when its input vanishes is worse than no guard, because the
+green tick is what gets read. `The_scan_actually_reads_something` puts floors under all three
+inputs, set well below the real counts so ordinary editing never touches them and a collapse to zero
+is caught at once.
+
+It reads the source tree rather than the build output, since neither the man page nor the sources
+being scanned are copied to `bin`; `[CallerFilePath]` gives it the repository and it walks up until
+it finds `docs/LunaP.md`.
+
+## 45. The version: 0.7.1
+
+A patch, and the reasoning is short because the change is narrow.
+
+**No public surface moved.** `ForApplication`'s signature is unchanged and
+`ApiSurfaceTests`' committed baseline needed no edit — the only additions are a
+`<remarks>` block on the method and two private members. Nothing was removed or
+renamed, so nothing a consumer compiles against can break.
+
+**No application behaviour moved.** The divert fires only when the entry assembly
+is a test runner, and a real application's never is. A consumer who upgrades and
+changes nothing sees no difference at run time; only their *test* process does,
+and only if it was relying on the default store, which is the defect.
+
+**So the argument for a minor was weighed and refused.** §42.1's rule for 0.7.0
+was that a release stops being additive when it changes what a consumer already
+sees, and by that rule this qualifies: a suite that read back placement written
+under the shared root will now read back nothing. But what it read back was
+another project's data or its own by luck, `windows.json` is machine-local state
+that no build depends on, and the fix restores the behaviour the documentation
+already described. Calling that a feature change would say the old behaviour was
+a feature.
+
+**§44 ships nothing.** `CitationTests` is in the test project, which is not
+packaged.
+
+Both `<Version>` elements read 0.7.1 and agree, per §22.8. As with §42.4: this
+records a decision and does not tag or publish, because a version on nuget.org
+cannot be replaced and that is a person's call.
