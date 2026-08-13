@@ -2577,7 +2577,7 @@ available except one restating the name, and that argument stands. **It says not
 | Member-level API docs | §33.4, §34.1 | the largest, and the one a consuming dev feels first |
 | Nullability absent from the API snapshot | §32.5 | `string?` and `string` are one line; `NullabilityInfoContext` reads it |
 | ~~CI runs on one Linux runner~~ | **closed by §35** | matrix added; the audit found one platform branch, and it turned out to be untested, undocumented here, and currently a no-op (§35.1) |
-| Trim/AOT: **measured, not fixed** | §36 | ~~`CssTheme` is the problem~~ — **that guess was wrong (§36)**. Three real sites: the JSON settings seam and runtime `.axaml` theme loading. Trim-safe is reachable, AOT-safe is not while the default store is reflection JSON; §36.3 sets out the two designs |
+| Trimming: **measured, not fixed** (AOT: never a stated goal, see §36.4) | §36 | ~~`CssTheme` is the problem~~ — **that guess was wrong (§36)**. Three real sites: the JSON settings seam and runtime `.axaml` theme loading. Trim-safe is reachable, AOT-safe is not while the default store is reflection JSON; §36.3 sets out the two designs |
 | `net10.0` only | — | Avalonia 12.1.0 ships `net8.0` too, so LunaP is stricter than its own dependency — but .NET 8 leaves support around 2026-11-10 and .NET 9 already has, so multi-targeting buys a dying LTS. **Decided against, recorded so it is not re-derived.** |
 | CSS template parts unswept | §30.5 | §30.4 proves every *element* reaches its control; `card .header` and friends are still unproven |
 | A theme rule that matches nothing at runtime is silent | §30.5 | the parse cannot know what is on screen; the sweep catches it at test time, a host loading a bad theme is not told |
@@ -2782,7 +2782,32 @@ decision and not a build-flag one:
 reflection JSON**, and that is a sentence worth being sure of before it is written into attributes a
 consumer compiles against.
 
-### 36.4 What this does not do
+### 36.4 A correction: nobody ever chose AOT
+
+**This section opens by saying §25 "rejected LGPL partly because this is a platform that ships
+trimmed and AOT'd", and that is an overstatement of what §25 says.** Read it back:
+
+> LGPL-3.0 … gets there by requiring the user be able to relink against a modified version. **A
+> modern Avalonia desktop application ships trimmed, often AOT-compiled, sometimes single-file** —
+> deployment shapes in which "relink against a different LunaP" ranges from awkward to meaningless.
+
+That is an observation about what Avalonia applications **in general** do, made to show that LGPL's
+central mechanism is hollow on this platform. It is not a decision that LunaP targets AOT, and no
+such decision appears anywhere in this document. §34.2's register entry — "trim/AOT unverified" —
+invented the requirement by summarising that sentence as a goal, and this section then cited §34.2
+back as though it were one.
+
+**The two halves are not equally supported, and the measurement above is worth keeping for one of
+them.** §25 says "ships trimmed" flatly, so a consumer trimming their application is a real
+expectation and knowing which three features break under it is real information. "Often
+AOT-compiled" is hedged and about other people's applications; nothing here has ever asked LunaP to
+be AOT-clean.
+
+So §36 stands as a **measurement of what happens if a consumer does this**, not as progress against
+a goal. Which is also why §36.3's conclusion is the useful part: trim-safe is reachable and worth
+reaching, AOT-safe is not currently reachable and nobody has said it must be.
+
+### 36.5 What this does not do
 
 - **It does not declare `IsAotCompatible`, and deliberately.** Setting it would silence nothing and
   claim something untrue; §34's register now says so with the measurement attached.
