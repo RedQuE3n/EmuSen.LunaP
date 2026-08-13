@@ -93,21 +93,67 @@ namespace EmuSen.LunaP.Testing
             return frame;
         }
 
-        // Builds and renders twice. A window that fails this can never be compared against a baseline - see docs/LunaP.md §10.2.
+        // Builds and renders THREE times. A window that fails this can never be compared against a
+        // baseline - see docs/LunaP.md §10.2 and §37.
+        //
+        // WHY THREE, AND WHY THE MESSAGE CARRIES NUMBERS. This assertion used to render twice and,
+        // on failure, state a cause: "it shows something live (a clock, a pid, a counter)". That is
+        // a hypothesis, and the first time it fired in anger - macOS on the §35 matrix, with Linux
+        // and Windows green - the hypothesis was wrong. The gallery has no clock and no counter, and
+        // the same binary is stable on the other two runners.
+        //
+        // An assertion that names a cause it has not measured sends the reader to look for something
+        // that is not there, which is the §29.3.1 failure in a different costume. So it reports what
+        // it saw and lets the reader conclude:
+        //
+        //   first != second, second == third  -> the FIRST render differs from the steady state,
+        //                                        which is a warm-up effect (glyph caches, lazily
+        //                                        realised platform resources), not live content.
+        //   all three differ                  -> genuinely non-deterministic rendering.
+        //
+        // The pixel count matters as much as the verdict: two frames differing in 40 bytes along one
+        // glyph edge is antialiasing, and two differing in half the buffer is a different window.
         public static void AssertStable(string name, Func<Window> build)
         {
-            Window first = build();
-            first.Show();
-            ulong firstHash = Capture(first).Hash;
-            first.Close();
+            RenderedFrame first = Once(build);
+            RenderedFrame second = Once(build);
+            if (first.Hash == second.Hash) return;
 
-            Window second = build();
-            second.Show();
-            ulong secondHash = Capture(second).Hash;
-            second.Close();
+            RenderedFrame third = Once(build);
 
-            Assert.True(firstHash == secondHash,
-                $"{name} rendered differently on two identical runs, so it shows something live (a clock, a pid, a counter). It is not a valid baseline target.");
+            string verdict = second.Hash == third.Hash
+                ? "the FIRST render differs from the steady state, which is a warm-up effect rather than live content"
+                : "every render differs, so this is genuinely non-deterministic";
+
+            Assert.Fail(
+                $"{name} did not render the same way twice. {verdict}.\n"
+                + $"  hashes : {first.Hash:X16} {second.Hash:X16} {third.Hash:X16}\n"
+                + $"  size   : {first.Width}x{first.Height}, {second.Width}x{second.Height}, {third.Width}x{third.Height}\n"
+                + $"  bytes differing 1v2: {Differing(first, second)}, 2v3: {Differing(second, third)}\n"
+                + "It is not a valid baseline target until this is understood. See docs/LunaP.md §37.");
+        }
+
+        private static RenderedFrame Once(Func<Window> build)
+        {
+            Window window = build();
+            window.Show();
+            RenderedFrame frame = Capture(window);
+            window.Close();
+            return frame;
+        }
+
+        // "How different" rather than "different", because the two answers point at different causes.
+        private static string Differing(RenderedFrame a, RenderedFrame b)
+        {
+            if (a.Rgba.Length != b.Rgba.Length) return $"incomparable ({a.Rgba.Length} vs {b.Rgba.Length} bytes)";
+
+            int count = 0;
+            for (int i = 0; i < a.Rgba.Length; i++)
+            {
+                if (a.Rgba[i] != b.Rgba[i]) count++;
+            }
+
+            return $"{count} of {a.Rgba.Length} ({100.0 * count / a.Rgba.Length:F2}%)";
         }
 
         // Avalonia's own encoder, so this project needs no imaging dependency of its own.
