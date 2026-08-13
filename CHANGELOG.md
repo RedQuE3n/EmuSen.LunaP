@@ -13,10 +13,29 @@ answer.
 
 ## 0.7.0
 
-**A shell.** Actions, menus, a toolbar, context menus, keyboard shortcuts, a
-draggable splitter, docked side panels, a card surface, and an `AppWindow` that
-puts them where they go. Everything is additive: if you upgrade and change
-nothing, nothing changes (`§26`).
+**A shell, and a class of theme rule that never worked.**
+
+The shell is the headline: actions, menus, a toolbar, context menus, keyboard
+shortcuts, a draggable splitter, docked side panels, a card surface, and an
+`AppWindow` that puts them where they go (`§26`). A table (`§27`). Symbols and
+source links in the package (`§31`), a guarded public API surface (`§32`), and
+IntelliSense for all 379 members of it rather than none (`§33`, `§41`).
+
+**But this release is not purely additive, and the two places it is not are
+worth reading before you take it.**
+
+1. **Seventeen CSS theme rules did nothing and now work** — four element names
+   since 0.2.0, and thirteen template parts (`§30`, `§39`). If you wrote one and
+   worked around its not applying, the workaround is now doubled. If you wrote
+   none, nothing moves: every default was measured before and after.
+2. **One rule is now refused rather than silently ignored**: `meter-row .bar
+   { color: … }` could never win against the state styles, so it warns and tells
+   you what to write instead (`§40`). The theme still loads.
+
+An earlier draft of this entry said *"everything is additive: if you upgrade and
+change nothing, nothing changes."* That was true when the shell was the whole
+release and is not true now — the sentence is corrected here rather than
+deleted, because it is the one a consumer would have relied on.
 
 ### Added
 
