@@ -53,6 +53,13 @@ nothing, nothing changes (`§26`).
   the palette. Chosen against WCAG 1.4.11's 3:1 rather than by eye, because the
   splitter it draws is a control you have to see to use — the subtle value a
   dark theme reaches for measures 1.51:1 (`§26.9`).
+- **`UiTest.Redraw(window)` and `UiTest.AssertMatchesBaseline(name, window)`**, in
+  `EmuSen.LunaP.Testing`. On macOS a window's **first** draw is not its steady
+  state, so a render baseline written from one and compared against any later
+  frame mismatches with nothing wrong. `Redraw` forces a genuine second pass and
+  captures that; the new `AssertMatchesBaseline` overload does it for you. Note
+  that capturing twice does **not** work — a capture of an unchanged window
+  copies the frame already drawn (`§38`).
 
 ### Changed
 
@@ -100,6 +107,13 @@ nothing, nothing changes (`§26`).
   because Avalonia paints a `Menu` transparent anyway (`§29.3`, `§30`).
 - **This is a visible change if you worked around any of the above.** A rule you wrote that quietly
   did nothing will start doing what it says, and the menu bar gains 2px of horizontal padding.
+- **`UiTest.AssertLaidOut` no longer compares a first draw against your baseline**, which on macOS
+  could fail on ~0.4% of the buffer with nothing actually wrong. If you keep `.frame` baselines,
+  regenerate them once: frames written by the old code came from a different render pass than the
+  ones the new code compares (`§37`, `§38`).
+- **`UiTest.AssertStable` failures now report the differing pixel count, the bounding box and the
+  peak channel delta**, and name the `EMUSEN_UI_DUMP` variable that gets the frames out. A byte
+  count alone cannot tell antialiasing from content that moved (`§38.5`).
 
 ### Known
 
