@@ -54,19 +54,23 @@ namespace EmuSen.LunaP.Tests
         // The form controls an office application is mostly made of. Named rather than reflected,
         // because the subject is "what a consumer reaches for", which is not a property of any
         // assembly - and because a name here is a decision to support that control.
+        //
+        // THE ARRAY IS PUBLIC AND THE TheoryData IS BUILT FROM IT, rather than the list living
+        // inside the factory. GalleryRenderTests reads this to require that everything swept here is
+        // also on screen somewhere, and two hand-kept lists would drift the first time somebody
+        // added a control - which is exactly the failure that left eight of these nine out of the
+        // gallery for the length of §48.
+        public static readonly string[] KindNames =
+        {
+            nameof(TextBox), nameof(CheckBox), nameof(RadioButton), nameof(Slider),
+            nameof(NumericUpDown), nameof(ComboBox), nameof(ProgressBar), nameof(ToggleSwitch),
+            nameof(CalendarDatePicker),
+        };
+
         public static TheoryData<string> Kinds()
         {
             var data = new TheoryData<string>();
-            foreach (string name in new[]
-            {
-                nameof(TextBox), nameof(CheckBox), nameof(RadioButton), nameof(Slider),
-                nameof(NumericUpDown), nameof(ComboBox), nameof(ProgressBar), nameof(ToggleSwitch),
-                nameof(CalendarDatePicker),
-            })
-            {
-                data.Add(name);
-            }
-
+            foreach (string name in KindNames) data.Add(name);
             return data;
         }
 
