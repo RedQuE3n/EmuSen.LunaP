@@ -2585,6 +2585,8 @@ available except one restating the name, and that argument stands. **It says not
 | No native macOS menu bar | §26.12 | a genuine platform defect rather than a missing feature — macOS puts a menu strip in the window where the platform expects one at the top of the screen |
 | Contrast shortfall | §23.4 | measured and left alone |
 | `LunaSettings` process-global statics | §21.3 | every consumer suite inherits the race; the harness ships the refusal, the hazard is structural |
+| Nothing enforces that a cited `§` resolves | `CLAUDE.md` | the rule is stated and was checked by hand at §38 — all 100-odd citations in `src/` resolve to a heading. It is a `grep`, a `comm` and a `Fail`, and until it is written the rule holds only as long as somebody remembers to check |
+| macOS first-draw warm-up: **scope narrowed, mechanism inferred** | §38.4, §38.6 | not per-process and not per-window; `Redraw` is correct under any mechanism with that scope, so this is characterisation debt rather than a defect |
 | `ConsolePane` cannot announce line by line | §24.4 | the trade is recorded; a live region would re-read the whole buffer |
 
 ### 34.3 Versioning, when this is called done
@@ -2912,12 +2914,143 @@ so where somebody will be standing when it bites.
 
 ### 37.4 What this does not do
 
-- **It does not explain the 0.39% at the pixel level.** The cause is inferred from the shape of the
-  difference and from renders two and three being byte-identical. Nobody has dumped the two frames
-  and diffed them visually, which `EMUSEN_UI_DUMP` exists to make possible.
-- **It does not establish whether the warm-up is per-process or per-window.** One discarded render
-  before each comparison is enough either way, and cheap.
-- **It does not fix `AssertMatchesBaseline`**, per §37.3 — that path takes a frame rather than
-  building one, so warming it would mean changing its signature.
+- ~~**It does not explain the 0.39% at the pixel level.**~~ The cause is inferred from the shape of
+  the difference and from renders two and three being byte-identical. Nobody has dumped the two
+  frames and diffed them visually, which `EMUSEN_UI_DUMP` exists to make possible. **§38.5 closes
+  this: the failure message now reports the bounding box and the peak channel delta, which is the
+  distinction that mattered, and `AssertStable` dumps all three frames when asked.**
+- ~~**It does not establish whether the warm-up is per-process or per-window.**~~ One discarded
+  render before each comparison is enough either way, and cheap. **§38.4 establishes it — both of
+  those answers are wrong, and the evidence was already in this section when it was written.**
+- ~~**It does not fix `AssertMatchesBaseline`**, per §37.3 — that path takes a frame rather than
+  building one, so warming it would mean changing its signature.~~ **Fixed in §38.3, and the
+  signature never had to change: an overload that takes the window does the rasterising itself.**
 - **It says nothing about Windows**, which passed both runs without a warm-up frame and is not
   covered by the discard being there.
+
+---
+
+## 38. What a draw actually is, and the fix that would have been a no-op
+
+§37 left three things open, and closing them turned out to need something nobody here had
+established: **when does Avalonia actually draw?** The answer changed the fix.
+
+The obvious repair for §37.3 was to capture the window twice and keep the second frame. It compiles,
+it reads correctly, it costs one extra capture, and **it does nothing at all.**
+
+### 38.1 Counting draws, which needs the right unit
+
+`Control.Render` does not draw. It records a **draw list**, which is why it is called once and stays
+called once however many frames come out. A **custom draw operation** runs during the real Skia
+pass. So a custom operation that increments a counter counts draws, and everything below is in those
+units — measured on Avalonia 12.1.0, headless with `UseSkia()`, Linux.
+
+| action on a shown, unchanged window | draws | `Control.Render` calls |
+|---|---|---|
+| the first capture | 1 | 1 |
+| capture it again | **1** | 1 |
+| capture it a third time | **1** | 1 |
+| `InvalidateVisual()` on the grandparent `Border`, then capture | **1** | 1 |
+| `InvalidateVisual()` on the parent `StackPanel`, then capture | **1** | 1 |
+| `InvalidateVisual()` on **every visual**, then capture | **2** | 2 |
+| `InvalidateVisual()` on the drawing control itself, then capture | **3** | 3 |
+
+Two findings, and both are load-bearing:
+
+- **Capturing an unchanged window does not draw it.** `CaptureRenderedFrame` runs the dispatcher and
+  forces render-timer ticks, then calls `GetLastRenderedFrame` — which **copies** the bitmap the
+  window impl is already holding. Two captures of a clean window are the same picture *by
+  construction*, not by agreement. The Avalonia source says so directly: `Lock()` allocates a fresh
+  `WriteableBitmap` per real draw, and `GetLastRenderedFrame` locks the stored one and copies it out.
+- **Invalidation does not travel down the tree.** Every visual owns its own draw list, so dirtying an
+  ancestor leaves its children's lists — and their glyphs — untouched.
+
+A first probe looked like it had answered this and had not: each capture returns a *different*
+`WriteableBitmap` instance, which reads as "a new frame was produced". It is the copy on the way out.
+**Object identity was measuring the wrong thing**, and only counting draw operations settled it.
+
+### 38.2 So the fix that suggested itself was a no-op
+
+Had `Redraw` been written as "capture twice, keep the second", it would have returned **the same
+cold frame**, and §37.3 would have been recorded as closed while nothing changed. That is the worst
+category of defect this project can produce: a consumer cannot patch it, and the document would have
+said it was fixed.
+
+What forces a real second pass is invalidating **every visual in the window** and then capturing. It
+is the whole of `UiTest.Redraw`, and deleting the one loop turns it back into a copy.
+
+This is also why `AssertStable` throws away a whole *build* rather than calling `Redraw`: a freshly
+constructed window has genuinely never been drawn, so its capture is a real pass. It keeps the build
+for a second reason — comparing two separately constructed windows also catches construction that is
+not deterministic, which redrawing one window cannot see.
+
+### 38.3 What is fixed
+
+- **`UiTest.Redraw(Window)`** — forces a genuine pass and captures that. New public API on the
+  harness.
+- **`UiTest.AssertMatchesBaseline(string, Window)`** — an overload that owns the rasterisation, so it
+  cannot be handed a first draw. §37.4 said fixing this "would mean changing its signature"; it meant
+  adding an overload, and the frame-taking one stays for callers who already hold a frame.
+- **`UiTest.AssertLaidOut`** now rasterises through the same path, because it ends by handing its
+  frame to `AssertMatchesBaseline`. The colour count never cared; the baseline comparison is the
+  reason.
+
+`RenderPassTests` pins every row of the table in §38.1. **This is a pin on Avalonia, not on anything
+LunaP owns**: if a future version redraws clean windows or propagates invalidation downward, those
+assertions go red, which is the notice that `Redraw` is doing unnecessary work and that the reasoning
+in its comment has gone stale.
+
+**The sabotage.** Removing the invalidation loop from `Redraw` turns `A_redraw_draws` red with
+`Expected: 2, Actual: 1` — the no-op stated in draw passes. The other four stay green, correctly:
+they assert Avalonia's behaviour, not LunaP's.
+
+### 38.4 The warm-up is neither per-process nor per-window
+
+§37.4 recorded this as unestablished and not worth establishing. Both halves were wrong: **the
+evidence was already in the CI log**, and it rules out both of the answers that were offered.
+
+- **Not per-process.** `TemplateOrderTests` calls `UiTest.Capture` on freshly shown `ToolWindow`s —
+  real first draws, containing text — and it ran at positions **40 through 48** of the 379 results on
+  that macOS run. The gallery's stability failure was at position **285**. Well over a hundred real
+  draws happened first, and the gallery's first frame was *still* different from its second. A
+  one-time, content-independent warm-up would have been consumed long before.
+- **Not per-window either.** `AssertStable` builds a **new** `GalleryWindow` for every frame, so all
+  three captures are first draws of their own instance. Under a per-window effect all three would be
+  cold in the same way and frames one and two would have matched. Frames two and three were
+  byte-identical to each other and different from frame one.
+
+What survives is **process-global but content-dependent**: state that outlives a window being closed,
+yet was not warmed by a hundred draws of *different* windows. That is the shape of a glyph or
+typeface cache, which is what §37 guessed — but the *scope* above is established by elimination from
+measurements, while the *mechanism* remains an inference. The distinction is the point: `Redraw`
+warms the specific window it is handed, so it is correct under any mechanism with that scope.
+
+### 38.5 The failure message describes the shape now
+
+§37.4 wanted somebody to dump the frames and look at them. The reason was never curiosity — it was
+that a byte count cannot tell these apart:
+
+| | pixels | spread | peak channel delta |
+|---|---|---|---|
+| antialiasing | many | most of the image | small |
+| content that moved | many | one tight box | large |
+
+So `AssertStable` reports the differing **pixel** count, the **bounding box**, and the **peak
+per-channel delta** alongside the byte count, and a reader gets the shape without opening anything.
+`EMUSEN_UI_DUMP` now also yields `<name>.render1/2/3.png` from a failing run, and the message says
+so, which is the part that was missing — the facility existed and the failure never mentioned it.
+
+### 38.6 What this does not do
+
+- **It does not explain the macOS warm-up at the pixel level.** §38.4 narrows the scope by
+  elimination; nothing here dumps a macOS frame and inspects the glyph edges, because no macOS
+  machine is available to this repository outside CI.
+- **It does not make `AssertMatchesBaseline(string, RenderedFrame)` safe.** That overload still
+  compares whatever it is handed. It cannot rasterise — it has no window — so the fix is the
+  overload beside it and a comment saying which to reach for.
+- **It does not warm anything automatically.** A consumer who calls `window.CaptureRenderedFrame()`
+  directly and compares frames by hand is outside the harness and gets a first draw.
+- **The §38.1 table is one platform.** The draw-counting was measured on Linux. It is a statement
+  about Avalonia's headless renderer, which is shared code, but no runner has confirmed the counts
+  on Windows or macOS — `RenderPassTests` runs everywhere, so the matrix answers this on the next
+  push rather than leaving it to argument.
