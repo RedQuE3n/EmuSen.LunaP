@@ -2360,3 +2360,99 @@ precisely the failure this repository keeps saying it does not want to ship.
   would need network access from a test, which is not something this suite has ever wanted.
 - **It says nothing about the source being readable.** A consumer can now fetch the file; whether
   the comment they find explains anything is the subject of every other section here.
+
+---
+
+## 32. The public surface, written down
+
+CLAUDE.md's first paragraph says a consumer cannot patch this and can only take a version. Every
+convention in this repository follows from that sentence — the layering rule, the man page, the
+changelog, §31's symbols. And the thing that sentence is actually about, the surface a consumer
+compiles against, was the one thing nothing checked.
+
+Sixty-three public types and around six hundred members, and a renamed parameter, a widened return
+type or a property quietly turned `internal` would have shipped in a version bump with the first
+report arriving from somebody whose build broke.
+
+### 32.1 A reflected snapshot, and not `PublicApiAnalyzers`
+
+`Microsoft.CodeAnalysis.PublicApiAnalyzers` is the obvious tool and was the plan. It was not taken,
+for three reasons in order of weight:
+
+1. **It is a `PackageReference`**, and CLAUDE.md is explicit that one is a decision carrying a `§`
+   and a licence. It would be `PrivateAssets="all"` and reach no consumer, so §1's rule survives —
+   but *no dependency at all* is strictly better than *a dependency that does not escape*, and here
+   it costs about eighty lines.
+2. **This repository already has the mechanism.** `EMUSEN_UI_BASELINE` regenerates render baselines
+   from an environment variable (§10.2). `EMUSEN_API_APPROVE=1 dotnet test` regenerates this one the
+   same way, so there is one convention for "rewrite the thing I am asserting against" and not two.
+3. **The guards this suite already trusts find their own subjects by reflection** — §28.1, §28.2,
+   §30.6. This is the fourth of the same shape, and a reader who understands one understands all.
+
+What is given up is real and worth naming: no IDE code fix, and no built-in shipped/unshipped split.
+The second matters least here because `CHANGELOG.md` already carries the release story.
+
+### 32.2 This baseline is committed, unlike the other one
+
+§10.2 says `*.png` and `*.frame` are never committed, because a render baseline is one machine's
+font rendering — worthless elsewhere and misleading in a diff. This looks like the same kind of
+artefact and is the opposite kind.
+
+**An API surface is identical on every machine that compiles the code.** So it is not a local
+artefact but a reviewable document, and the diff on it *is* the review: a version bump that changes
+`ApiSurface/EmuSen.LunaP.txt` is a version bump whose consumer-visible surface changed, visible in
+the pull request rather than discovered later.
+
+### 32.3 Two things deliberately left out
+
+**The XAML compiler's public types.** Avalonia's compiler emits
+`CompiledAvaloniaXaml.!AvaloniaResources` with a `Build:/` and a `Populate:/` method **per `.axaml`
+file**, plus `!XamlLoader` and two `XamlIlContext` helpers. Nothing can call them — the names contain
+`:` and `!` — and they change whenever a theme file is added or renamed, which §29 did sixteen times
+in one commit. Left in, a refactor that changed no API would have churned thirty-odd lines, and a
+baseline that cries wolf is a baseline somebody approves without reading. They are excluded by
+namespace rather than by keeping only `EmuSen.LunaP.*`, deliberately: a public type appearing in some
+third namespace is exactly the leak this file should show.
+
+**Inherited interfaces.** `Type.GetInterfaces()` is transitive, so every control listed the fifteen
+interfaces it inherits from Avalonia's `Control` — unreadable, and worse, an Avalonia upgrade adding
+one interface to a base class would have churned every line. What a LunaP type declares is a LunaP
+decision; what it inherits is Avalonia's, and is recorded once as the base type.
+
+### 32.4 The guard, and the reporting bug the first sabotage found
+
+The interesting entry is not that the guard caught the change. It is that **it could not explain it.**
+
+The first version compared the two files as flat sets of lines. The first sabotage — `public void
+Poke()` added to `Card` — turned the test red and reported *"(only ordering changed)"*, naming
+nothing. `Threading.Debounce` already has a method with that exact signature, and a set difference
+cannot see that one line became two.
+
+That is a defect in the half of a guard that matters second-most: a test that fails without saying
+why sends the next person to a six-hundred-line file with no starting point. **A member signature is
+only unique within its type**, so the report is now built the way the file is — grouped by type,
+with member counts compared as multisets rather than sets.
+
+| Sabotage | Reported |
+|---|---|
+| `public void Poke()` added to `Card` | `Card` → `NEW: public void Poke()` |
+| a member present in the baseline and not in the code | `Card` → `GONE: public void Removed()` |
+| `Card`'s base changed to `ContentControl` | `Card` → `was:` / `now:`, with both base types |
+
+The third row is the one no member-by-member check would have caught. A control that stops deriving
+from `HeaderedContentControl` breaks every `is` check and every selector a consumer wrote, and the
+member list can be identical either side of it.
+
+### 32.5 What this does not do
+
+- **It does not capture nullability.** `string?` and `string` are the same line here, so tightening
+  a parameter from nullable to non-nullable — a source-breaking change for a consumer with
+  `<Nullable>enable</Nullable>` — passes silently. `NullabilityInfoContext` could read it; that is
+  the first extension this file should get.
+- **It does not capture attributes.** Adding `[Obsolete]` is invisible to it, and so is removing one.
+- **It does not distinguish shipped from unshipped.** There is one baseline, at the surface as it
+  stands. `CHANGELOG.md` is where a release says what moved, and §32.1 accepted that trade.
+- **It does not check behaviour**, only shape. A method that keeps its signature and changes what it
+  does is a worse break than a rename and is invisible here; that is what the other 370 tests are.
+- **It cannot tell an intended change from an accident.** It can only make somebody look. The
+  approval is a committed file, so the looking happens in review rather than in a dialog box.
