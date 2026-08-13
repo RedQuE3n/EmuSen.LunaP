@@ -90,6 +90,42 @@ namespace EmuSen.LunaP.Gallery
                 new Field("Total aid retained", "text", 2),
             });
 
+            // THE ONLY SAMPLES HERE THIS TOOLKIT DID NOT WRITE, and that is the reason they are
+            // here. §48 handed LunaP's colours to FluentTheme's own resource keys so that a stock
+            // TextBox, CheckBox or Slider paints in this palette instead of Fluent's #0078D7 - and
+            // until this section existed, the only evidence of that was a test.
+            //
+            // A gallery that shows nine LunaP controls and none of the controls an application is
+            // actually mostly made of is a gallery that cannot answer the question §48 was built to
+            // answer: does the join show? Put them on the same page as the rest and the answer is
+            // one look rather than an argument.
+            //
+            // A RadioButton PAIR rather than one, because a single radio button shows the fill and
+            // hides the thing the fill is for. Both states of the CheckBox and the ToggleSwitch for
+            // the same reason: LunaAccent and LunaOnAccent are a pairing (§48.3), and a sample that
+            // only ever shows the checked half never shows the pairing failing.
+            var forms = Ui.Stack(10,
+                new TextBox { Text = "smw.sfc", Width = 220, HorizontalAlignment = HorizontalAlignment.Left },
+                // PlaceholderText and not Watermark: the latter is [Obsolete] in Avalonia 12.1.0 and
+                // the build says so. The placeholder is here because it is the one piece of a
+                // TextBox that reads through its own key - TextControlPlaceholderForeground, which
+                // the bridge maps to LunaMuted - so an unstyled placeholder is a visible seam.
+                new TextBox { PlaceholderText = "Search titles", Width = 220, HorizontalAlignment = HorizontalAlignment.Left },
+                Ui.Row(16,
+                    new CheckBox { Content = "Pause when unfocused", IsChecked = true },
+                    new CheckBox { Content = "Confirm on exit" }),
+                Ui.Row(16,
+                    new RadioButton { Content = "Nearest", GroupName = "scale", IsChecked = true },
+                    new RadioButton { Content = "Linear", GroupName = "scale" }),
+                Ui.Row(16,
+                    new ToggleSwitch { IsChecked = true },
+                    new ToggleSwitch()),
+                new Slider { Minimum = 0, Maximum = 100, Value = 40, Width = 220, HorizontalAlignment = HorizontalAlignment.Left },
+                new ProgressBar { Minimum = 0, Maximum = 100, Value = 60, Width = 220, HorizontalAlignment = HorizontalAlignment.Left },
+                Ui.Row(16,
+                    new NumericUpDown { Value = 3, Width = 120 },
+                    new CalendarDatePicker { SelectedDate = new DateTime(2026, 8, 13) }));
+
             // A splitter with something on each side of it, sized so the divider is visibly not
             // in the middle - a proportional splitter would put it there and the fixed/elastic
             // arrangement §26.6 chose would be invisible in the picture.
@@ -124,6 +160,8 @@ namespace EmuSen.LunaP.Gallery
                         Label = "Emulator Core",
                         Content = new ComboBox { ItemsSource = new[] { "SNES", "NES" }, SelectedIndex = 0 }.Grow(),
                     })),
+
+                Ui.Section("Form controls", forms),
 
                 Ui.Section("Widgets", Ui.Stack(8,
                     filter,

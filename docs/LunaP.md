@@ -4502,3 +4502,37 @@ has no LunaP answer yet — Avalonia has the mechanism and this toolkit has no e
 and a `FieldRow` that can show an invalid state with a message is the piece an office application
 cannot fake. It is named here rather than built, and it is a completion under §47.3 rather than a new
 kind.
+
+### 48.6 Nine controls themed, one on screen
+
+**Written immediately after §48.5, because the gap was found by reading the gallery rather than by
+any test failing.** `FormControlTests` passed the whole time §48 was being built, and the arc looked
+finished.
+
+The gallery had **one** of the nine controls the sweep covers — a `ComboBox`, and only because a
+`FieldRow` sample needed something to put inside it. The other eight had been re-skinned, swept and
+recorded, and could not be seen. §7's rule is *"every control, on one page"*, and §47.5 chose the
+palette sweep over "a plausible office-app screen" precisely because the sweep is mechanical — but a
+mechanical guard on colour provenance says nothing about whether anybody can look at the result.
+
+**This is §24 repeating.** There, nine controls were correct and absent from the automation tree, and
+what noticed was a person going looking. The same shape twice is the argument for a guard rather than
+a third round of noticing.
+
+So the gallery gained a *Form controls* section — both states of the `CheckBox` and the
+`ToggleSwitch`, a `RadioButton` pair, a `TextBox` with a placeholder because
+`TextControlPlaceholderForeground` is the one part of a text box that reads through its own key — and
+the two lists were tied together at the source. `FormControlTests.KindNames` is now public and the
+`TheoryData` is built from it; `GalleryRenderTests.Every_control_the_form_sweep_covers_is_in_the_gallery`
+reads that same array and fails naming any control the sweep covers that the gallery does not show.
+Two hand-kept lists would have drifted the first time somebody added a control, which is exactly how
+eight of nine went missing.
+
+*Made to fail on purpose, per §22.5.* Deleting the `Slider` from the gallery turned it red with
+*"…the gallery never shows them…: Slider"*, naming the one control removed rather than failing on a
+count.
+
+**One thing the compiler caught on the way in**, worth a line because it is a live deprecation rather
+than a style note: `TextBox.Watermark` is `[Obsolete]` in Avalonia 12.1.0 in favour of
+`PlaceholderText`. The build says so, and this repository builds with zero warnings, so it was fixed
+where it was written rather than becoming the first one.

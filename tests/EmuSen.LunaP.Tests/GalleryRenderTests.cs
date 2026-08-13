@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -80,5 +81,37 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task The_gallery_renders_the_same_way_twice() =>
             UiTest.Run(() => UiTest.AssertStable("gallery", () => new GalleryWindow()));
+
+        // A GUARD THAT FINDS ITS OWN SUBJECTS, in the shape §28 prefers over a paragraph asking the
+        // next author to remember.
+        //
+        // §48 re-skinned nine stock Avalonia controls and FormControlTests swept them, and for the
+        // length of that arc the gallery showed exactly one of the nine - a ComboBox, which was
+        // already there for another reason. The sweep passed the whole time. That is the §24 shape
+        // repeating: a control can be correct and still be invisible, and the thing that noticed
+        // last time was a person looking rather than a test.
+        //
+        // So the two are tied together at the source. FormControlTests.Kinds() is the list of
+        // controls this toolkit has decided to support, and every one of them now has to appear in
+        // the gallery. Adding a control to the sweep and forgetting the gallery fails here, which is
+        // the only moment anybody would find out.
+        [Fact]
+        public Task Every_control_the_form_sweep_covers_is_in_the_gallery() => UiTest.Run(() =>
+        {
+            var window = new GalleryWindow();
+            window.Show();
+
+            Type[] shown = window.GetSelfAndVisualDescendants().Select(v => v.GetType()).Distinct().ToArray();
+
+            string[] missing = FormControlTests.KindNames
+                .Where(name => !shown.Any(t => t.Name == name))
+                .ToArray();
+
+            Assert.True(missing.Length == 0,
+                "FormControlTests sweeps these controls, but the gallery never shows them, so nobody "
+                + "can see whether the seam §48 closed is actually closed: "
+                + string.Join(", ", missing)
+                + ". Add them to the \"Form controls\" section of GalleryWindow. See docs/LunaP.md §48.6.");
+        });
     }
 }
