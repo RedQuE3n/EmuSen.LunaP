@@ -21,6 +21,7 @@ namespace EmuSen.LunaP.Threading
         // True when the caller is already the UI thread. Worth having in its own right: the
         // honest answer to "should this be marshalled" is sometimes "no", and code that cannot
         // ask has to guess.
+        /// <summary>Whether the calling thread is the UI thread.</summary>
         public static bool IsCurrent => Dispatcher.UIThread.CheckAccess();
 
         // Inline when already on the thread, queued otherwise.
@@ -35,6 +36,9 @@ namespace EmuSen.LunaP.Threading
         // marshalling it was exactly wrong while being right for every other caller of the same
         // class. If the work belongs to another thread, do not call this - there is no flag to
         // pass, because a flag would only move the same decision somewhere less visible.
+        /// <summary>Runs an action on the UI thread, inline if already there and by posting otherwise.</summary>
+        /// <param name="action">What to run. Called synchronously when the caller is already on the UI thread, so it must not assume it has been deferred.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static void Run(Action action)
         {
             if (action is null) throw new ArgumentNullException(nameof(action));
@@ -44,6 +48,9 @@ namespace EmuSen.LunaP.Threading
         }
 
         // Always queued, never inline.
+        /// <summary>Queues an action to run on the UI thread later, always deferring even when called from the UI thread.</summary>
+        /// <param name="action">What to run. Use this rather than Run when the work must not happen inside the current call - finishing a layout before measuring it, say.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static void Post(Action action)
         {
             if (action is null) throw new ArgumentNullException(nameof(action));

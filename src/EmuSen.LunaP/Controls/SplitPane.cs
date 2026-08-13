@@ -16,7 +16,9 @@ namespace EmuSen.LunaP.Controls
     /// <summary>Which pane of a split keeps its size when the window is resized.</summary>
     public enum SplitSide
     {
+        /// <summary>The first pane keeps its size; the second takes up the slack.</summary>
         First,
+        /// <summary>The second pane keeps its size; the first takes up the slack.</summary>
         Second,
     }
 
@@ -95,6 +97,7 @@ namespace EmuSen.LunaP.Controls
         // at the next attach. AppWindow hands a divider its key when a panel is added, which is
         // routinely after the window is open, and a key that only took effect on the following
         // attach would look like persistence that works except when you use it.
+        /// <summary>The name this divider remembers its position under. Null means nothing is saved, which is the default.</summary>
         public string? PaneKey
         {
             get => _paneKey;
@@ -112,6 +115,7 @@ namespace EmuSen.LunaP.Controls
         // 12.1.0 this uses the answer the two overrides below already have.
         private bool _attached;
 
+        /// <summary>Which way the panes are arranged: Horizontal puts them side by side with a vertical divider.</summary>
         public Orientation Orientation
         {
             get => GetValue(OrientationProperty);
@@ -120,6 +124,7 @@ namespace EmuSen.LunaP.Controls
 
         // Left or top. Null collapses the pane and its divider together, which is how AppWindow
         // closes a side panel without the layout keeping a gap where it used to be.
+        /// <summary>The first pane - left, or top. Null leaves the divider out entirely rather than showing an empty pane.</summary>
         public object? First
         {
             get => GetValue(FirstProperty);
@@ -127,6 +132,7 @@ namespace EmuSen.LunaP.Controls
         }
 
         // Right or bottom.
+        /// <summary>The second pane - right, or bottom. Null leaves the divider out entirely.</summary>
         public object? Second
         {
             get => GetValue(SecondProperty);
@@ -134,6 +140,7 @@ namespace EmuSen.LunaP.Controls
         }
 
         // Which pane holds its size when the container changes size. The other one takes the rest.
+        /// <summary>Which pane keeps its size when the window is resized. The other one takes up the slack.</summary>
         public SplitSide Fixed
         {
             get => GetValue(FixedProperty);
@@ -142,6 +149,7 @@ namespace EmuSen.LunaP.Controls
 
         // The fixed pane's size, in device-independent pixels. Follows the divider while it is
         // dragged, so a caller can read it, save it, or set it to move the divider from a menu.
+        /// <summary>The size in pixels of whichever pane is Fixed. Updated as the divider is dragged, and what gets saved under PaneKey.</summary>
         public double FixedSize
         {
             get => GetValue(FixedSizeProperty);
@@ -151,12 +159,14 @@ namespace EmuSen.LunaP.Controls
         // How small each pane may be dragged. Not zero by default: a pane dragged to nothing looks
         // exactly like a pane that failed to render, and the divider left behind is four pixels
         // wide and hard to find again with a mouse.
+        /// <summary>The smallest the first pane may be dragged to, in pixels.</summary>
         public double MinFirst
         {
             get => GetValue(MinFirstProperty);
             set => SetValue(MinFirstProperty, value);
         }
 
+        /// <summary>The smallest the second pane may be dragged to, in pixels.</summary>
         public double MinSecond
         {
             get => GetValue(MinSecondProperty);
@@ -165,6 +175,7 @@ namespace EmuSen.LunaP.Controls
 
         // The grab area, not a hairline: the visible rule is drawn by the theme and can be one
         // pixel, but a target a mouse has to hit cannot be.
+        /// <summary>How wide the grab area is, in pixels. The visible rule stays one pixel however wide this is, so a divider can be easy to hit without looking heavy.</summary>
         public double SplitterThickness
         {
             get => GetValue(SplitterThicknessProperty);
@@ -182,6 +193,7 @@ namespace EmuSen.LunaP.Controls
         // Defaulted rather than left empty, because a name is only useless when it is wrong: two
         // dividers both called "Resize panes" is worse than one and much better than none.
         // AppWindow names each of its own after the panel it resizes.
+        /// <summary>What a screen reader calls the divider. It is a keyboard-operable control, so it needs a name.</summary>
         public string DividerLabel
         {
             get => GetValue(DividerLabelProperty);
@@ -197,6 +209,7 @@ namespace EmuSen.LunaP.Controls
         // Writes the divider's position now rather than waiting out the delay. Called on the way
         // out of the visual tree, because a window closed straight after a drag would otherwise
         // lose the last thing the user did to it.
+        /// <summary>Writes the divider position immediately, rather than waiting for the drag to settle. Does nothing without a PaneKey.</summary>
         public void SaveNow()
         {
             _save?.Cancel();

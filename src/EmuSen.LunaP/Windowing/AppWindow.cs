@@ -76,17 +76,22 @@ namespace EmuSen.LunaP.Windowing
             Content = root;
         }
 
+        /// <summary>The menu bar across the top. Present even when it has no menus, in which case it takes no space.</summary>
         public MenuBar MenuBar => _menuBar;
 
+        /// <summary>The toolbar under the menu bar. Present even when empty.</summary>
         public ToolBar ToolBar => _toolBar;
 
+        /// <summary>The status line along the bottom. Present even when empty.</summary>
         public Controls.StatusBar StatusBar => _statusBar;
 
+        /// <summary>The panels currently docked, in the order they were added.</summary>
         public IReadOnlyList<SidePanel> Panels => _panels;
 
         // What goes in the middle. A property rather than Content, because Content is the whole
         // window and this is the part of it that is not chrome; a caller that set Content would
         // throw the menu bar away and wonder where it went.
+        /// <summary>The window main content, between the toolbar and the status line and inside any docked panels.</summary>
         public object? Central
         {
             get => _centralHost.Content;
@@ -94,6 +99,7 @@ namespace EmuSen.LunaP.Windowing
         }
 
         // The message in the bottom-left. Setting it is what makes the status bar appear.
+        /// <summary>The status line text. Setting this replaces whatever StatusContent held.</summary>
         public string Status
         {
             get => _statusBar.Status;
@@ -106,6 +112,7 @@ namespace EmuSen.LunaP.Windowing
 
         // The right-hand end of the status line: a progress bar, a pair of buttons, a mode
         // indicator. Whatever a caller puts there, exactly as StatusBar takes today.
+        /// <summary>Arbitrary content for the status line, for when a string is not enough - a progress bar, a row of counters.</summary>
         public object? StatusContent
         {
             get => _statusBar.Content;
@@ -116,8 +123,12 @@ namespace EmuSen.LunaP.Windowing
             }
         }
 
+        /// <summary>Replaces the menu bar contents and binds their shortcuts, written inline.</summary>
+        /// <param name="menus">The menus, left to right.</param>
         public void SetMenus(params LunaMenu[] menus) => SetMenus((IEnumerable<LunaMenu>)menus);
 
+        /// <summary>Replaces the menu bar contents AND binds every shortcut they carry, unbinding the ones the previous menus added.</summary>
+        /// <param name="menus">The menus, left to right. This is the call that makes the keys work, which MenuBar.SetMenus on its own does not.</param>
         public void SetMenus(IEnumerable<LunaMenu> menus)
         {
             _menuBar.SetMenus(menus);
@@ -128,8 +139,12 @@ namespace EmuSen.LunaP.Windowing
             Rebind();
         }
 
+        /// <summary>Replaces the toolbar contents and binds their shortcuts, written inline.</summary>
+        /// <param name="actions">The actions, left to right.</param>
         public void SetToolBar(params LunaAction[] actions) => SetToolBar((IEnumerable<LunaAction>)actions);
 
+        /// <summary>Replaces the toolbar contents and binds any shortcuts those actions carry.</summary>
+        /// <param name="actions">The actions, left to right. An action already in a menu is not bound twice.</param>
         public void SetToolBar(IEnumerable<LunaAction> actions)
         {
             _toolBar.SetActions(actions);
@@ -141,6 +156,10 @@ namespace EmuSen.LunaP.Windowing
         // replaces the first, because two panels on one edge is the tabbed-dock feature §26.12
         // records as deliberately absent, and silently stacking them would be a worse answer than
         // saying so.
+        /// <summary>Docks a panel to the edge its Side names, replacing whatever was already on that edge.</summary>
+        /// <param name="panel">The panel to dock.</param>
+        /// <returns>The same panel, so it can be held onto or chained.</returns>
+        /// <exception cref="System.ArgumentNullException"><paramref name="panel"/> is null.</exception>
         public SidePanel AddPanel(SidePanel panel)
         {
             if (panel is null) throw new ArgumentNullException(nameof(panel));
@@ -178,6 +197,8 @@ namespace EmuSen.LunaP.Windowing
 
         // Every panel's toggle, in the order they were added - for a View menu, which is where Qt
         // puts them too. A caller can of course build its own menu from panel.ToggleAction.
+        /// <summary>A toggle action for every docked panel, for putting straight into a View menu.</summary>
+        /// <returns>Each panel ToggleAction, in the order the panels were added. These are the panels own actions, not copies, so the menu ticks follow the panels however they are opened.</returns>
         public IReadOnlyList<LunaAction> PanelToggles()
         {
             var toggles = new List<LunaAction>(_panels.Count);

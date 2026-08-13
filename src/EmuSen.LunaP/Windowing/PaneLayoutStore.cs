@@ -11,11 +11,13 @@ namespace EmuSen.LunaP.Windowing
         // The fixed pane's size in device-independent pixels. Not a fraction of the window, and
         // §26.6 carries the argument: a fraction re-applied at a different window size moves a
         // divider the user put somewhere on purpose.
+        /// <summary>The fixed pane size in pixels, as the divider was last left.</summary>
         public double Size { get; set; }
 
         // Only SidePanel writes this. A SplitPane has no closed state - both its panes are content
         // the window is made of, and a divider dragged to the edge is not the same thing as a
         // panel somebody turned off.
+        /// <summary>Whether the pane was closed when it was last saved.</summary>
         public bool Collapsed { get; set; }
     }
 
@@ -29,6 +31,7 @@ namespace EmuSen.LunaP.Windowing
     /// <summary>Reads and writes remembered pane layout, keyed by a pane's opt-in key.</summary>
     public static class PaneLayoutStore
     {
+        /// <summary>The file pane layouts are kept in, under the settings theme category.</summary>
         public const string FileName = "panes.json";
 
         // Read through LunaSettings.Store on every call rather than through a captured file
@@ -37,6 +40,9 @@ namespace EmuSen.LunaP.Windowing
         private static Dictionary<string, PaneLayout> All() =>
             LunaSettings.Store.Load<Dictionary<string, PaneLayout>>(null, FileName) ?? new Dictionary<string, PaneLayout>();
 
+        /// <summary>Reads back the layout saved under a key.</summary>
+        /// <param name="key">The PaneKey or PanelKey the layout was saved under.</param>
+        /// <returns>The saved layout, or null if nothing was ever saved for that key.</returns>
         public static PaneLayout? Load(string key) =>
             All().TryGetValue(key, out PaneLayout? layout) ? layout : null;
 
@@ -46,6 +52,10 @@ namespace EmuSen.LunaP.Windowing
         // shut" is one fact about one panel. Two whole-record writers would mean whichever saved
         // last silently discarded the other's field, which is the classic lost update and would
         // present as a panel that forgets its width whenever you close it.
+        /// <summary>Reads, edits and writes back the layout for one key, leaving every other key alone.</summary>
+        /// <param name="key">The key to update. A layout is created for it if none exists.</param>
+        /// <param name="edit">Mutates the layout in place. Runs before the file is written.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="key"/> or <paramref name="edit"/> is null.</exception>
         public static void Update(string key, Action<PaneLayout> edit)
         {
             if (key is null) throw new ArgumentNullException(nameof(key));

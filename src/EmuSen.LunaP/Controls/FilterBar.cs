@@ -45,17 +45,21 @@ namespace EmuSen.LunaP.Controls
         private Debounce? _debounce;
 
         // Raised whenever the search text or the facet changes, from any cause.
+        /// <summary>Raised when the search text or the facet changes. Deferred by SearchDelay, so typing raises it once the typing stops rather than per keystroke.</summary>
         public event Action? Changed;
 
         // Raised for Enter in the search box, which the library uses to launch the first match.
+        /// <summary>Raised when Enter is pressed in the search box, which also brings any pending Changed forward.</summary>
         public event Action? Submitted;
 
+        /// <summary>What is typed in the search box. Setting it does not raise Changed.</summary>
         public string SearchText
         {
             get => GetValue(SearchTextProperty);
             set => SetValue(SearchTextProperty, value);
         }
 
+        /// <summary>The grey text shown in the search box while it is empty.</summary>
         public string Placeholder
         {
             get => GetValue(PlaceholderProperty);
@@ -63,12 +67,14 @@ namespace EmuSen.LunaP.Controls
         }
 
         // "Console:" and the like; only shown alongside the dropdown.
+        /// <summary>The label beside the facet dropdown.</summary>
         public string FacetLabel
         {
             get => GetValue(FacetLabelProperty);
             set => SetValue(FacetLabelProperty, value);
         }
 
+        /// <summary>Whether the facet dropdown is shown at all. False leaves just the search box.</summary>
         public bool ShowFacet
         {
             get => GetValue(ShowFacetProperty);
@@ -85,15 +91,20 @@ namespace EmuSen.LunaP.Controls
         // The FACET IS NEVER DEBOUNCED. Picking from a dropdown is a deliberate act that happens
         // once, not a stream of half-formed input, and making the user wait after it would read as
         // the application being slow.
+        /// <summary>How long typing must pause before Changed is raised. Zero raises it on every keystroke, which suits an in-memory list and not a query.</summary>
         public TimeSpan SearchDelay
         {
             get => GetValue(SearchDelayProperty);
             set => SetValue(SearchDelayProperty, value);
         }
 
+        /// <summary>The selected facet, or null when none is chosen. Readable before the template has been applied.</summary>
         public object? Facet => _facet?.SelectedItem ?? _pendingSelection;
 
         // Held until the template exists, so a caller can fill the facets from its constructor.
+        /// <summary>Fills the facet dropdown, without raising Changed.</summary>
+        /// <param name="items">The facet values. Their ToString is what is shown.</param>
+        /// <param name="selected">Which to select, or null for none. Safe to call before the control has a template.</param>
         public void SetFacets(IEnumerable items, object? selected)
         {
             _pendingFacets = items;
@@ -196,9 +207,14 @@ namespace EmuSen.LunaP.Controls
             Changed?.Invoke();
         }
 
+        /// <summary>Puts the keyboard in the search box.</summary>
         public void FocusSearch() => _search?.Focus();
 
         // The match every caller wants: case-insensitive, and an empty search matches everything.
+        /// <summary>The match this bar means by filtering: case-insensitive substring, with an empty search matching everything.</summary>
+        /// <param name="search">What was typed. Null or empty matches everything.</param>
+        /// <param name="candidate">The text to test. Null matches nothing unless the search is empty.</param>
+        /// <returns>True if the candidate should be shown. Public so a caller filters its own list the same way the bar would.</returns>
         public static bool Matches(string? search, string? candidate) =>
             string.IsNullOrWhiteSpace(search)
             || (candidate ?? "").Contains(search.Trim(), StringComparison.OrdinalIgnoreCase);

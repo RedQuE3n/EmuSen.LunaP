@@ -31,7 +31,9 @@ namespace EmuSen.LunaP.Controls
         // width when one appears and the header above them stays lined up. If that ever changes,
         // the symptom is a header that drifts right of its cells by about seventeen pixels the
         // moment a table gets long enough to scroll.
+        /// <summary>The header row from the template, or null before the template has been applied.</summary>
         protected Grid? HeaderGrid;
+        /// <summary>The row list from the template, or null before the template has been applied.</summary>
         protected ListBox? Rows;
 
         // A Table, not a DataGrid, and the distinction is a promise rather than a label: UIA's
@@ -53,6 +55,7 @@ namespace EmuSen.LunaP.Controls
             OnPartsAttached();
         }
 
+        /// <summary>Called once the template has been applied and HeaderGrid and Rows are available, which is where a subclass replays anything configured before that.</summary>
         protected abstract void OnPartsAttached();
     }
 
@@ -90,17 +93,27 @@ namespace EmuSen.LunaP.Controls
         // What makes two items "the same item" across a refresh, so the selection survives one.
         // Defaults to reference identity, which is right for a cached model and wrong for rows
         // rebuilt from disk on every poll - the same default, and the same trap, as LunaList<T>.
+        /// <summary>How a row is matched to a model across a Refresh, so a selection survives a rebuild.</summary>
+        /// <remarks>
+        /// Defaults to the item itself, which means REFERENCE IDENTITY for a class. Right for a cached
+        /// model handed back unchanged; wrong for rows rebuilt on every poll, where every item is a new
+        /// object, nothing matches, and the selection is lost each refresh. Give a stable key (an id, a
+        /// path) when the models are rebuilt rather than reused.
+        /// </remarks>
         public Func<T, object?> Key { get; set; } = item => item;
 
         // Raised only for a real user choice, never for the selection restored during a refresh.
+        /// <summary>Raised when the user picks a row, with the model rather than the row. Not raised for a selection restored by Refresh.</summary>
         public event Action<T?>? Chose;
 
+        /// <summary>The models currently shown, in order.</summary>
         public IReadOnlyList<T> Models => _items;
 
         // The selected model. Unlike LunaList<T>, which puts STRINGS in its ListBox and has to map
         // an index back, this one puts the models in directly - so there is no index arithmetic
         // here at all. That difference is worth knowing if the two are ever merged: LunaList's
         // string projection is the older design, and this is what it would look like without it.
+        /// <summary>The selected model, or null when nothing is selected.</summary>
         public T? Selected => Rows?.SelectedItem as T;
 
         // A column, in the order it will appear. `width` is a GridLength as XAML spells one -
@@ -111,6 +124,12 @@ namespace EmuSen.LunaP.Controls
         // would all be different widths and nothing would line up. Every column is therefore put
         // in a shared size group and the root is a shared size scope, which is Avalonia's own
         // mechanism for exactly this.
+        /// <summary>Adds a column. Call once per column, before or after the template is applied.</summary>
+        /// <param name="header">The column heading.</param>
+        /// <param name="text">Turns a model into this cell text. Called for every row on every Refresh, so it should be cheap and free of side effects.</param>
+        /// <param name="width">An Avalonia column width - "*", "Auto", or a number of pixels. Headers and cells share a size group, so they stay aligned.</param>
+                /// <returns>The same table, so columns can be chained.</returns>
+        /// <exception cref="System.ArgumentNullException"><paramref name="header"/> or <paramref name="text"/> is null.</exception>
         public LunaTable<T> Column(string header, Func<T, string> text, string width = "*")
         {
             if (header is null) throw new ArgumentNullException(nameof(header));
@@ -124,6 +143,9 @@ namespace EmuSen.LunaP.Controls
         // Replaces the contents and puts the selection back, the same operation LunaList.Refresh
         // performs and for the same reason: "rebuild the list" and "keep the selection" are one
         // thing that only looks like two.
+        /// <summary>Replaces every row, keeping the selection if Key still matches something.</summary>
+        /// <param name="items">The new models, in display order. Safe to call before the control has a template.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="items"/> is null.</exception>
         public void Refresh(IEnumerable<T> items)
         {
             if (items is null) throw new ArgumentNullException(nameof(items));
@@ -154,6 +176,8 @@ namespace EmuSen.LunaP.Controls
         // pending facets for exactly the same reason (§14.2).
         //
         // Found by looking at a render rather than by a test: the row simply was not highlighted.
+        /// <summary>Selects a model without raising Chose.</summary>
+        /// <param name="item">The model to select, matched by Key. Null clears the selection.</param>
         public void Select(T? item)
         {
             if (Rows is null)

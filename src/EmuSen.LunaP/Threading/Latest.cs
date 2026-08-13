@@ -26,10 +26,14 @@ namespace EmuSen.LunaP.Threading
         private T? _pending;
         private int _scheduled;
 
+        /// <summary>Presents only the newest value offered, dropping anything superseded while the UI was busy.</summary>
+        /// <param name="present">Runs on the UI thread with the newest value. Never runs concurrently with itself.</param>
         public Latest(Action<T> present) =>
             _present = present ?? throw new ArgumentNullException(nameof(present));
 
         // Hands over a value. The previous one, if it has not been shown yet, is dropped.
+        /// <summary>Offers a value to present. Safe to call from any thread.</summary>
+        /// <param name="value">The value. If one is already waiting it is replaced, so a fast producer never queues work behind itself.</param>
         public void Offer(T value)
         {
             if (value is null) throw new ArgumentNullException(nameof(value));

@@ -53,6 +53,13 @@ nothing, nothing changes (`§26`).
   the palette. Chosen against WCAG 1.4.11's 3:1 rather than by eye, because the
   splitter it draws is a control you have to see to use — the subtle value a
   dark theme reaches for measures 1.51:1 (`§26.9`).
+- **IntelliSense for the whole surface, not just the type names.** The shipped
+  `EmuSen.LunaP.xml` went from 63 entries to 379: every member now says what it
+  does, with a sentence for every parameter (212 of them), what it returns (85),
+  and what it throws (14). The delegate seams say when they are called and how
+  often — `LunaList<T>.Key` and `LunaTable<T>.Key` in particular, whose
+  reference-identity default loses the selection on every refresh when rows are
+  rebuilt rather than reused (`§41`).
 - **`UiTest.Redraw(window)` and `UiTest.AssertMatchesBaseline(name, window)`**, in
   `EmuSen.LunaP.Testing`. On macOS a window's **first** draw is not its steady
   state, so a render baseline written from one and compared against any later

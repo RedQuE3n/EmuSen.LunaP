@@ -20,6 +20,7 @@ namespace EmuSen.LunaP.Controls
         // ever selecting this control - our own styles and a host's CSS rule alike, silently. The
         // class is what a selector can still name: `ToggleSwitch.luna-switch` reaches this and not a
         // stock ToggleSwitch. Kept as a const because the CSS vocabulary and the XAML both spell it.
+        /// <summary>The style class this control adds to itself, so a selector can reach it despite its style key being ToggleSwitch.</summary>
         public const string StyleClass = "luna-switch";
 
         public LunaSwitch() => Classes.Add(StyleClass);
@@ -27,6 +28,7 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<string> LabelProperty =
             AvaloniaProperty.Register<LunaSwitch, string>(nameof(Label), string.Empty);
 
+        /// <summary>The text beside the switch, which is also what a screen reader announces it as.</summary>
         public string Label
         {
             get => GetValue(LabelProperty);
@@ -86,9 +88,11 @@ namespace EmuSen.LunaP.Controls
         protected override Type StyleKeyOverride => typeof(ComboBox);
 
         // What a selector can name once the line above has taken the type away - see LunaSwitch and §30.
+        /// <summary>The style class this control adds to itself, so a selector can reach it despite its style key being ComboBox.</summary>
         public const string StyleClass = "luna-dropdown";
 
         // Raised only for a real user choice, never for the selection set while filling the list.
+        /// <summary>Raised when the user picks an item. NOT raised by Fill, so restoring a selection cannot be mistaken for a choice.</summary>
         public event Action<object?>? Chose;
 
         // Was a bare bool, and is a Suppressor now that the general form of this guard exists in
@@ -107,6 +111,9 @@ namespace EmuSen.LunaP.Controls
         }
 
         // Replaces the items and the selection together, without Chose firing for the reset.
+        /// <summary>Replaces the items and restores a selection without raising Chose.</summary>
+        /// <param name="items">The items. Their ToString is what is shown.</param>
+        /// <param name="selected">Which to select, or null for none. Safe to call before the control has a template.</param>
         public void Fill(IEnumerable items, object? selected)
         {
             using (_filling.Suppress())
@@ -124,10 +131,15 @@ namespace EmuSen.LunaP.Controls
         protected override Type StyleKeyOverride => typeof(TabControl);
 
         // What a selector can name once the line above has taken the type away - see LunaSwitch and §30.
+        /// <summary>The style class this control adds to itself, so a selector can reach it despite its style key being TabControl.</summary>
         public const string StyleClass = "luna-tabs";
 
         public Tabs() => Classes.Add(StyleClass);
 
+        /// <summary>Adds a tab at the end.</summary>
+        /// <param name="header">The tab label.</param>
+        /// <param name="content">What the tab shows.</param>
+        /// <returns>The tab that was added, for a caller that needs to select or restyle it.</returns>
         public TabItem Add(string header, Control content)
         {
             var tab = new TabItem { Header = header, Content = content };
@@ -136,6 +148,8 @@ namespace EmuSen.LunaP.Controls
         }
 
         // Everything after the tabs declared up front, for a list rebuilt when the console set changes.
+        /// <summary>Removes every tab from a position onwards, for a pane whose later tabs depend on an earlier choice.</summary>
+        /// <param name="index">The first tab to remove. Beyond the end removes nothing.</param>
         public void RemoveFrom(int index)
         {
             while (Items.Count > index) Items.RemoveAt(Items.Count - 1);

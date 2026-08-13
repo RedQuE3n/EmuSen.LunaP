@@ -15,11 +15,17 @@ namespace EmuSen.LunaP.Commands
     /// <summary>A titled run of actions forming one top-level menu or one submenu.</summary>
     public sealed class LunaMenu
     {
+        /// <summary>A titled menu, written inline with its actions.</summary>
+        /// <param name="title">The top-level title, as shown in the menu bar.</param>
+        /// <param name="items">The actions, in order. Use LunaAction.Separator for a divider and an action with a Submenu for a nested menu.</param>
         public LunaMenu(string title, params LunaAction[] items)
             : this(title, (IEnumerable<LunaAction>)(items ?? Array.Empty<LunaAction>()))
         {
         }
 
+        /// <summary>A titled menu built from an existing sequence of actions.</summary>
+        /// <param name="title">The top-level title, as shown in the menu bar.</param>
+        /// <param name="items">The actions, in order. Copied, so later changes to the sequence are not seen.</param>
         public LunaMenu(string title, IEnumerable<LunaAction> items)
         {
             Title = title ?? throw new ArgumentNullException(nameof(title));
@@ -28,8 +34,10 @@ namespace EmuSen.LunaP.Commands
 
         // What the menu bar shows. Not an action's Text: a menu is not a command and cannot be
         // invoked, which is why this type exists rather than a LunaAction with children.
+        /// <summary>The title shown in the menu bar.</summary>
         public string Title { get; }
 
+        /// <summary>The actions in this menu, in order, including separators and submenu owners.</summary>
         public IReadOnlyList<LunaAction> Items { get; }
 
         // Every action reachable from here, submenus included, in the order a reader meets them.
@@ -37,6 +45,8 @@ namespace EmuSen.LunaP.Commands
         // as well as one on a top-level item, and a caller should never have to flatten by hand to
         // get that. Separators are skipped - they are not commands and binding a key to one would
         // be binding a key to nothing.
+        /// <summary>Every action this menu can reach, including those nested in submenus, flattened.</summary>
+        /// <returns>The actions, with separators and submenu owners left out, so a caller binding shortcuts sees each invocable command once.</returns>
         public IEnumerable<LunaAction> Commands()
         {
             foreach (LunaAction item in Items)

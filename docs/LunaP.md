@@ -2597,7 +2597,7 @@ it earns one by being a gap somebody can already point at.
 
 ### 34.1 The documentation debt, which is the largest item
 
-**Every public type now says what it is; almost no member does.** §33.2 argued that 99 of the 460
+~~**Every public type now says what it is; almost no member does.**~~ **Closed by §41.** §33.2 argued that 99 of the 460
 members — Avalonia `StyledProperty` fields and protected framework overrides — have no sentence
 available except one restating the name, and that argument stands. **It says nothing about the other
 ~361**, which is the real job:
@@ -2612,13 +2612,13 @@ available except one restating the name, and that argument stands. **It says not
   the contract. `LunaList<T>.Key` defaulting to reference identity — right for a cached model, wrong
   for rows rebuilt on every poll — is documented in a `//` comment a consumer never sees.
 
-`DocumentationTests` deliberately will not ask for any of this. When it is done, it should.
+`DocumentationTests` deliberately will not ask for any of this. When it is done, it should. **It does now — `MemberDocumentationTests`, added in §41, asks for all four.**
 
 ### 34.2 The rest of the register
 
 | Open | Where it is already argued | Note |
 |---|---|---|
-| Member-level API docs | §33.4, §34.1 | the largest, and the one a consuming dev feels first |
+| ~~Member-level API docs~~ | **closed by §41** | 379 entries ship, with 212 `<param>`, 85 `<returns>` and 14 `<exception>`; the guard finds its own subjects, and excuses only what §33.2's argument covers |
 | ~~Nullability absent from the API snapshot~~ | **closed by §32.6** | 104 lines gained annotations; read state vs write state was the part that needed deciding, not the reflection |
 | ~~CI runs on one Linux runner~~ | **closed by §35** | matrix added; the audit found one platform branch, and it turned out to be untested, undocumented here, and currently a no-op (§35.1) |
 | Trimming: **measured, not fixed** (AOT: never a stated goal, see §36.4) | §36 | ~~`CssTheme` is the problem~~ — **that guess was wrong (§36)**. Three real sites: the JSON settings seam and runtime `.axaml` theme loading. Trim-safe is reachable, AOT-safe is not while the default store is reflection JSON; §36.3 sets out the two designs |
@@ -3321,3 +3321,102 @@ case red — `console-pane .output`, `font-family` — and nothing else.
   general, and §30.5's third bullet still stands.
 - **The sweep still does not check the value is correct**, only that the part received it.
 - **States other than `meter-row.hot` remain unswept**, per §39.5.
+
+---
+
+## 41. Every member says what it does, and what its arguments mean
+
+§33 documented sixty-three public types and stopped, on an argument that was right: `CS1591` would
+have demanded a sentence for all 460 public members, and 99 of them are Avalonia property fields and
+protected framework overrides where the only available sentence restates the name. §34.1 wrote down
+what that left — *"almost no member does"* — and called it the largest item in the register.
+
+It is done. **The shipped `EmuSen.LunaP.xml` now carries 379 entries**, read out of the `.nupkg`
+rather than the build directory:
+
+| | |
+|---:|---|
+| 63 | types |
+| 144 | methods and constructors |
+| 109 | properties |
+| 51 | fields and constants |
+| 12 | events |
+| **212** | `<param>` tags, across 122 members |
+| **85** | `<returns>` |
+| **14** | `<exception>` |
+
+§34.1's own example, `LunaTable<T>.Column`, now ships a summary, a sentence for each of its three
+parameters, and what it hands back.
+
+### 41.1 The rule, chosen so filler cannot satisfy it
+
+1. Every member that is not excused has a `<summary>`.
+2. **Every parameter has a `<param>`.** This is the half that was entirely absent and carries the
+   most: a name and a type do not say whether a `Func` is called once or on every row.
+3. Every non-void return has a `<returns>`.
+4. None of the above is empty, `TODO`, or under twelve characters.
+
+The threshold caught one of my own: `<param name="text">The label.</param>` is ten characters and
+says nothing the parameter name did not.
+
+### 41.2 What is excused, and why none of it is laziness
+
+§33.2's argument extended rather than repeated. A member is excused when the only available sentence
+restates something the reader already has:
+
+| Excused | Why |
+|---|---|
+| `StyledProperty` / `DirectProperty` fields | the backing field for a property that carries the sentence (§33.2) |
+| protected framework overrides | `OnApplyTemplate`'s contract is Avalonia's; restating it here is how it comes to disagree with Avalonia's |
+| **overridden properties** | `StyleKeyOverride`, on all eight controls that borrow a stock template — the same argument, and the methods-only rule missed it |
+| **enum `value__`** | the storage the compiler emits. There is nowhere to put a `///` on it |
+| **parameterless constructors** | `new ButtonBar()` takes no arguments and makes the type it is named after |
+| property and event accessors | the property carries the sentence |
+
+**Excused means not required, not forbidden.** `ToolWindow()` is a parameterless constructor and does
+carry something — *"restores its own position and closes on Escape"* — so it has one.
+
+### 41.3 The delegate seams, which is where this was worth most
+
+§34.1 said the seams bite hardest, and named the case: `LunaList<T>.Key` defaulting to reference
+identity, *"right for a cached model, wrong for rows rebuilt on every poll"*, documented in a `//`
+comment a consumer never sees. It is a `<remarks>` on both `LunaList<T>.Key` and `LunaTable<T>.Key`
+now, in those words.
+
+The same applies wherever a delegate crosses the boundary — `Label` and `text` are called for every
+item on every `Refresh`, so they must be cheap and free of side effects; `HistorySource` is called
+each time recall starts, so a live list needs no notification; `WindowSlot.create` runs **only** when
+nothing is open and `refresh` runs either way, which is the whole reason both parameters exist.
+
+### 41.4 The guard on the guard
+
+`MemberDocumentationTests` builds XML documentation IDs from reflection — generic arity as `` `1 ``,
+a type's generic argument as `` `0 `` and a method's as ``` ``0 ```, byref as `@`. **A bug in that
+construction would report every member as undocumented forever, or worse, match nothing and pass.**
+
+So `Every_documented_member_is_one_this_test_knows_about` walks the other way: every `M:`/`P:`/`F:`/`E:`
+key in the `.xml` must be one this file also generated. It earned its place twice — first on `T:`
+keys, which belong to `DocumentationTests`, and then on `ActionSync`, an **internal** type whose
+members are documented deliberately. Documenting an internal type is good practice and must not fail
+here, so the check tolerates any member of a non-public type while still catching an ID it cannot
+construct.
+
+**The sabotages:** deleting the summary on `Card.HasHeader` names it; deleting one `<param>` from
+`LunaTable<T>.Column` reports *"no `<param>` for: width"* — the member and the parameter, not just a
+count.
+
+### 41.5 What this does not do
+
+- **It does not check that a sentence is TRUE.** Twelve characters of confident nonsense passes. This
+  is the same exposure every comment in the repository has, and CLAUDE.md's answer applies here with
+  more force, because a consumer reads these without the code beside them.
+- **`<exception>` is documented where the toolkit throws, and nothing enforces that.** Fourteen tags,
+  found by grepping for `throw new` and checking each public member. A new guard clause added
+  tomorrow gets no tag and nothing says so — reflection cannot see a `throw`, so this would need
+  Roslyn or an analyzer.
+- **It does not require `<remarks>`, `<example>` or `<see cref>`.** They are used where they carry
+  something and are nowhere enforced.
+- **Nothing renders this as browsable documentation.** It reaches IntelliSense, which was the point;
+  a docs site is a separate decision nobody has made.
+- **The twelve-character threshold is arbitrary and deliberately low.** It catches an empty tag or a
+  stub, not a sentence somebody thought about and got wrong.

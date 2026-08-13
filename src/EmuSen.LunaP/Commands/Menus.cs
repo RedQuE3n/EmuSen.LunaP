@@ -19,6 +19,9 @@ namespace EmuSen.LunaP.Commands
         // One menu's worth of entries. Separators become Avalonia's Separator, which is a control
         // and not a menu item, which is precisely why LunaAction carries a flag instead of the
         // caller composing two collections.
+        /// <summary>Builds the menu items for one menu, each following its action.</summary>
+        /// <param name="menu">The menu to build.</param>
+        /// <returns>Controls to put in a MenuItem or ContextMenu, with separators rendered as lines.</returns>
         public static IReadOnlyList<Control> Items(LunaMenu menu)
         {
             if (menu is null) throw new ArgumentNullException(nameof(menu));
@@ -26,6 +29,9 @@ namespace EmuSen.LunaP.Commands
             return Items(menu.Items);
         }
 
+        /// <summary>Builds menu items for a sequence of actions, each following its action.</summary>
+        /// <param name="actions">The actions, in order.</param>
+        /// <returns>Controls to put in a MenuItem or ContextMenu.</returns>
         public static IReadOnlyList<Control> Items(IEnumerable<LunaAction> actions)
         {
             if (actions is null) throw new ArgumentNullException(nameof(actions));
@@ -44,8 +50,14 @@ namespace EmuSen.LunaP.Commands
         // visible in the code - building one by hand is a MenuItem per command with its own
         // Click handler, its own enabled state and no relationship to the menu bar entry that does
         // the same thing. Given actions, it is one call.
+        /// <summary>A context menu built from actions, written inline.</summary>
+        /// <param name="actions">The actions, in order.</param>
+        /// <returns>A ContextMenu to assign to a control.</returns>
         public static ContextMenu Context(params LunaAction[] actions) => Context((IEnumerable<LunaAction>)actions);
 
+        /// <summary>A context menu built from a sequence of actions.</summary>
+        /// <param name="actions">The actions, in order.</param>
+        /// <returns>A ContextMenu to assign to a control.</returns>
         public static ContextMenu Context(IEnumerable<LunaAction> actions) =>
             new() { ItemsSource = Items(actions) };
 
@@ -60,6 +72,10 @@ namespace EmuSen.LunaP.Commands
         // Returns what it added so a caller rebuilding its menus can remove precisely those again.
         // Clearing the target's KeyBindings wholesale would throw away any the application set for
         // itself, which is a toolkit deciding it owns a collection it merely contributes to.
+        /// <summary>Binds every shortcut in these menus, including nested ones, so the keys actually work.</summary>
+        /// <param name="target">What the keys are bound on, usually the window.</param>
+        /// <param name="menus">The menus whose actions carry shortcuts.</param>
+        /// <returns>The bindings that were added, to hand to Unbind when the menus are replaced. A menu item shows a gesture without binding it, which is why this call exists at all.</returns>
         public static IReadOnlyList<KeyBinding> BindShortcuts(InputElement target, IEnumerable<LunaMenu> menus)
         {
             if (menus is null) throw new ArgumentNullException(nameof(menus));
@@ -69,6 +85,10 @@ namespace EmuSen.LunaP.Commands
             return BindShortcuts(target, actions);
         }
 
+        /// <summary>Binds the shortcut of every action that has one.</summary>
+        /// <param name="target">What the keys are bound on, usually the window.</param>
+        /// <param name="actions">The actions to bind. Those without a Shortcut are skipped.</param>
+        /// <returns>The bindings that were added, to hand to Unbind later.</returns>
         public static IReadOnlyList<KeyBinding> BindShortcuts(InputElement target, IEnumerable<LunaAction> actions)
         {
             if (target is null) throw new ArgumentNullException(nameof(target));
@@ -110,6 +130,9 @@ namespace EmuSen.LunaP.Commands
             return added;
         }
 
+        /// <summary>Removes bindings previously added by BindShortcuts.</summary>
+        /// <param name="target">The element they were bound on.</param>
+        /// <param name="bindings">The bindings to remove. Leaving these behind is how a key outlives the menu that advertised it.</param>
         public static void Unbind(InputElement target, IEnumerable<KeyBinding> bindings)
         {
             if (target is null) throw new ArgumentNullException(nameof(target));

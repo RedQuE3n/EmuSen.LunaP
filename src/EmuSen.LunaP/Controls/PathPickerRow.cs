@@ -11,7 +11,9 @@ namespace EmuSen.LunaP.Controls
     /// <summary>Whether a path picker asks the platform for a file or for a directory.</summary>
     public enum PathPickerMode
     {
+        /// <summary>Browse for a folder.</summary>
         Folder,
+        /// <summary>Browse for an existing file.</summary>
         OpenFile,
     }
 
@@ -34,8 +36,10 @@ namespace EmuSen.LunaP.Controls
         private Button? _browse;
 
         // Raised only when the user actually picks something, never on a cancel.
+        /// <summary>Raised when a path is chosen through the browse button, with the new path. Not raised when Path is set in code.</summary>
         public event Action<string>? PathPicked;
 
+        /// <summary>The current path. Setting it does not raise PathPicked.</summary>
         public string Path
         {
             get => GetValue(PathProperty);
@@ -43,18 +47,21 @@ namespace EmuSen.LunaP.Controls
         }
 
         // Shown when Path is empty - "(not set)" or "(default)", the caller's wording.
+        /// <summary>The grey text shown while the box is empty.</summary>
         public string Placeholder
         {
             get => GetValue(PlaceholderProperty);
             set => SetValue(PlaceholderProperty, value);
         }
 
+        /// <summary>The title of the picker dialog the browse button opens.</summary>
         public string BrowseTitle
         {
             get => GetValue(BrowseTitleProperty);
             set => SetValue(BrowseTitleProperty, value);
         }
 
+        /// <summary>Whether the browse button asks for a folder or an existing file.</summary>
         public PathPickerMode Mode
         {
             get => GetValue(ModeProperty);

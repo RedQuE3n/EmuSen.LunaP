@@ -14,8 +14,11 @@ namespace EmuSen.LunaP.Controls
     /// <summary>Which edge of a shell window a side panel is docked to.</summary>
     public enum PanelSide
     {
+        /// <summary>Docked to the left edge, sized by PanelSize as a width.</summary>
         Left,
+        /// <summary>Docked to the right edge, sized by PanelSize as a width.</summary>
         Right,
+        /// <summary>Docked to the bottom edge, sized by PanelSize as a height.</summary>
         Bottom,
     }
 
@@ -59,15 +62,18 @@ namespace EmuSen.LunaP.Controls
         // Raised when the panel is shown or hidden, from any cause - the close button, the toggle
         // action, or a caller setting the property. AppWindow listens so it can take the pane out
         // of the layout rather than leaving an empty strip where it was.
+        /// <summary>Raised after the panel opens or closes, however that happened - the toggle, the close button, or IsOpen being set.</summary>
         public event Action<SidePanel>? OpenChanged;
 
         // What the panel's header says, and what its toggle action is called in the View menu.
+        /// <summary>The panel title, shown in its header and used as the toggle label.</summary>
         public string Title
         {
             get => GetValue(TitleProperty);
             set => SetValue(TitleProperty, value);
         }
 
+        /// <summary>Whether the panel is showing. Setting this is equivalent to using the toggle.</summary>
         public bool IsOpen
         {
             get => GetValue(IsOpenProperty);
@@ -75,6 +81,7 @@ namespace EmuSen.LunaP.Controls
         }
 
         // Which edge AppWindow docks it to. Ignored by a panel used on its own.
+        /// <summary>Which edge of the shell the panel docks to.</summary>
         public PanelSide Side
         {
             get => GetValue(SideProperty);
@@ -83,6 +90,7 @@ namespace EmuSen.LunaP.Controls
 
         // The width, or the height for a bottom panel. Only the starting value: once the panel is
         // in an AppWindow the divider owns this number and remembers what the user dragged it to.
+        /// <summary>The panel thickness in pixels: its width when docked left or right, its height when docked top or bottom.</summary>
         public double PanelSize
         {
             get => GetValue(PanelSizeProperty);
@@ -91,6 +99,7 @@ namespace EmuSen.LunaP.Controls
 
         // False hides the header's close button, for a panel that is the point of the window.
         // The toggle action still works - this is about the chrome, not about permission.
+        /// <summary>Whether the header shows a close button. The toggle still works either way.</summary>
         public bool CanClose
         {
             get => GetValue(CanCloseProperty);
@@ -100,6 +109,7 @@ namespace EmuSen.LunaP.Controls
         // Setting this is what makes the panel remembered: whether it was open, under the same key
         // the divider saves its size under, so "shut, and 320 wide when it comes back" is one
         // record. Never remembered without one, like every other opt-in in the kit.
+        /// <summary>The name this panel remembers its size and open state under. Null means nothing is saved, which is the default.</summary>
         public string? PanelKey { get; set; }
 
         // The View-menu entry for this panel, created on first use and then the same object
@@ -108,6 +118,7 @@ namespace EmuSen.LunaP.Controls
         // Built lazily rather than in the constructor because most panels never appear in a menu,
         // and an action that exists is an action the shortcut binder walks and the theme picker
         // has to skip.
+        /// <summary>A checkable action that opens and closes this panel, for a View menu. The SAME object every time, and the same one the close button uses, so every surface agrees about whether the panel is open.</summary>
         public LunaAction ToggleAction => _toggle ??= BuildToggle();
 
         // UIA's Pane, which is what a dockable region is, named by its title. A reader moving

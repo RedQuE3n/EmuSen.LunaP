@@ -25,6 +25,7 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<string> DetailProperty =
             AvaloniaProperty.Register<EmptyState, string>(nameof(Detail), string.Empty);
 
+        /// <summary>The main line: what is not here, in a few words.</summary>
         public string Message
         {
             get => GetValue(MessageProperty);
@@ -32,12 +33,14 @@ namespace EmuSen.LunaP.Controls
         }
 
         // The second line: what would put something here. Hidden when empty.
+        /// <summary>A second, smaller line saying what to do about it. Empty collapses it.</summary>
         public string Detail
         {
             get => GetValue(DetailProperty);
             set => SetValue(DetailProperty, value);
         }
 
+        /// <summary>Whether a detail line was given, which is what collapses it when none was.</summary>
         public bool HasDetail => !string.IsNullOrWhiteSpace(Detail);
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

@@ -41,10 +41,13 @@ namespace EmuSen.LunaP.Threading
         private int _depth;
 
         // True while at least one Suppress() scope is open.
+        /// <summary>Whether any scope is currently open. False once every scope taken has been disposed.</summary>
         public bool IsSuppressing => _depth > 0;
 
         // Opens a scope. Dispose closes it - `using` is the intended shape, so an exception
         // thrown mid-update cannot leave notifications suppressed for the rest of the process.
+        /// <summary>Opens a scope. Scopes nest: suppression ends when the outermost one is disposed, not the first.</summary>
+        /// <returns>A handle to dispose when the scope ends. Disposing it twice is harmless.</returns>
         public IDisposable Suppress()
         {
             _depth++;

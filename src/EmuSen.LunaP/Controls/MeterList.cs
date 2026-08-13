@@ -9,6 +9,9 @@ namespace EmuSen.LunaP.Controls
 {
     // One meter, as plain data - the layering rule keeps core telemetry types out of here, so callers project onto this.
     /// <summary>One row of a meter list: a label, a percentage, and the text shown beside it.</summary>
+    /// <param name="Label">What the meter is measuring.</param>
+    /// <param name="Percent">How full the bar is, 0 to 100. The load band follows from this.</param>
+    /// <param name="ValueText">The reading shown at the right - "3.2 GB", "61%" - which need not be the percentage.</param>
     public readonly record struct MeterEntry(string Label, double Percent, string ValueText);
 
     // A vertical run of MeterRows. Grouping stays with the caller: the group headers are core/DianaOS vocabulary - see docs/LunaP.md §5.2.
@@ -20,6 +23,7 @@ namespace EmuSen.LunaP.Controls
 
         private StackPanel? _panel;
 
+        /// <summary>The rows to show. Setting this rebuilds them, so hand over a whole list rather than mutating one in place.</summary>
         public IReadOnlyList<MeterEntry> Meters
         {
             get => GetValue(MetersProperty);

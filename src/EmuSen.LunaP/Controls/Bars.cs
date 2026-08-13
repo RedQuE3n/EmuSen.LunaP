@@ -25,6 +25,7 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<string> StatusProperty =
             AvaloniaProperty.Register<StatusBar, string>(nameof(Status), string.Empty);
 
+        /// <summary>The status text. The bar hides itself entirely while this is empty rather than reserving a blank strip.</summary>
         public string Status
         {
             get => GetValue(StatusProperty);

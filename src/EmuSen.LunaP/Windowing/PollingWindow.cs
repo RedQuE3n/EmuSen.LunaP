@@ -12,14 +12,18 @@ namespace EmuSen.LunaP.Windowing
         private DispatcherTimer? _timer;
         private bool _started;
 
+        /// <summary>How often Refresh is called. Read once when polling starts, so returning a changing value does not retime a running timer.</summary>
         protected abstract TimeSpan RefreshInterval { get; }
 
+        /// <summary>Reads whatever this window shows and updates its controls. Called on the UI thread on every tick, so it should be cheap and must not block.</summary>
         protected abstract void Refresh();
 
         // Whether the timer is actually running right now - false while hidden or minimised. Public so a test can assert suspension without racing a clock.
+        /// <summary>Whether the refresh timer is currently running.</summary>
         public bool IsPolling => _timer?.IsEnabled ?? false;
 
         // Call at the end of a derived constructor for an immediate first paint; Opened calls it anyway, so forgetting is late, not fatal.
+        /// <summary>Starts the timer, after a first immediate Refresh. Polling stops on its own when the window closes.</summary>
         protected void StartPolling()
         {
             if (_started) return;
@@ -33,6 +37,7 @@ namespace EmuSen.LunaP.Windowing
         }
 
         // Public so a caller that changes what this window is looking at can repaint without waiting for the next tick.
+        /// <summary>Refreshes immediately, without waiting for the next tick.</summary>
         public void RefreshNow()
         {
             if (_started) Refresh();

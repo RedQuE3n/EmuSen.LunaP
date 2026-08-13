@@ -16,9 +16,13 @@ namespace EmuSen.LunaP.Testing
 {
     // A captured window, as plain RGBA8888.
     /// <summary>One captured frame: its raw RGBA pixels and the dimensions they came at.</summary>
+    /// <param name="Rgba">The pixels, four bytes each in R, G, B, A order, row by row from the top.</param>
+    /// <param name="Width">Width in pixels.</param>
+    /// <param name="Height">Height in pixels.</param>
     public readonly record struct RenderedFrame(byte[] Rgba, int Width, int Height)
     {
         // FNV-1a, which is enough to say "these two renders differ" and is not asked to do anything else.
+        /// <summary>An FNV-1a hash of every pixel, for asking whether two frames differ.</summary>
         public ulong Hash
         {
             get
@@ -30,6 +34,9 @@ namespace EmuSen.LunaP.Testing
         }
 
         // Stops early once the caller has seen enough; a flat-image check does not need the true total.
+        /// <summary>How many distinct RGB values the frame contains, ignoring alpha.</summary>
+        /// <param name="stopAt">Stop counting once this many have been seen. A flat-image check does not need the true total, and a full-window count is expensive.</param>
+        /// <returns>The number of distinct colours, capped at <paramref name="stopAt"/>.</returns>
         public int DistinctColours(int stopAt = int.MaxValue)
         {
             var seen = new HashSet<uint>();
@@ -56,13 +63,21 @@ namespace EmuSen.LunaP.Testing
 
         // Resolved from the CONSUMER's test assembly, not this one - UiSession explains why that
         // distinction only appears once the harness ships as a package.
+        /// <summary>The headless session every dispatch goes through, resolved from the consumer's own test assembly.</summary>
         public static HeadlessUnitTestSession Session => UiSession.Current;
 
         // Window and control construction is only valid on the one dispatcher this session owns.
+        /// <summary>Runs a body on the session's UI thread, which is the only thread Avalonia controls may be built or touched on.</summary>
+        /// <param name="body">What to run. Constructing windows and controls, showing them, and asserting about them all belong in here.</param>
+        /// <returns>A task that completes when the body has run. Return it from the test method; do not block on it, because the dispatcher this waits on is the one the body needs.</returns>
         public static Task Run(Action body) => Session.Dispatch(body, default);
 
         // Cheap and literal: whatever has already been drawn. See Redraw for why that is not always
         // the frame you want.
+        /// <summary>Captures whatever the window has already drawn.</summary>
+        /// <param name="window">A window that has been shown.</param>
+        /// <returns>The frame currently held for that window. This does NOT draw: capturing an unchanged window copies the frame already there, so the result may be the window's first draw. Use <see cref="Redraw"/> when that matters.</returns>
+        /// <exception cref="System.InvalidOperationException">The window has never been shown, so no frame exists.</exception>
         public static RenderedFrame Capture(Window window)
         {
             using WriteableBitmap bitmap = window.CaptureRenderedFrame()
@@ -95,6 +110,9 @@ namespace EmuSen.LunaP.Testing
         // The leading capture is there so the frame handed back is never the first draw even when
         // the caller has not captured yet - if Show() has not drawn, that call is draw one.
         /// <summary>Forces a genuine second render pass and captures that, rather than the window's first draw.</summary>
+        /// <param name="window">A window that has been shown. Every visual in it is invalidated, so this costs a full redraw.</param>
+        /// <returns>A frame from a genuine second draw pass.</returns>
+        /// <exception cref="System.InvalidOperationException">The window has never been shown.</exception>
         public static RenderedFrame Redraw(Window window)
         {
             using WriteableBitmap bitmap = Rasterise(window);
@@ -112,6 +130,9 @@ namespace EmuSen.LunaP.Testing
                 ?? throw new InvalidOperationException($"{window.GetType().Name} captured no frame - it was probably never shown.");
         }
 
+        /// <summary>Copies a bitmap's pixels out as plain RGBA.</summary>
+        /// <param name="bitmap">The bitmap to read. It is not disposed.</param>
+        /// <returns>The pixels, with the dimensions they were read at.</returns>
         public static RenderedFrame Capture(WriteableBitmap bitmap)
         {
             int width = bitmap.PixelSize.Width;
@@ -127,6 +148,11 @@ namespace EmuSen.LunaP.Testing
         // handing the frame to AssertMatchesBaseline and the window's FIRST draw is not a safe thing
         // to compare against a baseline (§38). The colour count does not care either way; the
         // baseline comparison is the reason.
+        /// <summary>Asserts the window rendered as more than one flat colour, which is what a failed layout or a missing template looks like.</summary>
+        /// <param name="window">A window that has been shown.</param>
+        /// <param name="name">A name for this capture, used in the failure message and as the file name under EMUSEN_UI_DUMP.</param>
+        /// <param name="minColours">How many distinct colours count as laid out. The default suits a small control; a dense window should ask for more, since eight is easy to reach by accident.</param>
+        /// <returns>The captured frame, so a caller can make further assertions about it.</returns>
         public static RenderedFrame AssertLaidOut(Window window, string name, int minColours = 8)
         {
             using WriteableBitmap bitmap = Rasterise(window);
@@ -162,6 +188,9 @@ namespace EmuSen.LunaP.Testing
         //
         // The pixel count matters as much as the verdict: two frames differing in 40 bytes along one
         // glyph edge is antialiasing, and two differing in half the buffer is a different window.
+        /// <summary>Asserts the window renders identically twice, which is what a baseline comparison requires of it.</summary>
+        /// <param name="name">A name for the capture, used in the failure message and in dumped file names.</param>
+        /// <param name="build">Builds a fresh, unshown window. Called several times, so it must return a new instance each time rather than the same one.</param>
         public static void AssertStable(string name, Func<Window> build)
         {
             // THE FIRST FRAME IS THROWN AWAY, and §37 is the measurement that put it there. On
@@ -266,6 +295,9 @@ namespace EmuSen.LunaP.Testing
         }
 
         // Avalonia's own encoder, so this project needs no imaging dependency of its own.
+        /// <summary>Writes a capture to disk as a PNG, if EMUSEN_UI_DUMP names a directory.</summary>
+        /// <param name="name">The file name to write, without an extension.</param>
+        /// <param name="bitmap">The bitmap to encode.</param>
         public static void Dump(string name, WriteableBitmap bitmap)
         {
             if (Environment.GetEnvironmentVariable(DumpVariable) is not { Length: > 0 } directory) return;
@@ -278,6 +310,8 @@ namespace EmuSen.LunaP.Testing
         // The overload to reach for, and the reason the other one is easy to misuse: this one owns
         // the rasterisation, so the frame it compares is never the window's first draw (§38).
         /// <summary>Redraws the window and compares that frame against its stored baseline.</summary>
+        /// <param name="name">The baseline's file name, without an extension.</param>
+        /// <param name="window">A window that has been shown. It is redrawn before the comparison.</param>
         public static void AssertMatchesBaseline(string name, Window window) =>
             AssertMatchesBaseline(name, Redraw(window));
 
@@ -289,6 +323,9 @@ namespace EmuSen.LunaP.Testing
         // of antialiasing with nothing wrong - measured, §37.1. Prefer the Window overload above,
         // which cannot get this wrong; if you already hold a frame, get it from Redraw rather than
         // from Capture. §38.2 is why "capture it twice" is not the workaround it appears to be.
+        /// <summary>Compares a frame against its stored baseline, if EMUSEN_UI_BASELINE names a directory.</summary>
+        /// <param name="name">The baseline's file name, without an extension.</param>
+        /// <param name="frame">The frame to compare. Must not be the window's first draw; see the note above and prefer the overload that takes the window.</param>
         public static void AssertMatchesBaseline(string name, RenderedFrame frame)
         {
             if (Environment.GetEnvironmentVariable(BaselineVariable) is not { Length: > 0 } directory) return;

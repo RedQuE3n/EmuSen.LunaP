@@ -26,6 +26,11 @@ namespace EmuSen.LunaP.Threading
         private readonly DispatcherTimer _timer;
         private readonly Action _action;
 
+        /// <summary>Collapses a burst of pokes into one action, run once the pokes stop.</summary>
+        /// <param name="delay">How long the quiet period must be before the action runs. Each poke restarts it.</param>
+        /// <param name="action">What to run, on the UI thread, once the pokes stop.</param>
+        /// <exception cref="System.ArgumentOutOfRangeException"><paramref name="delay"/> is zero or negative.</exception>
+        /// <exception cref="System.ArgumentNullException"><paramref name="action"/> is null.</exception>
         public Debounce(TimeSpan delay, Action action)
         {
             if (delay <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(delay));
@@ -42,11 +47,13 @@ namespace EmuSen.LunaP.Threading
             };
         }
 
+        /// <summary>Whether a poke is waiting for its quiet period to elapse.</summary>
         public bool IsPending => _timer.IsEnabled;
 
         // Restarts the delay. Stop-then-start rather than leaving it running, because a timer that
         // is merely still enabled would fire `delay` after the FIRST poke instead of the last,
         // which is the whole behaviour being bought here.
+        /// <summary>Asks for the action to run, restarting the delay. Calling this repeatedly keeps postponing it.</summary>
         public void Poke()
         {
             _timer.Stop();
@@ -55,10 +62,12 @@ namespace EmuSen.LunaP.Threading
 
         // Drops anything pending. For a window closing, or a filter being cleared by something
         // other than typing.
+        /// <summary>Drops a pending action without running it.</summary>
         public void Cancel() => _timer.Stop();
 
         // Runs now if something is pending, otherwise does nothing. For Enter, where the user has
         // said they are finished and waiting out the delay would just feel slow.
+        /// <summary>Runs a pending action immediately instead of waiting out the delay. Does nothing when none is pending.</summary>
         public void Flush()
         {
             if (!_timer.IsEnabled) return;

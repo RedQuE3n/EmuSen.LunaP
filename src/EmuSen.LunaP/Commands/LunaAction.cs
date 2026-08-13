@@ -40,6 +40,9 @@ namespace EmuSen.LunaP.Commands
 
         private readonly Action<LunaAction>? _triggered;
 
+        /// <summary>An action whose handler is given the action itself, which is what a checkable one needs in order to read its own state.</summary>
+        /// <param name="text">The label every surface shows.</param>
+        /// <param name="triggered">Runs on the UI thread when the action is invoked, after a checkable action has already flipped. Null for an action that only exists to be followed.</param>
         public LunaAction(string text, Action<LunaAction>? triggered = null)
         {
             _text = text ?? throw new ArgumentNullException(nameof(text));
@@ -49,6 +52,9 @@ namespace EmuSen.LunaP.Commands
         // The zero-argument form, which is what most callers want. The one above exists because a
         // CHECKABLE action cannot use this one: reading `IsChecked` from inside the handler needs
         // the action, and the action is what is being constructed on that line.
+        /// <summary>An action with a plain handler, which is what most callers want.</summary>
+        /// <param name="text">The label every surface shows.</param>
+        /// <param name="triggered">Runs on the UI thread when the action is invoked. Use the other constructor if the handler needs to read IsChecked.</param>
         public LunaAction(string text, Action triggered)
             : this(text, triggered is null ? null : new Action<LunaAction>(_ => triggered()))
         {
@@ -57,20 +63,24 @@ namespace EmuSen.LunaP.Commands
         // Every surface built from this action re-reads it and updates itself. Raised for Text,
         // HelpText, Shortcut, IsEnabled, IsCheckable and IsChecked alike - a menu item cares about
         // all six, and one event with six subscribers beats six events with one each.
+        /// <summary>Raised whenever anything a surface displays changes: Text, HelpText, Shortcut, IsEnabled, IsCheckable or IsChecked. Every control built from this action follows it.</summary>
         public event Action<LunaAction>? Changed;
 
         // ICommand's own, which is what a stock Avalonia Button listens to. Raised alongside
         // Changed whenever IsEnabled moves, and never otherwise: re-querying CanExecute because a
         // label changed would be work for nothing on every keystroke of a live-updating caption.
+        /// <summary>ICommand notification, raised only when IsEnabled moves - not for a label change, which would re-query CanExecute on every keystroke of a live caption.</summary>
         public event EventHandler? CanExecuteChanged;
 
         // Raised after the handler runs, for a caller watching an action it did not construct -
         // the shell wiring a status line to "something happened", say. Not a substitute for the
         // handler: this fires for every invocation including a checkable's own state flip.
+        /// <summary>Raised after the handler has run, for a caller watching an action it did not construct. Fires for every invocation, including a checkable flipping itself.</summary>
         public event Action<LunaAction>? Invoked;
 
         // What the menu item and the toolbar button say. Settable, because half the actions worth
         // having are "Pause"/"Resume" on one command rather than two.
+        /// <summary>The label shown by the menu item, the toolbar button and everything else built from this action. Settable, so one command can read Pause and then Resume.</summary>
         public string Text
         {
             get => _text;
@@ -81,6 +91,7 @@ namespace EmuSen.LunaP.Commands
         // help text everywhere, which is the one place a toolbar can explain itself: a button
         // reading "Strip" has room for no more, and "Removes the existing form fields" has to live
         // somewhere a reader can reach.
+        /// <summary>The sentence after the label: the tooltip on a toolbar button, and the accessible help text everywhere. Null for an action whose label says everything.</summary>
         public string? HelpText
         {
             get => _helpText;
@@ -92,12 +103,14 @@ namespace EmuSen.LunaP.Commands
         // does what. KeyGesture rather than a string because it is Avalonia's own vocabulary and
         // `KeyGesture.Parse("Ctrl+S")` is what a caller writes anyway; a string property here
         // would mean this type owned a parser and its error handling, for nothing.
+        /// <summary>The key that invokes this action, written once and read by the menu item, the binding and the tooltip alike. Setting it does not bind anything on its own - see Menus.BindShortcuts.</summary>
         public KeyGesture? Shortcut
         {
             get => _shortcut;
             set => Set(ref _shortcut, value);
         }
 
+        /// <summary>Whether the action can be invoked. A disabled action does nothing at all when invoked: not the handler, not the state flip.</summary>
         public bool IsEnabled
         {
             get => _isEnabled;
@@ -114,6 +127,7 @@ namespace EmuSen.LunaP.Commands
         // A checkable action is a setting rather than a command - "Show the sidebar", "Wrap
         // lines". Invoking one flips it BEFORE the handler runs, so the handler reads the new
         // state, which is Qt's behaviour and the only one that makes a one-line handler possible.
+        /// <summary>Whether this is a setting rather than a command. Invoking a checkable action flips IsChecked BEFORE the handler runs, so the handler reads the new state.</summary>
         public bool IsCheckable
         {
             get => _isCheckable;
@@ -123,6 +137,7 @@ namespace EmuSen.LunaP.Commands
         // Setting this directly does NOT invoke the handler. That is the difference between the
         // application telling the action what is true and the user asking for a change, and
         // collapsing the two is how a settings dialog ends up applying everything twice on open.
+        /// <summary>Whether a checkable action is on. Setting this directly does NOT run the handler - that is the difference between the application stating what is true and the user asking for a change.</summary>
         public bool IsChecked
         {
             get => _isChecked;
@@ -140,21 +155,27 @@ namespace EmuSen.LunaP.Commands
         // item type. One list type, one loop, and a caller writes the divider where it goes rather
         // than composing two collections. Menus and toolbars render it as a line; everything else
         // ignores it.
+        /// <summary>Whether this is a divider rather than something to do. Menus and toolbars draw a line; everything else ignores it. Invoking one does nothing.</summary>
         public bool IsSeparator { get; private init; }
 
         // What this action opens instead of doing. This is exactly Qt's arrangement, where a
         // submenu is reached through the action that owns it, and it means a nested menu needs no
         // new item type either.
+        /// <summary>The menu this action opens instead of doing something, so a nested menu needs no second item type.</summary>
         public LunaMenu? Submenu { get; set; }
 
         // Set by ActionGroup.Add. Null for the overwhelming majority of actions.
+        /// <summary>The exclusive group this action belongs to, set by ActionGroup.Add. Null for almost every action.</summary>
         public ActionGroup? Group { get; internal set; }
 
+        /// <summary>A divider for a menu or toolbar, written inline with the actions around it.</summary>
+        /// <returns>An action that renders as a line and does nothing when invoked.</returns>
         public static LunaAction Separator() => new("-") { IsSeparator = true };
 
         // The user asking for it. A disabled action does nothing at all - not the handler, not the
         // state flip - so a stale toolbar button or a key binding that outlived its window cannot
         // reach a handler that was counting on being unreachable.
+        /// <summary>Invokes the action as the user would: flips a checkable one, runs the handler, then raises Invoked.</summary>
         public void Invoke()
         {
             if (!_isEnabled || IsSeparator) return;
@@ -209,11 +230,13 @@ namespace EmuSen.LunaP.Commands
         private readonly System.Collections.Generic.List<LunaAction> _members = new();
         private bool _sweeping;
 
+        /// <summary>The actions in this group, in the order they were added.</summary>
         public System.Collections.Generic.IReadOnlyList<LunaAction> Members => _members;
 
         // The member currently checked, or null before anything has been chosen. Null is a real
         // state and not a gap: a group of themes with none of them applied yet is exactly what a
         // freshly created group is.
+        /// <summary>The member currently checked, or null when none is. Setting it checks that one and unchecks the rest without running any handler.</summary>
         public LunaAction? Checked
         {
             get
@@ -230,6 +253,9 @@ namespace EmuSen.LunaP.Commands
         // Joining a group makes an action checkable, because there is no such thing as an
         // unchecked-and-uncheckable member of a radio set. Doing it here rather than making the
         // caller remember means one fewer way to build a group that silently does nothing.
+        /// <summary>Adds an action to the group, making it checkable and exclusive with the others.</summary>
+        /// <param name="action">The action to add. It becomes checkable, and invoking it can only check it - clicking the checked member again cannot turn it off, which is what makes a group a set of radio buttons.</param>
+        /// <returns>The same action, so it can be put straight into a menu.</returns>
         public LunaAction Add(LunaAction action)
         {
             if (action is null) throw new ArgumentNullException(nameof(action));
@@ -246,6 +272,10 @@ namespace EmuSen.LunaP.Commands
             return action;
         }
 
+        /// <summary>Builds a checkable action and adds it to the group in one step.</summary>
+        /// <param name="text">The label this member shows.</param>
+        /// <param name="triggered">Runs when this member becomes the checked one.</param>
+        /// <returns>The new action, already in the group.</returns>
         public LunaAction Add(string text, Action<LunaAction>? triggered = null) => Add(new LunaAction(text, triggered));
 
         // Called by a member whose IsChecked moved. Only a member becoming CHECKED sweeps: a
