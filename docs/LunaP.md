@@ -2577,7 +2577,7 @@ available except one restating the name, and that argument stands. **It says not
 | Member-level API docs | §33.4, §34.1 | the largest, and the one a consuming dev feels first |
 | Nullability absent from the API snapshot | §32.5 | `string?` and `string` are one line; `NullabilityInfoContext` reads it |
 | ~~CI runs on one Linux runner~~ | **closed by §35** | matrix added; the audit found one platform branch, and it turned out to be untested, undocumented here, and currently a no-op (§35.1) |
-| Trim/AOT unverified | §25 | `CssTheme` resolves properties through `AvaloniaPropertyRegistry` at runtime, which a trimmer cannot see; neither project declares `IsTrimmable` or `IsAotCompatible` |
+| Trim/AOT: **measured, not fixed** | §36 | ~~`CssTheme` is the problem~~ — **that guess was wrong (§36)**. Three real sites: the JSON settings seam and runtime `.axaml` theme loading. Trim-safe is reachable, AOT-safe is not while the default store is reflection JSON; §36.3 sets out the two designs |
 | `net10.0` only | — | Avalonia 12.1.0 ships `net8.0` too, so LunaP is stricter than its own dependency — but .NET 8 leaves support around 2026-11-10 and .NET 9 already has, so multi-targeting buys a dying LTS. **Decided against, recorded so it is not re-derived.** |
 | CSS template parts unswept | §30.5 | §30.4 proves every *element* reaches its control; `card .header` and friends are still unproven |
 | A theme rule that matches nothing at runtime is silent | §30.5 | the parse cannot know what is on screen; the sweep catches it at test time, a host loading a bad theme is not told |
@@ -2702,3 +2702,97 @@ to CRLF would make a regeneration there look like a six-hundred-line change cont
 - **It says nothing about rendering differences between platforms.** §10.2 already keeps render
   baselines out of the repository because they are one machine's font rendering; a matrix makes that
   argument stronger, not weaker.
+
+---
+
+## 36. Trim and AOT, measured — and the register was wrong about where
+
+§25 rejected LGPL partly because this is "a platform that ships trimmed and AOT'd", and §34.2 carried
+"trim/AOT unverified" as an open item with a guess attached: *"`CssTheme` resolves properties through
+`AvaloniaPropertyRegistry` at runtime, which a trimmer cannot see."*
+
+**That guess was wrong, and measuring it is the point of this section.** Turning on
+`IsAotCompatible` — which enables the trim, AOT and single-file analyzers together — produces six
+warnings across three sites, and `CssTheme` is not among them. `AvaloniaPropertyRegistry.FindRegistered`
+is a dictionary lookup against a registry Avalonia populates at type initialisation, not reflection
+over members, so there is nothing for the trimmer to fail to see. The register entry has been
+corrected rather than quietly deleted.
+
+### 36.1 What is actually dynamic
+
+| Site | Warning | Cause |
+|---|---|---|
+| `Settings/JsonSettingsStore.Load<T>` | IL2026, IL3050 | `JsonSerializer.Deserialize<T>` — reflection over `T`'s members |
+| `Settings/JsonSettingsStore.Save<T>` | IL2026, IL3050 | `JsonSerializer.Serialize<T>` |
+| `Theme/LunaTheme.Read` | IL2026, IL3050 | `AvaloniaRuntimeXamlLoader.Load` — runtime XAML compilation |
+
+**Neither has a cheap fix, and they fail for opposite reasons.**
+
+The JSON one cannot be source-generated *by LunaP*, because `T` is the host's type. That is §19's
+entire design: `ISettingsStore` is the seam, and LunaP deliberately does not know what a host
+persists. A `JsonSerializerContext` can only be written by somebody who knows the types, which is the
+host.
+
+The XAML one cannot be fixed at all. Compiling a theme a user wrote after the application shipped is
+dynamic by definition.
+
+### 36.2 The finding worth keeping: the CSS format is the AOT-safe one
+
+`LunaTheme.Read` branches on the file extension — `.css` goes to `ReadCss`, anything else to
+`AvaloniaRuntimeXamlLoader`. So **§12.2's restricted CSS dialect is AOT-safe and the `.axaml` theme
+format is not**, because the CSS path is LunaP's own parser producing `Style` objects by hand while
+the XAML path is a compiler.
+
+Nobody argued that when the CSS format was introduced. §12.2 justified it on grammar and blast-radius
+grounds — a syntax error refuses one file rather than taking the application down — and this is a
+second, unplanned argument for the same decision, found by measuring something else.
+
+### 36.3 Why nothing was annotated, measured rather than assumed
+
+The obvious next step is `[RequiresUnreferencedCode]` on the two seams, which propagates the warning
+to callers instead of hiding it. **It was tried, and the cascade is the reason it is not in this
+commit.** Annotating `ISettingsStore.Load<T>`/`Save<T>` — on the interface, because an implementation
+may not add `RequiresUnreferencedCode` its interface lacks (IL2046) — took the build from 6 warnings
+to 28, across seven sites:
+
+| Site | Feature it makes AOT-unsafe |
+|---|---|
+| `Theme/LunaTheme.cs:110,115` | the remembered theme (§12) |
+| `Windowing/WindowPlacementStore.cs:28,37` | remembered window placement (§8.1) |
+| `Windowing/PaneLayoutStore.cs:38,62` | remembered pane layout (§26.6) |
+| `Theme/LunaTheme.cs:176` | `.axaml` themes (pre-existing) |
+
+That is not an explosion, it is a **boundary**: every "remember what the user did" feature in the
+toolkit is reflection-JSON-backed, and all three are opt-in. Propagating the attributes further means
+annotating `ToolWindow`, `SplitPane.PaneKey` and `LunaTheme.ApplySaved` — public API a consumer sees.
+
+**Two designs are available and this section picks neither**, because choosing between them is an API
+decision and not a build-flag one:
+
+1. **`[DynamicallyAccessedMembers]` on `T` rather than `Requires*`.** A constraint, not a warning:
+   the trimmer preserves whatever `T` each call site names, and LunaP's own calls name concrete
+   POCOs (`WindowPlacement`, `PaneLayout`, `ThemeChoice`), so the cascade disappears. This makes
+   LunaP **trim-safe**. It does **not** make it AOT-safe — reflection-based `System.Text.Json` needs
+   dynamic code regardless — so IL3050 would have to be suppressed, and suppressing it would be a
+   lie.
+2. **Propagate `Requires*` to the public API**, which is honest and tells an AOT consumer exactly
+   which three features to avoid, at the cost of annotations on types most consumers use.
+
+**The likely truth is that LunaP can be trim-safe and cannot be AOT-safe while the default store is
+reflection JSON**, and that is a sentence worth being sure of before it is written into attributes a
+consumer compiles against.
+
+### 36.4 What this does not do
+
+- **It does not declare `IsAotCompatible`, and deliberately.** Setting it would silence nothing and
+  claim something untrue; §34's register now says so with the measurement attached.
+- **It does not run a real AOT publish.** Everything above is analyzer output at compile time. A
+  `PublishAot` build of a sample consumer would be the stronger evidence and needs a toolchain this
+  machine has not been asked for.
+- **It leaves the analyzers off.** Turning them on permanently would add six warnings to a build that
+  currently emits none, and §31.4's argument is that a warning nobody can act on trains people to
+  ignore the log. They go on with the fix, not before it.
+- **The API baseline would not have caught the annotation change**, which is worth noting where it
+  will be read: §32.5 already records that attributes are invisible to the surface snapshot, and this
+  is the first time that gap had teeth — adding `[RequiresUnreferencedCode]` to a public interface is
+  a real change to what a consumer compiles against, and `ApiSurface/*.txt` would not have moved.
