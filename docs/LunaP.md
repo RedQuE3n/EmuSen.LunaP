@@ -3218,12 +3218,14 @@ survived four releases.
 
 ### 39.5 What this does not do
 
-- **It sweeps two properties, not six.** `background` and `color`; `font-family`, `font-size` and
+- ~~**It sweeps two properties, not six.**~~ `background` and `color`; `font-family`, `font-size` and
   `font-weight` are generated the same way and are not tested. The selector reach is
   property-independent, so §30.5's actual gap is closed — but a template that pins `FontFamily` as an
   attribute would block `font-family` while `color` passed, which is a real and untested hole. It is
   narrowed rather than open: every CSS-settable property in the six templates touched here was moved
-  to a setter. Widening `Colours` is a two-line change and a sentinel per property.
+  to a setter. Widening `Colours` is a two-line change and a sentinel per property. **Widened in
+  §40.2 — 65 cases now, and the hole this bullet describes was already closed by the fixes above,
+  which is why it found nothing new.**
 - **It does not sweep states.** `meter-row.hot .bar` has one test; the other state × part
   combinations do not.
 - **It does not check the value is correct**, only that the part received it. A rule that sets the
@@ -3234,3 +3236,88 @@ survived four releases.
 - **It says nothing about a host's own `.axaml` styles.** The priority rule found in §39.2 applies to
   anything a consumer writes as a template attribute in their own controls, and nothing here can
   reach that.
+
+---
+
+## 40. The exemption was the wrong answer, and this file said so already
+
+§39.4 exempted `meter-row .bar { color: … }` from the sweep, documented why it cannot win, and built
+an expiring-exemption test so the entry could not rot. All of that machinery was answering the wrong
+question.
+
+**The rule still parsed.** A host could write it, get no warning, and see nothing happen — which is
+the defect §30 exists to abolish, arrived at from the other direction. And this repository had
+already written the rule that settles it, in the failure message of the element sweep, where it has
+sat since §30:
+
+> *"A rule that is accepted and does nothing is worse than one that is refused."*
+
+The exemption made the **test** honest about a promise the **product** was still making.
+
+### 40.1 Refused, with the two spellings that work
+
+`PartSpec` gained a `Shadowed` map: CSS property → what overrides it. The parser checks it after the
+property resolves and warns instead of emitting a setter.
+
+```
+meter-row .bar { color: #FF00FF; }
+  warning: 'color' on 'meter-row .bar' is always overridden by the :nominal, :busy and :hot
+  state styles. Name the state - 'meter-row.busy .bar { color: ... }' - or restyle all three
+  at once by setting the --luna-nominal, --luna-busy and --luna-hot tokens
+```
+
+**A bare refusal would not have been enough.** Whoever wrote that rule cannot tell a shadowed
+property from a typo, and the two things want opposite responses. So the warning names both working
+spellings — and the tokens are named first among equals because they are what the host almost always
+wants: `--luna-nominal`/`--luna-busy`/`--luna-hot` restyle the meter in every state at once, and were
+the designed path before the part vocabulary existed.
+
+**Three properties of the refusal are pinned**, because each is a way this could be subtly wrong:
+
+| | |
+|---|---|
+| `meter-row .bar { color }` | refused, one warning, naming the state form and the tokens |
+| `meter-row.busy .bar { color }` | **accepted, no warning** — it binds at `StyleTrigger` like the style shadowing it, and being applied later it wins. Warning about the spelling that works would be worse than silence |
+| `meter-row .bar { background }` | **accepted, no warning** — the shadow is per property, not a ban on the part |
+
+The sweep needs no exemption logic at all now: it already skips whatever the parser rejects, so the
+case removes itself. §39.4's `Exempt` table, `Exemptions()` and `An_exemption_is_still_needed` are
+gone, replaced by the three assertions above.
+
+**This is not a retraction of §39.4's reasoning, only of its conclusion.** The priority argument
+there is correct and is why the refusal is right rather than a workaround: the rule genuinely cannot
+win, so the only question was whether to say so.
+
+### 40.2 Every themeable property, swept
+
+§39.5's first bullet named the remaining hole: a template pinning `FontFamily` blocks `font-family`
+while `color` passes. The sweep now covers all five, with a sentinel per property that cannot be a
+default — `Probe Sentinel Mono`, `33.5`, `black` — compared as Avalonia values rather than as text.
+
+**65 cases**: 14 parts × 5 properties, less the 5 the parser refuses — four on `split-pane .rule`,
+since a `Border` has no `Foreground` and no font at all, and the shadowed one above.
+
+**It found nothing new, and that is a result rather than an anticlimax.** §39.2 moved *every*
+CSS-settable property in the six templates it touched, not only the two under test, so the hole was
+closed before this could measure it. What matters is that the claim is now asserted rather than
+argued.
+
+**A sweep that finds nothing has to be shown capable of finding something.** Putting
+`FontFamily="{DynamicResource LunaMonoFont}"` back as an attribute on `PART_Output` turns exactly one
+case red — `console-pane .output`, `font-family` — and nothing else.
+
+### 40.3 What this does not do
+
+- **`Shadowed` is a hand-maintained list of one**, and nothing derives it. It does, however, expire:
+  the sentence that stood here said "a test *could* assert the shadow is still real the way the
+  exemption did", which is precisely the paragraph-asking-the-next-author-to-remember that §28 exists
+  to abolish — four of those had already been written before they became assertions. So
+  `The_shadow_on_the_meter_bar_is_still_real` asserts the *reason*: the bar's `Foreground` arrives at
+  priority `StyleTrigger`. If MeterRow ever stops colouring its bar from state styles that drops to
+  `Style`, a stateless rule starts winning, and the test turns red asking for the entry to be
+  removed. A refusal that outlives its reason is worse than the silence it replaced.
+- **It only covers what the vocabulary publishes.** A host writing a rule that loses to something
+  other than a state style still gets silence; nothing in the parse knows about priorities in
+  general, and §30.5's third bullet still stands.
+- **The sweep still does not check the value is correct**, only that the part received it.
+- **States other than `meter-row.hot` remain unswept**, per §39.5.

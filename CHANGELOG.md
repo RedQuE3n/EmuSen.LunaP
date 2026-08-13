@@ -123,9 +123,12 @@ nothing, nothing changes (`§26`).
   layer down (`§39.2`, `§39.3`).
 - **Nothing changes if you wrote no such rule.** Every default was checked before and after: same
   values, only the priority moved, so the rendered result is identical (`§39.2`).
-- **`meter-row .bar { color: … }` still does nothing, and that is deliberate.** The bar's colour comes
-  from its `:nominal`/`:busy`/`:hot` state styles, which outrank a stateless rule. Name the state —
-  `meter-row.busy .bar { color: … }` — which has always worked (`§39.4`).
+- **`meter-row .bar { color: … }` is now refused with a warning instead of silently doing nothing.**
+  The bar's colour comes from its `:nominal`/`:busy`/`:hot` state styles, which outrank a stateless
+  rule, so it never could work. The warning names both spellings that do: `meter-row.busy .bar
+  { color: … }`, or the `--luna-nominal`/`--luna-busy`/`--luna-hot` tokens to restyle all three at
+  once. **The theme still loads** — warnings are not fatal — but a rule that is accepted and does
+  nothing is worse than one that is refused (`§40`).
 
 ### Known
 

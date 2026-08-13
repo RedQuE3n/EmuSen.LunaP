@@ -33,7 +33,12 @@ namespace EmuSen.LunaP.Theme
             Type? StyleKey = null,
             string? StyleClass = null);
 
-        private sealed record PartSpec(Type Target, string Name);
+        // Shadowed lists the CSS properties on this part that a STATELESS rule can never win,
+        // mapped to the advice to give instead - see docs/LunaP.md §40. A part whose colour comes
+        // from state styles is the case: those bind at StyleTrigger, which outranks the Style
+        // priority every host rule lands at, so the rule parses, matches, and loses in silence.
+        // Naming it here turns that into a warning, which is the whole of §30's argument.
+        private sealed record PartSpec(Type Target, string Name, IReadOnlyDictionary<string, string>? Shadowed = null);
 
         private static readonly IReadOnlyDictionary<string, string> NoClasses = new Dictionary<string, string>();
         private static readonly IReadOnlyDictionary<string, PartSpec> NoParts = new Dictionary<string, PartSpec>();
@@ -50,7 +55,19 @@ namespace EmuSen.LunaP.Theme
                 Element(typeof(MonoText)),
                 Element(typeof(MeterRow),
                     classes: new Dictionary<string, string> { ["nominal"] = ":nominal", ["busy"] = ":busy", ["hot"] = ":hot" },
-                    parts: new Dictionary<string, PartSpec> { ["bar"] = new(typeof(ProgressBar), "PART_Bar") }),
+                    parts: new Dictionary<string, PartSpec>
+                    {
+                        // The bar's colour is the one thing in the kit that a stateless rule can
+                        // never set: MeterRow.axaml gives it three state styles, and a selector
+                        // carrying a pseudo-class binds at StyleTrigger, above any host rule.
+                        // Refused with advice rather than accepted and ignored (§40).
+                        ["bar"] = new(typeof(ProgressBar), "PART_Bar", new Dictionary<string, string>(StringComparer.Ordinal)
+                        {
+                            ["color"] = "the :nominal, :busy and :hot state styles. Name the state - "
+                                + "'meter-row.busy .bar { color: ... }' - or restyle all three at once "
+                                + "by setting the --luna-nominal, --luna-busy and --luna-hot tokens",
+                        }),
+                    }),
                 Element(typeof(MeterList)),
                 Element(typeof(FieldRow)),
                 Element(typeof(PathPickerRow)),

@@ -132,7 +132,8 @@ namespace EmuSen.LunaP.Theme
                     string selectorText = text.Trim();
                     if (selectorText.Length == 0) continue;
 
-                    if (!TryCompile(selectorText, out Selector? selector, out Type? target, out string why))
+                    if (!TryCompile(selectorText, out Selector? selector, out Type? target,
+                            out IReadOnlyDictionary<string, string>? shadowed, out string why))
                     {
                         Warn(block.Line, $"'{selectorText}': {why}");
                         continue;
@@ -154,6 +155,16 @@ namespace EmuSen.LunaP.Theme
                             continue;
                         }
 
+                        // Refused rather than accepted and ignored. This one WOULD compile to a
+                        // valid selector that matches the real part, and then lose the priority
+                        // contest every time - which is indistinguishable from a typo to whoever
+                        // wrote it. The advice names the two spellings that do work (§40).
+                        if (shadowed is not null && shadowed.TryGetValue(name, out string? instead))
+                        {
+                            Warn(line, $"'{name}' on '{selectorText}' is always overridden by {instead}");
+                            continue;
+                        }
+
                         if (!TryValue(property, value, out object? converted, out string reason))
                         {
                             Warn(line, $"'{value}': {reason}");
@@ -167,10 +178,12 @@ namespace EmuSen.LunaP.Theme
                 }
             }
 
-            private static bool TryCompile(string text, out Selector? selector, out Type? target, out string why)
+            private static bool TryCompile(string text, out Selector? selector, out Type? target,
+                out IReadOnlyDictionary<string, string>? shadowed, out string why)
             {
                 selector = null;
                 target = null;
+                shadowed = null;
 
                 string[] words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 if (words.Length > 2)
@@ -215,6 +228,12 @@ namespace EmuSen.LunaP.Theme
 
                     built = built.Template().OfType(part.Target).Name(part.Name);
                     target = part.Target;
+
+                    // ONLY WHEN NO STATE WAS NAMED. `meter-row.busy .bar { color: … }` carries a
+                    // pseudo-class of its own, so it binds at StyleTrigger alongside the style that
+                    // shadows the stateless form - and being applied later, it wins. Warning about
+                    // the spelling that works would be worse than saying nothing.
+                    if (head.Length == 1) shadowed = part.Shadowed;
                 }
 
                 selector = built;
