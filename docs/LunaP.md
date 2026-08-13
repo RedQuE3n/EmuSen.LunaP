@@ -2104,6 +2104,124 @@ and after and never measured width at all, which is how a six-pixel improvement 
 three-hundred-pixel regression. **The question to ask of a layout fix is not "is the thing I fixed
 fixed" but "what else does this grid decide."**
 
+### 27.11 Columns the user can drag, and a layout worth remembering
+
+`TableKey` is opt-in, on the same principle as `ToolWindow.WindowKey` and `SplitPane.PaneKey`: **no
+key, no file.** A `tables.json` appears next to `windows.json` and `panes.json` for any table given
+one, and for no other. It is a third file rather than a third field, for the reason §26.6 gave for
+the second — these are different things with different lifetimes, and somebody deleting their window
+layout to reset a bad restore should not lose the columns they spent a minute arranging.
+
+#### The grip is a `GridSplitter`, for the reason the heading is a `Button`
+
+A column width a mouse can change and a keyboard cannot is a feature half the users of this toolkit
+do not have. `GridSplitter` handles arrow keys, takes focus and carries an accessible name; `Thumb`
+is the lighter primitive and gives a drag and nothing else. §26.11 records what happened when
+`SplitPane`'s divider lost its name — *"Focusable but unnamed: GridSplitter"* — and the same guard
+shape covers these.
+
+**There is no grip after the last column.** Nothing is to its right to take the space, so a drag
+there either does nothing or resizes the table out of its own window.
+
+#### A width set on the header does not reach the rows, and this was measured twice
+
+The first measurement was **wrong, and wrong in the encouraging direction.** Taken while every
+column was still in a shared size group (§27.10), it showed a header-only width change propagating
+to the rows and concluded that a resize could set one number. That reading described code that no
+longer existed by the time it was going to be used.
+
+Re-taken against the corrected control:
+
+| | header | row | x delta |
+|---|---|---|---|
+| column 0 (`2*`) set to 150 on the header only | 151.0 | **404.0** | **253.0** |
+
+Only `Auto` columns share a group now, so a star or absolute column's header definition and its row
+definitions are unrelated objects. The resize therefore reads the header back into the column specs
+— the one source of truth — and brings every realized row into line from there. Recycled containers
+are caught by `ContainerPrepared`, which fires both for a row scrolling back into view at an old
+width and for a row realized for the first time after a drag, in one line.
+
+**The general point is worth more than the mechanism.** A measurement describes the code that was
+running when it was taken. This one was hours old, was load-bearing for a design decision, and had
+been invalidated by a fix made in between. Re-running it cost a minute; trusting it would have cost
+a design.
+
+#### What is saved, and what is deliberately not
+
+- **Widths in Avalonia's own notation** — `"2*"`, `"Auto"`, `"150"` — and not resolved pixels. A
+  dragged column and an untouched one are different *kinds* of width, not two values of one. Saving
+  `404` for a star column would pin it at 404 in a window the user has since resized, which is the
+  mistake §26.6 records for saving a divider as a fraction, inverted.
+- **The sorted column by heading, not by index.** A caller who inserts a column at the front between
+  two releases would otherwise come back sorted by its neighbour, with the arrow pointing
+  confidently at the wrong heading.
+- **Nothing about the selection or the scroll position.** Those belong to a session, not to a layout.
+
+#### A layout that no longer describes the table is refused whole
+
+Three ways it can stop matching, and all three end the same way — the layout is ignored and the
+table looks as the caller declared it:
+
+- **The column count changed.** Applying half a layout would move widths onto the wrong columns.
+- **A width does not parse.** There is no `GridLength.TryParse`; `Parse` throws. Every width is
+  parsed before any is applied, so a hand-edited or truncated file cannot leave a table half
+  restored.
+- **The sorted column is no longer sortable.** A caller who dropped a comparison would otherwise get
+  a sort arrow on a heading nobody can click.
+
+A user loses the widths they dragged once, after the application changed its own table. That is a
+better outcome than a table that comes back scrambled and cannot be explained.
+
+#### Restore is called from two places on purpose
+
+There is no rule that sets `TableKey` after the columns, and `new LunaTable<T> { TableKey = "x" }`
+followed by three `Column` calls is exactly what an object initializer invites. So `Restore` runs
+from both the property setter and from `Column`, is idempotent, and refuses a layout whose column
+count does not match — which makes calling it after every column cost two comparisons and removes
+the ordering trap rather than documenting it. §28.2 is the section about traps that were documented
+four times instead.
+
+#### The guards
+
+Seven deliberate breakages. **Two of them turned nothing red on the first run, and those two are
+the entries worth reading** — §26.11 is the precedent for recording a sabotage that failed to fail
+rather than dropping it.
+
+| Sabotage | Turned red |
+|---|---|
+| a table with no key writes anyway | `A_table_with_no_key_is_never_written_down` |
+| the resize updates the header and not the rows | `A_dragged_width_comes_back_and_an_untouched_one_stays_relative` |
+| widths applied as they are parsed rather than all at once | `A_layout_with_an_unparseable_width_is_refused_whole` |
+| a layout is applied without checking the column count | three tests |
+| a grip loses its accessible name | `Every_resize_grip_can_be_found_and_named` |
+| **`Restore` called only from the `TableKey` setter** | **nothing** |
+| *(after adding a columns-after-the-template case)* the same | `A_saved_layout_reaches_columns_added_after_the_template` |
+| **a saved sort applied without checking the column still sorts** | **nothing** |
+| *(after asserting what gets written back)* the same | `A_sort_on_a_column_that_is_no_longer_sortable_is_dropped` |
+
+**The first miss said the guard was wrong, not the code.** Both orderings the ordering test covers —
+key before columns and columns before key — are rescued by `OnPartsAttached`, which runs `Restore`
+once the template arrives and by then has the columns. Neither needed `Column` to call anything. The
+case that does is a caller adding a column *after* the template, which `Column`'s own summary says is
+allowed and which `OnPartsAttached` has already come and gone for. The test existed, passed, and was
+about two paths that could not fail.
+
+**The second miss said the code was very nearly wrong.** Dropping `c.Sort is not null` from the
+lookup changed nothing visible, because `Ordered` refuses to sort a column with no comparison anyway
+— the table looked identical with the check and without it, and by §46.3 a check with no observable
+consequence is not a check. What differs is **what gets written back**: a stale index pointing at an
+unsortable column re-saves that column as the sorted one, so the dead entry outlives every release
+that could have used it. The guard now asserts that `SaveNow` clears it, which is the behaviour the
+check actually buys.
+
+**The gallery gets the grips and not a `TableKey`.** Every control in the kit is in the gallery (§7)
+and column resizing is visible there, but a gallery that wrote `tables.json` on behalf of anybody who
+opened it would be the toolkit writing files nobody asked for — which is the thing `TableKey` exists
+to prevent.
+
+---
+
 ## 28. Two traps, and the guards that end them
 
 §27 closed with two findings, and both had the same shape: a defect this repository has met

@@ -203,7 +203,9 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public System.Func<T, object?> Key { get; set; }
     public T? Selected { get; }
     public event System.Action<T> Chose
+    public string? TableKey { get; set; }
     public void Refresh(System.Collections.Generic.IEnumerable<T> items)
+    public void SaveNow()
     public void Select(T? item)
 
 public class EmuSen.LunaP.Controls.MenuBar : Avalonia.Controls.Menu
@@ -347,6 +349,17 @@ public class EmuSen.LunaP.Controls.StatusBar : Avalonia.Controls.ContentControl
     public StatusBar()
     public static readonly Avalonia.StyledProperty<string> StatusProperty
     public string Status { get; set; }
+
+public sealed class EmuSen.LunaP.Controls.TableLayout
+    public System.Collections.Generic.List<string> Widths { get; set; }
+    public TableLayout()
+    public bool Descending { get; set; }
+    public string? SortedBy { get; set; }
+
+public static class EmuSen.LunaP.Controls.TableLayoutStore
+    public const string FileName = "tables.json"
+    public static EmuSen.LunaP.Controls.TableLayout? Load(string key)
+    public static void Update(string key, System.Action<EmuSen.LunaP.Controls.TableLayout> edit)
 
 public class EmuSen.LunaP.Controls.Tabs : Avalonia.Controls.TabControl
     protected override System.Type StyleKeyOverride { get; }

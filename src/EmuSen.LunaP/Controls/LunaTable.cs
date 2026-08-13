@@ -8,6 +8,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
+using Avalonia.VisualTree;
 using EmuSen.LunaP.Automation;
 using EmuSen.LunaP.Threading;
 
@@ -95,6 +96,13 @@ namespace EmuSen.LunaP.Controls
         private int _sortColumn = -1;
         private bool _sortDescending;
 
+        // Saving is debounced for the reason SplitPane debounces its divider (§26.6): a drag
+        // produces a property change per frame, and writing tables.json sixty times a second would
+        // be a full read-modify-write of every table's layout per frame.
+        private Debounce? _save;
+        private string? _tableKey;
+        private bool _restored;
+
         // A selection asked for before there was anywhere to put it. Null is a real value here -
         // "select nothing" - so the flag rather than the field says whether one is waiting.
         private T? _pending;
@@ -111,6 +119,26 @@ namespace EmuSen.LunaP.Controls
         /// path) when the models are rebuilt rather than reused.
         /// </remarks>
         public Func<T, object?> Key { get; set; } = item => item;
+
+        // Opt-in, exactly as ToolWindow.WindowKey and SplitPane.PaneKey are: no key, no file. A
+        // toolkit that started remembering every table in an application because the application
+        // upgraded is a toolkit writing files nobody asked for.
+        //
+        // What is remembered is what the USER did - the widths they dragged and the sort they left
+        // it in - and not what the caller declared. A column the caller widened in code between two
+        // releases should take effect; a column the user widened should survive it. That is why
+        // Widths saves Avalonia's own notation rather than resolved pixels: an untouched star column
+        // comes back as "2*" and re-resolves against whatever window it now finds itself in.
+        /// <summary>An opt-in key under which this table's column widths and sort are remembered. Null, the default, means nothing is written down.</summary>
+        public string? TableKey
+        {
+            get => _tableKey;
+            set
+            {
+                _tableKey = value;
+                Restore();
+            }
+        }
 
         // Raised only for a real user choice, never for the selection restored during a refresh.
         /// <summary>Raised when the user picks a row, with the model rather than the row. Not raised for a selection restored by Refresh.</summary>
@@ -167,6 +195,13 @@ namespace EmuSen.LunaP.Controls
 
             _columns.Add(new ColumnSpec(column.Header, column.Text, GridLength.Parse(column.Width), column.Sort));
             Rebuild();
+
+            // A saved layout can only be matched once the columns it describes exist, and there is
+            // no ordering rule that puts TableKey after them - `new LunaTable<T> { TableKey = "x" }`
+            // followed by three Column calls is the shape an object initializer invites. Restore is
+            // idempotent and refuses a layout whose column count does not match, so calling it after
+            // every column costs two comparisons and removes the ordering trap entirely.
+            Restore();
             return this;
         }
 
@@ -259,6 +294,76 @@ namespace EmuSen.LunaP.Controls
             }
         }
 
+        // Writes the layout now rather than waiting for the drag to settle. Exists for the same
+        // reason SplitPane.SaveNow does: a window closing does not wait for a debounce.
+        /// <summary>Writes the column widths and sort immediately, rather than waiting for a drag to settle. Does nothing without a TableKey.</summary>
+        public void SaveNow()
+        {
+            _save?.Cancel();
+
+            if (TableKey is not { } key || _columns.Count == 0) return;
+
+            TableLayoutStore.Update(key, layout =>
+            {
+                layout.Widths = _columns.Select(c => c.Width.ToString()).ToList();
+                layout.SortedBy = _sortColumn >= 0 && _sortColumn < _columns.Count ? _columns[_sortColumn].Header : null;
+                layout.Descending = _sortDescending;
+            });
+        }
+
+        // MATCHED BY HEADER AND BY COUNT, and both halves matter. A saved layout describes the
+        // columns that existed when it was written; a caller who has since added, removed or
+        // renamed one is describing a different table, and applying half a layout to it would move
+        // widths onto the wrong columns and point the sort arrow confidently at the wrong heading.
+        //
+        // The safe answer to a layout that does not match is to ignore it. A user loses the column
+        // widths they dragged once, after the application changed its own table - which is a good
+        // deal better than a table that comes back scrambled and cannot be explained.
+        private void Restore()
+        {
+            if (_restored || TableKey is not { } key || _columns.Count == 0) return;
+            if (TableLayoutStore.Load(key) is not { } layout) return;
+            if (layout.Widths.Count != _columns.Count) return;
+
+            // PARSED IN FULL BEFORE ANY OF IT IS APPLIED, and there is no GridLength.TryParse to
+            // lean on - Parse throws. A hand-edited or truncated tables.json that is good for two
+            // columns and garbage for the third would otherwise leave the table half restored, which
+            // is the state this method exists to avoid. All or nothing, and nothing is a table that
+            // looks the way the caller declared it.
+            var widths = new GridLength[_columns.Count];
+            for (int i = 0; i < _columns.Count; i++)
+            {
+                try
+                {
+                    widths[i] = GridLength.Parse(layout.Widths[i]);
+                }
+                catch (FormatException)
+                {
+                    return;
+                }
+            }
+
+            _restored = true;
+
+            for (int i = 0; i < _columns.Count; i++)
+            {
+                _columns[i] = _columns[i] with { Width = widths[i] };
+            }
+
+            // Only a column that still has a comparison can be the sorted one. A caller who made a
+            // column unsortable between releases gets an unsorted table rather than a sort arrow on
+            // a heading that cannot be clicked.
+            int sorted = layout.SortedBy is null
+                ? -1
+                : _columns.FindIndex(c => c.Header == layout.SortedBy && c.Sort is not null);
+
+            _sortColumn = sorted;
+            _sortDescending = sorted >= 0 && layout.Descending;
+
+            Rebuild();
+            Show();
+        }
+
         protected override void OnPartsAttached()
         {
             if (Rows is null) return;
@@ -268,7 +373,14 @@ namespace EmuSen.LunaP.Controls
                 if (!_filling.IsSuppressing) Chose?.Invoke(Selected);
             };
 
+            // A recycled container keeps the ColumnDefinitions it was built with, so a row scrolling
+            // back into view after a resize would come back at the old widths. This is the hook that
+            // catches it - and it fires for every container, so a row realized for the first time
+            // after a drag is covered by the same line.
+            Rows.ContainerPrepared += (_, e) => Widen(e.Container);
+
             Rebuild();
+            Restore();
 
             // Items set before the template existed - a caller filling the table from its
             // constructor, which is the normal way a window is built in this toolkit.
@@ -298,10 +410,88 @@ namespace EmuSen.LunaP.Controls
                 Control cell = Heading(i);
                 Grid.SetColumn(cell, i);
                 HeaderGrid.Children.Add(cell);
+
+                // No grip after the last column: there is nothing on its right to take the space,
+                // so a drag there would either do nothing or resize the table out of its own window.
+                if (i < _columns.Count - 1) HeaderGrid.Children.Add(Grip(i));
             }
 
             Rows.ItemTemplate = new FuncDataTemplate<T>((item, _) => Row(item, scope), supportsRecycling: true);
             ShowSortState();
+        }
+
+        // A GRIDSPLITTER AND NOT A THUMB, for the same reason a heading is a Button: a column width
+        // a mouse can change and a keyboard cannot is a feature half the users of this toolkit do
+        // not have. GridSplitter handles arrow keys, takes focus and carries an accessible name;
+        // Thumb is the lighter primitive and gives a drag and nothing else.
+        //
+        // It sits in the column it resizes, aligned right, four pixels wide, so it straddles the
+        // boundary with its neighbour. §26.6 made the same choice for SplitPane's divider and §26.11
+        // records what happens when one loses its name.
+        private Control Grip(int index)
+        {
+            var grip = new GridSplitter
+            {
+                Width = 4,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                ResizeDirection = GridResizeDirection.Columns,
+                Background = Avalonia.Media.Brushes.Transparent,
+            };
+
+            grip.Classes.Add("grip");
+            AutomationProperties.SetName(grip, $"Resize {_columns[index].Header}");
+
+            // DragDelta rather than DragCompleted, so the rows follow the pointer instead of
+            // snapping when it is released. The save is debounced underneath, so a drag is one
+            // write and not one per frame.
+            grip.DragDelta += (_, _) => Resized();
+            grip.DragCompleted += (_, _) => Resized();
+
+            Grid.SetColumn(grip, index);
+            return grip;
+        }
+
+        // The splitter edits the HEADER's definitions, and this is what makes that reach the rows.
+        //
+        // MEASURED, NOT ASSUMED: a width set on the header alone does not propagate. Only Auto
+        // columns share a size group (§27.10), so a star or absolute column's header definition and
+        // its row definitions are unrelated objects - setting the header's column 0 to 150 left
+        // every row at 404 and put the cells 253 pixels right of their headings. So the header is
+        // read back into the column specs, which are the one source of truth, and every realized row
+        // is brought into line from there.
+        private void Resized()
+        {
+            if (HeaderGrid is null) return;
+
+            for (int i = 0; i < _columns.Count && i < HeaderGrid.ColumnDefinitions.Count; i++)
+            {
+                GridLength width = HeaderGrid.ColumnDefinitions[i].Width;
+                if (width != _columns[i].Width) _columns[i] = _columns[i] with { Width = width };
+            }
+
+            if (Rows is not null)
+            {
+                foreach (Control container in Rows.GetRealizedContainers()) Widen(container);
+            }
+
+            _save ??= new Debounce(TimeSpan.FromMilliseconds(400), SaveNow);
+            _save.Poke();
+        }
+
+        // Brings one row container's columns into line with the specs. Cheap enough to call per
+        // container per drag frame - a virtualized list realizes tens of rows, not thousands (§27.7).
+        private void Widen(Control? container)
+        {
+            if (container?.GetVisualDescendants().OfType<Grid>().FirstOrDefault() is not { } row) return;
+
+            for (int i = 0; i < _columns.Count && i < row.ColumnDefinitions.Count; i++)
+            {
+                if (row.ColumnDefinitions[i].Width != _columns[i].Width)
+                {
+                    row.ColumnDefinitions[i].Width = _columns[i].Width;
+                }
+            }
         }
 
         // A SORTABLE HEADING IS A BUTTON; AN UNSORTABLE ONE STAYS A TEXTBLOCK.
