@@ -1,0 +1,35 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <Style Selector="luna|PathPickerRow">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid ColumnDefinitions="*,Auto">
+                    <!-- Read-only and still a tab stop, on purpose: the path is
+                         often long and truncated on screen, and focusing it is
+                         how a keyboard reads or copies the whole thing. That
+                         only works if it says which path it holds. -->
+                    <TextBox Grid.Column="0"
+                             IsReadOnly="True"
+                             AutomationProperties.Name="{TemplateBinding BrowseTitle}"
+                             Text="{TemplateBinding Path}"
+                             PlaceholderText="{TemplateBinding Placeholder}" />
+                    <!-- HelpText, NOT Name. The visible word is "Browse..." and
+                         an accessible name that does not contain the visible
+                         label breaks voice control - a user saying "click
+                         browse" needs the name to be the thing they can see.
+                         So the name stays, and what makes THIS browse button
+                         different from the four others on the page goes in help
+                         text, which is announced after it. -->
+                    <Button Grid.Column="1"
+                            Name="PART_Browse"
+                            Content="Browse..."
+                            AutomationProperties.HelpText="{TemplateBinding BrowseTitle}"
+                            Margin="8,0,0,0" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+</Styles>

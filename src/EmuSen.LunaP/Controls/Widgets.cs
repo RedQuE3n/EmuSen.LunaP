@@ -14,6 +14,15 @@ namespace EmuSen.LunaP.Controls
         // Without this the Fluent ToggleSwitch theme never reaches a subclass and ToggleSwitch.OnApplyTemplate throws on PART_MovingKnobs - see §14.1.
         protected override Type StyleKeyOverride => typeof(ToggleSwitch);
 
+        // AND THIS IS THE OTHER HALF OF THAT BARGAIN, which was missing until §30. Avalonia matches
+        // a type selector against the STYLE KEY, so the line above also stops `luna|LunaSwitch` from
+        // ever selecting this control - our own styles and a host's CSS rule alike, silently. The
+        // class is what a selector can still name: `ToggleSwitch.luna-switch` reaches this and not a
+        // stock ToggleSwitch. Kept as a const because the CSS vocabulary and the XAML both spell it.
+        public const string StyleClass = "luna-switch";
+
+        public LunaSwitch() => Classes.Add(StyleClass);
+
         public static readonly StyledProperty<string> LabelProperty =
             AvaloniaProperty.Register<LunaSwitch, string>(nameof(Label), string.Empty);
 
@@ -74,6 +83,9 @@ namespace EmuSen.LunaP.Controls
     {
         protected override Type StyleKeyOverride => typeof(ComboBox);
 
+        // What a selector can name once the line above has taken the type away - see LunaSwitch and §30.
+        public const string StyleClass = "luna-dropdown";
+
         // Raised only for a real user choice, never for the selection set while filling the list.
         public event Action<object?>? Chose;
 
@@ -83,10 +95,14 @@ namespace EmuSen.LunaP.Controls
         // nested one can no longer re-enable Chose halfway through the outer one.
         private readonly Suppressor _filling = new();
 
-        public Dropdown() => SelectionChanged += (_, _) =>
+        public Dropdown()
         {
-            if (!_filling.IsSuppressing) Chose?.Invoke(SelectedItem);
-        };
+            Classes.Add(StyleClass);
+            SelectionChanged += (_, _) =>
+            {
+                if (!_filling.IsSuppressing) Chose?.Invoke(SelectedItem);
+            };
+        }
 
         // Replaces the items and the selection together, without Chose firing for the reset.
         public void Fill(IEnumerable items, object? selected)
@@ -103,6 +119,11 @@ namespace EmuSen.LunaP.Controls
     public class Tabs : TabControl
     {
         protected override Type StyleKeyOverride => typeof(TabControl);
+
+        // What a selector can name once the line above has taken the type away - see LunaSwitch and §30.
+        public const string StyleClass = "luna-tabs";
+
+        public Tabs() => Classes.Add(StyleClass);
 
         public TabItem Add(string header, Control content)
         {

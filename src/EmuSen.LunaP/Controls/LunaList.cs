@@ -29,6 +29,13 @@ namespace EmuSen.LunaP.Controls
         // the form where it throws rather than degrading to blank.
         protected override Type StyleKeyOverride => typeof(ListBox);
 
+        // A style key spent is a type a selector can no longer name (§30), so every control
+        // that pins one publishes the class that names it instead. Uniform rather than
+        // added-when-needed: the class costs nothing, and the day this control gains a style
+        // file or a CSS element name the selector already has something to match. Enforced by
+        // StyleKeyTests, which is why this cannot be forgotten on the next one.
+        public const string StyleClass = "luna-list";
+
         private readonly Suppressor _filling = new();
         private IReadOnlyList<T> _items = Array.Empty<T>();
 
@@ -44,10 +51,14 @@ namespace EmuSen.LunaP.Controls
         // the same distinction Dropdown.Chose draws, and for the same reason.
         public event Action<T?>? Chose;
 
-        public LunaList() => SelectionChanged += (_, _) =>
+        public LunaList()
         {
-            if (!_filling.IsSuppressing) Chose?.Invoke(Selected);
-        };
+            Classes.Add(StyleClass);
+            SelectionChanged += (_, _) =>
+            {
+                if (!_filling.IsSuppressing) Chose?.Invoke(Selected);
+            };
+        }
 
         // NOT `Items`, which would shadow ItemsControl.Items and leave two properties of the same
         // name meaning different things - the rows on one, the models on the other - depending on

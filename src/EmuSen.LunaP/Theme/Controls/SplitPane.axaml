@@ -1,0 +1,42 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- The grid's definitions are built in code, because how many tracks there
+         are and which way round they go depends on Orientation and on whether
+         either pane is null. What stays here is the look.
+
+         A WIDE GRAB AREA WITH A THIN LINE IN IT, which is two requirements that
+         disagree: the divider should read as a hairline and be catchable with a
+         mouse. Fluent's GridSplitter paints its whole width, so a 4pt grab area
+         would be a 4pt bar. So the splitter is transparent and the rule is a
+         separate one-pixel Border in the same grid cell, sized and turned by
+         the same code that already decides which way the grid runs.
+
+         PART_Rule is not hit-testable, and that is load-bearing rather than
+         tidy: it sits ON TOP of the splitter in the same cell, so if it took
+         input it would swallow the middle of the drag target and the divider
+         would only be draggable on the pixels either side of the line. -->
+    <Style Selector="luna|SplitPane">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid Name="PART_Grid">
+                    <ContentPresenter Name="PART_First" />
+                    <!-- NAMED, because Avalonia's GridSplitter is a tab stop that
+                         responds to the arrow keys - measured: one Left press
+                         moves a 200pt pane to 190. It is a control a keyboard
+                         reaches and uses, so an unnamed one is a place the focus
+                         can land with nothing to say what it is. §26.11. -->
+                    <GridSplitter Name="PART_Splitter"
+                                  Background="Transparent"
+                                  AutomationProperties.Name="{TemplateBinding DividerLabel}" />
+                    <Border Name="PART_Rule"
+                            Background="{DynamicResource LunaBorder}"
+                            IsHitTestVisible="False" />
+                    <ContentPresenter Name="PART_Second" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+</Styles>

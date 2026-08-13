@@ -1943,3 +1943,326 @@ looking at a picture.
 - **It does not cover a control's own template parts being renamed** — a part renamed in both the
   theme and the code is consistent and invisible to both guards, which is what `LunaPControlTests`
   and the per-control suites are for.
+
+---
+
+## 29. One file per control, and a style that was never applied
+
+`Theme/Controls.axaml` had reached 508 lines and 23 selectors, and it grew every time a control was
+added — §26 put five elements into it, §27 a sixth. Nothing was wrong with any line of it. The
+problem was the shape: a file that accumulates has no natural place to stop, and "where does this
+style go" had exactly one answer, which meant the answer carried no information.
+
+`Theme/CssTheme.cs` had the same curve for the same reason, at 547 lines.
+
+### 29.1 The rule: the theme file mirrors the source file
+
+`Controls/` was already almost one file per control, so the split takes that structure rather than
+inventing one. `Theme/Controls/SplitPane.axaml` sits opposite `Controls/SplitPane.cs`, and CLAUDE.md's
+"a change that does not belong in any existing file wants a new file" now applies unchanged to both
+halves. Sixteen files came out of the one:
+
+| File | Selectors | Mirrors |
+|---|---|---|
+| `TextControls.axaml` | 3 | `Controls/TextControls.cs` |
+| `EmptyState.axaml` | 1 | `Controls/EmptyState.cs` |
+| `MeterRow.axaml` | 4 | `Controls/MeterRow.cs` |
+| `MeterList.axaml` | 1 | `Controls/MeterList.cs` |
+| `RgbaImageView.axaml` | 1 | `Controls/RgbaImageView.cs` |
+| `FieldRow.axaml` | 1 | `Controls/FieldRow.cs` |
+| `PathPickerRow.axaml` | 1 | `Controls/PathPickerRow.cs` |
+| `Bars.axaml` | 2 | `Controls/Bars.cs` |
+| `FilterBar.axaml` | 1 | `Controls/FilterBar.cs` |
+| `MenuBar.axaml` | 1 | `Controls/MenuBar.cs` |
+| `ToolBar.axaml` | 2 | `Controls/ToolBar.cs` |
+| `Card.axaml` | 1 | `Controls/Card.cs` |
+| `SplitPane.axaml` | 1 | `Controls/SplitPane.cs` |
+| `LunaTable.axaml` | 2 | `Controls/LunaTable.cs` |
+| `SidePanel.axaml` | 1 | `Controls/SidePanel.cs` |
+| `ConsolePane.axaml` | 1 | `Controls/ConsolePane.cs` |
+
+**Three control files have no style file, and that is the informative part of the table rather than
+an omission from it.** `ActionControls`, `LunaList` and `Widgets` (`LunaSwitch`, `Dropdown`, `Tabs`)
+all carry `StyleKeyOverride` and borrow FluentTheme's templates wholesale, so they have no styles of
+their own. Before the split that fact was invisible; now it is the absence of a file.
+
+`LunaTheme.axaml` becomes the index, and the order in it is the order the single file had. That
+order is **not** load-bearing — every style names a distinct control type, so none overrides another
+— but keeping it makes the split diffable against what it replaced, which is worth more than an
+alphabet.
+
+### 29.2 What each omission costs, measured
+
+The split introduces a failure mode the single file did not have: a style file that exists, compiles,
+and is not named in the index does nothing at all. That is the §5.5 symptom — no template, no error,
+nothing on screen — now reachable by forgetting one line.
+
+So it was measured rather than reasoned about. Each `StyleInclude` was deleted in turn and the suite
+run against the result:
+
+| Omission | Turned red |
+|---|---|
+| `SplitPane.axaml` | **11 tests** — `TemplateReachTests` naming `SplitPane`, nine `ShellTests`, and the gallery pass |
+| `TextControls.axaml` | **13 tests** — three `LunaPControlTests`, four `ThemeTests`, six `CssThemeTests` |
+| `MenuBar.axaml` | **nothing** — see §29.3; **1 test** after §30 fixed what that uncovered |
+
+The first two are the two mechanisms, and it is worth knowing they are different ones.
+`TemplateReachTests` catches a templated control because it requires a visual tree (§28.1). It cannot
+catch `SectionHeader`, `HintText` or `MonoText` at all — those are `TextBlock`s styled by property
+setters, with no template to fail to get, and §28.1 says so explicitly. What catches those is
+`LunaPControlTests`, which reads the palette back off a realised header. Fifteen of the sixteen files
+were covered, by one guard or the other, without anybody having written a guard for the split itself.
+
+**The sixteenth was not covered, and chasing that is what found §30.** It is covered now, by a third
+guard written for the defect rather than for the split.
+
+### 29.3 The sixteenth file, and the defect it was hiding
+
+`MenuBar.axaml` turned nothing red, and the reason is not a gap in the guards.
+
+**The style in it has never applied.** `MenuBar` sets `StyleKeyOverride` to `typeof(Menu)`, and it
+must — without that the Fluent `ControlTheme` never reaches it and the bar draws no menus at all
+(§5.5, §14.1, and `MenuBar.cs` records it as load-bearing and measured). But Avalonia matches a type
+selector against the **style key**, not the runtime type. So `luna|MenuBar` asks for a control whose
+style key is `MenuBar`, and by construction there is no such control. The same override that makes
+the menu bar render is what stops its own style from ever selecting it.
+
+Measured three ways, on Avalonia 12.1.0:
+
+- Setting the `Background` setter to `Red` and reading the property back off a realised `MenuBar`
+  returns **`Transparent`**. Neither setter arrives.
+- The same probe run against the tree **before** the split returns `Background=Transparent
+  Padding=0,0,0,0` — identical. The split did not cause this and did not change it.
+- Changing the selector to `Menu.luna-menu-bar` and adding that class in the constructor makes
+  `Background` apply — the probe returns `Red`.
+
+**The bar looks correct anyway, which is why nothing caught it.** `Transparent` is Avalonia's own
+`Menu` default, so the intent in the comment and the appearance on screen agree by luck. They would
+part company the moment FluentTheme changed that default, and the `Padding="2,0"` never arrived at
+all.
+
+#### 29.3.1 A correction, recorded because the wrong version was written down first
+
+This section originally ended by saying the defect was **left unfixed**, on the grounds that the
+class fix made `Background` apply but `Padding` still read `0,0,0,0` — "a second cause that has not
+been isolated". **That was wrong, and it was wrong because of how it was measured.** Reading
+`bar.Padding` off a control in one probe run and comparing it against a different probe run's build
+is not a measurement; the second cause never existed.
+
+`AvaloniaObject.GetDiagnostic` settles it, and is the tool that should have been reached for first:
+
+| Property | Before the fix | After |
+|---|---|---|
+| `Padding` | `0,0,0,0`, priority **`Unset`** | `2,0,2,0`, priority `StyleTrigger` |
+| `Background` | `Transparent`, priority `Style` | `Transparent`, priority `StyleTrigger` |
+
+`Unset` is the whole answer. **Nothing anywhere was setting `Padding`** — not LunaP, not Fluent — so
+there was no competing value to lose to, and one cause explains both setters. `Background` read
+`Transparent` at `Style` priority from FluentTheme, which is the coincidence that hid the defect.
+§30 records the fix, which turned out to be the one this section had already found and mistrusted.
+
+**This is a limit of §28.1 worth stating in its own terms.** That sweep catches a control that
+renders *nothing*. It cannot catch a control that renders *the wrong thing*, and a control which
+borrows a template through `StyleKeyOverride` always has a visual tree no matter what its own style
+does. That hole was found by sabotage rather than by reading, and §30 shows it was never confined to
+`MenuBar`.
+
+### 29.4 `CssTheme`, split four ways and still one type
+
+547 lines became four files, chosen by what makes each of them change:
+
+- **`Css/CssTheme.cs`** — the entry point, `CssThemeResult`, and the vocabulary queries `man theme`
+  reads back. Changes when the public surface does.
+- **`Css/CssVocabulary.cs`** — the element and property allow-lists. **This is the half that grows
+  with the control kit**, and it is also what a consumer's documentation test reads through
+  `ElementNames`, so an addition here is an addition to a published vocabulary (§26.13).
+- **`Css/CssParser.cs`** — the parse itself. Changes only when the grammar's shape does.
+- **`Css/CssValues.cs`** — text to Avalonia values: colours, numbers, font lists, resource keys.
+
+It stays **one `partial` type**, and the namespace stays `EmuSen.LunaP.Theme` even though the files
+now sit in `Theme/Css/`. Both are deliberate. `Parser` reaches the private allow-lists and the
+private converters, and nesting it inside the partial class is what keeps all three `private` rather
+than promoting them to `internal` so that separate types could see each other. And `CssTheme` is a
+public name a consumer has already written a `using` for — moving it to match a directory would be a
+breaking change bought with nothing but tidiness.
+
+### 29.5 What this does not do
+
+- **It does not change a single rendered pixel.** 339 tests passed before and after, and the
+  `MenuBar` probe returns the same two values on both trees. This is a move, not a repair.
+- **It does not guard the index directly.** There is no test asserting that every file in
+  `Theme/Controls/` is included, and there cannot easily be one: §28.1 established that Avalonia
+  strips compiled `.axaml` from the resource blob, so the shipped assembly cannot be asked what
+  style files exist. Enumerating the directory would mean reading the developer's working copy and
+  calling it the shipped artefact — the same reasoning that rejected linting selector text. The
+  coverage in §29.2 is indirect, and it is fifteen of sixteen rather than sixteen.
+- **It does not fix `MenuBar`.** §29.3 records the defect, the mechanism, and the half-fix that
+  works, and leaves the decision.
+- **It does not split `Palette.axaml` or `LunaPalette.cs`.** At 127 and 79 lines they are flat
+  key-value pairs a reader reads top to bottom, and §2.1's whole point is that the two halves are
+  compared against each other — splitting either would make that comparison harder to see.
+
+---
+
+## 30. A type selector matches the style key, and four elements that styled nothing
+
+§29.3 found one dead style on `MenuBar` and treated it as a fact about `MenuBar`. It was not. It is a
+fact about **`StyleKeyOverride`**, and the moment that is stated properly the question becomes: what
+else in this toolkit pins a style key?
+
+Eight controls do — `ActionMenuItem`, `ActionButton`, `ActionToggle`, `MenuBar`, `LunaList<T>`,
+`LunaSwitch`, `Dropdown` and `Tabs` — and every one of them does it for the reason §5.5 and §14.1
+record, which is that without it the stock Fluent theme never reaches the subclass and the control
+renders as nothing, or in `LunaSwitch`'s case throws on `PART_MovingKnobs`. The override is correct
+and stays.
+
+But it is not free, and the price was never written down: **a control styled as `Menu` cannot be
+selected as a `MenuBar`.** Avalonia resolves a type selector against the style key, so the same line
+that buys the template spends the type.
+
+### 30.1 What that cost, measured across the vocabulary
+
+Four of the eight are published CSS element names: `menu-bar`, `luna-switch`, `dropdown` and `tabs`.
+`CssTheme.TryCompile` built `OfType(spec.Target)` for all of them, which asks for a control whose
+style key is `Dropdown` — and there is never one.
+
+Measured by writing a real theme, loading it through `LunaTheme.Apply`, and reading the property
+back off a realised control:
+
+| Element | Rule | Theme loaded | Foreground after |
+|---|---|---|---|
+| `section-header` | `color: #FF00FF` | yes | **Fuchsia** |
+| `menu-bar` | `color: #FF00FF` | yes | White |
+| `luna-switch` | `color: #FF00FF` | yes | White |
+| `dropdown` | `color: #FF00FF` | yes | White |
+| `tabs` | `color: #FF00FF` | yes | White |
+
+**No warning was raised for any of them**, and that is what makes this the worst failure this format
+has. §12.2 chose non-fatal warnings so a theme written against a newer LunaP still loads, and the
+whole value of that choice is that a theme author is told what was skipped. Here the rule parsed,
+compiled to a `Style`, was added to `Application.Styles`, matched nothing, and reported success. A
+refused rule tells the author something. A rule that is accepted and silently does nothing tells
+them their CSS is correct and their eyes are wrong.
+
+**These four have been in the vocabulary since different releases** — `luna-switch`, `dropdown` and
+`tabs` since the format existed, `menu-bar` since §26.13 sold it as part of 0.7.0's new vocabulary.
+Every one of them was advertised and none of them worked.
+
+### 30.2 Why the existing test passed throughout
+
+`CssThemeTests` has had `A_rule_block_becomes_a_style_that_really_applies` since §12. It is a good
+test. It is written against `section-header`.
+
+`SectionHeader` is a `TextBlock` that pins no style key, so it is precisely the case that works, and
+one example was taken as covering a vocabulary of twenty-one. This is the same shape as §26.11's
+finding that dropping `StyleKeyOverride` turns tests red for `Menu` and `MenuItem` and turns nothing
+red for `Button` and `ToggleButton`: **a mechanism sampled once is a mechanism assumed uniform.**
+
+### 30.3 The fix, and why it is a class rather than a cleverer selector
+
+The style key cannot be given up — it is what makes these controls render. So the selector has to
+name the style-key type and then narrow it back down, and a style class is what Avalonia has for
+that:
+
+- Each affected control adds a class to itself in its constructor and publishes it as a
+  `public const string StyleClass` — `luna-menu-bar`, `luna-switch`, `luna-dropdown`, `luna-tabs`.
+  A const because the XAML, the C# and the CSS vocabulary all spell the same string, and a literal
+  in three places is a typo waiting for a release.
+- `ElementSpec` gains `StyleKey` and `StyleClass`. `TryCompile` builds
+  `OfType(StyleKey ?? Target)` and adds `.Class(StyleClass)` when there is one, so
+  `ToggleSwitch.luna-switch` reaches a `LunaSwitch` and never a host's own `ToggleSwitch`.
+- `Theme/Controls/MenuBar.axaml` becomes `Menu.luna-menu-bar` for the same reason.
+
+**What was rejected.** Selecting the bare style-key type (`Menu { … }`) would reach every menu in the
+consumer's application, which is a toolkit reaching outside itself. Dropping `StyleKeyOverride` and
+writing a full `ControlTheme` per control is what §14.1 already declined, and §26.11 measured what
+removing the override costs. `:is(luna|MenuBar)` does not help: `Is` matches the style key too, so it
+asks the same impossible question in a longer form.
+
+### 30.4 The guard, and what it turned red
+
+`Every_element_in_the_vocabulary_can_actually_be_styled` in `CssThemeTests`. It takes its subjects
+from `CssTheme.ElementNames` — the published list, not a copy of it — writes `element { color:
+#FF00FF; }`, loads it as a real theme, and requires the control's `Foreground` to have changed.
+Twenty-one cases, one per element, and a new element joins the sweep the moment it is published.
+
+The property is resolved with `AvaloniaPropertyRegistry.FindRegistered`, the same lookup `CssTheme`
+itself uses, so a control whose `Foreground` comes from `TextElement` rather than `TemplatedControl`
+is read back through the mechanism that set it rather than through a guess.
+
+Sabotaged by restoring `OfType(spec.Target)`:
+
+| Sabotage | Turned red |
+|---|---|
+| `TryCompile` selects `spec.Target` again | **4 of 21** — `menu-bar`, `luna-switch`, `dropdown`, `tabs`, and no others |
+| `MenuBar.axaml` dropped from the index | `A_menu_bar_is_styled_by_the_kit_and_not_only_by_fluent` |
+
+A third guard, `StyleKeyTests`, enforces the class itself rather than its effect - §30.6 records what
+it covers that this sweep does not, and why that gap was the one the original defect came through.
+
+The second row is the one §29.2 could not produce. That omission cost nothing before this section;
+it costs a red test now, which closes the last of the sixteen style files and makes §29.2's table
+complete.
+
+### 30.5 What this does not do
+
+- **It does not cover template parts.** The sweep tests each element, not `card .header` or
+  `console-pane .output`. A part whose selector reaches nothing would still be silent, and the same
+  argument that justifies this test justifies extending it — it has not been.
+- ~~**It does not cover the other four overriding controls.**~~ **Superseded by §30.6**, which
+  enforces the class on all eight rather than on the four the vocabulary happens to name.
+- **It does not make the warning list catch this.** A rule that compiles against a real element name
+  still produces no warning when it matches no instance, because nothing in the parse knows what is
+  on screen. The sweep catches it at test time; a host loading a bad theme at runtime is not told.
+- **It changes rendering**, unlike §29. The menu bar gains its `2,0` padding, and a CSS theme naming
+  any of the four elements starts doing what it always said it did — which for a consumer who wrote
+  such a rule and worked around its not applying is a visible change. `CHANGELOG.md` says so.
+
+### 30.6 The gap §30.5 named, closed
+
+§30.5 ended its third bullet with *"it needs a class first, and nothing enforces that yet"*. That
+sentence is the exact shape §28 exists to abolish — a trap written up as a paragraph asking the next
+author to remember — and it was written knowing that, which makes leaving it worse rather than
+better. So it is an assertion now: `tests/EmuSen.LunaP.Tests/StyleKeyTests.cs`.
+
+**What was actually uncovered, stated precisely,** because §30.4 already covers more than the bullet
+implied. A control that pins a style key can lose its styling two ways:
+
+| It gains… | Caught by | Before §30.6 |
+|---|---|---|
+| a CSS vocabulary entry | `Every_element_in_the_vocabulary_can_actually_be_styled` (§30.4) | **covered** |
+| an `.axaml` style file | nothing | **uncovered** |
+
+The second row is not hypothetical — **it is what actually happened.** `MenuBar` gained a style file
+in §26 with a `luna|MenuBar` selector, and it was dead on arrival for four releases. `TemplateReachTests`
+structurally cannot see it, because a control that borrows a template always has a visual tree
+however dead its own style is (§28.4 says as much). And the `.axaml` cannot be read back to lint the
+selector, because Avalonia's compiler strips it from the resource blob (§28.1).
+
+So the rule is enforced from the other end, and made uniform rather than conditional: **every control
+that pins `StyleKeyOverride` declares `public const string StyleClass` and adds it to itself.** All
+eight, including the four with nothing to style today. The class costs a string, and the day one of
+them gains a style file or an element name, the selector already has something that can match and the
+idiom is sitting there to copy. Conditional rules are the ones that get forgotten; this one cannot be,
+because the test finds its subjects by reflecting for a declared `StyleKeyOverride` override rather
+than reading a list.
+
+`ActionMenuItem`, `ActionButton`, `ActionToggle` and `LunaList<T>` gained classes here. Nothing
+selects them yet, and that is the point.
+
+**The sabotages, and what each turned red:**
+
+| Sabotage | Turned red |
+|---|---|
+| `Tabs` declares `StyleClass` and never adds it | the sweep, naming `Tabs` and quoting `Classes.Add(StyleClass)` as the remedy |
+| `Tabs.StyleClass` deleted outright | **the build** — `CssVocabulary.cs` names it, so a vocabulary member's class cannot be removed at all |
+| `ActionButton.StyleClass` deleted outright | the sweep, naming `ActionButton` |
+
+The middle row is worth keeping: for the four controls in the vocabulary the const is load-bearing at
+compile time, so the test is the guard only for the four that are not. Both halves were needed, and
+neither was obvious before it was tried.
+
+A second assertion keeps the sweep honest about its own subjects. A `[Theory]` with no cases is a
+pass, so a refactor that removed every override would turn this file green by emptying it;
+`The_sweep_has_subjects` requires at least the eight that existed when this was written, and says so
+in its message rather than leaving a bare number.

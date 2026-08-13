@@ -32,7 +32,7 @@ namespace EmuSen.LunaP.Controls
         // The status line is the one place in the toolkit where text arrives to be READ RATHER THAN
         // FOUND: "Applied 12 cheats", "Save State failed". A sighted user gets that from the corner
         // of their eye without going to look for it, and the equivalent is a live region - which is
-        // set on this control in Theme/Controls.axaml rather than here, because it is a default a
+        // set on this control in Theme/Controls/Bars.axaml rather than here, because it is a default a
         // caller may want to turn off (a status line updating twice a second is a live region that
         // never shuts up) and Avalonia's attached property is the way to say so.
         //

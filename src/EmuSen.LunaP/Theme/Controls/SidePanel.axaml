@@ -1,0 +1,46 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <Style Selector="luna|SidePanel">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <DockPanel Background="{DynamicResource LunaSurface}">
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="8,6,4,6">
+                        <TextBlock Name="PART_Title"
+                                   Grid.Column="0"
+                                   Text="{TemplateBinding Title}"
+                                   Foreground="{DynamicResource LunaText}"
+                                   FontWeight="Bold"
+                                   FontSize="{DynamicResource LunaHintFontSize}"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" />
+                        <!-- The visible glyph is a cross, which a screen reader
+                             cannot say and voice control cannot be told to
+                             click, so the NAME is the word and the glyph is
+                             decoration. Several panels mean several buttons
+                             called Close, told apart by help text - the same
+                             arrangement four Browse... buttons needed (§24.2). -->
+                        <Button Name="PART_Close"
+                                Grid.Column="1"
+                                Content="&#x2715;"
+                                IsVisible="{TemplateBinding CanClose}"
+                                AutomationProperties.Name="Close"
+                                AutomationProperties.HelpText="{TemplateBinding Title}"
+                                Padding="6,2"
+                                Background="Transparent"
+                                BorderThickness="0" />
+                    </Grid>
+
+                    <Border DockPanel.Dock="Top"
+                            Height="1"
+                            Background="{DynamicResource LunaBorder}"
+                            Margin="0,0,0,6" />
+
+                    <ContentPresenter Name="PART_Content" Content="{TemplateBinding Content}" Margin="8,0,8,8" />
+                </DockPanel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+</Styles>

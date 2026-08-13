@@ -1,0 +1,44 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- Templated explicitly for the same reason ButtonBar is: a derived
+         control's style key is its own type, so FluentTheme's ItemsControl
+         theme never reaches it and it renders as nothing. §5.5.
+
+         Left-aligned, which is the visible difference from ButtonBar - and the
+         difference in kind is that these items are built from actions, so they
+         follow an enabled state rather than holding one. -->
+    <Style Selector="luna|ToolBar">
+        <Setter Property="BorderBrush" Value="{DynamicResource LunaBorder}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="Padding" Value="4" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        Padding="{TemplateBinding Padding}">
+                    <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Setter Property="ItemsPanel">
+            <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="4" />
+            </ItemsPanelTemplate>
+        </Setter>
+    </Style>
+
+    <!-- On its side. Avalonia's Separator is the horizontal rule a MENU wants,
+         and dropped unstyled into a horizontal strip it draws a full-width bar
+         that pushes every button after it off the end. -->
+    <Style Selector="luna|ToolBar Separator">
+        <Setter Property="Width" Value="1" />
+        <Setter Property="Height" Value="18" />
+        <Setter Property="Margin" Value="4,0" />
+        <Setter Property="Background" Value="{DynamicResource LunaBorder}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+</Styles>

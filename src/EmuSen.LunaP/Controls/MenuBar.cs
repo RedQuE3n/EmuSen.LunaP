@@ -27,6 +27,10 @@ namespace EmuSen.LunaP.Controls
         // uniformly - see the comment at the top of Controls/ActionControls.cs and §26.11.
         protected override Type StyleKeyOverride => typeof(Menu);
 
+        public const string StyleClass = "luna-menu-bar";
+
+        public MenuBar() => Classes.Add(StyleClass);
+
         private IReadOnlyList<LunaMenu> _menus = Array.Empty<LunaMenu>();
 
         // What this bar is currently showing. Kept so AppWindow can hand the same list to the

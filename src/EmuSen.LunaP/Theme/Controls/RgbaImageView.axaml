@@ -1,0 +1,17 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <Style Selector="luna|RgbaImageView">
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Image Name="PART_Image"
+                       Source="{TemplateBinding Source}"
+                       Stretch="{TemplateBinding Stretch}"
+                       RenderOptions.BitmapInterpolationMode="None" />
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+</Styles>

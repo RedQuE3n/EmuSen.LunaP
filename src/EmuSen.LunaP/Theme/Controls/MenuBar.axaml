@@ -1,0 +1,33 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- Transparent rather than Fluent's own chrome colour, so the strip is the
+         window's LunaSurface and a theme that repaints the window repaints the
+         menu bar with it. Fluent's Menu paints #2C2C2C on dark, which against
+         LunaSurface's #1E1E1E reads as a lighter bar somebody forgot to style.
+
+         `Menu.luna-menu-bar` AND NOT `luna|MenuBar`, which is the whole of §30
+         and is not a matter of taste. MenuBar pins StyleKeyOverride to
+         typeof(Menu) so the Fluent template reaches it at all - without that the
+         bar draws no menus. But Avalonia matches a type selector against the
+         STYLE KEY rather than the runtime type, so `luna|MenuBar` asks for a
+         control whose style key is MenuBar, and by construction there is never
+         one. The selector this file shipped with from §26 to §29 matched nothing
+         and said so to nobody; both setters below were dead for four releases.
+
+         The class is what a selector can still name. MenuBar adds it to itself
+         in its constructor and publishes it as MenuBar.StyleClass, so this
+         string and the one the CSS vocabulary uses are the same string.
+
+         WHY IT WENT UNNOTICED, worth keeping because it is the reason no test
+         caught it: Avalonia paints a Menu transparent anyway, so the intent here
+         and the appearance on screen agreed by luck. Padding is the half that
+         did not - it read 0,0,0,0 at priority Unset, meaning nothing anywhere
+         set it. ShellTests asserts the padding for exactly that reason. -->
+    <Style Selector="Menu.luna-menu-bar">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="2,0" />
+    </Style>
+
+</Styles>

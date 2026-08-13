@@ -1,0 +1,45 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- Templated explicitly rather than inheriting ItemsControl's: a derived
+         control's style key is its own type, so FluentTheme's ItemsControl
+         theme does not reach it and it would render as nothing. See
+         docs/LunaP.md §5.5. -->
+    <Style Selector="luna|ButtonBar">
+        <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" />
+            </ControlTemplate>
+        </Setter>
+        <Setter Property="ItemsPanel">
+            <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="8" />
+            </ItemsPanelTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="luna|StatusBar">
+        <!-- Polite, so a changed status is announced when the reader next
+             pauses rather than interrupting them. Assertive would cut across
+             whatever they were listening to, and a status line carries
+             "Applied 12 cheats" far more often than it carries anything that
+             cannot wait a moment. A caller whose status updates continuously
+             should set this to Off - it is an attached property precisely so
+             that stays their decision. §24.2. -->
+        <Setter Property="(AutomationProperties.LiveSetting)" Value="Polite" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0"
+                               Text="{TemplateBinding Status}"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center" />
+                    <ContentPresenter Grid.Column="1" Content="{TemplateBinding Content}" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+</Styles>

@@ -1,0 +1,22 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <Style Selector="luna|SectionHeader">
+        <Setter Property="Foreground" Value="{DynamicResource LunaSectionHeader}" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <Style Selector="luna|HintText">
+        <Setter Property="Foreground" Value="{DynamicResource LunaMuted}" />
+        <Setter Property="FontSize" Value="{DynamicResource LunaHintFontSize}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style Selector="luna|MonoText">
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
+        <Setter Property="FontFamily" Value="{DynamicResource LunaMonoFont}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+</Styles>

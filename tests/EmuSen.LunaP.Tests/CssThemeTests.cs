@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
@@ -342,5 +343,81 @@ namespace EmuSen.LunaP.Tests
         });
 
         private static Color Brush(TextBlock text) => ((ISolidColorBrush)text.Foreground!).Color;
+
+        // ------------------------------------------------------------ the vocabulary really works
+
+        // THE §30 GUARD, and the failure it exists for is the worst one this format has: a rule that
+        // parses, warns about nothing, and styles nothing. A refused rule tells the theme author
+        // something. A rule that is accepted and silently does nothing tells them their CSS is fine
+        // and their eyes are wrong.
+        //
+        // Four of the twenty-one elements were in exactly that state - menu-bar, luna-switch,
+        // dropdown and tabs, every one of them a control that pins StyleKeyOverride and is therefore
+        // styled by Avalonia AS the stock control it borrows from. `CssThemeTests` had a test that a
+        // rule "really applies", and it passed throughout, because it was written against
+        // section-header: a TextBlock, with no overridden style key, which is the case that works.
+        //
+        // So this sweep takes its subjects from CssTheme.ElementNames rather than from a list
+        // somebody keeps. A new element is in it the moment it is published, and there is no way to
+        // add a vocabulary entry without also proving it reaches something.
+        public static TheoryData<string> Vocabulary()
+        {
+            var data = new TheoryData<string>();
+            foreach (string name in CssTheme.ElementNames) data.Add(name);
+            return data;
+        }
+
+        // The same spelling CssTheme uses to name an element after its control, so the two halves
+        // are matched by the rule rather than by a table that could disagree with it.
+        private static string Kebab(string name)
+        {
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < name.Length; i++)
+            {
+                if (char.IsUpper(name[i]) && i > 0) sb.Append('-');
+                sb.Append(char.ToLowerInvariant(name[i]));
+            }
+
+            return sb.ToString();
+        }
+
+        private static Type ControlFor(string element) =>
+            typeof(SectionHeader).Assembly.GetTypes()
+                .Where(t => t.Namespace == "EmuSen.LunaP.Controls" && t.IsPublic && !t.IsAbstract)
+                .Where(t => !t.IsGenericTypeDefinition)
+                .FirstOrDefault(t => Kebab(t.Name) == element)
+            ?? throw new InvalidOperationException(
+                $"'{element}' is published in CssTheme.ElementNames but names no control in the kit.");
+
+        [Theory]
+        [MemberData(nameof(Vocabulary))]
+        public Task Every_element_in_the_vocabulary_can_actually_be_styled(string element) => UiTest.Run(() =>
+        {
+            Type type = ControlFor(element);
+            var control = (Control)Activator.CreateInstance(type)!;
+
+            WriteCss("Vocab", element + " { color: #FF00FF; }");
+
+            var window = new ToolWindow { Width = 400, Height = 200, Content = control };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            // Resolved the way CssTheme resolves it, so a control whose Foreground comes from
+            // TextElement rather than TemplatedControl is read through the same lookup that set it.
+            AvaloniaProperty foreground = AvaloniaPropertyRegistry.Instance.FindRegistered(control, "Foreground")!;
+
+            Assert.True(LunaTheme.Apply("Vocab"), $"the theme naming '{element}' did not load.");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            var brush = control.GetValue(foreground) as ISolidColorBrush;
+            Assert.True(brush is not null && brush.Color == Color.Parse("#FF00FF"),
+                $"`{element} {{ color: #FF00FF; }}` compiled without a warning and changed nothing on "
+                + $"{type.Name}, whose Foreground is still {control.GetValue(foreground)}. A rule that is "
+                + "accepted and does nothing is worse than one that is refused. If this control pins "
+                + "StyleKeyOverride, its vocabulary entry needs the style key AND the class it adds to "
+                + "itself - a type selector matches the style key, not the runtime type. See docs/LunaP.md §30.");
+
+            window.Close();
+        });
     }
 }

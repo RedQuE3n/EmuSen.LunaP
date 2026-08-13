@@ -1,0 +1,21 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <Style Selector="luna|FieldRow">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <StackPanel Spacing="4">
+                    <!-- Named so FieldRow can point the content's LabeledBy at it.
+                         Renaming this part breaks the pairing silently, which is
+                         why AccessibilityTests asserts the content comes back
+                         named rather than asserting the part exists. -->
+                    <TextBlock Name="PART_Label" Text="{TemplateBinding Label}" FontWeight="Bold" />
+                    <luna:HintText Text="{TemplateBinding Hint}" IsVisible="{TemplateBinding HasHint}" />
+                    <ContentPresenter Content="{TemplateBinding Content}" />
+                </StackPanel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+</Styles>

@@ -1,0 +1,39 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- The facet label and dropdown collapse together when there is nothing to pick. -->
+    <Style Selector="luna|FilterBar">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid ColumnDefinitions="Auto,Auto,*">
+                    <TextBlock Grid.Column="0"
+                               Text="{TemplateBinding FacetLabel}"
+                               IsVisible="{TemplateBinding ShowFacet}"
+                               Foreground="{DynamicResource LunaMuted}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0" />
+                    <!-- The facet's visible label is the TextBlock above, which
+                         is a sibling and not something a reader would connect
+                         to the dropdown. FacetLabel already holds the words. -->
+                    <luna:Dropdown Grid.Column="1"
+                                   Name="PART_Facet"
+                                   MinWidth="180"
+                                   Margin="0,0,8,0"
+                                   AutomationProperties.Name="{TemplateBinding FacetLabel}"
+                                   IsVisible="{TemplateBinding ShowFacet}" />
+                    <!-- Placeholder as the NAME as well as the placeholder. The
+                         two are not the same thing: a placeholder disappears the
+                         moment the user types, which is exactly when they may
+                         want reminding what they are searching. -->
+                    <TextBox Grid.Column="2"
+                             Name="PART_Search"
+                             AutomationProperties.Name="{TemplateBinding Placeholder}"
+                             Text="{TemplateBinding SearchText}"
+                             PlaceholderText="{TemplateBinding Placeholder}" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+</Styles>

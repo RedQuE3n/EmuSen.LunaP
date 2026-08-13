@@ -43,7 +43,7 @@ namespace EmuSen.LunaP.Controls
             {
                 built.Add(action);
 
-                // A plain Separator, turned on its side by Theme/Controls.axaml's
+                // A plain Separator, turned on its side by Theme/Controls/ToolBar.axaml's
                 // `luna|ToolBar Separator` rule. Avalonia's Separator is the horizontal rule a
                 // MENU wants, and dropped into a horizontal run of buttons unstyled it draws a
                 // full-width bar that pushes everything after it off the end of the strip.

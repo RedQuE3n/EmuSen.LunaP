@@ -29,10 +29,15 @@ namespace EmuSen.LunaP.Tests
     // WHY NOT LINT THE SELECTOR TEXT, which was the first attempt. Two reasons, the second
     // decisive. It would only catch the one cause - `luna|X` where `:is(luna|X)` was needed - and
     // "no template" has others: a missing StyleKeyOverride (§5.5), a style file not included, a
-    // renamed part. And the text is not there to read: Avalonia's XAML compiler compiles
-    // Controls.axaml to IL and STRIPS IT from the resource blob, so a packaged LunaP contains only
-    // `avares://EmuSen.LunaP/!AvaloniaResourceXamlInfo`. Reading the .axaml would have meant
-    // reading the developer's working copy and calling it the shipped artefact.
+    // renamed part. And the text is not there to read: Avalonia's XAML compiler compiles the
+    // Theme/Controls/*.axaml files to IL and STRIPS THEM from the resource blob, so a packaged
+    // LunaP contains only `avares://EmuSen.LunaP/!AvaloniaResourceXamlInfo`. Reading the .axaml
+    // would have meant reading the developer's working copy and calling it the shipped artefact.
+    //
+    // "A style file not included" stopped being hypothetical at §29, which split one 508-line
+    // Controls.axaml into sixteen files behind an index in LunaTheme.axaml. Forgetting a line in
+    // that index is now the cheapest way to reach this symptom, and §29.2 measures what each
+    // omission costs: fifteen of the sixteen turn this suite red.
     public class TemplateReachTests
     {
         private static readonly Assembly Kit = typeof(SectionHeader).Assembly;
