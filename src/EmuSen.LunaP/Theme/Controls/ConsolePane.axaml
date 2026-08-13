@@ -11,17 +11,12 @@
                                    Name="PART_Prompt"
                                    Text="{TemplateBinding Prompt}"
                                    VerticalAlignment="Center"
-                                   FontFamily="{DynamicResource LunaMonoFont}"
-                                   Foreground="{DynamicResource LunaText}"
                                    Margin="0,0,4,0" />
                         <!-- Not named from Prompt. A prompt is "> " or "diana$ ",
                              which is a sigil and reads as punctuation. -->
                         <TextBox Grid.Column="1"
                                  Name="PART_Input"
                                  AutomationProperties.Name="Console input"
-                                 FontFamily="{DynamicResource LunaMonoFont}"
-                                 Background="{DynamicResource LunaInputSurface}"
-                                 Foreground="{DynamicResource LunaText}"
                                  CaretBrush="{DynamicResource LunaText}"
                                  BorderThickness="1" />
                     </Grid>
@@ -42,13 +37,39 @@
                              the attribute would read as a fix and be one line of
                              ignored XAML. -->
                         <SelectableTextBlock Name="PART_Output"
-                                             FontFamily="{DynamicResource LunaMonoFont}"
-                                             Foreground="{DynamicResource LunaText}"
                                              TextWrapping="Wrap" />
                     </ScrollViewer>
                 </DockPanel>
             </ControlTemplate>
         </Setter>
+    </Style>
+
+    <!-- Every property the CSS vocabulary publishes for these parts is set here
+         rather than on the elements above, and that is not a style preference.
+
+         A value written into a ControlTemplate binds at priority Template, which
+         OUTRANKS Style - measured, §39.2. So `console-pane .output { color: … }`
+         parsed, matched PART_Output, and lost to the attribute, leaving the part
+         at #ffd4d4d4 with priority Template. As setters these are Style priority
+         and a host theme applied afterwards wins in the ordinary way.
+
+         CaretBrush stays an attribute deliberately: no CSS property maps to it,
+         so nothing can be competing for it and moving it would only suggest
+         otherwise. -->
+    <Style Selector="luna|ConsolePane /template/ TextBlock#PART_Prompt">
+        <Setter Property="FontFamily" Value="{DynamicResource LunaMonoFont}" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
+    </Style>
+
+    <Style Selector="luna|ConsolePane /template/ TextBox#PART_Input">
+        <Setter Property="FontFamily" Value="{DynamicResource LunaMonoFont}" />
+        <Setter Property="Background" Value="{DynamicResource LunaInputSurface}" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
+    </Style>
+
+    <Style Selector="luna|ConsolePane /template/ SelectableTextBlock#PART_Output">
+        <Setter Property="FontFamily" Value="{DynamicResource LunaMonoFont}" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
     </Style>
 
 </Styles>

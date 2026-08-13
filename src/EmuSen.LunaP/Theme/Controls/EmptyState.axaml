@@ -14,19 +14,30 @@
                 <StackPanel Spacing="4">
                     <TextBlock Name="PART_Message"
                                Text="{TemplateBinding Message}"
-                               Foreground="{DynamicResource LunaMuted}"
                                HorizontalAlignment="Center"
                                TextWrapping="Wrap" />
                     <TextBlock Name="PART_Detail"
                                Text="{TemplateBinding Detail}"
                                IsVisible="{TemplateBinding HasDetail}"
-                               Foreground="{DynamicResource LunaMuted}"
-                               FontSize="{DynamicResource LunaHintFontSize}"
                                HorizontalAlignment="Center"
                                TextWrapping="Wrap" />
                 </StackPanel>
             </ControlTemplate>
         </Setter>
+    </Style>
+
+    <!-- The look, set from styles rather than as attributes on the elements
+         above, so that `empty-state .message` and `empty-state .detail` can
+         actually reach it. A value written into a ControlTemplate binds at
+         priority Template, which OUTRANKS Style, so a host rule matched the part
+         and lost - measured, §39.2. The rendered default is unchanged. -->
+    <Style Selector="luna|EmptyState /template/ TextBlock#PART_Message">
+        <Setter Property="Foreground" Value="{DynamicResource LunaMuted}" />
+    </Style>
+
+    <Style Selector="luna|EmptyState /template/ TextBlock#PART_Detail">
+        <Setter Property="Foreground" Value="{DynamicResource LunaMuted}" />
+        <Setter Property="FontSize" Value="{DynamicResource LunaHintFontSize}" />
     </Style>
 
 </Styles>

@@ -10,9 +10,6 @@
                         <TextBlock Name="PART_Title"
                                    Grid.Column="0"
                                    Text="{TemplateBinding Title}"
-                                   Foreground="{DynamicResource LunaText}"
-                                   FontWeight="Bold"
-                                   FontSize="{DynamicResource LunaHintFontSize}"
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center" />
                         <!-- The visible glyph is a cross, which a screen reader
@@ -28,7 +25,6 @@
                                 AutomationProperties.Name="Close"
                                 AutomationProperties.HelpText="{TemplateBinding Title}"
                                 Padding="6,2"
-                                Background="Transparent"
                                 BorderThickness="0" />
                     </Grid>
 
@@ -41,6 +37,23 @@
                 </DockPanel>
             </ControlTemplate>
         </Setter>
+    </Style>
+
+    <!-- Set from styles so `side-panel .title` and `side-panel .close` can reach
+         them: an attribute inside a ControlTemplate binds at priority Template,
+         which outranks Style, and a host rule that matched the part lost to it -
+         measured, §39.2. Same defaults, overridable now. -->
+    <Style Selector="luna|SidePanel /template/ TextBlock#PART_Title">
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontSize" Value="{DynamicResource LunaHintFontSize}" />
+    </Style>
+
+    <!-- Transparent so the panel's surface shows through, which is the default a
+         host most plausibly wants to change - a close button that needs to be
+         findable on a light theme. -->
+    <Style Selector="luna|SidePanel /template/ Button#PART_Close">
+        <Setter Property="Background" Value="Transparent" />
     </Style>
 
 </Styles>

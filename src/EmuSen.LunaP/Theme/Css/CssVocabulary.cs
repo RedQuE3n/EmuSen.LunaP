@@ -59,7 +59,20 @@ namespace EmuSen.LunaP.Theme
                 Element(typeof(FilterBar), parts: new Dictionary<string, PartSpec>
                 {
                     ["search"] = new(typeof(TextBox), "PART_Search"),
-                    ["facet"] = new(typeof(TextBlock), "PART_Facet"),
+
+                    // ComboBox, and NOT TextBlock, which is what this said until §39.3, and not
+                    // Dropdown either. Two separate reasons, both of them §30's lesson:
+                    //
+                    //   PART_Facet is a Dropdown, so the TextBlock here named a type that is not in
+                    //   the template - the selector matched nothing and `filter-bar .facet` was
+                    //   silently dead, exactly like the four element names §30 found.
+                    //   Dropdown pins StyleKeyOverride to ComboBox, and a type selector matches the
+                    //   STYLE KEY rather than the runtime type, so naming Dropdown here would have
+                    //   been dead in the same way for a different reason.
+                    //
+                    // The PART_ name is what makes this unambiguous, so no style class is needed as
+                    // it is for the element selectors.
+                    ["facet"] = new(typeof(ComboBox), "PART_Facet"),
                 }),
                 Element(typeof(ConsolePane), parts: new Dictionary<string, PartSpec>
                 {

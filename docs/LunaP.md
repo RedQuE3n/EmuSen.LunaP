@@ -2206,9 +2206,11 @@ complete.
 
 ### 30.5 What this does not do
 
-- **It does not cover template parts.** The sweep tests each element, not `card .header` or
+- ~~**It does not cover template parts.**~~ The sweep tests each element, not `card .header` or
   `console-pane .output`. A part whose selector reaches nothing would still be silent, and the same
-  argument that justifies this test justifies extending it — it has not been.
+  argument that justifies this test justifies extending it — it has not been. **Closed by §39, which
+  found thirteen broken pairs from three separate causes — including this same style-key defect one
+  layer down (§39.3).**
 - ~~**It does not cover the other four overriding controls.**~~ **Superseded by §30.6**, which
   enforces the class on all eight rather than on the four the vocabulary happens to name.
 - **It does not make the warning list catch this.** A rule that compiles against a real element name
@@ -2445,10 +2447,10 @@ member list can be identical either side of it.
 
 ### 32.5 What this does not do
 
-- **It does not capture nullability.** `string?` and `string` are the same line here, so tightening
-  a parameter from nullable to non-nullable — a source-breaking change for a consumer with
+- ~~**It does not capture nullability.**~~ `string?` and `string` are the same line here, so
+  tightening a parameter from nullable to non-nullable — a source-breaking change for a consumer with
   `<Nullable>enable</Nullable>` — passes silently. `NullabilityInfoContext` could read it; that is
-  the first extension this file should get.
+  the first extension this file should get. **Closed by §32.6.**
 - **It does not capture attributes.** Adding `[Obsolete]` is invisible to it, and so is removing one.
 - **It does not distinguish shipped from unshipped.** There is one baseline, at the surface as it
   stands. `CHANGELOG.md` is where a release says what moved, and §32.1 accepted that trade.
@@ -2456,6 +2458,48 @@ member list can be identical either side of it.
   does is a worse break than a rename and is invisible here; that is what the other 370 tests are.
 - **It cannot tell an intended change from an accident.** It can only make somebody look. The
   approval is a committed file, so the looking happens in review rather than in a dialog box.
+
+### 32.6 The gap §32.5 named, closed
+
+`string?` and `string` are different lines now. The snapshot reads annotations through
+`NullabilityInfoContext`, and the regeneration moved **104 lines** in `EmuSen.LunaP` and 2 in the
+harness — every one of them a promise a consumer was already relying on and this file could not see.
+
+**Read state or write state is a real choice, not a detail.** A member can differ in the two:
+`string? Name { get; set; }` on a type that never returns null reads non-null and writes nullable.
+The file reports **what a consumer is promised**, because that is what breaks them — `ReadState` for
+returns, fields, properties and `out` parameters, `WriteState` for ordinary parameters. Backwards,
+and the guard would call the wrong direction of change safe.
+
+It recurses. `Func<string, string?>` and `Func<string?, string>` are different contracts and neither
+is `Func<string, string>`, so the walk follows `NullabilityInfo.GenericTypeArguments` and
+`ElementType` the way the type walk follows generic arguments and array elements. Real lines it now
+carries:
+
+```
+public LunaAutomationPeer(Control owner, AutomationControlType type,
+    System.Func<string?>? name = null, System.Func<string?>? help = null, ...)
+public System.Func<T, object?> Key { get; set; }
+public static readonly DirectProperty<RgbaImageView, Avalonia.Media.IImage?> SourceProperty
+public abstract string Directory(string? category)
+```
+
+**The baseline cannot guard its own renderer**, which is the trap this could have fallen into.
+Delete the nullability walk, regenerate, and the file agrees with itself again while silently saying
+less than it did — the exact failure §32.5 described, reintroduced by the fix for it. So
+`The_snapshot_records_nullability_in_both_directions` asserts three properties against the
+description directly, each chosen to break a different plausible shortcut: a non-null return beside a
+nullable parameter *on one member*, a `?` inside a generic argument, and no `??` anywhere (a `?`
+asked of both `Nullable<T>` and the annotation renders `int??`).
+
+**The sabotage:** making `Suffix` return `string.Empty` turns it red on the first assertion.
+
+### 32.7 What §32.6 still does not do
+
+- **Attributes remain invisible**, per §32.5. Adding or removing `[Obsolete]` moves no line.
+- **`NullabilityState.Unknown` is rendered as nothing**, which is right — an unannotated context
+  promises neither — but it means a project that turned `<Nullable>` off would quietly lose every
+  annotation rather than failing. Both `.csproj` files enable it, and nothing asserts that they do.
 
 ---
 
@@ -2575,11 +2619,11 @@ available except one restating the name, and that argument stands. **It says not
 | Open | Where it is already argued | Note |
 |---|---|---|
 | Member-level API docs | §33.4, §34.1 | the largest, and the one a consuming dev feels first |
-| Nullability absent from the API snapshot | §32.5 | `string?` and `string` are one line; `NullabilityInfoContext` reads it |
+| ~~Nullability absent from the API snapshot~~ | **closed by §32.6** | 104 lines gained annotations; read state vs write state was the part that needed deciding, not the reflection |
 | ~~CI runs on one Linux runner~~ | **closed by §35** | matrix added; the audit found one platform branch, and it turned out to be untested, undocumented here, and currently a no-op (§35.1) |
 | Trimming: **measured, not fixed** (AOT: never a stated goal, see §36.4) | §36 | ~~`CssTheme` is the problem~~ — **that guess was wrong (§36)**. Three real sites: the JSON settings seam and runtime `.axaml` theme loading. Trim-safe is reachable, AOT-safe is not while the default store is reflection JSON; §36.3 sets out the two designs |
 | `net10.0` only | — | Avalonia 12.1.0 ships `net8.0` too, so LunaP is stricter than its own dependency — but .NET 8 leaves support around 2026-11-10 and .NET 9 already has, so multi-targeting buys a dying LTS. **Decided against, recorded so it is not re-derived.** |
-| CSS template parts unswept | §30.5 | §30.4 proves every *element* reaches its control; `card .header` and friends are still unproven |
+| ~~CSS template parts unswept~~ | **closed by §39** | 14 parts swept for two colours; 13 broken pairs found and fixed, one exemption that expires. Fonts are still unswept (§39.5) |
 | A theme rule that matches nothing at runtime is silent | §30.5 | the parse cannot know what is on screen; the sweep catches it at test time, a host loading a bad theme is not told |
 | No icons | §26.12 | needs an icon system, not a property; `Icon=` was used zero times across five repositories |
 | No native macOS menu bar | §26.12 | a genuine platform defect rather than a missing feature — macOS puts a menu strip in the window where the platform expects one at the top of the screen |
@@ -3054,3 +3098,139 @@ so, which is the part that was missing — the facility existed and the failure 
   about Avalonia's headless renderer, which is shared code, but no runner has confirmed the counts
   on Windows or macOS — `RenderPassTests` runs everywhere, so the matrix answers this on the next
   push rather than leaving it to argument.
+
+---
+
+## 39. Every template part, swept — and three ways a part selector dies
+
+§30.5's first bullet: *"It does not cover template parts. The sweep tests each element, not
+`card .header` or `console-pane .output`. A part whose selector reaches nothing would still be
+silent, and the same argument that justifies this test justifies extending it — it has not been."*
+
+It has been now. **Fourteen parts across seven elements**, of which exactly one — `meter-row .bar` —
+had a test. The sweep found **thirteen broken (part, property) pairs**, from three unrelated causes.
+
+The bullet understated the risk, and the reason is worth keeping. A part selector is strictly more
+fragile than an element one: it is `Template()` **plus** a type **plus** a `PART_` name, and each of
+the three can be wrong independently. **The case with more ways to fail was the one going
+unchecked.**
+
+### 39.1 The sweep asks the parser what to test
+
+Cases are generated, not listed: for every element, for every part, for `background` and `color`.
+Both colours, because one is not a proxy for the other — a part whose template pins `Foreground` and
+not `Background` passes one and fails the other, and the first draft of this sweep tested only
+`background` and would have reported nine of these thirteen as fine.
+
+**Inapplicable combinations are not defects and are never emitted.** `CssTheme.Parse` already refuses
+them — `'color' does not apply to 'split-pane .rule'`, because a `Border` has no `Foreground` — so
+the generator parses each candidate first and drops the ones the vocabulary itself rejects. The
+product's own validation decides the subjects, and a part that gains a property gains its case on the
+same commit.
+
+That leaves **26 cases**: 14 parts × 2 colours, less that one refusal and less the one exemption in
+§39.4. `The_part_sweep_has_subjects` guards the count, because a `[Theory]` with no cases is a pass
+(§30.6 learned that once already).
+
+**The assertion is deliberately not "look up `PART_Header` and read it back".** That would prove the
+*test* can find the part, not that the *selector* can — and a selector naming the wrong type is
+precisely the defect being swept for. So it applies the rule and asks whether anything inside the
+control now carries the sentinel colour, which is the only claim the rule actually makes.
+
+### 39.2 A value written into a `ControlTemplate` outranks any theme
+
+Nine of the thirteen, and the finding worth taking away from this section.
+
+`Background="{DynamicResource LunaBorder}"` written as an **attribute inside a `ControlTemplate`**
+binds at `BindingPriority.Template`. A style — including every rule a host theme can write — binds at
+`BindingPriority.Style`, which is **lower**. So the rule parsed, produced a valid selector, matched
+the part, and lost.
+
+Measured with `GetDiagnostic` rather than reasoned about, because §29.3.1 is the record of what
+asserting an unmeasured cause costs here:
+
+| after applying the rule | part found | value | priority |
+|---|---|---|---|
+| `split-pane .rule { background }` | `PART_Rule` (`Border`) | `#ff6e6e6e` | **`Template`** |
+| `card .header { color }` | `PART_Header` (`ContentPresenter`) | `#ff9cdcfe` | **`Template`** |
+| `console-pane .output { color }` | `PART_Output` (`SelectableTextBlock`) | `#ffd4d4d4` | **`Template`** |
+| `empty-state .message { color }` | `PART_Message` (`TextBlock`) | `Gray` | **`Template`** |
+| `side-panel .close { background }` | `PART_Close` (`Button`) | `Transparent` | **`Template`** |
+
+**The fix is where the value is written, not what it is.** Each moved out of the template and into a
+style setter targeting the part:
+
+```xml
+<Style Selector="luna|SplitPane /template/ Border#PART_Rule">
+    <Setter Property="Background" Value="{DynamicResource LunaBorder}" />
+</Style>
+```
+
+**The defaults did not change, and that was checked rather than assumed.** With no host theme
+applied, every one of the thirteen values is byte-identical to what it was as an attribute — only the
+priority moved:
+
+| | as an attribute | as a setter |
+|---|---|---|
+| `card` `PART_Header` `Foreground` | `#ff9cdcfe @Template` | `#ff9cdcfe @Style` |
+| `console-pane` `PART_Input` `Background` | `#ff252526 @Template` | `#ff252526 @Style` |
+| `side-panel` `PART_Close` `Background` | `Transparent @Template` | `Transparent @Style` |
+| `split-pane` `PART_Rule` `Background` | `#ff6e6e6e @Template` | `#ff6e6e6e @Style` |
+
+What changed is **who is allowed to override them**, which is the whole point.
+
+Every property the CSS vocabulary publishes was moved, not only the two the sweep tests — so
+`console-pane .input { font-family }` works for the same reason even though nothing asserts it yet
+(§39.5). `CaretBrush` stays an attribute on purpose: no CSS property maps to it, so nothing can be
+competing for it, and moving it would only suggest otherwise.
+
+### 39.3 `PART_Facet` was declared a `TextBlock` and is a `Dropdown`
+
+Two of the thirteen, and **§30's defect in a new place.** The vocabulary said
+`["facet"] = new(typeof(TextBlock), "PART_Facet")`. The template contains a `Dropdown`. The selector
+asked for a `TextBlock` named `PART_Facet`, which cannot exist, so `filter-bar .facet` had never done
+anything in any release that shipped it.
+
+The correction is **`ComboBox`**, which looks wrong and is not, for the reason §30 exists: `Dropdown`
+pins `StyleKeyOverride` to `ComboBox`, and **a type selector matches the style key, not the runtime
+type**. Naming `Dropdown` here would have been dead in exactly the same way for a different reason —
+the same trap, one layer down, caught the same afternoon it was written.
+
+No style class is needed as it is for element selectors: the `PART_` name already makes it unique.
+
+### 39.4 One exemption, and it expires
+
+`meter-row .bar { color }` cannot be made to work, and should not be.
+
+The bar takes its colour from three state styles — `:nominal`, `:busy`, `:hot` — and **a selector
+carrying a pseudo-class binds at `StyleTrigger`, which outranks `Style`.** Measured: after applying
+the rule the bar is `LimeGreen` at priority `StyleTrigger`. No stateless rule can win. A meter whose
+colour stopped tracking its load would be a worse control, so the limit is correct; a host that wants
+other colours names the state, and `A_rule_can_reach_a_state_and_a_template_part` has proved that
+form works since §12.
+
+It is an entry in an `Exempt` table with that reason, following §28.2 — never a quiet deletion from
+the sweep. **And the exemption asserts that its own limitation is still real.**
+`An_exemption_is_still_needed` requires the stateless rule to keep failing, so if some future change
+makes it work, the test turns red saying *delete this entry* rather than leaving a stale excuse in a
+table nobody rereads. An exemption list that cannot expire is how the four dead selectors in §30
+survived four releases.
+
+### 39.5 What this does not do
+
+- **It sweeps two properties, not six.** `background` and `color`; `font-family`, `font-size` and
+  `font-weight` are generated the same way and are not tested. The selector reach is
+  property-independent, so §30.5's actual gap is closed — but a template that pins `FontFamily` as an
+  attribute would block `font-family` while `color` passed, which is a real and untested hole. It is
+  narrowed rather than open: every CSS-settable property in the six templates touched here was moved
+  to a setter. Widening `Colours` is a two-line change and a sentinel per property.
+- **It does not sweep states.** `meter-row.hot .bar` has one test; the other state × part
+  combinations do not.
+- **It does not check the value is correct**, only that the part received it. A rule that sets the
+  wrong shade is indistinguishable from one that works.
+- **It cannot see a part that is never realised.** `Configure` gives `Card` a header and `SidePanel`
+  a title because those parts collapse when empty (§26.9) — correct behaviour that would otherwise
+  read as a dead selector. A part that no configuration realises would still be invisible here.
+- **It says nothing about a host's own `.axaml` styles.** The priority rule found in §39.2 applies to
+  anything a consumer writes as a template attribute in their own controls, and nothing here can
+  reach that.

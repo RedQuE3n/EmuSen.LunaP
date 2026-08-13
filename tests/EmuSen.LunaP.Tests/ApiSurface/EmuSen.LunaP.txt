@@ -7,24 +7,24 @@ public static class EmuSen.LunaP.LunaApp
 
 public class EmuSen.LunaP.Automation.LunaAutomationPeer : Avalonia.Automation.Peers.ControlAutomationPeer
     protected override Avalonia.Automation.Peers.AutomationControlType GetAutomationControlTypeCore()
-    protected override string GetHelpTextCore()
-    protected override string GetItemStatusCore()
-    protected override string GetNameCore()
-    public LunaAutomationPeer(Avalonia.Controls.Control owner, Avalonia.Automation.Peers.AutomationControlType type, System.Func<string> name = null, System.Func<string> help = null, System.Func<string> status = null)
+    protected override string? GetHelpTextCore()
+    protected override string? GetItemStatusCore()
+    protected override string? GetNameCore()
+    public LunaAutomationPeer(Avalonia.Controls.Control owner, Avalonia.Automation.Peers.AutomationControlType type, System.Func<string?>? name = null, System.Func<string?>? help = null, System.Func<string?>? status = null)
 
 public sealed class EmuSen.LunaP.Commands.ActionGroup
     public ActionGroup()
     public EmuSen.LunaP.Commands.LunaAction Add(EmuSen.LunaP.Commands.LunaAction action)
-    public EmuSen.LunaP.Commands.LunaAction Add(string text, System.Action<EmuSen.LunaP.Commands.LunaAction> triggered = null)
-    public EmuSen.LunaP.Commands.LunaAction Checked { get; }
+    public EmuSen.LunaP.Commands.LunaAction Add(string text, System.Action<EmuSen.LunaP.Commands.LunaAction>? triggered = null)
+    public EmuSen.LunaP.Commands.LunaAction? Checked { get; }
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Commands.LunaAction> Members { get; }
 
 public sealed class EmuSen.LunaP.Commands.LunaAction : System.Windows.Input.ICommand
-    public Avalonia.Input.KeyGesture Shortcut { get; set; }
-    public EmuSen.LunaP.Commands.ActionGroup Group { get; }
-    public EmuSen.LunaP.Commands.LunaMenu Submenu { get; set; }
+    public Avalonia.Input.KeyGesture? Shortcut { get; set; }
+    public EmuSen.LunaP.Commands.ActionGroup? Group { get; }
+    public EmuSen.LunaP.Commands.LunaMenu? Submenu { get; set; }
     public LunaAction(string text, System.Action triggered)
-    public LunaAction(string text, System.Action<EmuSen.LunaP.Commands.LunaAction> triggered = null)
+    public LunaAction(string text, System.Action<EmuSen.LunaP.Commands.LunaAction>? triggered = null)
     public bool IsCheckable { get; set; }
     public bool IsChecked { get; set; }
     public bool IsEnabled { get; set; }
@@ -34,8 +34,8 @@ public sealed class EmuSen.LunaP.Commands.LunaAction : System.Windows.Input.ICom
     public event System.EventHandler CanExecuteChanged
     public override string ToString()
     public static EmuSen.LunaP.Commands.LunaAction Separator()
-    public string HelpText { get; set; }
     public string Text { get; set; }
+    public string? HelpText { get; set; }
     public void Invoke()
 
 public sealed class EmuSen.LunaP.Commands.LunaMenu
@@ -90,7 +90,7 @@ public class EmuSen.LunaP.Controls.ConsolePane : Avalonia.Controls.Primitives.Te
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
     public ConsolePane()
-    public System.Func<System.Collections.Generic.IReadOnlyList<string>> HistorySource { get; set; }
+    public System.Func<System.Collections.Generic.IReadOnlyList<string>>? HistorySource { get; set; }
     public event System.Action<string> Submitted
     public int MaxLines { get; set; }
     public static bool Follows(double offsetY, double extentHeight, double viewportHeight)
@@ -108,7 +108,7 @@ public class EmuSen.LunaP.Controls.Dropdown : Avalonia.Controls.ComboBox
     public Dropdown()
     public const string StyleClass = "luna-dropdown"
     public event System.Action<object> Chose
-    public void Fill(System.Collections.IEnumerable items, object selected)
+    public void Fill(System.Collections.IEnumerable items, object? selected)
 
 public class EmuSen.LunaP.Controls.EmptyState : Avalonia.Controls.Primitives.TemplatedControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
@@ -142,8 +142,8 @@ public class EmuSen.LunaP.Controls.FilterBar : Avalonia.Controls.Primitives.Temp
     public bool ShowFacet { get; set; }
     public event System.Action Changed
     public event System.Action Submitted
-    public object Facet { get; }
-    public static bool Matches(string search, string candidate)
+    public object? Facet { get; }
+    public static bool Matches(string? search, string? candidate)
     public static readonly Avalonia.StyledProperty<System.TimeSpan> SearchDelayProperty
     public static readonly Avalonia.StyledProperty<bool> ShowFacetProperty
     public static readonly Avalonia.StyledProperty<string> FacetLabelProperty
@@ -153,7 +153,7 @@ public class EmuSen.LunaP.Controls.FilterBar : Avalonia.Controls.Primitives.Temp
     public string Placeholder { get; set; }
     public string SearchText { get; set; }
     public void FocusSearch()
-    public void SetFacets(System.Collections.IEnumerable items, object selected)
+    public void SetFacets(System.Collections.IEnumerable items, object? selected)
 
 public class EmuSen.LunaP.Controls.HintText : Avalonia.Controls.TextBlock
     public HintText()
@@ -162,13 +162,13 @@ public class EmuSen.LunaP.Controls.LunaList<T> : Avalonia.Controls.ListBox
     protected override System.Type StyleKeyOverride { get; }
     public LunaList<T>()
     public System.Collections.Generic.IReadOnlyList<T> Models { get; }
-    public System.Func<T, object> Key { get; set; }
+    public System.Func<T, object?> Key { get; set; }
     public System.Func<T, string> Label { get; set; }
-    public T Selected { get; }
+    public T? Selected { get; }
     public const string StyleClass = "luna-list"
     public event System.Action<T> Chose
     public void Refresh(System.Collections.Generic.IEnumerable<T> items)
-    public void Select(T item)
+    public void Select(T? item)
 
 public class EmuSen.LunaP.Controls.LunaSwitch : Avalonia.Controls.ToggleSwitch
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
@@ -180,8 +180,8 @@ public class EmuSen.LunaP.Controls.LunaSwitch : Avalonia.Controls.ToggleSwitch
     public string Label { get; set; }
 
 public abstract class EmuSen.LunaP.Controls.LunaTable : Avalonia.Controls.Primitives.TemplatedControl
-    protected Avalonia.Controls.Grid HeaderGrid
-    protected Avalonia.Controls.ListBox Rows
+    protected Avalonia.Controls.Grid? HeaderGrid
+    protected Avalonia.Controls.ListBox? Rows
     protected LunaTable()
     protected abstract void OnPartsAttached()
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
@@ -192,11 +192,11 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public EmuSen.LunaP.Controls.LunaTable<T> Column(string header, System.Func<T, string> text, string width = "*")
     public LunaTable<T>()
     public System.Collections.Generic.IReadOnlyList<T> Models { get; }
-    public System.Func<T, object> Key { get; set; }
-    public T Selected { get; }
+    public System.Func<T, object?> Key { get; set; }
+    public T? Selected { get; }
     public event System.Action<T> Chose
     public void Refresh(System.Collections.Generic.IEnumerable<T> items)
-    public void Select(T item)
+    public void Select(T? item)
 
 public class EmuSen.LunaP.Controls.MenuBar : Avalonia.Controls.Menu
     protected override System.Type StyleKeyOverride { get; }
@@ -269,10 +269,10 @@ public class EmuSen.LunaP.Controls.PathPickerRow : Avalonia.Controls.Primitives.
 public class EmuSen.LunaP.Controls.RgbaImageView : Avalonia.Controls.Primitives.TemplatedControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
-    public Avalonia.Media.IImage Source { get; }
+    public Avalonia.Media.IImage? Source { get; }
     public Avalonia.Media.Stretch Stretch { get; set; }
     public RgbaImageView()
-    public static readonly Avalonia.DirectProperty<EmuSen.LunaP.Controls.RgbaImageView, Avalonia.Media.IImage> SourceProperty
+    public static readonly Avalonia.DirectProperty<EmuSen.LunaP.Controls.RgbaImageView, Avalonia.Media.IImage?> SourceProperty
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Stretch> StretchProperty
     public void Clear()
     public void SetFrame(System.ValueTuple<byte[], int, int> frame)
@@ -298,8 +298,8 @@ public class EmuSen.LunaP.Controls.SidePanel : Avalonia.Controls.ContentControl
     public static readonly Avalonia.StyledProperty<bool> IsOpenProperty
     public static readonly Avalonia.StyledProperty<double> PanelSizeProperty
     public static readonly Avalonia.StyledProperty<string> TitleProperty
-    public string PanelKey { get; set; }
     public string Title { get; set; }
+    public string? PanelKey { get; set; }
 
 public class EmuSen.LunaP.Controls.SplitPane : Avalonia.Controls.Primitives.TemplatedControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
@@ -314,19 +314,19 @@ public class EmuSen.LunaP.Controls.SplitPane : Avalonia.Controls.Primitives.Temp
     public double MinFirst { get; set; }
     public double MinSecond { get; set; }
     public double SplitterThickness { get; set; }
-    public object First { get; set; }
-    public object Second { get; set; }
+    public object? First { get; set; }
+    public object? Second { get; set; }
     public static readonly Avalonia.StyledProperty<Avalonia.Layout.Orientation> OrientationProperty
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.SplitSide> FixedProperty
     public static readonly Avalonia.StyledProperty<double> FixedSizeProperty
     public static readonly Avalonia.StyledProperty<double> MinFirstProperty
     public static readonly Avalonia.StyledProperty<double> MinSecondProperty
     public static readonly Avalonia.StyledProperty<double> SplitterThicknessProperty
-    public static readonly Avalonia.StyledProperty<object> FirstProperty
-    public static readonly Avalonia.StyledProperty<object> SecondProperty
+    public static readonly Avalonia.StyledProperty<object?> FirstProperty
+    public static readonly Avalonia.StyledProperty<object?> SecondProperty
     public static readonly Avalonia.StyledProperty<string> DividerLabelProperty
     public string DividerLabel { get; set; }
-    public string PaneKey { get; set; }
+    public string? PaneKey { get; set; }
     public void SaveNow()
 
 public enum EmuSen.LunaP.Controls.SplitSide
@@ -405,21 +405,21 @@ public class EmuSen.LunaP.Gallery.GalleryWindow : EmuSen.LunaP.Windowing.AppWind
     public GalleryWindow()
 
 public interface EmuSen.LunaP.Settings.ISettingsStore
-    public abstract T Load<T>(string category, string fileName)
-    public abstract bool Save<T>(string category, string fileName, T value)
-    public abstract string Directory(string category)
+    public abstract T? Load<T>(string? category, string fileName)
+    public abstract bool Save<T>(string? category, string fileName, T value)
+    public abstract string Directory(string? category)
 
 public sealed class EmuSen.LunaP.Settings.JsonSettingsStore : EmuSen.LunaP.Settings.ISettingsStore
     public JsonSettingsStore(string root)
-    public T Load<T>(string category, string fileName)
-    public bool Save<T>(string category, string fileName, T value)
-    public static EmuSen.LunaP.Settings.JsonSettingsStore ForApplication(string programName = null)
+    public T? Load<T>(string? category, string fileName)
+    public bool Save<T>(string? category, string fileName, T value)
+    public static EmuSen.LunaP.Settings.JsonSettingsStore ForApplication(string? programName = null)
     public static readonly System.Text.Json.JsonSerializerOptions Options
-    public string Directory(string category)
+    public string Directory(string? category)
 
 public static class EmuSen.LunaP.Settings.LunaSettings
     public static EmuSen.LunaP.Settings.ISettingsStore Store { get; set; }
-    public static System.Action<string> Diagnostics { get; set; }
+    public static System.Action<string>? Diagnostics { get; set; }
     public static void Report(string message)
 
 public static class EmuSen.LunaP.Theme.CssTheme
@@ -483,7 +483,7 @@ public static class EmuSen.LunaP.Theme.LunaTheme
     public static string Directory { get; }
     public static string Saved { get; }
     public static void ApplySaved()
-    public static void ApplyVariant(Avalonia.Application app = null)
+    public static void ApplyVariant(Avalonia.Application? app = null)
     public static void Restyle(Avalonia.Controls.ContentControl root)
 
 public sealed class EmuSen.LunaP.Theme.ThemeChoice
@@ -519,8 +519,8 @@ public class EmuSen.LunaP.Windowing.AppWindow : EmuSen.LunaP.Windowing.ToolWindo
     public EmuSen.LunaP.Controls.ToolBar ToolBar { get; }
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Commands.LunaAction> PanelToggles()
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.SidePanel> Panels { get; }
-    public object Central { get; set; }
-    public object StatusContent { get; set; }
+    public object? Central { get; set; }
+    public object? StatusContent { get; set; }
     public string Status { get; set; }
     public void SetMenus(EmuSen.LunaP.Commands.LunaMenu[] menus)
     public void SetMenus(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaMenu> menus)
@@ -529,10 +529,10 @@ public class EmuSen.LunaP.Windowing.AppWindow : EmuSen.LunaP.Windowing.ToolWindo
 
 public static class EmuSen.LunaP.Windowing.Dialogs
     public static System.Threading.Tasks.Task ErrorAsync(Avalonia.Controls.Window owner, string title, string message)
-    public static System.Threading.Tasks.Task<System.ValueTuple<string, string>?> PickFileAsync(Avalonia.Visual owner, string title, System.Collections.Generic.IReadOnlyList<Avalonia.Platform.Storage.FilePickerFileType> types = null, string startIn = null)
+    public static System.Threading.Tasks.Task<System.ValueTuple<string, string>?> PickFileAsync(Avalonia.Visual owner, string title, System.Collections.Generic.IReadOnlyList<Avalonia.Platform.Storage.FilePickerFileType>? types = null, string? startIn = null)
     public static System.Threading.Tasks.Task<bool> ConfirmAsync(Avalonia.Controls.Window owner, string title, string message, string acceptText = "OK", string cancelText = "Cancel")
-    public static System.Threading.Tasks.Task<string> PickFolderAsync(Avalonia.Visual owner, string title, string startIn = null)
-    public static System.Threading.Tasks.Task<string> SaveFileAsync(Avalonia.Visual owner, string title, string suggestedName = null, System.Collections.Generic.IReadOnlyList<Avalonia.Platform.Storage.FilePickerFileType> types = null, string startIn = null, string defaultExtension = null)
+    public static System.Threading.Tasks.Task<string?> PickFolderAsync(Avalonia.Visual owner, string title, string? startIn = null)
+    public static System.Threading.Tasks.Task<string?> SaveFileAsync(Avalonia.Visual owner, string title, string? suggestedName = null, System.Collections.Generic.IReadOnlyList<Avalonia.Platform.Storage.FilePickerFileType>? types = null, string? startIn = null, string? defaultExtension = null)
 
 public sealed class EmuSen.LunaP.Windowing.PaneLayout
     public PaneLayout()
@@ -541,7 +541,7 @@ public sealed class EmuSen.LunaP.Windowing.PaneLayout
 
 public static class EmuSen.LunaP.Windowing.PaneLayoutStore
     public const string FileName = "panes.json"
-    public static EmuSen.LunaP.Windowing.PaneLayout Load(string key)
+    public static EmuSen.LunaP.Windowing.PaneLayout? Load(string key)
     public static void Update(string key, System.Action<EmuSen.LunaP.Windowing.PaneLayout> edit)
 
 public abstract class EmuSen.LunaP.Windowing.PollingWindow : EmuSen.LunaP.Windowing.ToolWindow
@@ -562,7 +562,7 @@ public class EmuSen.LunaP.Windowing.ToolWindow : Avalonia.Controls.Window
     public ToolWindow()
     public bool ClosesOnEscape { get; set; }
     public static readonly Avalonia.StyledProperty<bool> ClosesOnEscapeProperty
-    public string WindowKey { get; set; }
+    public string? WindowKey { get; set; }
 
 public sealed class EmuSen.LunaP.Windowing.WindowPlacement
     public WindowPlacement()
@@ -574,15 +574,15 @@ public sealed class EmuSen.LunaP.Windowing.WindowPlacement
 
 public static class EmuSen.LunaP.Windowing.WindowPlacementStore
     public const string FileName = "windows.json"
-    public static EmuSen.LunaP.Windowing.WindowPlacement Load(string key)
-    public static bool IsOnAScreen(Avalonia.Controls.Screens screens, Avalonia.PixelRect bounds)
+    public static EmuSen.LunaP.Windowing.WindowPlacement? Load(string key)
+    public static bool IsOnAScreen(Avalonia.Controls.Screens? screens, Avalonia.PixelRect bounds)
     public static bool IsOnAScreen(System.Collections.Generic.IReadOnlyList<Avalonia.PixelRect> screenBounds, Avalonia.PixelRect bounds)
     public static void Save(string key, EmuSen.LunaP.Windowing.WindowPlacement placement)
 
 public sealed class EmuSen.LunaP.Windowing.WindowSlot<TWindow>
-    public TWindow Current { get; }
+    public TWindow? Current { get; }
     public WindowSlot<TWindow>()
     public bool IsOpen { get; }
     public void Close()
     public void RefreshIfOpen(System.Action<TWindow> refresh)
-    public void Show(Avalonia.Controls.Window owner, System.Func<TWindow> create, System.Action<TWindow> refresh = null)
+    public void Show(Avalonia.Controls.Window? owner, System.Func<TWindow> create, System.Action<TWindow>? refresh = null)

@@ -31,12 +31,27 @@
                                   Background="Transparent"
                                   AutomationProperties.Name="{TemplateBinding DividerLabel}" />
                     <Border Name="PART_Rule"
-                            Background="{DynamicResource LunaBorder}"
                             IsHitTestVisible="False" />
                     <ContentPresenter Name="PART_Second" />
                 </Grid>
             </ControlTemplate>
         </Setter>
+    </Style>
+
+    <!-- SET FROM A STYLE, NOT AS AN ATTRIBUTE ON THE BORDER ABOVE, and the
+         difference is the whole reason `split-pane .rule` works at all.
+
+         A value written into a ControlTemplate lands at BindingPriority.Template,
+         which OUTRANKS Style - measured, §39.2: with the background on the Border
+         element, a `split-pane .rule { background: … }` rule parsed, matched the
+         part, and lost, leaving PART_Rule at #ff6e6e6e with priority Template. The
+         vocabulary promised a themeable divider and quietly could not deliver one.
+
+         As a style setter it is Style priority, so a host theme applied afterwards
+         wins in the ordinary way. The rendered default is identical; what changes
+         is who is allowed to override it. -->
+    <Style Selector="luna|SplitPane /template/ Border#PART_Rule">
+        <Setter Property="Background" Value="{DynamicResource LunaBorder}" />
     </Style>
 
 </Styles>
