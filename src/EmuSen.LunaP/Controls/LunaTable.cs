@@ -123,7 +123,8 @@ namespace EmuSen.LunaP.Controls
         // header and an Auto column in each row size themselves independently, so left alone they
         // would all be different widths and nothing would line up. Every column is therefore put
         // in a shared size group and the root is a shared size scope, which is Avalonia's own
-        // mechanism for exactly this.
+        // mechanism for exactly this - and see Define below, because half of that mechanism does
+        // not work the way it reads and this control shipped for a while with it silently off.
         /// <summary>Adds a column. Call once per column, before or after the template is applied.</summary>
         /// <param name="header">The column heading.</param>
         /// <param name="text">Turns a model into this cell text. Called for every row on every Refresh, so it should be cheap and free of side effects.</param>
@@ -225,7 +226,7 @@ namespace EmuSen.LunaP.Controls
             // silently size each other's columns.
             string scope = "LunaTable" + GetHashCode().ToString("X");
 
-            HeaderGrid.ColumnDefinitions = Definitions(scope);
+            Define(HeaderGrid, scope);
             HeaderGrid.Children.Clear();
 
             for (int i = 0; i < _columns.Count; i++)
@@ -247,7 +248,9 @@ namespace EmuSen.LunaP.Controls
 
         private Control Row(T? item, string scope)
         {
-            var grid = new Grid { ColumnDefinitions = Definitions(scope) };
+            var grid = new Grid();
+            Define(grid, scope);
+
             if (item is null) return grid;
 
             var spoken = new List<string>(_columns.Count);
@@ -277,15 +280,34 @@ namespace EmuSen.LunaP.Controls
             return grid;
         }
 
-        private ColumnDefinitions Definitions(string scope)
+        // POPULATES THE GRID'S OWN COLLECTION, AND NEVER ASSIGNS A NEW ONE. Not a style preference:
+        // swapping this back to `grid.ColumnDefinitions = new ColumnDefinitions { ... }` turns the
+        // shared sizing off again, silently, with no error and no visible change to the code's
+        // intent.
+        //
+        // Avalonia 12.1.0 registers a definition with its shared size scope when it is ADDED to the
+        // collection a Grid already owns, and does not when a ready-made collection is ASSIGNED to
+        // the Grid. An assigned definition keeps a SharedSizeGroup that reads back correctly and
+        // shares nothing - so every column sizes alone while looking, from the outside and from any
+        // test that compares group names, exactly like a column that is sharing.
+        //
+        // The symptom is small, which is why it shipped. Star and absolute columns resolve to the
+        // same number in both grids without needing to share, so they line up anyway; only an Auto
+        // column exposes it, drifting by the difference between the widest heading and the widest
+        // cell. A bold "type" heading six pixels wider than "text" put every cell in that column six
+        // pixels right of its own heading.
+        //
+        // Fixed upstream by AvaloniaUI/Avalonia#21848, "register assigned definition collections
+        // with their shared size group", merged 2026-07-26 - after 12.1.0 was released on
+        // 2026-07-09. Populating works on 12.1.0 as it stands, so this costs no version bump, and it
+        // stays correct whenever the upstream fix does arrive. docs/LunaP.md §27.
+        private void Define(Grid grid, string scope)
         {
-            var definitions = new ColumnDefinitions();
+            grid.ColumnDefinitions.Clear();
             for (int i = 0; i < _columns.Count; i++)
             {
-                definitions.Add(new ColumnDefinition(_columns[i].Width) { SharedSizeGroup = scope + "_" + i });
+                grid.ColumnDefinitions.Add(new ColumnDefinition(_columns[i].Width) { SharedSizeGroup = scope + "_" + i });
             }
-
-            return definitions;
         }
 
         private readonly record struct ColumnSpec(string Header, Func<T, string> Text, GridLength Width);
