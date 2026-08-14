@@ -280,5 +280,253 @@ namespace EmuSen.LunaP.Tests
 
             window.Close();
         }, default);
+
+        // ---- hierarchy (§55) ----
+
+        private sealed class Node
+        {
+            public Node(string name, params Node[] kids)
+            {
+                Name = name;
+                Kids = kids;
+            }
+
+            public string Name { get; }
+            public Node[] Kids { get; }
+        }
+
+        private static Node[] Tree() => new[]
+        {
+            new Node("roms",
+                new Node("snes", new Node("smw.sfc"), new Node("zelda.sfc")),
+                new Node("nes", new Node("metroid.nes"))),
+            new Node("saves"),
+        };
+
+        private static LunaTable<Node> TreeTable(Node[] roots, bool hierarchical = true)
+        {
+            var table = new LunaTable<Node> { Key = n => n.Name };
+            table.Column("name", n => n.Name);
+            if (hierarchical) table.Children = n => n.Kids;
+            table.Refresh(roots);
+            return table;
+        }
+
+        private static Task Tree(Func<LunaTable<Node>> make, Action<LunaTable<Node>> assert) =>
+            Session.Dispatch(() =>
+            {
+                LunaTable<Node> table = make();
+                var window = new ToolWindow { Width = 500, Height = 400, Content = table };
+                window.Show();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                assert(table);
+                window.Close();
+            }, default);
+
+        private static string[] Visible(LunaTable<Node> table) =>
+            table.Models.Select(n => n.Name).ToArray();
+
+        // THE FLAT CASE IS THE OLD CASE. No Children means no expander, no indent, and the same
+        // rows in the same order - the §26.13 half of this arc.
+        [Fact]
+        public Task A_table_with_no_children_projection_is_exactly_a_flat_table() =>
+            Tree(() => TreeTable(Tree(), hierarchical: false), table =>
+            {
+                Assert.Equal(new[] { "roms", "saves" }, Visible(table));
+                Assert.Empty(table.GetVisualDescendants().OfType<Button>()
+                    .Where(b => b.Classes.Contains("expander")));
+            });
+
+        [Fact]
+        public Task A_tree_starts_collapsed_and_shows_only_its_roots() =>
+            Tree(() => TreeTable(Tree()), table =>
+            {
+                Assert.Equal(new[] { "roms", "saves" }, Visible(table));
+                Assert.False(table.IsExpanded(table.Models[0]));
+            });
+
+        [Fact]
+        public Task Expanding_a_row_shows_its_children_under_it() =>
+            Tree(() => TreeTable(Tree()), table =>
+            {
+                table.Expand(table.Models[0]);
+
+                Assert.Equal(new[] { "roms", "snes", "nes", "saves" }, Visible(table));
+                Assert.True(table.IsExpanded(table.Models[0]));
+            });
+
+        [Fact]
+        public Task Expanding_a_child_nests_further() => Tree(() => TreeTable(Tree()), table =>
+        {
+            table.ExpandAll();
+
+            Assert.Equal(
+                new[] { "roms", "snes", "smw.sfc", "zelda.sfc", "nes", "metroid.nes", "saves" },
+                Visible(table));
+        });
+
+        [Fact]
+        public Task Collapsing_hides_the_whole_subtree() => Tree(() => TreeTable(Tree()), table =>
+        {
+            table.ExpandAll();
+            table.Collapse(table.Models.First(n => n.Name == "roms"));
+
+            Assert.Equal(new[] { "roms", "saves" }, Visible(table));
+        });
+
+        [Fact]
+        public Task CollapseAll_shuts_every_level() => Tree(() => TreeTable(Tree()), table =>
+        {
+            table.ExpandAll();
+            table.CollapseAll();
+
+            Assert.Equal(new[] { "roms", "saves" }, Visible(table));
+        });
+
+        // DEPTH IS DRAWN, not merely recorded. The indent is what tells a reader which parent a row
+        // belongs to, and a tree that computed depth correctly and drew every row flush left would
+        // pass every assertion above.
+        [Fact]
+        public Task Each_level_is_indented_further_than_the_one_above() =>
+            Tree(() => TreeTable(Tree()), table =>
+            {
+                table.ExpandAll();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+                double Indent(string name) => table.FindNamed<ListBox>("PART_Rows")
+                    .GetVisualDescendants().OfType<ListBoxItem>()
+                    .First(c => (c.DataContext as Node)?.Name == name)
+                    .GetVisualDescendants().OfType<Border>()
+                    // The indent spacer is the only Border in a row with an explicit width; every
+                    // other one leaves Width as NaN. Naming that is the difference between a lookup
+                    // that is right and one that happens to work.
+                    .First(b => !double.IsNaN(b.Width)).Width;
+
+                Assert.Equal(0, Indent("roms"));
+                Assert.Equal(table.IndentSize, Indent("snes"));
+                Assert.Equal(table.IndentSize * 2, Indent("smw.sfc"));
+            });
+
+        // SORTED WITHIN EACH LEVEL, which is the only reading that keeps a tree a tree. Sorting the
+        // flattened list would interleave children with strangers' parents.
+        [Fact]
+        public Task A_sort_orders_siblings_and_does_not_flatten_the_tree() => Session.Dispatch(() =>
+        {
+            var table = new LunaTable<Node> { Key = n => n.Name };
+            table.Column(new LunaColumn<Node>("name", n => n.Name)
+            {
+                Sort = (a, b) => string.CompareOrdinal(a.Name, b.Name),
+            });
+            table.Children = n => n.Kids;
+            table.Refresh(Tree());
+
+            var window = new ToolWindow { Width = 500, Height = 400, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            table.ExpandAll();
+            table.FindNamed<Grid>("PART_Header").GetVisualDescendants().OfType<Button>().First()
+                .RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            // Roots sorted among themselves, children sorted among their own siblings, and every
+            // child still directly under its parent.
+            Assert.Equal(
+                new[] { "roms", "nes", "metroid.nes", "snes", "smw.sfc", "zelda.sfc", "saves" },
+                Visible(table));
+
+            window.Close();
+        }, default);
+
+        // EXPANSION IS KEYED BY MODEL, so a Refresh that hands back new objects for the same rows -
+        // which is every poll in a PollingWindow - does not collapse the tree the user just opened.
+        [Fact]
+        public Task Expansion_survives_a_refresh_that_rebuilds_the_models() =>
+            Tree(() => TreeTable(Tree()), table =>
+            {
+                table.Expand(table.Models[0]);
+                Assert.Equal(new[] { "roms", "snes", "nes", "saves" }, Visible(table));
+
+                table.Refresh(Tree());   // brand new Node objects, same names
+
+                Assert.Equal(new[] { "roms", "snes", "nes", "saves" }, Visible(table));
+            });
+
+        // A CYCLE IS A STACK OVERFLOW WITHOUT THE GUARD, and a StackOverflowException cannot be
+        // caught - it takes the application down. Children is a caller's delegate and nothing stops
+        // it returning an ancestor.
+        [Fact]
+        public Task A_children_projection_that_loops_does_not_take_the_process_with_it() =>
+            Session.Dispatch(() =>
+            {
+                var a = new Node("a");
+                var table = new LunaTable<Node> { Key = n => n.Name };
+                table.Column("name", n => n.Name);
+                table.Children = _ => new[] { a };   // every row's child is the root
+                table.Refresh(new[] { a });
+
+                var window = new ToolWindow { Width = 400, Height = 200, Content = table };
+                window.Show();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+                table.ExpandAll();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+                Assert.Equal(new[] { "a" }, Visible(table));
+
+                window.Close();
+            }, default);
+
+        // A leaf keeps the toggle's WIDTH so its text lines up with its siblings', and loses only
+        // the glyph. Omitting the button would shift a leaf left of the folders beside it.
+        [Fact]
+        public Task A_leaf_has_no_toggle_but_still_lines_up() => Tree(() => TreeTable(Tree()), table =>
+        {
+            table.ExpandAll();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Button Toggle(string name) => table.FindNamed<ListBox>("PART_Rows")
+                .GetVisualDescendants().OfType<ListBoxItem>()
+                .First(c => (c.DataContext as Node)?.Name == name)
+                .GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("expander"));
+
+            Assert.True(Toggle("snes").IsVisible);
+            Assert.False(Toggle("smw.sfc").IsVisible);
+            Assert.Equal(Toggle("snes").Width, Toggle("smw.sfc").Width);
+        });
+
+        // Clicking the toggle is the gesture a mouse user has; it must do what Expand does.
+        [Fact]
+        public Task The_toggle_opens_and_shuts_the_row() => Tree(() => TreeTable(Tree()), table =>
+        {
+            Button toggle = table.FindNamed<ListBox>("PART_Rows")
+                .GetVisualDescendants().OfType<ListBoxItem>()
+                .First(c => (c.DataContext as Node)?.Name == "roms")
+                .GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("expander"));
+
+            toggle.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(new[] { "roms", "snes", "nes", "saves" }, Visible(table));
+        });
+
+        // WHAT A READER HEARS OF A TREE. "does this have more under it" is part of what the row IS,
+        // and a reader that only hears the cells cannot tell a leaf from an unopened folder.
+        [Fact]
+        public Task A_row_that_can_be_opened_says_so() => Tree(() => TreeTable(Tree()), table =>
+        {
+            string Heard(string name) => Avalonia.Automation.Peers.ControlAutomationPeer
+                .CreatePeerForElement(table.FindNamed<ListBox>("PART_Rows")
+                    .GetVisualDescendants().OfType<ListBoxItem>()
+                    .First(c => (c.DataContext as Node)?.Name == name)).GetName() ?? "";
+
+            Assert.Equal("name: roms, collapsed", Heard("roms"));
+            Assert.Equal("name: saves", Heard("saves"));   // a leaf says neither
+
+            table.Expand(table.Models[0]);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal("name: roms, expanded", Heard("roms"));
+        });
     }
 }

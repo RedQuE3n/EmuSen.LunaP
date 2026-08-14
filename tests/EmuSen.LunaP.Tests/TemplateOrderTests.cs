@@ -44,6 +44,28 @@ namespace EmuSen.LunaP.Tests
 
         private static readonly string[] Facets = { "All", "Audio", "Video" };
 
+        // A tiny tree for the expansion case. Rebuilt per call so the two runs share no state -
+        // which is also what makes "expand by key, across a rebuild" a real assertion here.
+        private sealed class Node
+        {
+            public Node(string name, params Node[] kids)
+            {
+                Name = name;
+                Kids = kids;
+            }
+
+            public string Name { get; }
+            public Node[] Kids { get; }
+        }
+
+        private static Node[] Tree() => new[]
+        {
+            new Node("roms",
+                new Node("snes", new Node("smw.sfc"), new Node("zelda.sfc")),
+                new Node("nes", new Node("metroid.nes"))),
+            new Node("saves"),
+        };
+
         private static readonly Case[] Cases =
         {
             // §5.6's original: a banner printed from a constructor.
@@ -150,6 +172,30 @@ namespace EmuSen.LunaP.Tests
                         _ => "|",
                     }))),
 
+            // COVERED RATHER THAN EXEMPTED, and the distinction is the point. Edit and the
+            // navigation three are exempt because they act on a realised row and there is nothing to
+            // queue. Expansion is not like that: it is state the user owns, it lives in a set keyed
+            // by model, and it is applied at the next flatten - so a tree expanded in a window's
+            // constructor MUST come up expanded. That is a claim this file can test directly.
+            new("LunaTable.Expand/Collapse/ExpandAll",
+                () => new LunaTable<Node>(),
+                c =>
+                {
+                    var table = (LunaTable<Node>)c;
+                    table.Key = n => n.Name;
+                    table.Column("name", n => n.Name);
+                    table.Children = n => n.Kids;
+                    table.Refresh(Tree());
+                    table.ExpandAll();
+                    table.Collapse(Tree()[0].Kids[0]);   // one branch shut again, by key
+                },
+                c =>
+                {
+                    var table = (LunaTable<Node>)c;
+                    return string.Join(" | ", table.Models.Select(n =>
+                        $"{n.Name}{(table.IsExpanded(n) ? "+" : "")}"));
+                }),
+
             new("RgbaImageView.SetFrame/Clear",
                 () => new RgbaImageView(),
                 c =>
@@ -245,6 +291,16 @@ namespace EmuSen.LunaP.Tests
             (typeof(LunaTable<>), "Column"),
             (typeof(LunaTable<>), "Refresh"),
             (typeof(LunaTable<>), "Select"),
+
+            // Expansion is state the user owns, kept in a set keyed by model and applied at the next
+            // flatten - so a tree expanded in a window's constructor comes up expanded, and the
+            // LunaTable.Expand/Collapse/ExpandAll case runs exactly that script in both orders.
+            // IsExpanded is here because that case's read is what asks it.
+            (typeof(LunaTable<>), "Expand"),
+            (typeof(LunaTable<>), "Collapse"),
+            (typeof(LunaTable<>), "ExpandAll"),
+            (typeof(LunaTable<>), "CollapseAll"),
+            (typeof(LunaTable<>), "IsExpanded"),
             (typeof(LunaList<>), "Refresh"),
             (typeof(LunaList<>), "Select"),
             (typeof(Dropdown), nameof(Dropdown.Fill)),

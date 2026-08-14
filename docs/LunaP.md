@@ -5021,3 +5021,108 @@ enumerate it produced:
 Not a warning, not a runtime message — the build does not complete. Reproduced 2026-08-13 against
 12.2.0 on a bare `net10.0` project with a single `PackageReference`. The enumeration behind §54.3 had
 to read the cached assembly without referencing it.
+
+## 55. The table grew a tree, and a list stayed a list
+
+The largest item in §54's parity arc, and the one §47.3 classified as a different *kind* — correctly,
+which §54.2 kept while overruling what followed from it.
+
+### 55.1 One projection, and null means it is not a tree
+
+```csharp
+table.Children = n => n.Kids;     // null - the default - is a flat table
+```
+
+A projection rather than an interface, for the §1 reason every seam here is one: a caller's model
+needs no base class, no `ITreeNode`, and no knowledge that LunaP exists. A model that stores children
+elsewhere writes `n => index[n.Id]`, which an interface on the model could not express at all.
+
+**The flat case is the old case, exactly.** `Flatten` returns `Ordered(_items)` and returns it before
+touching any of the three dictionaries, so a table that is not a tree does no extra work, allocates
+nothing new and draws no expander. §26.13 holds: a 0.7.0 table upgraded and unchanged is unchanged.
+
+### 55.2 A tree flattened into the list a ListBox can show
+
+A `ListBox` displays a sequence, so hierarchy has to become one: parents followed by their visible
+children, each row remembering how deep it is. **Everything else about the control keeps working on a
+flat sequence of `T` and never learns a tree exists** — selection by model, editing, the row's spoken
+name, virtualization, the remembered layout. That is what made this tractable rather than a rewrite.
+
+**Sorted at every level, which is the only reading that keeps a tree a tree.** Sorting the flattened
+list interleaves children with strangers' parents; sorting only the roots leaves every child list in
+arrival order under a header the user just clicked. Sabotaged by sorting the flattened list, the
+guard reported the tree turning into an alphabetical list of everything:
+
+    Expected: ["roms", "nes", "metroid.nes", "snes", "smw.sfc", ...]
+    Actual:   ["metroid.nes", "nes", "roms", "saves", "smw.sfc", ...]
+
+### 55.3 The cycle guard, and the sabotage that killed the test host
+
+`Children` is a caller's delegate and **nothing stops it returning an ancestor** — a parent index
+built from a bad file, a symlink loop in a directory walk. `Walk` therefore carries a set of the keys
+on the current path and drops a repeat.
+
+This is the one guard in the project whose sabotage did not produce a failing test. Removing the
+path check and running the loop test produced:
+
+    at EmuSen.LunaP.Controls.LunaTable`1.Walk(...)
+    at EmuSen.LunaP.Controls.LunaTable`1.Walk(...)
+    ... hundreds of frames ...
+
+    Test Run Aborted.
+
+**Not a failed assertion — a dead process.** A `StackOverflowException` cannot be caught in .NET, so
+without the guard the first consumer with a looping model loses the whole application rather than the
+table. That is why this is nine lines of guard rather than a documented caveat.
+
+### 55.4 Expansion belongs to the user, and is keyed by model
+
+`_expanded` holds `Key(item)` and not the object, so a `Refresh` handing back new instances for the
+same rows keeps the tree open. That matters more here than it does for selection (§27.6): a
+`PollingWindow` refreshes every second, and a tree that collapsed itself on every poll would be
+unusable rather than merely annoying. Sabotaged to reference identity, the guard reported the
+subtree vanishing on the next refresh — `["roms", "snes", "nes", "saves"]` becoming
+`["roms", "saves"]`.
+
+Expansion state also survives the template, which is why `Expand`, `Collapse`, `ExpandAll`,
+`CollapseAll` and `IsExpanded` are **covered** in `TemplateOrderTests` rather than exempted like
+`Edit` (§50.3). A tree expanded in a window's constructor comes up expanded, and the two runs of that
+case are each other's expected value.
+
+### 55.5 A leaf keeps the space the toggle would have taken
+
+The expander is a `Button` — focusable, invokable and reachable by keyboard, for the same reason a
+sortable heading is one (§27.3): a tree a mouse can open and a keyboard cannot is a tree half this
+toolkit's users cannot read. Its accessible name says what pressing it *does* — "Expand roms" — rather
+than what it is, because "expander" tells a reader nothing about which row.
+
+**A leaf's toggle is made invisible rather than left out.** Omitting it would shift a leaf's text left
+of its siblings' by the width of a glyph, so the files under a folder would not line up with each
+other — the one thing an indent exists to do.
+
+`ExpanderColumn` chooses which column carries it, because the first column is not always the name: a
+table whose leading column is a checkbox wants the toggle beside the label instead.
+
+### 55.6 What a reader hears of a tree
+
+A row that can be opened says so — `"name: roms, collapsed"` — and a leaf says neither, because
+saying "collapsed" about a row with nothing under it is worse than saying nothing. In a tree, *does
+this have more under it* is part of what the row **is**, and a reader that only hears the cells cannot
+tell a leaf from a folder nobody has opened.
+
+### 55.7 Two things the plumbing had assumed
+
+Putting an expander in front of a cell means the cell is no longer a direct child of the row grid,
+and two pieces of §50's editing had quietly depended on that.
+
+- **`Grid.GetColumn(cell)` stopped being the column.** A nested cell reports 0 whatever column it
+  belongs to. `TableCell` now carries its own index, which makes every lookup independent of how deep
+  the cell sits.
+- **A bug that only appears once the editor is inserted rather than appended.** The editor now takes
+  the cell's place in whatever panel holds it, so an edited tree cell opens where the text was rather
+  than to the right of the expander. That turned the recycling path into an
+  `ArgumentOutOfRangeException` out of `OnDetachedFromVisualTreeCore`: the detach handler removed the
+  editor from a children collection **Avalonia was walking by index**, and removing an item before the
+  cursor rather than after it is what made an ordering that had always been wrong start to matter.
+  `EndEdit` now knows it is being called during a detach and clears the state without touching the
+  tree, which is going away regardless.
