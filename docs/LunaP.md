@@ -4764,3 +4764,47 @@ would have shipped.
 §27.3's refusal to claim the `DataGrid` control type still stands, and the enumeration confirms why:
 there is no `IGridProvider` or `ITableProvider` anywhere in `Avalonia.Automation.Provider`. `Group`
 is the platform ceiling rather than a lesser answer.
+
+## 51. The version: 0.8.0, and a correction to §34.3
+
+**0.8.0, because §48 is the first arc that fails this project's own standard for a
+release.** §26.13 set it and every arc since has been held to it:
+
+> nothing breaks, everything is additive, a consumer who upgrades and changes nothing has the same
+> application.
+
+That does not hold here, and the failure is the point of the arc rather than an accident. §48 hands
+LunaP's colours to FluentTheme's resource keys, so **every stock Avalonia control in a consumer's
+application changes colour on upgrade**. Nothing about behaviour, layout or API moves; only paint. But
+a consumer reading a patch bump would not expect their text boxes repainted, and §30 already taught
+this project what it costs to describe a rendering change as additive — §34.3 recorded that as the
+one entry in 0.7.0 that was not.
+
+Everything else in the release *is* additive. `FieldRow.Error`, `LunaColumn<T>.Commit` and
+`.Validate`, `ErrorText`, `TableCell`'s providers: a table with no `Commit` on any column is
+read-only, which is the default and what every existing table already is.
+
+**The accessibility fix in §50.5 is the entry a consumer should read first**, and it is neither
+additive nor breaking — it is a defect that has been in every release since 0.7.0. A `LunaTable` row
+announced its model's `ToString()` to a screen reader instead of its cells. Anybody who shipped a
+table shipped that.
+
+### 51.1 A correction to §34.3
+
+§34.3 says *"0.7.0 is not released. There is no `v0.7.0` tag."* **Both halves are now false**, and
+the correction is recorded here rather than edited into that section, per the rule this document
+keeps.
+
+`v0.7.0` is tagged, at `9f5311f`. What is true instead, and is worth stating exactly because it is
+the kind of thing that goes unnoticed until a publish job runs:
+
+- **0.7.1 was prepared and never released.** Both `.csproj` files carried `0.7.1` and `CHANGELOG.md`
+  has its entry — the settings-root fix of §43 — but **no `v0.7.1` tag exists**, and the published
+  version comes from the tag. So the fix that entry describes has never reached a consumer.
+- **0.8.0 therefore carries 0.7.1's changes as well as its own.** Its changelog entry stays where it
+  is rather than being folded upward: it describes a real change with a real `§`, and a reader
+  working out why their `testhost` directory moved should find it under the number it was written
+  for.
+
+Both `<Version>` elements moved together, per §22.8 — the harness tracks the toolkit rather than
+keeping its own number.
