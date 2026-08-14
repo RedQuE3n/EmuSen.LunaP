@@ -162,6 +162,72 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The selected model, or null when nothing is selected.</summary>
         public T? Selected => Rows?.SelectedItem as T;
 
+        // HELD HERE RATHER THAN READ OFF THE ListBox, because a caller can set this before there is
+        // a template - the same reason Select queues (§27.6) - and a property that silently did
+        // nothing when set in a constructor would be the §5.5 symptom again.
+        private LunaSelectionMode _selectionMode = LunaSelectionMode.Single;
+
+        // Single by default, which is what the table has always done, so no existing table changes
+        // (§26.13). None is a real mode rather than an omission: a table used purely as a readout -
+        // a register dump, a log - has nothing useful to select, and a row that highlights under the
+        // pointer suggests an action that does not exist.
+        /// <summary>How many rows may be selected at once. Single by default.</summary>
+        public LunaSelectionMode SelectionMode
+        {
+            get => _selectionMode;
+            set
+            {
+                _selectionMode = value;
+                ApplySelectionMode();
+            }
+        }
+
+        private void ApplySelectionMode()
+        {
+            if (Rows is null) return;
+
+            Rows.SelectionMode = _selectionMode switch
+            {
+                LunaSelectionMode.Multiple => Avalonia.Controls.SelectionMode.Multiple,
+                _ => Avalonia.Controls.SelectionMode.Single,
+            };
+
+            // None is spelled as "single, and nothing can be hit", because Avalonia's ListBox has no
+            // mode that refuses selection outright. Clearing what is there matters as much as
+            // refusing the next one - switching to None with a row already selected has to leave the
+            // table with nothing selected, or the mode reads as "no NEW selections".
+            Rows.IsHitTestVisible = _selectionMode != LunaSelectionMode.None;
+            if (_selectionMode == LunaSelectionMode.None)
+            {
+                using (_filling.Suppress()) Rows.SelectedItem = null;
+            }
+        }
+
+        // THE MULTI-SELECTION, AS MODELS AND IN DISPLAY ORDER. Empty rather than null when nothing
+        // is selected, because a caller writing `foreach (T row in table.SelectedItems)` should not
+        // have to ask first - and because "nothing is selected" and "selection is unavailable" are
+        // the same answer to this question.
+        //
+        // Ordered by the VIEW rather than by the order rows were clicked. A caller acting on a
+        // multi-selection - delete these, export these - almost always wants them in the order the
+        // user is looking at, and click order is not recoverable from the ListBox anyway.
+        /// <summary>Every selected model, in display order. Empty when nothing is selected.</summary>
+        public IReadOnlyList<T> SelectedItems
+        {
+            get
+            {
+                if (Rows?.SelectedItems is not { Count: > 0 } selected) return Array.Empty<T>();
+
+                var picked = new List<T>(selected.Count);
+                foreach (T candidate in _view)
+                {
+                    if (selected.Contains(candidate)) picked.Add(candidate);
+                }
+
+                return picked;
+            }
+        }
+
         // A column, in the order it will appear. `width` is a GridLength as XAML spells one -
         // "*", "2*", "120" - and defaults to an equal share.
         //
@@ -199,7 +265,8 @@ namespace EmuSen.LunaP.Controls
 
             _columns.Add(new ColumnSpec(
                 column.Header, column.Text, GridLength.Parse(column.Width), column.Sort,
-                column.Commit, column.Validate));
+                column.Commit, column.Validate,
+                column.MinWidth, column.MaxWidth, column.IsVisible));
             Rebuild();
 
             // A saved layout can only be matched once the columns it describes exist, and there is
@@ -394,6 +461,7 @@ namespace EmuSen.LunaP.Controls
                 if (e.Container.DataContext is T model) AutomationProperties.SetName(e.Container, Spoken(model));
             };
 
+            ApplySelectionMode();
             Rebuild();
             Restore();
 
@@ -420,15 +488,23 @@ namespace EmuSen.LunaP.Controls
             HeaderGrid.Children.Clear();
             _heads.Clear();
 
+            // The last column with anything on its right. A grip after it would have nothing to
+            // give the space to, and a hidden column is not something on its right - so with the
+            // final two columns hidden, the grip belongs after the last one you can see.
+            int lastVisible = -1;
+            for (int i = 0; i < _columns.Count; i++) if (_columns[i].IsVisible) lastVisible = i;
+
             for (int i = 0; i < _columns.Count; i++)
             {
+                // A hidden column contributes no heading and no grip. Its ColumnDefinition is still
+                // there, pinned to zero, so every index after it is unmoved.
+                if (!_columns[i].IsVisible) continue;
+
                 Control cell = Heading(i);
                 Grid.SetColumn(cell, i);
                 HeaderGrid.Children.Add(cell);
 
-                // No grip after the last column: there is nothing on its right to take the space,
-                // so a drag there would either do nothing or resize the table out of its own window.
-                if (i < _columns.Count - 1) HeaderGrid.Children.Add(Grip(i));
+                if (i < lastVisible) HeaderGrid.Children.Add(Grip(i));
             }
 
             Rows.ItemTemplate = new FuncDataTemplate<T>((item, _) => Row(item, scope), supportsRecycling: true);
@@ -635,6 +711,10 @@ namespace EmuSen.LunaP.Controls
 
             for (int i = 0; i < _columns.Count; i++)
             {
+                // Nothing is built for a hidden column - not a zero-width control, nothing. A cell
+                // that exists and cannot be seen still costs a measure pass per row per frame.
+                if (!_columns[i].IsVisible) continue;
+
                 int index = i;
                 var cell = new TableCell
                 {
@@ -740,6 +820,63 @@ namespace EmuSen.LunaP.Controls
 
             Edit(item, column);
             e.Handled = IsEditing;
+        }
+
+        // NAVIGATION, AND ALL THREE ANSWER "NOT REALISED" HONESTLY. A virtualising list has no visual
+        // for a row that is scrolled away, so these return false rather than forcing one into
+        // existence - a caller who needs the row on screen calls BringRowIntoView first, which is
+        // exactly why that one exists. §54.3.
+        /// <summary>Scrolls a row into view.</summary>
+        /// <param name="item">The model whose row to show. Ignored when it is not in the current view.</param>
+        public void BringRowIntoView(T item)
+        {
+            if (Rows is null || item is null) return;
+
+            int index = IndexOf(item);
+            if (index >= 0) Rows.ScrollIntoView(index);
+        }
+
+        /// <summary>Finds the visual for a row, when that row is currently realised.</summary>
+        /// <param name="item">The model whose row to find.</param>
+        /// <param name="row">The row's container, or null when the row is not on screen.</param>
+        /// <returns>True when a realised row was found.</returns>
+        public bool TryGetRow(T item, out Control? row)
+        {
+            row = null;
+            if (Rows is null || item is null) return false;
+
+            foreach (Control container in Rows.GetRealizedContainers())
+            {
+                if (!Equals(container.DataContext, item)) continue;
+
+                row = container;
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>Finds the visual for one cell of one row, when that row is currently realised.</summary>
+        /// <param name="item">The model whose row to look in.</param>
+        /// <param name="column">The column index, in the order the columns were added.</param>
+        /// <param name="cell">The cell, or null when the row is not on screen or the column is hidden.</param>
+        /// <returns>True when a realised cell was found.</returns>
+        public bool TryGetCell(T item, int column, out Control? cell)
+        {
+            cell = Cell(item, column);
+            return cell is not null;
+        }
+
+        // The position of a model in the DISPLAYED order, which is what a scroll wants - _items is
+        // arrival order and would scroll to the wrong row under a sort.
+        private int IndexOf(T item)
+        {
+            for (int i = 0; i < _view.Count; i++)
+            {
+                if (Equals(Key(_view[i]), Key(item))) return i;
+            }
+
+            return -1;
         }
 
         private void BeginEdit(T item, int column, TableCell cell)
@@ -1006,12 +1143,36 @@ namespace EmuSen.LunaP.Controls
             grid.ColumnDefinitions.Clear();
             for (int i = 0; i < _columns.Count; i++)
             {
-                GridLength width = _columns[i].Width;
+                ColumnSpec column = _columns[i];
 
-                grid.ColumnDefinitions.Add(new ColumnDefinition(width)
+                // A HIDDEN COLUMN IS A ZERO-WIDTH ONE THAT SHARES NOTHING, rather than a definition
+                // left out. Leaving it out would shift every index after it, and the index is what
+                // a remembered layout, a sort and Edit(item, column) are all written in terms of.
+                // Pinned at zero on all three of width, min and max, because an Auto or star column
+                // with a MinWidth would still claim space with nothing in it.
+                if (!column.IsVisible)
+                {
+                    grid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(0))
+                    {
+                        MinWidth = 0,
+                        MaxWidth = 0,
+                    });
+                    continue;
+                }
+
+                GridLength width = column.Width;
+
+                var definition = new ColumnDefinition(width)
                 {
                     SharedSizeGroup = width.IsAuto ? scope + "_" + i : null,
-                });
+                };
+
+                // Left null, these stay the Grid's own 0 and infinity, which is what every column
+                // did before §54 - so a column that names neither is untouched.
+                if (column.MinWidth is { } min) definition.MinWidth = min;
+                if (column.MaxWidth is { } max) definition.MaxWidth = max;
+
+                grid.ColumnDefinitions.Add(definition);
             }
         }
 
@@ -1025,7 +1186,10 @@ namespace EmuSen.LunaP.Controls
             GridLength Width,
             Comparison<T>? Sort,
             Action<T, string>? Commit,
-            Func<T, string, string?>? Validate)
+            Func<T, string, string?>? Validate,
+            double? MinWidth,
+            double? MaxWidth,
+            bool IsVisible)
         {
             public bool IsEditable => Commit is not null;
         }
