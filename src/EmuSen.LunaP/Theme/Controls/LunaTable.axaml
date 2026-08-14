@@ -161,6 +161,20 @@
         <Setter Property="Background" Value="{DynamicResource LunaBorder}" />
     </Style>
 
+    <!-- WHERE THE FROZEN COLUMNS STOP. Takes LunaBorder for the same reason the
+         grid rules do (§56.2): it is where one surface stops and the next
+         begins, and that token is already held to 3:1 against both surfaces.
+         Drawn whether or not the table has been scrolled yet, because a layout
+         that behaves differently on the left should say so before the user
+         discovers it rather than after. §63.
+
+         Its own class rather than reusing column-rule, so a host that wants the
+         boundary louder than a grid line - a heavier stroke, the accent - can
+         restyle one without the other. -->
+    <Style Selector=":is(luna|LunaTable) Border.frozen-edge">
+        <Setter Property="Background" Value="{DynamicResource LunaBorder}" />
+    </Style>
+
     <!-- The other half of the alignment. Fluent's ListBoxItem padding is not the
          header's, so left alone the columns start at two different x positions;
          this pins both to 12. The vertical figure is smaller than Fluent's

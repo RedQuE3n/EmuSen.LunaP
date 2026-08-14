@@ -493,6 +493,174 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // ---- pass 3: the seam, the gutter and hierarchy ----
+
+        [Fact]
+        public Task No_frozen_columns_means_no_seam() =>
+            Scrolled(frozen: 0, offset: 0, (table, _) =>
+                Assert.DoesNotContain(
+                    table.GetVisualDescendants().OfType<Border>(),
+                    b => b.Classes.Contains("frozen-edge")));
+
+        // DRAWN BEFORE ANYTHING IS SCROLLED, which is the point of it. A layout that behaves
+        // differently on the left should say so before the user discovers it, not after.
+        [Fact]
+        public Task The_seam_is_drawn_at_rest() =>
+            Scrolled(frozen: 1, offset: 0, (table, _) =>
+            {
+                Assert.Contains(
+                    table.FindNamed<Grid>("PART_Header").Children.OfType<Border>(),
+                    b => b.Classes.Contains("frozen-edge"));
+
+                Assert.Contains(
+                    RowGrid(table).Children.OfType<Border>(),
+                    b => b.Classes.Contains("frozen-edge"));
+            });
+
+        // AND IT SITS EXACTLY WHERE THE PINNING STOPS. The seam has no positioning code - it is a
+        // sibling in the last frozen column, aligned right, so Pin moves it with everything else in
+        // there. This asserts the outcome rather than that arrangement: wherever the frozen band
+        // ends, that is where the line is, at every offset.
+        //
+        // TWO COLUMNS AND NOT ONE, which is the difference between a guard and a coincidence. With a
+        // single frozen column the last frozen index IS zero, so placing the seam in "column 0"
+        // rather than "the last frozen column" is the same instruction and the sabotage that
+        // substitutes one for the other turns nothing red. It does at two.
+        [Fact]
+        public Task The_seam_marks_the_edge_of_the_band_at_every_offset() => UiTest.Run(() =>
+        {
+            LunaTable<Row> table = Striped(frozen: 2);
+            var window = new ToolWindow { Width = 400, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            foreach (double offset in new[] { 0.0, 137.0, 300.0, 824.0 })
+            {
+                ScrollTo(table, offset);
+
+                Border seam = RowGrid(table).Children.OfType<Border>()
+                    .First(b => b.Classes.Contains("frozen-edge"));
+
+                // The LAST frozen column, which is what the band ends at.
+                Assert.True(table.TryGetCell(table.Models[0], 1, out Control? found));
+                Control frozen = found!;
+
+                double seamX = seam.TranslatePoint(new Point(0, 0), window)!.Value.X;
+                double bandRight = frozen.TranslatePoint(new Point(0, 0), window)!.Value.X + frozen.Bounds.Width;
+
+                Assert.True(Math.Abs(seamX - (bandRight - seam.Bounds.Width)) < 1.5,
+                    $"at offset {offset} the seam is at {seamX:F0} and the band ends at {bandRight:F0}.");
+            }
+
+            window.Close();
+        });
+
+        // A GUTTER IS FROZEN ON ITS OWN ACCOUNT, with no column frozen beside it - §63. The seam
+        // therefore appears for a table that never set FrozenColumns at all, which is the visible
+        // half of that decision.
+        [Fact]
+        public Task A_gutter_alone_is_enough_to_freeze_and_to_draw_a_seam() => UiTest.Run(() =>
+        {
+            LunaTable<Row> table = Striped(frozen: 0);
+            table.RowHeader = (_, i) => (i + 1).ToString();
+
+            var window = new ToolWindow { Width = 400, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(0, table.FrozenColumns);
+            Assert.Contains(
+                RowGrid(table).Children.OfType<Border>(),
+                b => b.Classes.Contains("frozen-edge"));
+
+            window.Close();
+        });
+
+        // A TREE'S TOGGLE AND INDENT SURVIVE THE SCROLL when the expander column is frozen, which is
+        // the case §55's ExpanderColumn exists for meeting §61's pin. Nothing special was written for
+        // it: the expander panel is a grid child like any other, so it is pinned by its column.
+        [Fact]
+        public Task A_frozen_expander_column_keeps_its_toggle_on_screen() => UiTest.Run(() =>
+        {
+            var kids = new[] { new Row("kid") };
+            var table = new LunaTable<Row>
+            {
+                Key = r => r.Name,
+                FrozenColumns = 1,
+                Children = r => r.Name == "row00" ? kids : Array.Empty<Row>(),
+                ExpanderColumn = 0,
+            };
+
+            for (int i = 0; i < 6; i++)
+            {
+                int n = i;
+                table.Column($"col{n}", r => $"{r.Name}-{n}", "200");
+            }
+
+            table.Refresh(new[] { new Row("row00"), new Row("row01") });
+
+            var window = new ToolWindow { Width = 400, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Button toggle = table.GetVisualDescendants().OfType<Button>()
+                .First(b => b.Classes.Contains("expander") && b.IsVisible);
+
+            double before = toggle.TranslatePoint(new Point(0, 0), window)!.Value.X;
+            ScrollTo(table, 300);
+            double after = toggle.TranslatePoint(new Point(0, 0), window)!.Value.X;
+
+            Assert.Equal(before, after, 1);
+            Assert.True(after > 0, $"the toggle scrolled off to x={after:F0}.");
+
+            window.Close();
+        });
+
+        // FROZEN AFTER THE FACT, which is how an application with a "Freeze first column" menu item
+        // would use this - and the case every other test here misses, because they all set
+        // FrozenColumns in an object initializer BEFORE the columns are added, and adding a column
+        // rebuilds anyway. Sabotaging the rebuild out of the setter turned nothing red until this
+        // existed.
+        [Fact]
+        public Task Freezing_a_column_after_the_table_is_on_screen_works() => UiTest.Run(() =>
+        {
+            LunaTable<Row> table = Striped(frozen: 0);
+            var window = new ToolWindow { Width = 400, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            ScrollTo(table, 300);
+            Assert.DoesNotContain(
+                RowGrid(table).Children.OfType<Border>(),
+                b => b.Classes.Contains("frozen-edge"));
+
+            table.FrozenColumns = 1;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Contains(
+                RowGrid(table).Children.OfType<Border>(),
+                b => b.Classes.Contains("frozen-edge"));
+
+            Rect band = BandOf(table, window);
+            RenderedFrame frame = UiTest.Capture(window);
+
+            Assert.True(Count(frame, band, Frozen) > 1000,
+                $"after freezing, the band holds {Count(frame, band, Frozen)} pixels of the frozen column.");
+            Assert.Equal(0, Count(frame, band, Scrolling));
+
+            window.Close();
+        });
+
         private static Grid RowGrid(LunaTable<Row> table) =>
             table.FindNamed<ListBox>("PART_Rows").GetVisualDescendants().OfType<ListBoxItem>()
                 .First().GetVisualDescendants().OfType<Grid>().First();

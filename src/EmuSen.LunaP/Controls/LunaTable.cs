@@ -335,6 +335,7 @@ namespace EmuSen.LunaP.Controls
                 _rowHeader = value;
                 Rebuild();
                 Show();
+                Pin();
             }
         }
 
@@ -369,6 +370,12 @@ namespace EmuSen.LunaP.Controls
                 if (_frozenColumns == value) return;
 
                 _frozenColumns = value;
+
+                // Rebuilt rather than only re-pinned, because the seam is a child of the header and
+                // of every row - so turning frozen columns on or off changes what those grids
+                // CONTAIN and not merely where their contents sit.
+                Rebuild();
+                Show();
                 Pin();
             }
         }
@@ -376,8 +383,22 @@ namespace EmuSen.LunaP.Controls
         // The frozen band expressed in GRID columns, which is what Pin walks. Clamped rather than
         // trusted: a caller who freezes five columns of a three-column table has said something
         // harmless, and the honest reading is "all of them" rather than an exception at layout time.
-        private int FrozenGridColumns =>
-            _frozenColumns <= 0 ? 0 : GridColumn(Math.Min(_frozenColumns, _columns.Count));
+        //
+        // A GUTTER IS ALWAYS FROZEN, EVEN AT FrozenColumns = 0 - see docs/LunaP.md §63. §59.4 pinned
+        // the opposite as a decision on the record, because nothing could be frozen then; this is
+        // that decision being taken rather than reversed by accident. A row header is how the user
+        // refers to a row, and one that scrolls away leaves them reading a line of values with
+        // nothing to say which row it is - which is the whole of what a gutter is for.
+        private int FrozenGridColumns
+        {
+            get
+            {
+                int gutter = _rowHeader is null ? 0 : 1;
+                return _frozenColumns <= 0
+                    ? gutter
+                    : gutter + Math.Min(_frozenColumns, _columns.Count);
+            }
+        }
 
         /// <summary>What sits above the gutter, in the header row. Empty by default, which is the spreadsheet's empty corner.</summary>
         public string RowHeaderCaption { get; set; } = string.Empty;
@@ -935,6 +956,8 @@ namespace EmuSen.LunaP.Controls
                 if (i < lastVisible) HeaderGrid.Children.Add(Grip(i));
             }
 
+            AddFrozenEdge(HeaderGrid);
+
             Rows.ItemTemplate = new FuncDataTemplate<T>((item, _) => Row(item, scope), supportsRecycling: true);
             ShowSortState();
         }
@@ -1140,7 +1163,14 @@ namespace EmuSen.LunaP.Controls
                 if (Grid.GetColumn(child) < frozen)
                 {
                     child.Clip = null;
-                    child.RenderTransform = new TranslateTransform(_scrolledTo, 0);
+
+                    // Null rather than a zero translation, so an unscrolled table has exactly the
+                    // visual tree it had before frozen columns existed. It matters more than tidiness
+                    // now that a gutter is frozen by default (§63): every table with a row header
+                    // would otherwise carry a transform per cell for a scroll that never happened.
+                    child.RenderTransform = _scrolledTo == 0
+                        ? null
+                        : new TranslateTransform(_scrolledTo, 0);
                     continue;
                 }
 
@@ -1382,8 +1412,22 @@ namespace EmuSen.LunaP.Controls
                 }
             }
 
+            AddFrozenEdge(grid);
             NameRow(grid, item);
             return Ruled(grid);
+        }
+
+        // Puts the seam in the last frozen column of a grid, or leaves the grid alone when nothing is
+        // frozen. Both the header and every row go through here, so the two cannot disagree about
+        // where the boundary is.
+        private void AddFrozenEdge(Grid grid)
+        {
+            int frozen = FrozenGridColumns;
+            if (frozen <= 0) return;
+
+            Control edge = FrozenEdge();
+            Grid.SetColumn(edge, frozen - 1);
+            grid.Children.Add(edge);
         }
 
         // The text cell, which is what every cell was before §57 - unchanged but for being one arm
@@ -1543,6 +1587,35 @@ namespace EmuSen.LunaP.Controls
             // restyle a rule the same way it restyles anything else (§12.2).
             ruled.Classes.Add("row-rule");
             return ruled;
+        }
+
+        // WHERE THE PINNED COLUMNS STOP, DRAWN SO SOMEBODY CAN SEE IT - see docs/LunaP.md §63.
+        //
+        // Without this, frozen columns are invisible until the table is scrolled: the user is given
+        // a layout that behaves differently on the left and is told nothing about it until they
+        // discover it. So the edge is drawn whether or not anything has been scrolled yet.
+        //
+        // A SIBLING IN THE LAST FROZEN COLUMN, WHICH IS THE WHOLE IMPLEMENTATION. It is the same
+        // shape as a vertical grid rule (§56.2) - a Border in the column, aligned right - and because
+        // it sits in a frozen column, Pin translates it with everything else in there. There is no
+        // positioning code for the seam at all, and no way for it to drift from the boundary it
+        // marks: it IS the right-hand edge of that column.
+        //
+        // LunaBorder, the same token the grid rules take, rather than a colour of its own. §56.2's
+        // argument applies unchanged - it is where one surface stops and the next begins, and it is
+        // already held to 3:1 against both. When vertical rules are also on, the two coincide exactly
+        // rather than doubling up, because both are one pixel aligned to the same edge.
+        private static Control FrozenEdge()
+        {
+            var edge = new Border
+            {
+                Width = 1,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Stretch,
+            };
+
+            edge.Classes.Add("frozen-edge");
+            return edge;
         }
 
         // A SIBLING IN THE COLUMN, NOT A WRAPPER AROUND THE CELL, and that is load-bearing rather

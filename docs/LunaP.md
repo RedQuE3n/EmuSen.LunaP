@@ -5808,3 +5808,71 @@ What makes this a hazard rather than a defect is §27.3: **the row's spoken sent
 column's value**, frozen, scrolled or clipped, so a reader navigating rows is told everything. It is
 cell-level navigation that cannot report visibility honestly, and that is the same for any
 horizontally scrolled table.
+
+## 63. Frozen columns: the seam, and a gutter that stops running away
+
+Pass 3. Two decisions and one thing that needed no code at all.
+
+### 63.1 The boundary is drawn, and drawn at rest
+
+Frozen columns were invisible until the table was scrolled. The user was given a layout that behaves
+differently on the left and told nothing about it until they discovered it — so the edge is now drawn
+**whether or not anything has been scrolled yet**.
+
+**The implementation is a sibling in the last frozen column, and that is the whole of it.** It is the
+same shape as a vertical grid rule (§56.2) — a `Border`, aligned right, one pixel — and because it
+sits in a *frozen* column, `Pin` translates it along with everything else in there. There is no
+positioning code for the seam and no way for it to drift from the boundary it marks: it **is** the
+right-hand edge of that column.
+
+It takes `LunaBorder`, the token the grid rules already take, on §56.2's unchanged argument: it is
+where one surface stops and the next begins, and it is already held to 3:1 against both surfaces.
+When vertical rules are also on, the two coincide exactly rather than doubling up, because both are
+one pixel aligned to the same edge. It keeps its own class so a host that wants the boundary louder
+than a grid line can restyle one without the other.
+
+### 63.2 A gutter is always frozen, which reverses §59.4 on purpose
+
+§59.4 pinned the opposite — that the gutter scrolls away — as *a decision on the record rather than a
+surprise*, because nothing could be frozen when it was written, and said the test should be
+**rewritten rather than deleted** when the frozen work landed. This is that.
+
+A row header is how a user refers to a row. One that scrolls off leaves them reading a line of values
+with nothing to say which row it belongs to, which is the whole of what a gutter is for. So a gutter
+is frozen on its own account, at `FrozenColumns = 0`, and the seam appears for a table that never
+asked for a frozen column at all.
+
+A consequence worth stating: a table with a gutter now goes through `Pin` on every layout where
+before it did not. That is why a frozen child at offset zero gets `RenderTransform = null` rather
+than a zero translation — an unscrolled table has exactly the visual tree it had before frozen
+columns existed, instead of carrying a transform per cell for a scroll that never happened.
+
+### 63.3 Hierarchy needed nothing
+
+A frozen expander column keeps its indent and its toggle on screen, and no code was written for it.
+The expander panel is a grid child like any other (§55), so it is pinned by its column along with
+everything else — which is the §61.1 argument about direct children being the right granularity,
+paying off in a case that was never considered when the granularity was chosen. A test pins it
+anyway, because "it happens to work" and "it is guaranteed to work" are different claims.
+
+### 63.4 Two more hollow guards, and what made them hollow
+
+| Sabotage | First result | After |
+|---|---|---|
+| the seam placed in column 0 instead of the last frozen column | **nothing** | seam at 211, band ending at 412 |
+| `FrozenColumns` no longer rebuilds on assignment | **nothing** | the seam never appears |
+
+**The first is a coincidence dressed as a guard.** Every seam test froze *one* column, and with one
+frozen column the last frozen index **is** zero — so "column 0" and "the last frozen column" are the
+same instruction and no sabotage can tell them apart. Freezing two makes them different numbers.
+Whenever a test's fixture makes two expressions coincide, it can only be testing one of them.
+
+**The second is a fixture artefact.** Every test set `FrozenColumns` in an object initializer, which
+runs *before* the columns are added — and adding a column rebuilds anyway, so the seam appeared
+whether or not the setter asked for it. The case that exercises the setter is the one an application
+actually has: a **"Freeze first column" menu item**, toggled while the table is on screen. That test
+freezes after showing and scrolling, and checks the pixels.
+
+That makes five hollow guards this arc (§57.6, §61.4, §62.3, and both of these). The pattern in all
+five is the same: the assertion was true for a reason other than the code under test, and only
+sabotage said so.
