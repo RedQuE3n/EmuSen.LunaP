@@ -5625,3 +5625,93 @@ until each is pinned:
 
 §61 onwards is where those are answered. This section is the correction on its own, so the record is
 right whether or not the rest is built.
+
+## 61. Frozen columns: the pin
+
+Pass 1 of the frozen-column arc §60 opened. `FrozenColumns` is an `int`, zero by default, and a table
+that leaves it there does not pay for the feature existing — `Pin` returns on its first line.
+
+### 61.1 Two rules, on the row grid's direct children
+
+    a child in a frozen column     ->  RenderTransform = Translate(+scrollX)
+    a child in a scrolling column  ->  Clip left edge  = clamp(scrollX + band - bounds.X, 0, width)
+
+The transform cancels the scroll the `ScrollContentPresenter` is applying to everything, leaving the
+child where it started. The clip removes whatever would fall inside the band.
+
+**The direct children are the right granularity** because every one already carries a `Grid.Column`.
+That one fact makes a bare cell, a cell inside an expander panel (§55), a vertical rule (§56.2), a
+resize grip and an open editor all fall out of the same loop, with none of them a special case.
+
+**Bounds rather than column offsets.** The clip uses the child's own `Bounds.X` — where it actually
+sits, which already accounts for its alignment, its margin and any column span. Arithmetic over
+column starts places a `GridSplitter` wrongly, because a grip is aligned to the *right* of its
+column. Sabotaging that substitution turns the render red.
+
+The clamp degenerates correctly: unscrolled, `scrollX` is 0 and every scrolling column begins at or
+after the band, so the left edge is 0 and **no clip is set at all**.
+
+Both properties are render-level, so this costs no measure and no arrange, and the shared size groups
+that align the header with the rows (§27.10) never learn it happened.
+
+### 61.2 The guard is a render, because a property read would pass while the feature was absent
+
+This is a feature where every property can be set and the result still wrong: a sign flipped, a band
+measured in the wrong coordinate space, a transform on the wrong parent. All three leave `Clip` and
+`RenderTransform` assigned and the frozen column somewhere else. Asserting they are non-null is the
+§5.5 shape.
+
+So the columns are drawn in flat colour through the public `Template` kind (§57) — nothing reaches
+into the control to paint anything — and the **pixels inside the band are counted**. The assertion is
+not "a clip exists" but **"no pixel of the scrolling column is inside the frozen band"**, and only a
+render can say that. A control case sits beside it: with nothing frozen, that same strip must be full
+of the *scrolling* colour, so the real test cannot pass by the band being empty or misplaced.
+
+### 61.3 Two test-side mistakes, both of which looked like a broken feature
+
+Worth recording because both produce a red that points at the wrong thing:
+
+- **The cells had no height.** The template returned a `Border` with a background and no child, whose
+  desired size is zero — so six of them gave a row of no height and the count found zero pixels of
+  *every* colour. A feature that works, reported as one that draws nothing.
+- **The band was written down rather than derived.** A hard-coded rectangle guessed where the rows
+  begin and was wrong. It is now measured from the control: the rows viewport gives the left edge and
+  a realised cell gives the row's y and height.
+
+And a third, found by the sabotage that followed: `BandOf` picked the first *realised* row, which
+after a vertical scroll is one **half above the top edge** — so the band lay mostly outside the rows
+area and counted 196 pixels where thousands were expected. It now picks a row wholly inside the
+viewport. The fix is to measure a whole row, never to lower the threshold.
+
+### 61.4 The sabotages, and the hook that had no guard
+
+| Sabotage | What turned red |
+|---|---|
+| no clip on the scrolling columns — cover instead of remove | the band filled with the scrolling colour; 0 pixels of the frozen one |
+| the transform's sign flipped | the frozen column sat at x=-262 having started at 12 |
+| the band measured from column starts instead of the child's bounds | the frozen column vanished from the band |
+| the `_pinned` flag dropped | unfreezing left one column pinned to nothing |
+| **the `LayoutUpdated` hook removed** | **nothing, at first** |
+
+That last one is the entry. `Pin` runs from the scroll handler and from `LayoutUpdated`, and removing
+the second changed no test — because every test scrolled a table whose rows were already on screen,
+and for those the scroll handler is enough. The case it exists for is a row **realised by the
+virtualising panel after the horizontal scroll happened**: the handler has already run and will not
+run again, so the row arrives unpinned. A frozen column that is frozen only for the rows that
+happened to be visible when you scrolled sideways.
+
+The new guard scrolls right, then down — throwing those rows away and building new ones — and counts
+the band on a freshly realised row. With the hook removed it reports **0 pixels of the frozen
+column**, which is the defect exactly.
+
+### 61.5 What pass 1 does not claim
+
+`FrozenColumns` is counted in **columns as the caller added them**, not grid columns, so a gutter is
+frozen along with them once the count is above zero, and a hidden column still takes one. Freezing
+more columns than the table has freezes all of them, which leaves nothing to scroll — the honest
+reading of a harmless thing to say, rather than an exception at layout time.
+
+Still hazards, and §60.2's list is unchanged by this pass: **hit-testing under a clip**, **keyboard
+focus reaching a clipped control**, and whether a peer reports a clipped cell **offscreen**. Nothing
+here has looked at any of the three, and a clipped cell is still in the automation tree and still, as
+far as anything measured knows, clickable. That is pass 2.
