@@ -6596,3 +6596,112 @@ asserted, which is the rule for a behaviour with no guard.
 | a programmatic sort skips the glyph | the heading contradicting the rows |
 | the table stops flushing on detach | both §70.4 guards |
 | a sort no longer pokes the save | **nothing** — see §70.4 |
+
+## 71. Rows the user can drag, and three things that were not the feature
+
+Pass 4 of finishing §54.3's parity: **row drag-and-drop**. The reference has `AutoDragDropRows` and
+`RowDragStarted` / `RowDragOver` / `RowDrop`, with a four-value position — `None`, `Before`, `After`,
+`Inside` — enumerated from 12.2.0. LunaP takes the same four and reports them in models.
+
+### 71.1 The table reorders nothing, and that is the design
+
+`RowDropped` says what landed where; the caller moves their own rows and calls `Refresh`.
+
+**This control does not own the order.** `_items` is a copy of what `Refresh` was handed, so
+reordering it here would move the rows on screen and leave the caller's collection untouched — until
+the next `Refresh` put them back, which for a polling window is about a second. A reorder that
+survives is one the caller made.
+
+It is §57.4's rule one feature along: *a `Toggle` that declines to write leaves the tick where it
+was, because the table re-reads the model rather than trusting the box.* A `RowDropped` nobody
+handles leaves the rows where they were, for the same reason and with the same sentence behind it —
+the model is the truth and the control is a view of it.
+
+`CanDrop` is a `Func` rather than an event because **an event cannot answer a question**, and the
+indicator has to know before it promises the user anything. The line drawn mid-drag and the drop
+raised on release read the same answer, so a refused drop cannot draw a line saying it will work.
+
+### 71.2 Pointer capture, not the platform's drag-and-drop
+
+`DragDrop.DoDragDrop` moves data *between* controls and applications. This moves a row inside one
+table, which is a different problem: capture gives the whole gesture to this control, needs no data
+object, no format string and no drop-target registration — and it runs under `Avalonia.Headless`, so
+all twenty-two guards drive the real press-move-release rather than asserting about wiring.
+
+**What it gives up, stated rather than discovered: a row cannot be dragged out of this table into
+something else.** That is a real difference from the reference, and it is the price of a feature that
+can be tested at all in this repository.
+
+### 71.3 The press has to be read on the way down, for two separate reasons
+
+Both measured, and the first one hid the second.
+
+**The `ListBox` marks a press handled when it selects the row.** `pressed.Handled=True` by the time
+the event reaches this control on the way back up — so the first version of the drag never started,
+and looked wired up in every way except working. Every guard passed when the private method was
+called directly, which is how it was found.
+
+**And the `ListBox` collapses a multi-selection to the row that was pressed.** No opt-in fixes that
+one: read on the way back up, the selection is one row, and dragging a group of four would silently
+move only the row under the pointer. Read on the way *down*, it is still the four the user picked.
+
+So the drag starts on the **tunnel** route. Once it does, opting into handled events is unnecessary
+everywhere — sabotage confirmed all three `handledEventsToo` flags were dead, and they are gone
+rather than left standing as a comment that claims they matter.
+
+**What is being dragged is decided when the drag starts, not when it ends.** Capturing the row at
+press time and reading the selection at drop time is the same defect wearing a different hat: by
+release, the collapse has already happened.
+
+### 71.4 A reorder a keyboard can do
+
+§24's standard, which this project has applied to a sortable heading (a `Button`) and a column grip (a
+`GridSplitter`): a gesture only a pointer can perform is a feature half this toolkit's users do not
+have. **Alt+Up/Down moves the selected row**, raising the same `RowDropped` a drag does, so a caller
+writes one handler rather than two.
+
+Alt rather than Ctrl, because Ctrl+arrow is the scroll-without-moving idiom and a bare arrow moves the
+selection — which must keep working, or turning reordering on would take the arrow keys away from
+everybody using them to walk the list.
+
+### 71.5 A flat table has no "inside"
+
+In a tree the middle third of a row is a **reparent** — "put this file in that folder" — and the outer
+thirds are a reorder. In a flat table there is no such thing, so the row splits in half and every
+position is a reorder. Offering `Inside` where nothing could act on it would be an indicator
+promising something no caller can perform.
+
+The two are drawn differently for the same reason: a line at one edge for a reorder, an outline round
+the whole row for a reparent. Mid-drag they must not be mistakable for each other.
+
+### 71.6 The sabotages, and two that could not fail
+
+Twelve, of which ten turned red on the first attempt.
+
+| Sabotage | What turned red |
+|---|---|
+| `CanReorderRows` ignored | the off-by-default guard |
+| a row can be dropped on itself | the self-drop refusal |
+| the veto is ignored | three, including the keyboard route |
+| a flat table offers `Inside` too | the flat-table guard |
+| the drop line is never drawn | the mid-drag indicator |
+| the drop line is never removed | two |
+| Alt is not required | the bare-arrow guard |
+| the keyboard move ignores the veto | the keyboard veto |
+| the dragged set is read at drop time | the multi-selection drag |
+| the press handler goes back to bubbling | the multi-selection drag |
+| **the drag threshold is removed** | **nothing** |
+| **`handledEventsToo` dropped** | **nothing** |
+
+**The threshold guard released on the row it pressed**, where a drop is refused anyway because a row
+cannot land on itself — so the self-drop rule was doing all the work and the threshold contributed
+nothing an assertion could see. The case it exists for is a press near the bottom of one row that
+wobbles two pixels into the next, which is a user selecting a row with an unsteady hand. Rewriting it
+took two attempts, because the first version pressed at the row's midpoint and moved thirteen pixels;
+the fixture now asserts that it really does cross the boundary before it asserts anything else.
+
+**The `handledEventsToo` flags were dead** once the press moved to the tunnel, which §71.3 explains.
+They are removed. A flag kept "for safety" with a comment explaining why it is essential is worse
+than no flag, because the next reader believes the comment.
+
+That is nine hollow guards found by sabotage across §57–§71, and not one of them by reading.

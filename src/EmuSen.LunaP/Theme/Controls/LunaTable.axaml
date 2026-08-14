@@ -175,6 +175,25 @@
         <Setter Property="Background" Value="{DynamicResource LunaBorder}" />
     </Style>
 
+    <!-- WHERE A DRAGGED ROW WOULD LAND - see docs/LunaP.md §71.
+         LunaAccent rather than LunaBorder, because this is not a boundary
+         between two surfaces the way a grid rule or the frozen seam is (§56.2) -
+         it is a live answer to what the pointer is currently doing, and it has
+         to be findable at a glance while the user is moving. The same token the
+         selected cell takes, for the same reason. -->
+    <Style Selector=":is(luna|LunaTable) Border.drop-line">
+        <Setter Property="Background" Value="{DynamicResource LunaAccent}" />
+    </Style>
+
+    <!-- A REPARENT LOOKS DIFFERENT FROM A REORDER, because it is a different
+         thing: "put this file in that folder" rather than "put this row between
+         those two". An outline round the whole target row rather than a line at
+         one edge, so the two can never be mistaken for each other mid-drag. -->
+    <Style Selector=":is(luna|LunaTable) Border.drop-into">
+        <Setter Property="BorderBrush" Value="{DynamicResource LunaAccent}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
     <!-- THE SELECTED CELL, drawn as an outline in the accent - see docs/LunaP.md
          §67.
 

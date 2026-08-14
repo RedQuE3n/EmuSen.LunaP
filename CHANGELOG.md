@@ -96,6 +96,29 @@ pixels.**
 - **Nothing changes for a table of text columns**, which is still every column
   you have declared so far.
 
+**Rows can be dragged into a new order.** `CanReorderRows = true`, and off by
+default so nothing moves for a table that does not ask.
+
+- **The table reorders nothing itself.** `RowDropped` tells you what landed
+  where; you move your own rows and call `Refresh`. It holds a copy of your list,
+  so reordering it here would be undone by your next refresh - the same rule a
+  checkbox column already follows, where a `Toggle` that declines leaves the tick
+  where it was (`§71.1`).
+- `LunaRowDrop<T>` is your models, the model it landed on, and a position:
+  `Before`, `After`, or `Inside` - which only happens in a tree, where it means
+  reparent rather than reorder (`§71.5`).
+- `CanDrop` refuses a drop before the indicator promises it will work.
+- **Alt+Up/Down moves the selected row**, raising the same event, because a
+  reorder only a pointer can do is a feature half your users do not have
+  (`§71.4`). A bare arrow still moves the selection.
+- Dragging a row that is part of a multi-selection takes the whole selection;
+  dragging one outside it takes only that row.
+
+One difference from `TreeDataGrid`, stated rather than left to be found: this is
+pointer capture rather than the platform's drag-and-drop, so a row can be
+reordered inside its table but **cannot be dragged out of it** into another
+control (`§71.2`).
+
 **Columns can be aligned, and sorted without a click.**
 
 - `LunaColumn<T>.Alignment` and `.VerticalAlignment` say where a column's content

@@ -204,6 +204,13 @@ public sealed class EmuSen.LunaP.Controls.LunaColumn<T>
     public string Header { get; }
     public string Width { get; set; }
 
+public enum EmuSen.LunaP.Controls.LunaDropPosition
+    public const EmuSen.LunaP.Controls.LunaDropPosition After = 2
+    public const EmuSen.LunaP.Controls.LunaDropPosition Before = 1
+    public const EmuSen.LunaP.Controls.LunaDropPosition Inside = 3
+    public const EmuSen.LunaP.Controls.LunaDropPosition None = 0
+    public int value__
+
 public enum EmuSen.LunaP.Controls.LunaEditGestures
     public const EmuSen.LunaP.Controls.LunaEditGestures Default = 3
     public const EmuSen.LunaP.Controls.LunaEditGestures DoubleTap = 1
@@ -229,6 +236,19 @@ public class EmuSen.LunaP.Controls.LunaList<T> : Avalonia.Controls.ListBox
     public event System.Action<T> Chose
     public void Refresh(System.Collections.Generic.IEnumerable<T> items)
     public void Select(T? item)
+
+public struct EmuSen.LunaP.Controls.LunaRowDrop<T> : System.ValueType, System.IEquatable<EmuSen.LunaP.Controls.LunaRowDrop<T>>
+    public EmuSen.LunaP.Controls.LunaDropPosition Position { get; set; }
+    public LunaRowDrop<T>(System.Collections.Generic.IReadOnlyList<T> Rows, T? Target, EmuSen.LunaP.Controls.LunaDropPosition Position)
+    public System.Collections.Generic.IReadOnlyList<T> Rows { get; set; }
+    public T? Target { get; set; }
+    public bool Equals(EmuSen.LunaP.Controls.LunaRowDrop<T> other)
+    public override bool Equals(object obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.LunaRowDrop<T> left, EmuSen.LunaP.Controls.LunaRowDrop<T> right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.LunaRowDrop<T> left, EmuSen.LunaP.Controls.LunaRowDrop<T> right)
+    public void Deconstruct(out System.Collections.Generic.IReadOnlyList<T> Rows, out T? Target, out EmuSen.LunaP.Controls.LunaDropPosition Position)
 
 public enum EmuSen.LunaP.Controls.LunaSelectionMode
     public const EmuSen.LunaP.Controls.LunaSelectionMode Multiple = 2
@@ -275,10 +295,12 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.LunaCell<T>> SelectedCells { get; }
     public System.Collections.Generic.IReadOnlyList<T> Models { get; }
     public System.Collections.Generic.IReadOnlyList<T> SelectedItems { get; }
+    public System.Func<EmuSen.LunaP.Controls.LunaRowDrop<T>, bool>? CanDrop { get; set; }
     public System.Func<T, System.Collections.Generic.IEnumerable<T>>? Children { get; set; }
     public System.Func<T, int, string>? RowHeader { get; set; }
     public System.Func<T, object?> Key { get; set; }
     public T? Selected { get; }
+    public bool CanReorderRows { get; set; }
     public bool IsCellSelected(T item, int column)
     public bool IsEditing { get; }
     public bool IsExpanded(T item)
@@ -287,6 +309,7 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public bool TryGetRow(T item, out Avalonia.Controls.Control? row)
     public double IndentSize { get; set; }
     public event System.Action<EmuSen.LunaP.Controls.LunaCell<T>?> CellChosen
+    public event System.Action<EmuSen.LunaP.Controls.LunaRowDrop<T>> RowDropped
     public event System.Action<T, Avalonia.Controls.Control> RowClearing
     public event System.Action<T, Avalonia.Controls.Control> RowPrepared
     public event System.Action<T, int> CellValueChanged

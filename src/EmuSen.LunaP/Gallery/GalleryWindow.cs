@@ -172,13 +172,34 @@ namespace EmuSen.LunaP.Gallery
                       Width = "30",
                   });
 
-            fields.Refresh(new[]
+            var schema = new List<Field>
             {
                 new Field("Site", "text", 1, required: true, @default: "(from job)"),
                 new Field("Technician", "text", 1, required: true, @default: "(current user)"),
                 new Field("Approved", "checkbox", 2, required: false, @default: "no"),
                 new Field("Total aid retained", "text", 2, required: false, @default: "0.00"),
-            });
+            };
+
+            fields.Refresh(schema);
+
+            // ROWS THE USER CAN REORDER, AND THE HANDLER A CONSUMER ACTUALLY WRITES. The table
+            // reports where the drop landed and changes nothing itself (§71.1), so this is not
+            // ceremony the gallery is adding on top - it is the whole of what the feature asks of a
+            // caller, and showing it with the collection missing would show half an idea.
+            //
+            // A field list is the right sample for it: the order of fields on a form is a decision
+            // somebody makes by looking at it, which is exactly when dragging beats retyping.
+            fields.CanReorderRows = true;
+            fields.RowDropped += drop =>
+            {
+                foreach (Field moved in drop.Rows) schema.Remove(moved);
+
+                int at = drop.Target is null ? schema.Count : schema.IndexOf(drop.Target);
+                if (drop.Position == LunaDropPosition.After) at++;
+
+                schema.InsertRange(Math.Clamp(at, 0, schema.Count), drop.Rows);
+                fields.Refresh(schema);
+            };
 
             // THE ONLY SAMPLES HERE THIS TOOLKIT DID NOT WRITE, and that is the reason they are
             // here. §48 handed LunaP's colours to FluentTheme's own resource keys so that a stock
