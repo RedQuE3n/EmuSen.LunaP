@@ -252,6 +252,7 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public System.Collections.Generic.IReadOnlyList<T> Models { get; }
     public System.Collections.Generic.IReadOnlyList<T> SelectedItems { get; }
     public System.Func<T, System.Collections.Generic.IEnumerable<T>>? Children { get; set; }
+    public System.Func<T, int, string>? RowHeader { get; set; }
     public System.Func<T, object?> Key { get; set; }
     public T? Selected { get; }
     public bool IsEditing { get; }
@@ -264,6 +265,8 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public event System.Action<T, int> CellValueChanged
     public event System.Action<T> Chose
     public int ExpanderColumn { get; set; }
+    public string RowHeaderCaption { get; set; }
+    public string RowHeaderWidth { get; set; }
     public string? TableKey { get; set; }
     public void BringRowIntoView(T item)
     public void Collapse(T item)
