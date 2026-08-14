@@ -96,6 +96,26 @@ pixels.**
 - **Nothing changes for a table of text columns**, which is still every column
   you have declared so far.
 
+**A table can have a gutter down the left.** `RowHeader` takes the row and its
+*displayed* index, so `(_, i) => (i + 1).ToString()` numbers the rows and
+`(row, _) => row.Address.ToString("X4")` labels them from the model. Null - the
+default - means no gutter and no change (`§58`).
+
+**Columns past the right edge of a table are now reachable.** They were not: a
+table whose columns did not fit resolved every column to the width it asked for
+and then clipped the grid at the viewport, with no scrollbar, no wheel and no
+keyboard route to the rest. If you have ever declared absolute column widths that
+added up to more than the window, some of your columns were invisible and nothing
+said so. The table scrolls sideways now and the header follows it (`§59`).
+
+A table of star-width columns - the default - fits by definition, shows no
+scrollbar and is unchanged.
+
+**Frozen columns are still not there**, and `§59.3` records why with the visual
+tree walked out: it needs the frozen cells laid out outside the scrolling
+viewport, which this control's row-as-a-Grid shape cannot express. Reach for
+`TreeDataGrid` if you need them, licence gate and all.
+
 **Disabled checkboxes change colour, including ones you built yourself.** Fluent's
 disabled checkbox is translucent white, which on the light surface put a white
 tick on light grey at **1.78:1** — unreadable. `FluentBridge` now overrides three

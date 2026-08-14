@@ -8,6 +8,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using EmuSen.LunaP.Automation;
 using EmuSen.LunaP.Threading;
@@ -124,6 +125,10 @@ namespace EmuSen.LunaP.Controls
         // Where each row sits in the view, so the gutter can be told without a scan. Empty and
         // untouched when there is no gutter to feed. §58.
         private readonly Dictionary<object, int> _position = new();
+
+        // How far the rows have been scrolled sideways, so the header can be moved to match and so
+        // an event that reports the same offset twice costs nothing. §59.
+        private double _scrolledTo;
 
         // Saving is debounced for the reason SplitPane debounces its divider (§26.6): a drag
         // produces a property change per frame, and writing tables.json sixty times a second would
@@ -784,6 +789,28 @@ namespace EmuSen.LunaP.Controls
             {
                 if (e.Container.DataContext is T model) RowClearing?.Invoke(model, e.Container);
             };
+
+            // THE HEADER FOLLOWS THE ROWS SIDEWAYS - see docs/LunaP.md §59.
+            //
+            // The rows scroll inside the ListBox's own ScrollViewer; the header is the one part of
+            // this control outside it, so it is the one part that has to be moved by hand. A render
+            // transform rather than a margin or a second ScrollViewer: it is the cheapest thing that
+            // moves a laid-out subtree, it costs no measure pass, and it cannot disturb the shared
+            // size groups the header and rows use to line up at all (§27.10).
+            //
+            // ScrollChanged is a ROUTED event, so this catches the viewer inside the ListBox's
+            // template without having to find it - which cannot be done here anyway, because the
+            // ListBox has not applied its own template at this point.
+            Rows.AddHandler(ScrollViewer.ScrollChangedEvent, (_, e) =>
+            {
+                if (e.Source is not ScrollViewer viewer || HeaderGrid is null) return;
+
+                double x = viewer.Offset.X;
+                if (Math.Abs(_scrolledTo - x) < 0.01) return;
+
+                _scrolledTo = x;
+                HeaderGrid.RenderTransform = new TranslateTransform(-x, 0);
+            });
 
             ApplySelectionMode();
             Rebuild();

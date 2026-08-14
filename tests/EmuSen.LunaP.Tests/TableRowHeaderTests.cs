@@ -103,8 +103,9 @@ namespace EmuSen.LunaP.Tests
             {
                 Assert.Null(table.RowHeader);
                 Assert.Equal(2, table.FindNamed<Grid>("PART_Header").ColumnDefinitions.Count);
-                Assert.Empty(table.GetVisualDescendants().OfType<TextBlock>()
-                    .Where(t => t.Classes.Contains("row-header")));
+                Assert.DoesNotContain(
+                    table.GetVisualDescendants().OfType<TextBlock>(),
+                    t => t.Classes.Contains("row-header"));
             });
 
         [Fact]
