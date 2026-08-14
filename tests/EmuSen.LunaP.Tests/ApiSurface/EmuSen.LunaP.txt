@@ -178,6 +178,20 @@ public sealed class EmuSen.LunaP.Controls.LunaColumn<T>
     public string Header { get; }
     public string Width { get; set; }
 
+public enum EmuSen.LunaP.Controls.LunaEditGestures
+    public const EmuSen.LunaP.Controls.LunaEditGestures Default = 3
+    public const EmuSen.LunaP.Controls.LunaEditGestures DoubleTap = 1
+    public const EmuSen.LunaP.Controls.LunaEditGestures F2 = 2
+    public const EmuSen.LunaP.Controls.LunaEditGestures None = 0
+    public int value__
+
+public enum EmuSen.LunaP.Controls.LunaGridLines
+    public const EmuSen.LunaP.Controls.LunaGridLines All = 3
+    public const EmuSen.LunaP.Controls.LunaGridLines Horizontal = 1
+    public const EmuSen.LunaP.Controls.LunaGridLines None = 0
+    public const EmuSen.LunaP.Controls.LunaGridLines Vertical = 2
+    public int value__
+
 public class EmuSen.LunaP.Controls.LunaList<T> : Avalonia.Controls.ListBox
     protected override System.Type StyleKeyOverride { get; }
     public LunaList<T>()
@@ -217,6 +231,8 @@ public abstract class EmuSen.LunaP.Controls.LunaTable : Avalonia.Controls.Primit
 public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTable
     protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
     protected override void OnPartsAttached()
+    public EmuSen.LunaP.Controls.LunaEditGestures EditGestures { get; set; }
+    public EmuSen.LunaP.Controls.LunaGridLines GridLines { get; set; }
     public EmuSen.LunaP.Controls.LunaSelectionMode SelectionMode { get; set; }
     public EmuSen.LunaP.Controls.LunaTable<T> Column(EmuSen.LunaP.Controls.LunaColumn<T> column)
     public EmuSen.LunaP.Controls.LunaTable<T> Column(string header, System.Func<T, string> text, string width = "*")
@@ -231,6 +247,9 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public bool TryGetCell(T item, int column, out Avalonia.Controls.Control? cell)
     public bool TryGetRow(T item, out Avalonia.Controls.Control? row)
     public double IndentSize { get; set; }
+    public event System.Action<T, Avalonia.Controls.Control> RowClearing
+    public event System.Action<T, Avalonia.Controls.Control> RowPrepared
+    public event System.Action<T, int> CellValueChanged
     public event System.Action<T> Chose
     public int ExpanderColumn { get; set; }
     public string? TableKey { get; set; }

@@ -113,6 +113,18 @@
         <Setter Property="Foreground" Value="{DynamicResource LunaInfo}" />
     </Style>
 
+    <!-- THE GRID LINES, off by default and drawn in LunaBorder when on. That token already means
+         "where one surface stops and the next begins" (§26.9) and is already held to 3:1 against
+         both surfaces, which is exactly what a rule between cells is - so it takes the token rather
+         than introducing a colour of its own. §56. -->
+    <Style Selector=":is(luna|LunaTable) Border.row-rule">
+        <Setter Property="BorderBrush" Value="{DynamicResource LunaBorder}" />
+    </Style>
+
+    <Style Selector=":is(luna|LunaTable) Border.column-rule">
+        <Setter Property="Background" Value="{DynamicResource LunaBorder}" />
+    </Style>
+
     <!-- The other half of the alignment. Fluent's ListBoxItem padding is not the
          header's, so left alone the columns start at two different x positions;
          this pins both to 12. The vertical figure is smaller than Fluent's

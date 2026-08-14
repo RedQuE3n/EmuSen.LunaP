@@ -281,6 +281,64 @@ namespace EmuSen.LunaP.Controls
         /// <summary>Which column shows the expander and the indent. The first column by default.</summary>
         public int ExpanderColumn { get; set; }
 
+        // WHAT OPENS AN EDITOR, and it is a set rather than a mode because the two gestures are
+        // independent - a table can want F2 without double-click, or neither. §56.
+        //
+        // Both by default, which is what §50 hardcoded, so no existing table changes. None is a real
+        // value and not an omission: a table whose columns have a Commit but whose editing is driven
+        // entirely by an application's own "Rename" menu item wants LunaTable.Edit and no gesture at
+        // all, and turning the column read-only to get that would lose the validation with it.
+        /// <summary>Which gestures open a cell editor. Double-click and F2 by default.</summary>
+        public LunaEditGestures EditGestures { get; set; } = LunaEditGestures.Default;
+
+        // NONE BY DEFAULT, which is what every table drew before §56 - and is also the better
+        // default for the instrument panels this toolkit was built for, where a meter list wants to
+        // read as a block rather than as a spreadsheet. A table of many narrow columns wants them;
+        // a table of three does not.
+        //
+        // Drawn in LunaBorder, the token that already means "where one surface stops and the next
+        // begins" (§26.9), rather than a colour of its own. A rule between cells is exactly that,
+        // and it is already held to 3:1 against both surfaces.
+        private LunaGridLines _gridLines;
+
+        // THE LIFECYCLE, AND WHY IT IS TWO EVENTS AND NOT FIVE. TreeDataGrid raises CellPrepared,
+        // CellClearing, RowPrepared, RowClearing and CellValueChanged. The cell pair is not
+        // reproducible here and saying so is better than approximating it: this control builds its
+        // cells inside the row template rather than realising them independently, so there is no
+        // moment at which a cell is prepared that is not simply "its row was prepared". A CellPrepared
+        // that fired once per cell during RowPrepared would carry no information the row event does
+        // not, while implying a virtualization boundary that is not there. §56.
+        //
+        // RowPrepared and RowClearing ARE real and are exactly what recycling makes worth having: a
+        // caller attaching per-row state - a tooltip, a context menu, a colour from a live source -
+        // needs to know when a container starts standing for a different model, and the container
+        // is reused, so "when it was created" is the wrong hook and there is no other.
+        /// <summary>Raised when a row's container is about to stand for a model, including when a recycled container is reused.</summary>
+        public event Action<T, Control>? RowPrepared;
+
+        /// <summary>Raised when a row's container stops standing for its model, before it is reused or dropped.</summary>
+        public event Action<T, Control>? RowClearing;
+
+        // Raised after a value has been written and the row renamed, so a handler reading the model
+        // sees the committed value rather than the one being replaced. Fires for an edit made by a
+        // person and for one made through the automation provider, because both go through the same
+        // gate (§50.6) and a caller watching for changes wants both.
+        /// <summary>Raised after a cell edit has been committed, with the model and the column index.</summary>
+        public event Action<T, int>? CellValueChanged;
+
+        /// <summary>Which rules to draw between cells. None by default.</summary>
+        public LunaGridLines GridLines
+        {
+            get => _gridLines;
+            set
+            {
+                if (_gridLines == value) return;
+
+                _gridLines = value;
+                Show();
+            }
+        }
+
         /// <summary>Whether a row is currently expanded. Always false when the table is flat.</summary>
         /// <param name="item">The row's model.</param>
         /// <returns>True when the row's children are shown.</returns>
@@ -644,7 +702,16 @@ namespace EmuSen.LunaP.Controls
                 // built before anything parents it, so at that moment there is no container to put
                 // the name on. This fires for every container including recycled ones, so a row
                 // scrolled back into view is renamed for whatever model it now holds. §50.5.
-                if (e.Container.DataContext is T model) AutomationProperties.SetName(e.Container, Spoken(model));
+                if (e.Container.DataContext is T model)
+                {
+                    AutomationProperties.SetName(e.Container, Spoken(model));
+                    RowPrepared?.Invoke(model, e.Container);
+                }
+            };
+
+            Rows.ContainerClearing += (_, e) =>
+            {
+                if (e.Container.DataContext is T model) RowClearing?.Invoke(model, e.Container);
             };
 
             ApplySelectionMode();
@@ -677,8 +744,7 @@ namespace EmuSen.LunaP.Controls
             // The last column with anything on its right. A grip after it would have nothing to
             // give the space to, and a hidden column is not something on its right - so with the
             // final two columns hidden, the grip belongs after the last one you can see.
-            int lastVisible = -1;
-            for (int i = 0; i < _columns.Count; i++) if (_columns[i].IsVisible) lastVisible = i;
+            int lastVisible = LastVisibleColumn;
 
             for (int i = 0; i < _columns.Count; i++)
             {
@@ -893,7 +959,7 @@ namespace EmuSen.LunaP.Controls
             var grid = new Grid();
             Define(grid, scope);
 
-            if (item is null) return grid;
+            if (item is null) return Ruled(grid);
 
             for (int i = 0; i < _columns.Count; i++)
             {
@@ -932,6 +998,13 @@ namespace EmuSen.LunaP.Controls
                     grid.Children.Add(cell);
                 }
 
+                if (_gridLines.HasFlag(LunaGridLines.Vertical) && i < LastVisibleColumn)
+                {
+                    Control rule = ColumnRule();
+                    Grid.SetColumn(rule, i);
+                    grid.Children.Add(rule);
+                }
+
                 // DOUBLE-CLICK OPENS THE EDITOR, and the handler goes on the CELL rather than on the
                 // row because the cell is the only thing that knows which column was hit. Doing it
                 // on the row would mean hit-testing the pointer's x against the column boundaries -
@@ -945,6 +1018,8 @@ namespace EmuSen.LunaP.Controls
                     int column = i;
                     cell.DoubleTapped += (_, e) =>
                     {
+                        if (!EditGestures.HasFlag(LunaEditGestures.DoubleTap)) return;
+
                         BeginEdit(item, column, cell);
                         e.Handled = true;
                     };
@@ -952,7 +1027,60 @@ namespace EmuSen.LunaP.Controls
             }
 
             NameRow(grid, item);
-            return grid;
+            return Ruled(grid);
+        }
+
+        // THE HORIZONTAL RULE IS ONE BORDER AROUND THE ROW, not a line per cell, because a rule
+        // under a row is a property of the row - drawing it per cell would break wherever a column
+        // is hidden and leave the gap unruled. The vertical rules ARE per cell, because that is
+        // what a column boundary is.
+        //
+        // Returns the grid untouched when there are no lines, so a table that draws none has no
+        // extra Border in its tree at all rather than a transparent one per row.
+        // The last column with anything to its right, which is what decides where a vertical rule
+        // and a resize grip stop. A hidden column is not something on the right.
+        private int LastVisibleColumn
+        {
+            get
+            {
+                int last = -1;
+                for (int i = 0; i < _columns.Count; i++) if (_columns[i].IsVisible) last = i;
+                return last;
+            }
+        }
+
+        private Control Ruled(Grid grid)
+        {
+            if (!_gridLines.HasFlag(LunaGridLines.Horizontal)) return grid;
+
+            var ruled = new Border
+            {
+                BorderThickness = new Thickness(0, 0, 0, 1),
+                Child = grid,
+            };
+
+            // Styled by class in LunaTable.axaml rather than given a brush here, so a host theme can
+            // restyle a rule the same way it restyles anything else (§12.2).
+            ruled.Classes.Add("row-rule");
+            return ruled;
+        }
+
+        // A SIBLING IN THE COLUMN, NOT A WRAPPER AROUND THE CELL, and that is load-bearing rather
+        // than stylistic. Wrapping would make a cell's parent a Border, and Border is a Decorator
+        // rather than a Panel - which is exactly what BeginEdit needs the parent to be in order to
+        // put the editor in the cell's place (§55.7). A GridSplitter already sits in its column the
+        // same way (§27.11), so this is the shape the control was already using.
+        private static Control ColumnRule() 
+        {
+            var rule = new Border
+            {
+                Width = 1,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Stretch,
+            };
+
+            rule.Classes.Add("column-rule");
+            return rule;
         }
 
         // EDITING, AND THE THREE WAYS IT ENDS - see docs/LunaP.md §50.
@@ -974,6 +1102,11 @@ namespace EmuSen.LunaP.Controls
         // EndEdit can be re-entered - committing moves focus, which raises LostFocus, which commits -
         // and this is what makes the second call a no-op instead of a second commit.
         private bool _ending;
+
+        // Which column a commit just wrote, held only across Close so that CellValueChanged is
+        // raised AFTER the cell has been re-read and the row renamed - a handler that looks at the
+        // table should see the finished state rather than the middle of the update.
+        private int _committed = -1;
 
         /// <summary>Whether a cell is currently being edited.</summary>
         public bool IsEditing => _editor is not null;
@@ -1011,6 +1144,7 @@ namespace EmuSen.LunaP.Controls
             base.OnKeyDown(e);
 
             if (e.Handled || e.Key != Avalonia.Input.Key.F2 || IsEditing) return;
+            if (!EditGestures.HasFlag(LunaEditGestures.F2)) return;
             if (Selected is not { } item) return;
 
             int column = _columns.FindIndex(c => c.IsEditable);
@@ -1156,6 +1290,8 @@ namespace EmuSen.LunaP.Controls
                 cell.Text = _columns[column].Text(item) ?? string.Empty;
                 if (RowGridOf(cell) is { } grid) NameRow(grid, item);
             }
+
+            CellValueChanged?.Invoke(item, column);
         }
 
         private void EditorKey(object? sender, Avalonia.Input.KeyEventArgs e)
@@ -1203,9 +1339,16 @@ namespace EmuSen.LunaP.Controls
                     }
 
                     _columns[column].Commit?.Invoke(item, text);
+                    _committed = column;
                 }
 
                 Close(item, detaching);
+                if (_committed >= 0)
+                {
+                    int changed = _committed;
+                    _committed = -1;
+                    CellValueChanged?.Invoke(item, changed);
+                }
             }
             finally
             {

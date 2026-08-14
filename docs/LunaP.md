@@ -5126,3 +5126,68 @@ and two pieces of §50's editing had quietly depended on that.
   cursor rather than after it is what made an ordering that had always been wrong start to matter.
   `EndEdit` now knows it is being called during a detach and clears the state without touching the
   tree, which is going away regardless.
+
+## 56. Gestures, rules and a lifecycle — and one event deliberately not reproduced
+
+Pass 2 of §54's parity arc: the small independent items. All three are off or unchanged by default.
+
+### 56.1 Editing gestures are a set, not a mode
+
+`LunaEditGestures` is `[Flags]` — `DoubleTap`, `F2`, `Default` being both, `None` being neither —
+because the two are independent choices. A grid where double-click already means "open this row"
+wants F2 alone; an application driving editing from its own *Rename* menu wants neither and calls
+`Edit`. An enum of named combinations grows a member per pair.
+
+**`None` still leaves `Edit` working**, and that is the point of having it: turning the column
+read-only to suppress the gestures would take its `Validate` away with it.
+
+TreeDataGrid's `BeginEditGestures` carries seven values, three of which — `Tap`, `TextInput`,
+`WhenSelected` — are **absent here and named rather than left to be discovered**. They are a
+different feature and not a different spelling: each begins an edit from a gesture that already
+means something else, which needs a rule for resolving the collision. Nothing in this arc has one.
+
+### 56.2 Rules sit beside the cell, never around it
+
+`LunaGridLines` is `[Flags]` over `Horizontal` and `Vertical`, `None` by default — which is what
+every table drew before, and the better default for the instrument panels this toolkit was built
+for, where a meter list should read as a block rather than a spreadsheet.
+
+Both take `LunaBorder`, the token that already means *where one surface stops and the next begins*
+(§26.9) and is already held to 3:1 against both surfaces. A rule between cells is exactly that, so it
+takes the token rather than introducing a colour.
+
+**The vertical rule is a sibling in the column, not a wrapper around the cell, and that is
+load-bearing.** Wrapping would make a cell's parent a `Border` — a `Decorator`, not a `Panel` — and
+`BeginEdit` needs a `Panel` to put the editor in the cell's place (§55.7). Sabotaged into a wrapper,
+the guard fails: **editing silently stops working when rules are turned on.** A `GridSplitter` already
+sits in its column this way (§27.11), so it is the shape the control was using.
+
+The horizontal rule *is* one border around the whole row, because a rule under a row is a property of
+the row — per cell, it would break wherever a column is hidden.
+
+### 56.3 Two lifecycle events, and the three that are not there
+
+`RowPrepared` and `RowClearing` are what recycling makes worth having: a caller attaching per-row
+state — a tooltip, a context menu, a colour from a live source — needs to know when a container
+starts standing for a *different* model. The container is reused, so "when it was created" is the
+wrong hook and there is no other.
+
+`CellValueChanged` fires after a commit, from both the typed path and the automation provider,
+because both go through the same gate (§50.6). It is raised **after** the cell has been re-read and
+the row renamed, so a handler sees the finished state; and a cancelled edit raises nothing, which the
+sabotage confirms by making a cancel report a change.
+
+**`CellPrepared` and `CellClearing` are deliberately not reproduced.** This control builds its cells
+inside the row template rather than realising them independently, so there is no moment at which a
+cell is prepared that is not simply *its row was prepared*. An event firing once per cell during
+`RowPrepared` would carry no information the row event does not, while implying a virtualization
+boundary that does not exist. Saying so is better than approximating it — the parity list in §54.3
+is a list of capabilities, not of method names.
+
+### 56.4 A warning that hid behind an incremental build
+
+The xUnit analyser flagged an `Assert.Empty` that should have been `Assert.DoesNotContain`, and
+**§55's commit went in carrying it**, because the pre-commit check ran `dotnet build` rather than
+`dotnet build --no-incremental` and the test project had not been recompiled. This repository builds
+with zero warnings and that is worth something only if the check actually looks. Verification since
+uses `--no-incremental`.
