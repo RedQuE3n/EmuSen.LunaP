@@ -6319,3 +6319,125 @@ no peer that says "row 4, column 2" and no `ISelectionItemProvider` on a cell. �
 stays open and is the next pass. Recorded as a **hazard rather than a behaviour**: a user driving this
 control with a reader gets the row's spoken name and no indication that a cell within it is where the
 keyboard is.
+
+## 68. What a screen reader gets from a table, and a correction to §27.3
+
+Pass 2 of finishing §54.3's parity: the **automation depth** row. §67.7 closed the previous pass by
+recording a hazard — a reader met the row and its sentence, with nothing to say which cell inside it
+had the keyboard. This is that question having an answer, and two others beside it.
+
+### 68.1 A correction to §27.3: the DataGrid type was refused for a reason that is not true here
+
+§27.3 chose `AutomationControlType.Group` and said why:
+
+> A Table, not a DataGrid, and the distinction is a promise rather than a label: UIA's DataGrid and
+> Table types come with `IGridProvider` and `ITableProvider`, which let a reader ask for "row 4,
+> column 2" and navigate a grid as a grid. This control implements neither.
+
+**Avalonia 12.1.0 has neither interface.** Enumerated from `Avalonia.Controls`, the complete provider
+list is `IEmbeddedRoot`, `IExpandCollapse`, `IInvoke`, `IRangeValue`, `IRoot`, `IScroll`,
+`ISelectionItem`, `ISelection`, `IToggle`, `IValue`. There is no grid pattern for any control in this
+framework to implement, so the control type cannot be a false promise about one.
+
+And the control this is at parity with claims the type. `TreeDataGridAutomationPeer` overrides
+`GetAutomationControlTypeCore`, and the method body is three bytes — `1F 1E 2A`, which is
+`ldc.i4.s 30; ret`. Member 30 of `AutomationControlType` is **`DataGrid`**. It returns that while
+implementing exactly `ISelectionProvider` and `IScrollProvider`, which are exactly the two providers
+added here.
+
+So the type is claimed now, on the generic class where there are columns to be a grid of; the
+non-generic base stays a `Group`, which is what a table with no columns is. **The reasoning §27.3
+used to reach its conclusion was sound and its premise was wrong** — it described UIA in the
+abstract rather than what this framework can express. The rest of §27.3 stands untouched: the row's
+sentence, built from each cell paired with its header, is still the useful half of a table for a
+reader and is still what makes one legible.
+
+The guard was rewritten rather than deleted, with its assertions turned over. What it was written to
+prevent — a control type claimed with nothing behind it — is still what it prevents, so it now
+asserts the type **and** that both providers are reachable.
+
+### 68.2 Peers of the cells, which is what makes three cell kinds one answer
+
+`ISelectionProvider.GetSelection()` returns the peers of the selected cells, or of the selected rows
+in a row unit — the same answer `SelectedCells` and `SelectedItems` give, because a third notion of
+"what is selected" reachable only through automation is a third thing to keep in step.
+
+**Returning each control's own peer is the whole trick.** A check cell is a stock `CheckBox` and a
+template cell is a control the caller built; this toolkit cannot give either of them a peer, and
+wrapping them to get one would undo §67.3's reason for a sibling box and put a `Decorator` where
+`BeginEdit` needs a `Panel`. It does not have to: a peer obtained from the control arrives with
+everything that control already provides, so a reader that finds a check cell in the selection can
+still toggle it through the `IToggleProvider` Avalonia put there.
+
+### 68.3 A cell is named for its column and never for its value
+
+§57 already had this rule and had applied it to one kind — a check cell is named for its header,
+because *"a reader landing on it would otherwise hear 'checkbox, checked' with no column name"*. It
+now applies to all three, and it is `LunaAutomationPeer`'s own split between a name and an item
+status: a name is how you refer to a thing, what it currently says is its value, and folding the
+second into the first means the name of a thing changes every time the model does.
+
+So a reader hears **"armed"**, then the state from the pattern — `ToggleState` for a check cell,
+`IValueProvider.Value` for a text one (§50.6).
+
+**A template cell is the one with no pattern**, and it is why any of this needed writing. §57.2 made
+`spoken` mandatory so that a coloured dot could be described — and delivered that sentence only to
+the *row's* name. The cell itself was anonymous: a reader landing on it heard whatever a caller's
+control says for itself, which for an `Ellipse` is nothing. The sentence now goes in `ItemStatus`,
+which is the field for exactly this, set as an attached property because the control is not ours.
+
+### 68.4 A cell can go stale because a *different* cell changed
+
+Found by sabotage, and it is the finding of this pass. Removing the cell rename from the commit path
+turned nothing red, because with the naming rule above there was nothing there worth doing — a name
+that is a column header never changes.
+
+What does change is a **template cell's status**, and it changes for reasons that have nothing to do
+with that cell. A column projecting `$"{r.Name} {(r.Armed ? "armed" : "safe")}"` goes stale when the
+checkbox two columns to its left is ticked, and again when the name column is committed. Neither path
+touches the dot.
+
+So the refresh walks the whole row rather than taking the column that changed, beside the row-sentence
+refresh that §50 added for the identical reason one level up. **The cell that goes stale is not the
+cell that changed** is the sentence worth keeping.
+
+Both halves needed their own fixture to be provable at all: a template column projecting one field
+can only catch one of the two paths, and the first draft projected `Armed` alone, so the commit path
+stayed green under sabotage.
+
+### 68.5 What did not go wrong, and cost an hour anyway
+
+A guard asserting the header still lines up after a reader scrolls reported heading 2 sitting
+**146px** from its own cells, which reads exactly like §64.2's defect returning. It is not. The
+template cell in that fixture is an 8px `Ellipse` in a 300px column, and Avalonia centres an element
+with an explicit width and a stretch alignment: (300 − 8) / 2 = **146**. The measurement was of a
+centred dot's left edge against a heading's.
+
+The scroll itself was correct throughout — offset 524 of a maximum 524, header transform −524, exact.
+This is §61.3's category, a third time: *a test-side mistake that looks like a broken feature*. The
+fixture pins the alignment now, with the reason beside it.
+
+### 68.6 The sabotages
+
+Ten, of which two first drafts were green and are §68.4.
+
+| Sabotage | What turned red |
+|---|---|
+| cells are not named at all | four guards, including every selected cell coming back nameless |
+| a template cell loses its spoken status | the only cell kind that cannot say it any other way |
+| the selection reports rows even in a cell unit | three, including the toggle surviving the trip |
+| a table that fits claims it can scroll | the no-scroll report |
+| no-scroll reports 0 rather than −1 | the same guard — 0 means "at the start", not "cannot" |
+| `SetScrollPercent` ignores the request | a reader could not move the table |
+| the peer goes back to a bare `Group` | twelve, across three files |
+| a toggle stops refreshing the row's cells | the dot beside the checkbox |
+| a commit stops refreshing the row's cells | the dot beside the edited name |
+
+### 68.7 What is still not here
+
+**`IExpandCollapseProvider` on a tree row.** The reference has it; LunaP's rows are `ListBoxItem`s
+whose peers this control does not own, so the same wrapping problem applies as in §68.2 — and unlike
+the selection, there is no way to route around it. What a reader gets instead is the expander itself,
+which §55 made a real `Button`: focusable, invokable, and named *"Expand roms"* rather than
+"expander". That is the capability without the pattern, and it is stated here rather than left to be
+discovered.

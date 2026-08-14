@@ -726,16 +726,27 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal("name: Site, type: text, pg: 1", AutomationProperties.GetName(row));
         });
 
-        // A Group, deliberately not DataGrid or Table: those UIA types promise IGridProvider and
-        // ITableProvider, and this control implements neither. §27.3.
+        // A DATA GRID SINCE §68, AND THIS TEST USED TO ASSERT THE OPPOSITE.
+        //
+        // It read: "A Group, deliberately not DataGrid or Table: those UIA types promise
+        // IGridProvider and ITableProvider, and this control implements neither. §27.3." The premise
+        // is wrong about this framework - Avalonia 12.1.0 has no IGridProvider and no ITableProvider
+        // at all, so no control here can promise that navigation with a control type - and
+        // TreeDataGrid, which this is at parity with, returns DataGrid from its own peer while
+        // implementing exactly the two providers below. §68.1 records the correction.
+        //
+        // Kept as a guard rather than deleted, with the assertions turned over: the type, and both
+        // providers actually being reachable. A control type claimed with nothing behind it is the
+        // failure the original test was written to prevent, and it still is.
         [Fact]
-        public Task A_table_is_in_the_control_view_without_promising_grid_navigation() => Realised(table =>
+        public Task A_table_reports_itself_as_a_data_grid_with_the_patterns_to_match() => Realised(table =>
         {
             AutomationPeer peer = ControlAutomationPeer.CreatePeerForElement(table);
 
             Assert.True(peer.IsControlElement());
-            Assert.Equal(AutomationControlType.Group, peer.GetAutomationControlType());
-            Assert.Null(peer.GetProvider<Avalonia.Automation.Provider.ISelectionProvider>());
+            Assert.Equal(AutomationControlType.DataGrid, peer.GetAutomationControlType());
+            Assert.NotNull(peer.GetProvider<Avalonia.Automation.Provider.ISelectionProvider>());
+            Assert.NotNull(peer.GetProvider<Avalonia.Automation.Provider.IScrollProvider>());
         });
     }
 }

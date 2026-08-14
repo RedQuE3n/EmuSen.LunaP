@@ -114,10 +114,31 @@ nothing moves for a table that does not ask.
 - Changing the unit clears the selection. A row has no column to become, and
   turning a cell into its whole row would select more than was asked for.
 
-**One thing this does not yet do**, and it is the entry to read if you ship to
-screen-reader users: there is no cell-level automation peer. A reader still meets
-the row and its sentence, with nothing to say which cell inside it has the
-keyboard (`§67.7`).
+**A screen reader can now ask a table what is selected, and move it.** This is
+the entry to read if you ship to screen-reader users, and none of it needs a line
+from you.
+
+- The table reports itself as a **data grid** rather than a group, with
+  `ISelectionProvider` and `IScrollProvider` behind the claim. `§27.3` refused
+  that control type and `§68.1` is the correction: the patterns it was refused
+  over do not exist in Avalonia at all.
+- **What is selected comes back as the cells themselves** — so a reader that
+  finds a checkbox cell in the selection can still tick it, and a template cell
+  keeps whatever its own control provides.
+- **Every cell is named for its column.** A reader landing on one hears
+  "armed" and then the state, instead of a bare value with nothing to say which
+  column it came from.
+- **A template cell finally says what it means.** `§57.2` made the spoken
+  sentence mandatory and then only ever used it in the row's name; the cell
+  itself was anonymous, so a coloured dot announced as nothing. It now carries
+  that sentence as its item status.
+- **A cell no longer goes stale when a different cell changes it.** A template
+  column reading a field that a checkbox two columns over writes was left
+  describing the old value (`§68.4`).
+
+Still missing, and stated rather than left to be found: a tree row exposes no
+`IExpandCollapseProvider`. The expander is a real focusable button named "Expand
+&lt;row&gt;", which is the capability without the pattern (`§68.7`).
 
 **A defect fixed in the same work.** `ExpanderColumn` was wrong for every value
 except its default: a tree whose expander was not in the first column drew that

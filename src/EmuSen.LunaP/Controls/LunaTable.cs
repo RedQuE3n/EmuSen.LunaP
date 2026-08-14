@@ -41,13 +41,16 @@ namespace EmuSen.LunaP.Controls
         /// <summary>Where a rejected edit says what is wrong, or null before the template has been applied.</summary>
         protected ErrorText? Message;
 
-        // A Table, not a DataGrid, and the distinction is a promise rather than a label: UIA's
-        // DataGrid and Table types come with IGridProvider and ITableProvider, which let a reader
-        // ask for "row 4, column 2" and navigate a grid as a grid. This control implements neither
-        // - it is a list of rows that happen to be laid out in columns - so claiming the type
-        // would advertise navigation that is not there. What it does instead is give every ROW a
-        // name built from its own cells, "name: Site, type: text, pg: 1", which is the useful
-        // half of a table for a reader and is honestly deliverable. §27.3.
+        // A Group, and §68.1 is the correction that says why it stops being one in LunaTable<T>.
+        //
+        // §27.3 refused the DataGrid type on the grounds that it "comes with IGridProvider and
+        // ITableProvider", promising navigation this control did not have. Avalonia 12.1.0 has
+        // NEITHER INTERFACE - enumerated, the whole provider list is Embedded, ExpandCollapse,
+        // Invoke, RangeValue, Root, Scroll, SelectionItem, Selection, Toggle, Value - so no control
+        // in this framework can advertise that navigation, and the reason does not hold here.
+        //
+        // This base keeps Group because it is what a table with no columns and no rows is. The
+        // generic class overrides it once there is something to say.
         protected override AutomationPeer OnCreateAutomationPeer() =>
             new LunaAutomationPeer(this, AutomationControlType.Group);
 
@@ -1345,8 +1348,7 @@ namespace EmuSen.LunaP.Controls
             // The one this control owns is the one that is not inside a row, which is what the filter
             // says. Resolved once and kept, because it comes from the ListBox's template and cannot
             // be found before that template is applied.
-            _viewer ??= Rows?.GetVisualDescendants().OfType<ScrollViewer>()
-                .FirstOrDefault(scroller => !scroller.GetVisualAncestors().OfType<ListBoxItem>().Any());
+            _viewer ??= OwnViewer();
 
             double offset = _viewer?.Offset.X ?? 0;
             if (Math.Abs(_scrolledTo - offset) > 0.01)
@@ -1731,6 +1733,8 @@ namespace EmuSen.LunaP.Controls
                     _ => TextCell(item, index),
                 };
 
+                NameCell(cell, item, index);
+
                 // The expander column gets the indent and the toggle in front of its text; every
                 // other column, and every column of a flat table, gets the bare cell exactly as
                 // before.
@@ -1883,7 +1887,11 @@ namespace EmuSen.LunaP.Controls
 
             using (_toggling.Suppress()) box.IsChecked = after;
 
-            if (RowGridOf(box) is { } grid) NameRow(grid, item);
+            if (RowGridOf(box) is { } grid)
+            {
+                NameRow(grid, item);
+                NameCells(grid, item);
+            }
 
             // ONLY WHEN THE MODEL ACTUALLY MOVED. CellValueChanged says a value was committed, and a
             // refused toggle committed nothing - raising it anyway would make "changed" mean "was
@@ -2373,6 +2381,65 @@ namespace EmuSen.LunaP.Controls
             }
         }
 
+        // THE ONE ScrollViewer THIS CONTROL OWNS, and the filter is the whole of §64.3: a TextBox has
+        // a ScrollViewer inside its own template, so a cell editor puts a second one in this tree and
+        // "the first descendant" is whichever the walk reaches first. The one that is not inside a
+        // row is this control's.
+        //
+        // Shared with the automation peer since §68, which is why it is a method rather than the
+        // inline lookup Pin used to carry: two callers finding the viewer two ways is exactly how
+        // §64.3 happened once already.
+        private ScrollViewer? OwnViewer() =>
+            Rows?.GetVisualDescendants().OfType<ScrollViewer>()
+                .FirstOrDefault(scroller => !scroller.GetVisualAncestors().OfType<ListBoxItem>().Any());
+
+        // WHAT A READER IS TOLD IS SELECTED - see docs/LunaP.md §68.
+        //
+        // Peers of the selected CELLS in a cell unit and of the selected ROWS in a row unit, which is
+        // the same answer SelectedCells and SelectedItems give in each - a third notion of "what is
+        // selected" reachable only through automation would be a third thing to keep in step.
+        //
+        // Returning the control's OWN peer is what makes this work for all three cell kinds without
+        // wrapping anything: a check cell hands back Avalonia's CheckBox peer with its IToggleProvider
+        // intact, and a template cell hands back whatever the caller's control provides (§68.2).
+        private IReadOnlyList<AutomationPeer> SelectionPeers()
+        {
+            var peers = new List<AutomationPeer>();
+
+            if (_selectionUnit == LunaSelectionUnit.Cell)
+            {
+                foreach (LunaCell<T> at in SelectedCells)
+                {
+                    if (Cell(at.Row, at.Column) is { } cell) peers.Add(ControlAutomationPeer.CreatePeerForElement(cell));
+                }
+
+                return peers;
+            }
+
+            foreach (T row in SelectedItems)
+            {
+                if (TryGetRow(row, out Control? container) && container is not null)
+                {
+                    peers.Add(ControlAutomationPeer.CreatePeerForElement(container));
+                }
+            }
+
+            return peers;
+        }
+
+        // A DataGrid since §68, where the base is still a Group. The type is claimed here rather than
+        // there because it is only true once there are columns to be a grid of - and it is claimed at
+        // all because §27.3's reason for refusing it does not hold in this framework: Avalonia has no
+        // IGridProvider and no ITableProvider for it to be a false promise about, and TreeDataGrid -
+        // the control this is at parity with - returns DataGrid from its own peer with exactly the two
+        // providers below. §68.1.
+        protected override AutomationPeer OnCreateAutomationPeer() =>
+            new LunaTablePeer(
+                this,
+                () => _selectionMode == LunaSelectionMode.Multiple,
+                SelectionPeers,
+                OwnViewer);
+
         // The position of a model in the DISPLAYED order, which is what a scroll wants - _items is
         // arrival order and would scroll to the wrong row under a sort.
         private int IndexOf(T item)
@@ -2563,7 +2630,14 @@ namespace EmuSen.LunaP.Controls
                 cell.Text = _columns[_editColumn].Text(item) ?? string.Empty;
                 cell.IsVisible = true;
 
-                if (RowGridOf(cell) is { } grid) NameRow(grid, item);
+                // The row's sentence and every cell's status, because a commit changes a value that
+                // more than one of them can be reading. §50 fixed the row's; §68.4 is the same defect
+                // one level down.
+                if (RowGridOf(cell) is { } grid)
+                {
+                    NameRow(grid, item);
+                    NameCells(grid, item);
+                }
             }
 
             _editItem = null;
@@ -2700,6 +2774,62 @@ namespace EmuSen.LunaP.Controls
         // back off the Grid rather than asking the peer - the §5.5 shape, an assertion about wiring
         // that passes while the effect is absent. It now asks the peer.
         //
+        // WHAT ONE CELL IS CALLED - see docs/LunaP.md §68.3.
+        //
+        // THE NAME IS THE HEADER AND NEVER THE VALUE, which is §57's rule for a check cell applied to
+        // all three kinds rather than a new idea. A name is how you REFER to a thing; what it
+        // currently says is its value, and the two are different questions - the same split
+        // LunaAutomationPeer makes between GetNameCore and GetItemStatusCore, and for the reason
+        // written there: a name that changed every time the model did would not be a name.
+        //
+        // So a reader landing on a cell hears "armed" and then the state from the pattern:
+        // IToggleProvider.ToggleState for a check cell, IValueProvider.Value for a text one (§50.6).
+        // Folding the value into the name would say it twice.
+        //
+        // A TEMPLATE CELL IS THE ONE THAT CANNOT DO THAT, and it is why this method exists at all. A
+        // caller's own control carries whatever peer its type provides and there is no pattern this
+        // control can put a value into - so the sentence §57.2 made mandatory goes in ItemStatus,
+        // which is exactly the field for state that is not the value and not the name. Without it a
+        // coloured dot is a cell a reader can land on and learn nothing from, which is the thing
+        // §57.2 required `spoken` to prevent and only half delivered: it reached the row's sentence
+        // and never the cell.
+        //
+        // ON THE CONTROL AND NOT IN A PEER, which is what makes it work for all three kinds. A check
+        // cell is a stock CheckBox and a template cell is a caller's own control - neither can be
+        // given a peer by this control - but these are attached properties, which is Avalonia's own
+        // answer to annotating something you did not write. The same technique §57.5 used for the
+        // column marker, two properties along.
+        private void NameCell(Control cell, T item, int column)
+        {
+            ColumnSpec spec = _columns[column];
+            AutomationProperties.SetName(cell, spec.Header);
+
+            if (spec.Kind != LunaCellKind.Template) return;
+
+            AutomationProperties.SetItemStatus(cell, spec.Text(item) ?? string.Empty);
+        }
+
+        // EVERY CELL OF ONE ROW, RE-READ - the cell-level half of what NameRow does, and it exists
+        // because of what the naming rule above implies. A cell's NAME is its column header and never
+        // moves, so nothing needs renaming after a change; a template cell's STATUS is a projection of
+        // the model, and one column's edit or toggle can change what a different column projects.
+        //
+        // Found by sabotage: taking the rename out of the commit path turned nothing red, because
+        // there was nothing there worth doing. What was missing was this - a check column and a
+        // template column reading the same field, where ticking the box left the dot beside it
+        // describing the value it used to have. §68.4.
+        //
+        // Walks the grid rather than taking a column, because the cell that goes stale is not the one
+        // that changed.
+        private void NameCells(Grid grid, T item)
+        {
+            foreach (Control child in grid.GetVisualDescendants().OfType<Control>())
+            {
+                int column = TableCells.GetColumn(child);
+                if (column >= 0 && column < _columns.Count) NameCell(child, item, column);
+            }
+        }
+
         // The Grid keeps its name too. It costs nothing, it is what the existing test reads, and if
         // Avalonia ever puts row content into the control view the sentence is already there.
         private void NameRow(Grid grid, T item)
