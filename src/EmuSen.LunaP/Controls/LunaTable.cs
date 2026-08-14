@@ -121,6 +121,10 @@ namespace EmuSen.LunaP.Controls
         private readonly HashSet<object> _expandable = new();
         private Func<T, IEnumerable<T>>? _children;
 
+        // Where each row sits in the view, so the gutter can be told without a scan. Empty and
+        // untouched when there is no gutter to feed. §58.
+        private readonly Dictionary<object, int> _position = new();
+
         // Saving is debounced for the reason SplitPane debounces its divider (§26.6): a drag
         // produces a property change per frame, and writing tables.json sixty times a second would
         // be a full read-modify-write of every table's layout per frame.
@@ -296,6 +300,54 @@ namespace EmuSen.LunaP.Controls
         // all, and turning the column read-only to get that would lose the validation with it.
         /// <summary>Which gestures open a cell editor. Double-click and F2 by default.</summary>
         public LunaEditGestures EditGestures { get; set; } = LunaEditGestures.Default;
+
+        // THE GUTTER DOWN THE LEFT - see docs/LunaP.md §58.
+        //
+        // Null, the default, means there is no gutter and a table's grids have exactly the columns
+        // they always had. Nothing about a table without one pays for this existing (§26.13).
+        //
+        // TAKES THE DISPLAY INDEX AS WELL AS THE MODEL, and that second argument is the whole reason
+        // this is a delegate rather than a bool. TreeDataGrid's row header is a row NUMBER and
+        // nothing else - its cell is a string with no projection behind it - which serves a list of
+        // records and serves this toolkit's actual subject badly. A memory viewer wants addresses
+        // down the left and a disassembly wants them too, and both are on the model.
+        //
+        // So both are expressible: `(_, i) => (i + 1).ToString()` numbers the rows, and
+        // `(row, _) => row.Address.ToString("X4")` labels them. The index is the DISPLAYED one,
+        // counted down the view after sorting and flattening, which is the only number that matches
+        // what the user is looking at and is not otherwise reachable from a caller's projection.
+        /// <summary>What to show in the gutter down the left, given a row and its displayed position. Null - the default - means no gutter.</summary>
+        /// <remarks>
+        /// The index is the row's position in what is currently DISPLAYED, so it counts down the screen
+        /// under a sort rather than following the order given to Refresh. Number the rows with
+        /// <c>(_, i) =&gt; (i + 1).ToString()</c>, or label them from the model and ignore it.
+        /// </remarks>
+        public Func<T, int, string>? RowHeader
+        {
+            get => _rowHeader;
+            set
+            {
+                _rowHeader = value;
+                Rebuild();
+                Show();
+            }
+        }
+
+        private Func<T, int, string>? _rowHeader;
+
+        /// <summary>The gutter's width, in Avalonia's own notation. "Auto" by default, which fits the widest label.</summary>
+        public string RowHeaderWidth { get; set; } = "Auto";
+
+        /// <summary>What sits above the gutter, in the header row. Empty by default, which is the spreadsheet's empty corner.</summary>
+        public string RowHeaderCaption { get; set; } = string.Empty;
+
+        // ONE PLACE THAT KNOWS THE GUTTER SHIFTS EVERY COLUMN RIGHT BY ONE. Every Grid.SetColumn and
+        // every ColumnDefinition lookup in this control goes through this rather than using a column
+        // index directly, because the two indices are genuinely different things: a COLUMN index is
+        // what a caller wrote and what a remembered layout, a sort and Edit(item, 2) are written in,
+        // and a GRID index is where that column sits once a gutter may be in front of it. Conflating
+        // them is how a gutter would silently move a saved layout onto the wrong columns.
+        private int GridColumn(int column) => _rowHeader is null ? column : column + 1;
 
         // NONE BY DEFAULT, which is what every table drew before §56 - and is also the better
         // default for the instrument panels this toolkit was built for, where a meter list wants to
@@ -502,6 +554,18 @@ namespace EmuSen.LunaP.Controls
             object? wasSelected = Selected is { } previous ? Key(previous) : null;
 
             _view = Flatten();
+
+            // WHERE EACH ROW SITS ON SCREEN, BUILT ONCE PER REBUILD rather than searched per row.
+            // RowHeader is handed the displayed index, and a virtualising list asks for that index
+            // once per realised container - so the obvious IndexOf(item) is an O(n) scan run per
+            // visible row, which is fine at three rows and is a scan of ten thousand Key() calls per
+            // screenful at ten thousand. First entry wins, for the same reason the selection lookup
+            // takes the first match: a caller whose Key is not unique has one bug, not two.
+            _position.Clear();
+            if (_rowHeader is not null)
+            {
+                for (int i = 0; i < _view.Count; i++) _position.TryAdd(KeyOf(_view[i]), i);
+            }
 
             if (Rows is null) return;
 
@@ -748,6 +812,26 @@ namespace EmuSen.LunaP.Controls
             HeaderGrid.Children.Clear();
             _heads.Clear();
 
+            // THE CORNER, and it is a plain label rather than a heading Button even when every other
+            // column is sortable. There is nothing to sort by: the gutter's contents are positions or
+            // addresses, and "sort by row number" is either the identity or a lie. A button that
+            // takes focus and does nothing is worse for a keyboard user than not being a stop at all,
+            // which is the same argument Heading makes for an unsortable column (§27.3).
+            if (_rowHeader is not null)
+            {
+                var corner = new TextBlock
+                {
+                    Text = RowHeaderCaption,
+                    FontWeight = Avalonia.Media.FontWeight.Bold,
+                    TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis,
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+
+                corner.Classes.Add("row-header");
+                Grid.SetColumn(corner, 0);
+                HeaderGrid.Children.Add(corner);
+            }
+
             // The last column with anything on its right. A grip after it would have nothing to
             // give the space to, and a hidden column is not something on its right - so with the
             // final two columns hidden, the grip belongs after the last one you can see.
@@ -760,7 +844,7 @@ namespace EmuSen.LunaP.Controls
                 if (!_columns[i].IsVisible) continue;
 
                 Control cell = Heading(i);
-                Grid.SetColumn(cell, i);
+                Grid.SetColumn(cell, GridColumn(i));
                 HeaderGrid.Children.Add(cell);
 
                 if (i < lastVisible) HeaderGrid.Children.Add(Grip(i));
@@ -798,7 +882,7 @@ namespace EmuSen.LunaP.Controls
             grip.DragDelta += (_, _) => Resized();
             grip.DragCompleted += (_, _) => Resized();
 
-            Grid.SetColumn(grip, index);
+            Grid.SetColumn(grip, GridColumn(index));
             return grip;
         }
 
@@ -814,9 +898,16 @@ namespace EmuSen.LunaP.Controls
         {
             if (HeaderGrid is null) return;
 
-            for (int i = 0; i < _columns.Count && i < HeaderGrid.ColumnDefinitions.Count; i++)
+            // Reads DEFINITIONS BY GRID INDEX and writes SPECS BY COLUMN INDEX, which is the whole
+            // reason GridColumn exists: with a gutter in front, definition 0 is the gutter and
+            // column 0 is definition 1. Reading them off by one puts every dragged width onto its
+            // left-hand neighbour and saves that to disk.
+            for (int i = 0; i < _columns.Count; i++)
             {
-                GridLength width = HeaderGrid.ColumnDefinitions[i].Width;
+                int at = GridColumn(i);
+                if (at >= HeaderGrid.ColumnDefinitions.Count) break;
+
+                GridLength width = HeaderGrid.ColumnDefinitions[at].Width;
                 if (width != _columns[i].Width) _columns[i] = _columns[i] with { Width = width };
             }
 
@@ -835,11 +926,14 @@ namespace EmuSen.LunaP.Controls
         {
             if (container?.GetVisualDescendants().OfType<Grid>().FirstOrDefault() is not { } row) return;
 
-            for (int i = 0; i < _columns.Count && i < row.ColumnDefinitions.Count; i++)
+            for (int i = 0; i < _columns.Count; i++)
             {
-                if (row.ColumnDefinitions[i].Width != _columns[i].Width)
+                int at = GridColumn(i);
+                if (at >= row.ColumnDefinitions.Count) break;
+
+                if (row.ColumnDefinitions[at].Width != _columns[i].Width)
                 {
-                    row.ColumnDefinitions[i].Width = _columns[i].Width;
+                    row.ColumnDefinitions[at].Width = _columns[i].Width;
                 }
             }
         }
@@ -968,6 +1062,32 @@ namespace EmuSen.LunaP.Controls
 
             if (item is null) return Ruled(grid);
 
+            // THE GUTTER, AND IT IS NOT A CELL. No column marker goes on it, so it never answers to
+            // Cell(item, n), never takes an editor and is not one of the things TryGetCell finds -
+            // which is what keeps a caller's column indices meaning what they meant before there was
+            // a gutter. Its width and its caption are the table's, not a column's, and it has no
+            // resize grip because §27.11's remembered layout is a list of COLUMN widths. §58.
+            if (_rowHeader is not null)
+            {
+                var gutter = new TextBlock
+                {
+                    Text = _rowHeader(item, PositionOf(item)),
+                    TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis,
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+
+                gutter.Classes.Add("row-header");
+
+                // Raw, because the row's own sentence already begins with this label and a reader
+                // that met both would hear the address twice before reaching the first column. The
+                // sort glyph is hidden for the same reason (§27.3), and MeterRow's inner bar for a
+                // closely related one (§24.2).
+                AutomationProperties.SetAccessibilityView(gutter, AccessibilityView.Raw);
+
+                Grid.SetColumn(gutter, 0);
+                grid.Children.Add(gutter);
+            }
+
             for (int i = 0; i < _columns.Count; i++)
             {
                 // Nothing is built for a hidden column - not a zero-width control, nothing. A cell
@@ -986,7 +1106,7 @@ namespace EmuSen.LunaP.Controls
                 };
 
                 TableCells.SetColumn(cell, i);
-                Grid.SetColumn(cell, i);
+                Grid.SetColumn(cell, GridColumn(i));
 
                 // The expander column gets the indent and the toggle in front of its text; every
                 // other column, and every column of a flat table, gets the bare cell exactly as
@@ -1003,7 +1123,7 @@ namespace EmuSen.LunaP.Controls
                 if (_gridLines.HasFlag(LunaGridLines.Vertical) && i < LastVisibleColumn)
                 {
                     Control rule = ColumnRule();
-                    Grid.SetColumn(rule, i);
+                    Grid.SetColumn(rule, GridColumn(i));
                     grid.Children.Add(rule);
                 }
             }
@@ -1356,7 +1476,7 @@ namespace EmuSen.LunaP.Controls
             // editor is going away with the row regardless; only the state needs clearing. §55.
             editor.DetachedFromVisualTree += (_, _) => EndEdit(commit: false, detaching: true);
 
-            if (host is Grid) Grid.SetColumn(editor, column);
+            if (host is Grid) Grid.SetColumn(editor, GridColumn(column));
             host.Children.Insert(host.Children.IndexOf(cell), editor);
 
             cell.IsVisible = false;
@@ -1629,12 +1749,32 @@ namespace EmuSen.LunaP.Controls
             }
         }
 
+        // Where a row sits in the view. Zero when there is no gutter, because nothing asks then, and
+        // zero for a row the map has not seen - which is a row not currently displayed, and there is
+        // no honest position to give it.
+        private int PositionOf(T item) => _position.TryGetValue(KeyOf(item), out int at) ? at : 0;
+
         // The sentence itself, so ContainerPrepared can build one without a grid in hand.
         private string Spoken(T item)
         {
             string cells = string.Join(", ", _columns
                 .Where(c => c.IsVisible)
                 .Select(c => $"{c.Header}: {c.Text(item) ?? string.Empty}"));
+
+            // THE GUTTER GOES IN FRONT, because that is what a gutter is FOR: it is how the user
+            // refers to the row - "line 12", "address 8040" - and a reader that heard it last, after
+            // every cell, would have to hold the whole sentence to find out which row it was about.
+            // Prefixed with the caption when there is one, so "addr 8040: op: LDA" says what the
+            // number is; bare when there is not, because "1: name: alpha" is already unambiguous.
+            if (_rowHeader is not null)
+            {
+                string label = _rowHeader(item, PositionOf(item)) ?? string.Empty;
+                string prefix = string.IsNullOrEmpty(RowHeaderCaption)
+                    ? label
+                    : $"{RowHeaderCaption} {label}";
+
+                cells = string.IsNullOrEmpty(cells) ? prefix : $"{prefix}: {cells}";
+            }
 
             // A ROW THAT CAN BE OPENED SAYS SO, because in a tree "does this have more under it"
             // is part of what the row IS, and a reader that only hears the cells cannot tell a leaf
@@ -1687,6 +1827,21 @@ namespace EmuSen.LunaP.Controls
         private void Define(Grid grid, string scope)
         {
             grid.ColumnDefinitions.Clear();
+
+            // THE GUTTER GOES FIRST AND SHARES A SIZE GROUP LIKE ANY OTHER AUTO COLUMN, which is
+            // what keeps the caption over its own labels. Auto is the default width because a gutter
+            // exists to be exactly as wide as its widest label and no wider - and Auto is precisely
+            // the case §27.10 records as needing the shared group, so leaving it out would put the
+            // caption a few pixels off the numbers under it. §58.
+            if (_rowHeader is not null)
+            {
+                GridLength gutter = GridLength.Parse(RowHeaderWidth);
+                grid.ColumnDefinitions.Add(new ColumnDefinition(gutter)
+                {
+                    SharedSizeGroup = gutter.IsAuto ? scope + "_gutter" : null,
+                });
+            }
+
             for (int i = 0; i < _columns.Count; i++)
             {
                 ColumnSpec column = _columns[i];

@@ -113,6 +113,21 @@
         <Setter Property="Foreground" Value="{DynamicResource LunaInfo}" />
     </Style>
 
+    <!-- THE GUTTER DOWN THE LEFT, and the corner above it. LunaMuted rather than LunaText, because a
+         row header is how you REFER to a row rather than something the row says - the same relation a
+         line number has to a line of code, and every editor draws it quieter than the code. It is
+         held to 4.22:1 dark and 5.75:1 light against the surface (measured for §57.3), so quieter
+         does not mean unreadable.
+
+         Right-aligned, which matters for the case this is mostly for: numbers and hex addresses read
+         down a column by their last digit, and a left-aligned gutter of 9, 10, 11 puts the units
+         under the tens. §58. -->
+    <Style Selector=":is(luna|LunaTable) TextBlock.row-header">
+        <Setter Property="Foreground" Value="{DynamicResource LunaMuted}" />
+        <Setter Property="TextAlignment" Value="Right" />
+        <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+
     <!-- THE GRID LINES, off by default and drawn in LunaBorder when on. That token already means
          "where one surface stops and the next begins" (§26.9) and is already held to 3:1 against
          both surfaces, which is exactly what a rule between cells is - so it takes the token rather

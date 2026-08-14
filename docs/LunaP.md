@@ -5360,3 +5360,88 @@ A table that declares only text columns runs exactly the code it ran in 0.8.0: o
 same `TableCell`, the same editor. §26.13 holds. `CellPrepared`/`CellClearing` are still absent for
 §56.3's reason, and cell *selection* is still §54.3's open item — a check column is a cell you can
 change, not a cell you can select.
+
+## 58. A gutter down the left, and two indices that must not be confused
+
+Half of pass 4 of §54's parity arc: **row headers**. `RowHeader` is a projection, null by default,
+and a table that never sets one has exactly the grids it always had.
+
+### 58.1 A projection, not a row number
+
+`TreeDataGridRowHeaderColumn` was enumerated before this was designed, and it is **narrower than it
+looks**: the type has a parameterless constructor and no projection at all, `WithRowHeaderColumn`
+takes only a caption and a width, and the cell — `TreeDataGridRowHeaderCell` — carries a bare
+`string Value`. It is a row *number* and nothing else.
+
+That serves a list of records and serves this toolkit's actual subject badly. The instrument panels
+LunaP was built for want **addresses** down the left of a memory viewer and a disassembly, and an
+address is on the model. So `RowHeader` is `Func<T, int, string>` and both are one line:
+
+    table.RowHeader = (_, i) => (i + 1).ToString();          // number the rows
+    table.RowHeader = (row, _) => row.Address.ToString("X4"); // label them
+
+**The index is the DISPLAYED one**, counted down the view after sorting and flattening. That is the
+one number a caller cannot get from their own model — under a sort, row 1 is whatever is at the top
+now, not whatever was first in the list handed to `Refresh` — and a test drives a header click to
+pin it.
+
+It is built once per rebuild into a key→position map rather than searched per row. A virtualising
+list asks for the index once per realised container, so the obvious `IndexOf(item)` is an O(n) scan
+run per visible row: fine at three rows, ten thousand `Key()` calls per screenful at ten thousand.
+
+### 58.2 The two indices, which are the actual risk
+
+A gutter shifts every column one place right **in the grid** while leaving every column **index**
+where it was. Those are different numbers used by different parts of the control:
+
+| speaks in column indices | speaks in grid indices |
+|---|---|
+| `Edit(item, 2)`, `TryGetCell` | `Grid.SetColumn` |
+| the remembered layout's `Widths` list | `ColumnDefinitions[...]` |
+| the sorted-column number | the shared size groups |
+
+Conflating them is not a crash; it is a dragged width landing on the neighbouring column and then
+being **saved to disk**, and an editor opening one column left of the text it is editing. So there is
+exactly one place that knows about the shift — `GridColumn(int column)` — and every `Grid.SetColumn`
+and every definition lookup goes through it. `Resized` is the delicate one, because it reads
+definitions by grid index and writes specs by column index in the same loop.
+
+Two sabotages, both aimed at that seam:
+
+| Sabotage | What turned red |
+|---|---|
+| the editor placed at the column index | the caret opened one column left of the cell |
+| `Resized` reads definitions by column index | the gutter's width was written onto column 0 |
+
+### 58.3 The gutter is not a cell, and says so three ways
+
+It carries **no column marker**, so `Cell(item, n)` never finds it, `TryGetCell` never returns it and
+no editor can open on it. It has **no resize grip**, because §27.11's remembered layout is a list of
+*column* widths and a gutter is not one. And its caption is a plain `TextBlock` rather than a sort
+button even when every other heading is one — there is nothing to sort by, since "sort by row number"
+is either the identity or a lie, and an inert tab stop costs a keyboard user a press and tells them
+nothing (§27.3).
+
+It does share a size group when its width is `Auto`, which is the default, because that is exactly
+§27.10's case: without it the caption sits a few pixels off the numbers under it.
+
+### 58.4 What a reader hears, and hears once
+
+The gutter goes at the **front** of the row's spoken sentence — `"# 2: name: alpha, size: 10"` — and
+that position is the point. A gutter is how a user refers to a row; a reader that heard it last,
+after every cell, would have to hold the whole sentence to find out which row it was about. The
+caption is included when there is one, so `"addr 8040: op: LDA"` says what the number is, and omitted
+when there is not, because `"1: name: alpha"` is already unambiguous.
+
+The `TextBlock` itself is `AccessibilityView.Raw`, so the label is heard once rather than twice —
+the same choice the sort glyph makes, and closely related to MeterRow's hidden inner bar (§24.2).
+
+### 58.5 Quieter than the cells, and right-aligned
+
+`LunaMuted` rather than `LunaText`, because a row header is how you *refer* to a row rather than
+something the row says — the relation a line number has to a line of code, and every editor draws it
+quieter. It measures 4.22:1 dark and 5.75:1 light against the surface (the figures §57.3 took for a
+different reason), so quieter is not unreadable.
+
+Right-aligned, which matters for the case this is mostly for: numbers and hex addresses are read down
+a column by their last digit, and a left-aligned gutter of 9, 10, 11 puts the units under the tens.
