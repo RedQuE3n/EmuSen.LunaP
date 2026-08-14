@@ -284,6 +284,20 @@ namespace EmuSen.LunaP.Tests
             // already open on a row nobody has pointed at, triggered by a line that ran during
             // construction. So it no-ops, deliberately, and the claim is pinned rather than
             // asserted here: TableTests.Editing_before_there_is_a_row_does_nothing.
+            // THE NAVIGATION THREE, and they are one claim rather than three. Each asks about a row
+            // that is currently on screen, and before the template there is no screen - so "not
+            // found" is the honest answer rather than a dropped call, and it is the SAME answer they
+            // give afterwards for a row scrolled out of view. Nothing is queued and nothing is lost.
+            [(typeof(LunaTable<>), "BringRowIntoView")] =
+                "scrolls to a realised row; before the template there is nothing to scroll and nothing "
+                + "worth queueing, since a caller who wants a row visible at startup sets Select instead. "
+                + "Pinned by TableParityTests.Navigating_before_there_are_rows_is_answered_not_queued.",
+            [(typeof(LunaTable<>), "TryGetRow")] =
+                "returns false when the row is not realised, which is what it also does before the "
+                + "template - a query, not state. Same guard.",
+            [(typeof(LunaTable<>), "TryGetCell")] =
+                "as TryGetRow.",
+
             [(typeof(LunaTable<>), "Edit")] =
                 "opens a caret on a realised cell, so there is nothing to queue - a table with no rows on "
                 + "screen has no cell to put one in, and a queued caret would open an editor nobody asked "

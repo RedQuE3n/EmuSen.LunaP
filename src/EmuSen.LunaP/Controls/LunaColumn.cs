@@ -87,5 +87,26 @@ namespace EmuSen.LunaP.Controls
         // "can this column be edited" is the question being asked and not "is this delegate set".
         /// <summary>Whether this column can be edited, which is exactly whether it was given a Commit.</summary>
         public bool IsEditable => Commit is not null;
+
+        // BOUNDS ON A DRAG, and they only mean anything once a column can be dragged at all (§27.11).
+        // A star column with no floor collapses to nothing the moment somebody pulls its neighbour
+        // across, and a heading that has been dragged to two pixels is a column the user cannot get
+        // back without knowing the layout is remembered and where the file is.
+        //
+        // Null means unbounded, which is what every column did before these existed - the Grid's own
+        // defaults are 0 and infinity. §54.3.
+        /// <summary>The narrowest this column may be dragged, in pixels, or null for no limit.</summary>
+        public double? MinWidth { get; init; }
+
+        /// <summary>The widest this column may be dragged, in pixels, or null for no limit.</summary>
+        public double? MaxWidth { get; init; }
+
+        // HIDDEN, NOT REMOVED, and the difference is the whole reason this is a property rather than
+        // the caller just not declaring the column. A hidden column keeps its INDEX - so a remembered
+        // layout still matches (§27.11 refuses one whose column count differs), a sort on a hidden
+        // column survives being hidden, and LunaTable.Edit(item, 2) means the same thing whether or
+        // not column 1 is on screen. Rebuilding the table without the column would move all three.
+        /// <summary>Whether this column is shown. Hidden columns keep their index, so a remembered layout and a sort still match.</summary>
+        public bool IsVisible { get; init; } = true;
     }
 }
