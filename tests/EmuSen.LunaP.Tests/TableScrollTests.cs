@@ -214,13 +214,15 @@ namespace EmuSen.LunaP.Tests
                 Assert.Equal(viewer.Viewport.Width, viewer.Extent.Width, 0);
             });
 
-        // A KNOWN CONSEQUENCE, PINNED SO IT IS A DECISION RATHER THAN A SURPRISE. The gutter lives in
-        // the row grid, so it scrolls away with everything else - it is the natural first FROZEN
-        // column, and §59.3 records why freezing anything is a pass of its own rather than a line
-        // here. If this ever starts failing it is because that work landed, and this test should be
-        // rewritten rather than deleted.
+        // THE TEST §59.4 ASKED FOR, REWRITTEN RATHER THAN DELETED. It used to assert the opposite -
+        // that the gutter scrolls away - and said so as a decision on the record, because nothing
+        // could be frozen when it was written. §63 takes the decision the other way: a row header is
+        // how a user refers to a row, and one that scrolls off leaves them reading a line of values
+        // with nothing to say which row it belongs to.
+        //
+        // Note that no column is frozen here. A gutter is pinned on its own account.
         [Fact]
-        public Task The_gutter_scrolls_away_with_the_rest_because_nothing_is_frozen_yet() => Realised(
+        public Task The_gutter_stays_put_because_a_gutter_is_always_frozen() => Realised(
             () =>
             {
                 LunaTable<Row> table = Wide(Rows());
@@ -230,15 +232,40 @@ namespace EmuSen.LunaP.Tests
             400,
             table =>
             {
+                Assert.Equal(0, table.FrozenColumns);
+
                 TextBlock gutter = table.FindNamed<ListBox>("PART_Rows")
                     .GetVisualDescendants().OfType<ListBoxItem>().First()
                     .GetVisualDescendants().OfType<TextBlock>()
                     .First(t => t.Classes.Contains("row-header"));
 
                 double before = X(table, gutter);
+
+                foreach (double offset in new[] { 137.0, 300.0, 824.0 })
+                {
+                    ScrollTo(table, offset);
+                    Assert.Equal(before, X(table, gutter), 1);
+                }
+            });
+
+        // And the columns beside it still scroll, so "frozen" has not quietly become "nothing moves".
+        [Fact]
+        public Task A_gutter_does_not_stop_the_columns_scrolling() => Realised(
+            () =>
+            {
+                LunaTable<Row> table = Wide(Rows());
+                table.RowHeader = (_, i) => (i + 1).ToString();
+                return table;
+            },
+            400,
+            table =>
+            {
+                Assert.True(table.TryGetCell(table.Models[0], 3, out Control? cell));
+                double before = X(table, cell!);
+
                 ScrollTo(table, 300);
 
-                Assert.Equal(before - 300, X(table, gutter), 1);
+                Assert.Equal(before - 300, X(table, cell!), 1);
             });
     }
 }
