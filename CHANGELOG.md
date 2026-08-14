@@ -96,6 +96,29 @@ pixels.**
 - **Nothing changes for a table of text columns**, which is still every column
   you have declared so far.
 
+**Columns can be aligned, and sorted without a click.**
+
+- `LunaColumn<T>.Alignment` and `.VerticalAlignment` say where a column's content
+  sits. Both are nullable and null - the default - leaves every cell kind exactly
+  as it was. A right-aligned column of numbers is the case this exists for:
+  left-aligned, a run of 9, 10, 11 puts the units under the tens.
+- The heading follows the column, so a right-aligned column of sizes no longer
+  sits under a left-aligned word (`§70.2`).
+- `SortBy(column, descending)`, `ClearSort()`, and `SortedColumn` /
+  `SortedDescending` to read it back. `SortBy` **refuses a column with no `Sort`
+  comparison** rather than falling back to sorting the displayed text, which is
+  the "10 before 9" bug `Sort` exists to prevent (`§70.3`).
+- A remembered layout still wins over a sort you set in code, because what your
+  user clicked last time outranks what your application declared this time.
+
+**A sort you left was never written down. It is now.** If you use `TableKey`, this
+is the entry to care about: clicking a heading did not schedule a save, and the
+table never flushed when its window closed - so a user who sorted and closed lost
+the sort, unless you happened to call `SaveNow()` yourself. Column *widths* were
+saved, which is why this looked like it worked. Both halves are fixed: every
+change schedules the write, and the table flushes on its way out of the visual
+tree the way `SplitPane` always has (`§70.4`).
+
 **A table can select cells instead of rows.** `SelectionUnit = Cell` beside the
 `SelectionMode` you already have, because *how many* and *what kind* are separate
 questions and one enum cannot answer both (`§67.1`). Row is the default, so
