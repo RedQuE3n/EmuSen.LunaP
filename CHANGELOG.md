@@ -99,7 +99,12 @@ pixels.**
 **A table can have a gutter down the left.** `RowHeader` takes the row and its
 *displayed* index, so `(_, i) => (i + 1).ToString()` numbers the rows and
 `(row, _) => row.Address.ToString("X4")` labels them from the model. Null - the
-default - means no gutter and no change (`§58`).
+default - means no gutter and no change (`§58`). `RowHeaderCaption` puts a
+heading over it and `RowHeaderWidth` sizes it.
+
+The gutter **stays put when the table scrolls sideways**, whatever
+`FrozenColumns` says, because a row label that scrolls away leaves your user
+reading a line of values with nothing to say which row it belongs to (`§63.2`).
 
 **Columns past the right edge of a table are now reachable.** They were not: a
 table whose columns did not fit resolved every column to the width it asked for
@@ -111,15 +116,35 @@ said so. The table scrolls sideways now and the header follows it (`§59`).
 A table of star-width columns - the default - fits by definition, shows no
 scrollbar and is unchanged.
 
-**Frozen columns are still not there**, and `§59.3` records why with the visual
-tree walked out: it needs the frozen cells laid out outside the scrolling
-viewport, which this control's row-as-a-Grid shape cannot express. Reach for
-`TreeDataGrid` if you need them, licence gate and all.
+**And the first columns can be frozen.** `fields.FrozenColumns = 1` pins them
+while the rest scroll underneath, with a seam drawn where the pinning stops.
+Zero — the default — pins nothing, so no existing table moves.
+
+- Counted in **your** columns, in the order you declared them; a gutter is pinned
+  on its own account and takes none of the count (`§63.2`). A hidden column takes
+  one of the places, like every other index this control uses.
+- **A band with no room pins nothing at all.** Freezing is a refinement of
+  scrolling and does not get to remove it, so a band as wide as the viewport —
+  from freezing too much, or from a window dragged narrow — leaves you an
+  ordinary scrolling table rather than one whose far columns cannot be reached.
+  It returns by itself when there is room (`§64.1`).
+- Not remembered by `TableKey`, on purpose: that file holds what your *user* did,
+  and this is what *you* declared (`§65.4`).
+
+`§59.3` said this needed a different control, and it was wrong — the correction
+and the walk are in `§60`.
+
+**Two defects fixed in the same work, both of which shipped inside this release's
+own development and neither of which any test caught.** If you take 0.8.0 you
+have neither, but they are the entries worth reading if you build on this: a
+table's header stopped following any scroll it did not cause, including every
+scroll caused by opening an editor (`§64.2`), and a cell editor's own inner
+`ScrollViewer` permanently hijacked the one the table was watching (`§64.3`).
 
 **Disabled checkboxes change colour, including ones you built yourself.** Fluent's
 disabled checkbox is translucent white, which on the light surface put a white
-tick on light grey at **1.78:1** — unreadable. `FluentBridge` now overrides three
-keys so a disabled box holds 3:1 in both variants. WCAG exempts disabled controls
+tick on light grey at **1.78:1** — unreadable. `FluentBridge` now overrides five
+keys so a disabled box holds 3:1 in both variants, checked and indeterminate. WCAG exempts disabled controls
 from any contrast requirement; that exemption assumes you never need to *read*
 one, and a read-only cell breaks the assumption (`§57.3`). This affects any
 `CheckBox` in your application, not just table cells.

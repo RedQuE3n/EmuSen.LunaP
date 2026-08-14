@@ -190,8 +190,24 @@ fields.RowHeaderCaption = "#";
 Columns wider than the table scroll sideways, and the header follows. **This is a
 fix rather than a feature**: before 0.8.0 the columns past the right edge were
 resolved, clipped and unreachable by scrollbar, wheel or keyboard. Star-width
-columns — the default — fit by definition and never scroll. Frozen columns are
-*not* here; `docs/LunaP.md` §59.3 has the visual tree walked out and says why.
+columns — the default — fit by definition and never scroll.
+
+And the first columns can be pinned while the rest scroll under them:
+
+```csharp
+fields.FrozenColumns = 1;            // the gutter is always pinned; this counts your columns
+```
+
+Counted in the columns you declared, in the order you declared them, so a hidden
+column takes one of the places. A band that would not leave room for the columns
+behind it pins **nothing** rather than making them unreachable, and comes back by
+itself when the window is widened — so a table that suddenly stops pinning is a
+table that is too narrow, not a bug. There is a line where the pinning stops; it
+takes `LunaBorder`, and `Border.frozen-edge` restyles it.
+
+`FrozenColumns` is deliberately **not** remembered with the widths and the sort
+order: those are what your user did, and this is what you declared. If you offer
+it as a "Freeze first column" menu item, remember it in your own settings.
 
 **A cell does not have to be text.** A checkbox column takes a boolean projection
 and, optionally, somewhere to write it back; a template column takes a control and

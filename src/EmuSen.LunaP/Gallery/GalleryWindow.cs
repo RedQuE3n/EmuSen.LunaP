@@ -60,8 +60,10 @@ namespace EmuSen.LunaP.Gallery
             tabs.Add("NES", Ui.Hint("Appended by Tabs.Add, not declared in XAML."));
             tabs.Add("SNES", Ui.Hint("RemoveFrom(1) drops these again."));
 
-            // Three columns over a model, which is the shape the one piece of evidence for this
-            // control actually has - a field list with a name, a type and a page number (§27).
+            // Columns over a model, which is the shape the one piece of evidence for this control
+            // actually has - a field list with a name, a type and a page number (§27). The other
+            // three columns are here to show a feature rather than because the evidence has them,
+            // and each says which below.
             //
             // TWO SORTABLE AND ONE NOT, on purpose. A gallery that made every column sortable would
             // show the feature and hide the choice; a heading with no comparison stays a plain
@@ -71,7 +73,24 @@ namespace EmuSen.LunaP.Gallery
             // The page column sorts NUMERICALLY while displaying a string, which is the argument
             // for Sort taking a comparison over the model: sorting the text would put "10" before
             // "9" in a table whose whole job is to be read.
-            var fields = new LunaTable<Field> { Key = f => f.Name };
+            //
+            // A GUTTER, AND THE FIRST COLUMN PINNED - which between them are why this table is wider
+            // than the space it is in, deliberately. Freezing is only a thing you can see when
+            // something scrolls past the frozen part, and a table of star-width columns fits by
+            // definition and never scrolls. So the sample gives up demonstrating star widths in
+            // order to demonstrate the gutter, the seam and the pin; §65.2 is that trade, argued.
+            //
+            // FrozenColumns counts the caller's columns and not the grid's - the gutter is pinned on
+            // its own account and takes none of the count (§63.2). One rather than two, because a
+            // band has to leave room for the columns it is pinned in front of and the table refuses
+            // one that does not (§64.1) - at which point the gallery would silently show nothing.
+            var fields = new LunaTable<Field>
+            {
+                Key = f => f.Name,
+                RowHeader = (_, i) => (i + 1).ToString(),
+                RowHeaderCaption = "#",
+                FrozenColumns = 1,
+            };
             // THE NAME COLUMN IS EDITABLE AND THE OTHER TWO ARE NOT, which is the same choice the
             // sortable/unsortable pair above makes and for the same reason: a gallery where every
             // column did everything would show the features and hide the fact that each one is a
@@ -80,14 +99,24 @@ namespace EmuSen.LunaP.Gallery
             // Validate returns the PROBLEM rather than false, so the message under the table is the
             // caller's sentence - the same shape FieldRow.Error uses, which is what makes an invalid
             // cell and an invalid field one idea instead of two (§50.1).
+            //
+            // AN ABSOLUTE WIDTH RATHER THAN THE "2*" THIS COLUMN CARRIED UNTIL §65. A frozen
+            // column's width IS the band, so a caller who freezes one is declaring how much of the
+            // viewport stops scrolling - and a star column in a table that overflows resolves to its
+            // content anyway, which would make the band whatever the longest name happened to be.
             fields.Column(new LunaColumn<Field>("name", f => f.Name)
                   {
-                      Width = "2*",
+                      Width = "200",
                       Sort = (a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCulture),
                       Commit = (f, text) => f.Name = text.Trim(),
                       Validate = (_, text) => string.IsNullOrWhiteSpace(text) ? "A field needs a name." : null,
                   })
-                  .Column("type", f => f.Type)
+                  .Column("type", f => f.Type, "120")
+
+                  // The column that pushes the table past its own width, and it is a real one rather
+                  // than filler: a field list that says what a field IS and not what it starts as is
+                  // half a schema.
+                  .Column("default", f => f.Default, "150")
                   .Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
                   {
                       Width = "40",
@@ -124,10 +153,10 @@ namespace EmuSen.LunaP.Gallery
 
             fields.Refresh(new[]
             {
-                new Field("Site", "text", 1, required: true),
-                new Field("Technician", "text", 1, required: true),
-                new Field("Approved", "checkbox", 2, required: false),
-                new Field("Total aid retained", "text", 2, required: false),
+                new Field("Site", "text", 1, required: true, @default: "(from job)"),
+                new Field("Technician", "text", 1, required: true, @default: "(current user)"),
+                new Field("Approved", "checkbox", 2, required: false, @default: "no"),
+                new Field("Total aid retained", "text", 2, required: false, @default: "0.00"),
             });
 
             // THE ONLY SAMPLES HERE THIS TOOLKIT DID NOT WRITE, and that is the reason they are
@@ -332,17 +361,19 @@ namespace EmuSen.LunaP.Gallery
         // than in a consumer's own code.
         private sealed class Field
         {
-            public Field(string name, string type, int page, bool required)
+            public Field(string name, string type, int page, bool required, string @default)
             {
                 Name = name;
                 Type = type;
                 Page = page;
                 Required = required;
+                Default = @default;
             }
 
             public string Name { get; set; }
             public string Type { get; set; }
             public int Page { get; set; }
+            public string Default { get; set; }
 
             // Written by the check column's toggle, which is the point of it being here: the gallery
             // table is live, and a tick changes a model rather than a picture.
