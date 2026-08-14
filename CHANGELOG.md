@@ -57,6 +57,26 @@ Also: `LunaTable` rows expose `ISelectionItemProvider` and editable cells expose
 `IValueProvider`, so a screen reader can select a row and set a cell — going
 through your `Validate` first, exactly as typing does (`§50.6`).
 
+**`RgbaImageView` stops copying every frame twice, and can scale by whole
+pixels.**
+
+- `SetFrame` now takes a `ReadOnlySpan<byte>` or an `nint` as well as a `byte[]`.
+  If your pixels were already in native memory you were marshalling them into an
+  array so this control could copy them straight back out — 8.29 MB per frame at
+  1080p, about 498 MB/s at 60fps, for nothing. The `byte[]` overload is unchanged
+  and now delegates to the same path (`§53.1`).
+- `IntegerScale` scales by a whole number of pixels and centres the result, which
+  is what stops nearest-neighbour shimmering at a fractional factor — a 160×144
+  frame at 4.17× has most rows 4 device pixels tall and every sixth one 5
+  (`§53.3`). **Off by default**, so nothing moves unless you ask.
+- **A latent stride bug is fixed.** The copy assumed the framebuffer's rows were
+  exactly `width × 4` bytes; it now reads `RowBytes` and copies row by row when
+  they are not. No backend measured here pads, so this was not visible — it was
+  an assumption about one platform (`§53.2`).
+- One correction: `Stretch`'s documentation said it defaulted to preserving the
+  aspect ratio. It defaults to `Stretch.None`, which does not scale at all. The
+  value never changed, only the sentence describing it (`§52`).
+
 ---
 
 ## 0.7.1
