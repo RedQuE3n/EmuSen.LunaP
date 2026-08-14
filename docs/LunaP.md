@@ -5191,3 +5191,172 @@ The xUnit analyser flagged an `Assert.Empty` that should have been `Assert.DoesN
 `dotnet build --no-incremental` and the test project had not been recompiled. This repository builds
 with zero warnings and that is worth something only if the check actually looks. Verification since
 uses `--no-incremental`.
+
+## 57. A cell stops being a TextBlock
+
+Pass 3 of §54's parity arc: **cell kinds**. Every cell in this control was a `TextBlock` until now,
+which meant a boolean column rendered as `True`/`False` — a value the user has to *read* where every
+other table in the world lets them *see* it. §54.3 lists "CheckBox and Template columns; LunaTable's
+cells are text" as one gap, and it is one idea rather than two: the table has to stop assuming what a
+cell is made of.
+
+Two kinds, and no more. **Check**, because a checkbox is the commonest non-text column there is, and
+**Template**, because everything else a column could ever want — an icon, a spark line, a pair of
+buttons — is a control somebody can build. A toolkit that added a kind per idea would be maintaining
+a gallery inside a table.
+
+`LunaCellKind` is the discriminator and is never set directly. Every kind but `Text` needs delegates
+that only mean anything together, and an init-only `Kind` would let a caller declare a check column
+with no boolean projection and find out about it when a row was drawn.
+
+### 57.1 A constructor per kind, and the factory that lasted an hour
+
+The first attempt was static factories — `LunaColumn<T>.Check(...)`, `LunaColumn<T>.Template(...)` —
+and it read well right up until the gallery wanted a width on one. A factory hands back a finished
+object, and **every other thing a column can be told is an init-only property**: `Width`, `Sort`,
+`MinWidth`, `MaxWidth`, `IsVisible`. None of them is reachable on a method's return value. `with`
+does not help either; `LunaColumn<T>` is a sealed class and not a record.
+
+So the width would have become a parameter, and then the sort, and the growth path §27 built this
+class to have would have been gone by the second one. A **constructor** keeps the object initializer,
+so all three kinds are declared identically and every property already there applies to all of them:
+
+    new LunaColumn<Row>("req", r => r.Required, (r, on) => r.Required = on) { Width = "40" }
+
+Overload resolution separates them on the projection's return type — `Func<T, string>`,
+`Func<T, bool>`, `Func<T, Control>` — so the call site names no kind and cannot pick the wrong one.
+
+### 57.2 `Text` became what the cell *says*, not how it is drawn
+
+This is the one idea that made the whole pass fit without a second kind of column. For a text cell
+the two are the same thing. For a checkbox they are not: the cell shows a tick and `Text` returns
+`"yes"`, and **that string is what the row's spoken sentence and the automation value are built
+from**. Nothing downstream of the cell had to learn that kinds exist.
+
+Which is why the template form **requires** its `spoken` argument while the check form defaults it. A
+boolean's sentence can be derived — `"yes"`/`"no"`, overridable to `"live"`/`"safe"` — and an
+arbitrary control's cannot. A template column is the one place a caller can put something on screen
+this toolkit cannot describe, and §24 is the section about nine controls a screen reader never
+reached. Requiring the sentence makes the unreachable version of this column *impossible to declare*.
+The gallery shows it as a coloured dot on purpose: an eight-pixel ellipse beside a row that announces
+`kind: text` is the argument in one picture.
+
+### 57.3 The read-only mechanism, chosen by measurement and nearly chosen wrong
+
+A check column with no `Toggle` is read-only, and there were two ways to spell that:
+
+- `IsEnabled = false` — greys the box, which costs contrast.
+- `IsHitTestVisible = false` with `Focusable = false` — keeps full contrast, refuses the pointer.
+
+The second looks strictly better and is wrong. **Measured on Avalonia 12.1.0:**
+
+| | provider offered | `Toggle()` |
+|---|---|---|
+| enabled | yes | ticks the box |
+| `IsEnabled = false` | yes | throws `ElementNotEnabledException` |
+| `IsHitTestVisible = false` | yes | **ticks the box** |
+
+`AutomationPeer` has no `EnsureEnabled` member — enumerated, 60-odd members, it is not there — so the
+inference from the API surface was that nothing gates a provider call. That inference was wrong; the
+check lives inside `ToggleButtonAutomationPeer` itself. Had the design been settled on the reasoning
+rather than the measurement, a read-only column would have shipped writable by any screen reader,
+which is exactly the §50.6 defect one decision later.
+
+So `IsEnabled = false` it is, and the contrast is paid for in the theme instead.
+
+**The contrast, measured in both variants.** Fluent's disabled checkbox colours are translucent white
+over whatever is behind:
+
+| | dark | light |
+|---|---|---|
+| disabled **checked** — tick on its own fill | 4.42:1 | **1.78:1** |
+| disabled **unchecked** — stroke on the surface | 3.78:1 | **2.80:1** |
+
+WCAG 1.4.11 exempts inactive components from any contrast requirement, and that exemption **assumes
+you never need to read what you cannot use**. A read-only check column exists to be read; its value
+is information, not chrome. So the exemption does not apply and the light figures are a defect —
+`FluentBridge.axaml` overrides three keys, under a rule worth stating: **the outline is structure and
+does not change with enablement; the fill carries state, and a disabled fill is muted rather than
+accented.** An empty box keeps `LunaBorder` either way (3.27:1 / 3.03:1, the same figures the enabled
+one already has); a ticked-but-disabled box goes from accent to `LunaMuted` — 4.22:1 dark and 5.75:1
+light against the surface, carrying a `LunaOnAccent` tick at 3.95:1 and 6.39:1. Every figure clears
+3:1.
+
+This is a **§48 follow-up rather than a table feature**. §48 swept the enabled states of nine stock
+controls and never looked at a disabled one, so the 1.78:1 was already there for any consumer's own
+greyed checkbox. Pass 3 is what made anybody look.
+
+The keys were found by **enumerating the live resource tree** — 1,174 keys reachable through
+`Application.Styles`, of which 73 carry `CheckBox` in the name — and not by recalling likely ones.
+That is §48.2's rule, applied to the case it was written for.
+
+### 57.4 What a check column cannot do, said rather than approximated
+
+A text column can refuse a value **and say why**: `Validate` returns the problem and the sentence
+appears under the table (§50.1). A check column can refuse — a `Toggle` that declines to write leaves
+the model alone and the tick goes back where it was, because the table re-reads `Checked` after every
+toggle rather than trusting the box — but it **cannot say why**.
+
+Giving it a voice would need a fourth delegate shape of its own. Reusing `Validate` was the tempting
+approximation and is worse than the gap: it would mean handing a `Func<T, string, string?>` the
+string `"True"`, a representation the caller never chose and the column's own `Text` does not
+produce. Recorded as a gap. The re-read is not a workaround for it — it is the same rule that makes
+`Close` re-read a committed cell through the projection instead of keeping the typed text, and it is
+what also makes a *normalising* `Toggle` show what it actually did.
+
+### 57.5 The cell index left the cell
+
+`Cell(item, column)` walked a row looking for a `TableCell` and read an instance property off it.
+Neither half survives kinds: a check cell is a stock `CheckBox` and a template cell is a control this
+toolkit has never seen, and a field cannot be added to either. The index is now an **attached
+property**, which is Avalonia's own answer to annotating a control you did not write.
+
+Its default is **-1 and not 0**, and that is load-bearing. The lookup walks every descendant of a
+row, and a template cell has the caller's own children under it; at a default of 0 the first of those
+answers as column 0, and `Edit(item, 0)` opens a text editor on somebody's `Button`. Sabotaging the
+default turns the lookup and `Edit`'s refusal red together.
+
+`Cell` now returns `Control?` and `TextCellOf` narrows it. That narrowing is what makes `Edit` refuse
+a check or template column **without a kind test of its own** — there is simply no text cell there.
+
+### 57.6 A hollow guard, found by sabotaging it
+
+`ColumnSpec.IsEditable` names the kind: `Kind == LunaCellKind.Text && Commit is not null`. The test
+for it asserted that a check column with a `Toggle` was not editable — and **removing the kind clause
+turned nothing red**, because that column's `Commit` was null either way. The clause under test
+contributed nothing to the assertion. §50.4's shape exactly, caught by sabotage rather than reading.
+
+The clause *is* reachable. `Commit` is init-only like every other property, so this compiles and
+somebody will write it:
+
+    new LunaColumn<Row>("armed", r => r.Armed, (r, on) => r.Armed = on) { Commit = ... }
+
+A check column carrying a text writer it can never use. Ignored rather than rejected — throwing would
+make a meaningless-but-harmless declaration a crash at startup. What must not happen is the column
+answering "editable", because **F2 walks for the *first* editable column**: it would stop at a cell
+with no text editor and the text column behind it would be unreachable from the keyboard. The
+strengthened test sets the `Commit`, and now the sabotage fails both it and the F2 guard.
+
+### 57.7 The sabotages
+
+| Sabotage | What turned red |
+|---|---|
+| Read-only via `IsHitTestVisible` instead of `IsEnabled` | the screen reader ticked the read-only box — no exception thrown |
+| `IsEditable` drops the kind clause | F2 stopped at the check column; the text column became unreachable |
+| The toggle stops re-reading the model | a refused toggle left the tick where it was clicked; a normalising one lied |
+| The `_toggling` suppressor removed | the caller's `Toggle` ran **twice** for one click — not an infinite loop, because the second re-read agrees, but a delegate with a side effect fires twice |
+| The three disabled-checkbox overrides removed | **light** at 1.78:1 and 2.80:1; **dark** stayed green, which is correct — only the light surface was ever the defect |
+| The cell lookup filters by `TableCell` again | check and template cells became unfindable by `TryGetCell` |
+| The marker's default changed to 0 | a template's own child answered as column 0 |
+
+One of these corrected the test rather than the code. The contrast guard first compared **raw ARGB
+values**, and under sabotage reported the dark variant at 1.00:1 — white against an uncomposited
+`#66ffffff` is white against white. It composites over the surface now, so the number it reports is
+the number a user meets whether or not the value happens to be opaque.
+
+### 57.8 What did not change
+
+A table that declares only text columns runs exactly the code it ran in 0.8.0: one `switch` arm, the
+same `TableCell`, the same editor. §26.13 holds. `CellPrepared`/`CellClearing` are still absent for
+§56.3's reason, and cell *selection* is still §54.3's open item — a check column is a cell you can
+change, not a cell you can select.

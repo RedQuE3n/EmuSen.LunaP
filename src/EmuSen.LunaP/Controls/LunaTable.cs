@@ -90,6 +90,12 @@ namespace EmuSen.LunaP.Controls
         private readonly List<Head> _heads = new();
         private readonly Suppressor _filling = new();
 
+        // Its own suppressor rather than _filling's, because the two guard different things: _filling
+        // says "this selection is not the user's" and gates Chose, and this says "this tick is the
+        // table putting the box back" and gates the caller's Toggle. Sharing one would mean a refresh
+        // arriving mid-toggle swallowed the other's event.
+        private readonly Suppressor _toggling = new();
+
         // _items is the order the caller gave to Refresh and never changes under a sort. _view is
         // what is on screen. They are the same list until a header is clicked, and keeping them
         // apart is what makes the third click - back to arrival order - possible at all.
@@ -457,7 +463,8 @@ namespace EmuSen.LunaP.Controls
             _columns.Add(new ColumnSpec(
                 column.Header, column.Text, GridLength.Parse(column.Width), column.Sort,
                 column.Commit, column.Validate,
-                column.MinWidth, column.MaxWidth, column.IsVisible));
+                column.MinWidth, column.MaxWidth, column.IsVisible,
+                column.Kind, column.Checked, column.Toggle, column.Build));
             Rebuild();
 
             // A saved layout can only be matched once the columns it describes exist, and there is
@@ -967,23 +974,18 @@ namespace EmuSen.LunaP.Controls
                 // that exists and cannot be seen still costs a measure pass per row per frame.
                 if (!_columns[i].IsVisible) continue;
 
+                // ONE PLACE THAT DECIDES WHAT A CELL IS, and everything after it is the same for
+                // all three kinds: the index marker, the column, the expander, the rule. A kind that
+                // needed a second branch further down would be a kind that had leaked. §57.
                 int index = i;
-                var cell = new TableCell
+                Control cell = _columns[i].Kind switch
                 {
-                    Text = _columns[i].Text(item) ?? string.Empty,
-                    TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis,
-                    VerticalAlignment = VerticalAlignment.Center,
-
-                    // Read through the projection so a reader always gets the model's current value,
-                    // and Write only where the column can be committed to - which is what makes
-                    // IValueProvider.IsReadOnly answer honestly per column. §50.6.
-                    Read = () => _columns[index].Text(item) ?? string.Empty,
-                    Column = i,
-                    Write = _columns[i].IsEditable
-                        ? text => SetFromAutomation(item, index, text)
-                        : null,
+                    LunaCellKind.Check => CheckCell(item, index),
+                    LunaCellKind.Template => TemplateCell(item, index),
+                    _ => TextCell(item, index),
                 };
 
+                TableCells.SetColumn(cell, i);
                 Grid.SetColumn(cell, i);
 
                 // The expander column gets the indent and the toggle in front of its text; every
@@ -991,7 +993,7 @@ namespace EmuSen.LunaP.Controls
                 // before.
                 if (_children is not null && i == ExpanderColumn)
                 {
-                    grid.Children.Add(Expander(item, cell));
+                    grid.Children.Add(Expander(item, cell, index));
                 }
                 else
                 {
@@ -1004,31 +1006,135 @@ namespace EmuSen.LunaP.Controls
                     Grid.SetColumn(rule, i);
                     grid.Children.Add(rule);
                 }
-
-                // DOUBLE-CLICK OPENS THE EDITOR, and the handler goes on the CELL rather than on the
-                // row because the cell is the only thing that knows which column was hit. Doing it
-                // on the row would mean hit-testing the pointer's x against the column boundaries -
-                // arithmetic that has to be kept in step with the Grid, to answer a question the
-                // Grid has already answered by delivering the event here.
-                //
-                // Captured rather than looked up: `cell` and `item` in this closure are the live
-                // visual and its model, so a recycled row's handler refers to that row's own cell.
-                if (_columns[i].IsEditable)
-                {
-                    int column = i;
-                    cell.DoubleTapped += (_, e) =>
-                    {
-                        if (!EditGestures.HasFlag(LunaEditGestures.DoubleTap)) return;
-
-                        BeginEdit(item, column, cell);
-                        e.Handled = true;
-                    };
-                }
             }
 
             NameRow(grid, item);
             return Ruled(grid);
         }
+
+        // The text cell, which is what every cell was before §57 - unchanged but for being one arm
+        // of a switch rather than the whole of the loop.
+        private TableCell TextCell(T item, int index)
+        {
+            var cell = new TableCell
+            {
+                Text = _columns[index].Text(item) ?? string.Empty,
+                TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis,
+                VerticalAlignment = VerticalAlignment.Center,
+
+                // Read through the projection so a reader always gets the model's current value,
+                // and Write only where the column can be committed to - which is what makes
+                // IValueProvider.IsReadOnly answer honestly per column. §50.6.
+                Read = () => _columns[index].Text(item) ?? string.Empty,
+                Write = _columns[index].IsEditable
+                    ? text => SetFromAutomation(item, index, text)
+                    : null,
+            };
+
+            // DOUBLE-CLICK OPENS THE EDITOR, and the handler goes on the CELL rather than on the
+            // row because the cell is the only thing that knows which column was hit. Doing it
+            // on the row would mean hit-testing the pointer's x against the column boundaries -
+            // arithmetic that has to be kept in step with the Grid, to answer a question the
+            // Grid has already answered by delivering the event here.
+            //
+            // Captured rather than looked up: `cell` and `item` in this closure are the live
+            // visual and its model, so a recycled row's handler refers to that row's own cell.
+            if (_columns[index].IsEditable)
+            {
+                cell.DoubleTapped += (_, e) =>
+                {
+                    if (!EditGestures.HasFlag(LunaEditGestures.DoubleTap)) return;
+
+                    BeginEdit(item, index, cell);
+                    e.Handled = true;
+                };
+            }
+
+            return cell;
+        }
+
+        // A STOCK CheckBox AND NOT A CELL TYPE OF THIS TOOLKIT'S OWN, which is the same argument that
+        // made a sortable heading a Button (§27.3): Avalonia's CheckBox already brings focus, Space,
+        // a focus adorner and an IToggleProvider peer, and a hand-rolled tick would have to reproduce
+        // all four and would forget two. The only things added here are the name and the gate.
+        //
+        // IsEnabled IS THE READ-ONLY MECHANISM, AND IT IS THE ONLY ONE THAT WORKS. Measured on
+        // Avalonia 12.1.0: IToggleProvider.Toggle() throws ElementNotEnabledException on a disabled
+        // control, and does NOT on one that is merely IsHitTestVisible=false - so the version that
+        // kept full contrast by refusing the pointer would have left a read-only cell a screen reader
+        // could still flip. That is the §50.6 defect exactly, and it was one design decision away.
+        // The contrast cost is paid in FluentBridge.axaml instead. §57.3.
+        private Control CheckCell(T item, int index)
+        {
+            ColumnSpec column = _columns[index];
+
+            var box = new CheckBox
+            {
+                IsChecked = column.Checked?.Invoke(item) == true,
+                IsEnabled = column.Toggle is not null,
+                VerticalAlignment = VerticalAlignment.Center,
+
+                // LEFT, NOT STRETCHED, and that is a behaviour rather than a look. A CheckBox
+                // defaults to filling its slot, so in a column two hundred pixels wide the whole cell
+                // becomes the toggle - and a user aiming at the row to select it ticks a box instead.
+                // Left-aligned, the box is the target and the rest of the cell still selects the row.
+                HorizontalAlignment = HorizontalAlignment.Left,
+                MinWidth = 0,
+                MinHeight = 0,
+                Padding = new Thickness(0),
+            };
+
+            box.Classes.Add("cell-check");
+
+            // The header, because a checkbox with no content has nothing else to say what it is - a
+            // reader landing on it would otherwise hear "checkbox, checked" with no column name. The
+            // row's own sentence carries the whole row; this is what the cell says on its own.
+            AutomationProperties.SetName(box, column.Header);
+
+            box.IsCheckedChanged += (_, _) => Toggled(item, index, box);
+            return box;
+        }
+
+        // THE MODEL IS THE TRUTH AND THE BOX IS A VIEW OF IT, which is why this writes and then reads
+        // back rather than trusting what the user just clicked. Two things fall out of that and both
+        // are wanted: a Toggle that normalises - one that turns three flags on together - shows what
+        // it actually did, and a Toggle that REFUSES leaves the model alone and the tick returns to
+        // where it was, with no separate veto mechanism to build. It is the same rule as Close
+        // re-reading a committed cell through the projection instead of keeping the typed text.
+        //
+        // The suppressor is not optional: putting the box back raises IsCheckedChanged again, and
+        // without it a refused toggle calls the caller's delegate forever.
+        private void Toggled(T item, int index, CheckBox box)
+        {
+            if (_toggling.IsSuppressing) return;
+
+            ColumnSpec column = _columns[index];
+            if (column.Checked is not { } read) return;
+
+            bool before = read(item);
+            column.Toggle?.Invoke(item, box.IsChecked == true);
+            bool after = read(item);
+
+            using (_toggling.Suppress()) box.IsChecked = after;
+
+            if (RowGridOf(box) is { } grid) NameRow(grid, item);
+
+            // ONLY WHEN THE MODEL ACTUALLY MOVED. CellValueChanged says a value was committed, and a
+            // refused toggle committed nothing - raising it anyway would make "changed" mean "was
+            // clicked", which is a different event and one nobody asked for.
+            if (before != after) CellValueChanged?.Invoke(item, index);
+        }
+
+        // WHATEVER THE CALLER BUILT, UNWRAPPED. No ContentControl around it and no Border: the
+        // control the caller returned is the control in the row, so its own margins, alignment and
+        // automation are what they look like at the call site rather than being negotiated with a
+        // host this toolkit put in the way.
+        //
+        // A null return is an EMPTY cell rather than a throw, which is the same tolerance Text gets
+        // two lines up (`?? string.Empty`). A build that has nothing to show for one row - no icon
+        // for an unknown kind - should not have to invent a blank control.
+        private Control TemplateCell(T item, int index) =>
+            _columns[index].Build?.Invoke(item) ?? new Border();
 
         // THE HORIZONTAL RULE IS ONE BORDER AROUND THE ROW, not a line per cell, because a rule
         // under a row is a property of the row - drawing it per cell would break wherever a column
@@ -1125,7 +1231,7 @@ namespace EmuSen.LunaP.Controls
         public void Edit(T item, int column)
         {
             if (item is null || column < 0 || column >= _columns.Count) return;
-            if (Cell(item, column) is not { } cell) return;
+            if (TextCellOf(item, column) is not { } cell) return;
 
             BeginEdit(item, column, cell);
         }
@@ -1285,7 +1391,7 @@ namespace EmuSen.LunaP.Controls
             _columns[column].Commit?.Invoke(item, text);
             ShowMessage(null);
 
-            if (Cell(item, column) is { } cell)
+            if (TextCellOf(item, column) is { } cell)
             {
                 cell.Text = _columns[column].Text(item) ?? string.Empty;
                 if (RowGridOf(cell) is { } grid) NameRow(grid, item);
@@ -1396,7 +1502,12 @@ namespace EmuSen.LunaP.Controls
 
         // Finds a realised cell for a model. Null when the row is scrolled out of view, which is a
         // real answer rather than a failure: there is nothing on screen to put an editor into.
-        private TableCell? Cell(T item, int column)
+        //
+        // SEARCHES BY THE MARKER AND NOT BY TYPE, since §57 - a cell can be a TableCell, a CheckBox
+        // or anything a caller returned from Build, and the one thing all three have is the attached
+        // column index. Whatever a template put inside its cell is walked past, because the marker is
+        // only ever set on the cell itself.
+        private Control? Cell(T item, int column)
         {
             if (Rows is null) return null;
 
@@ -1404,14 +1515,18 @@ namespace EmuSen.LunaP.Controls
             {
                 if (!Equals(container.DataContext, item)) continue;
 
-                foreach (TableCell cell in container.GetVisualDescendants().OfType<TableCell>())
+                foreach (Control candidate in container.GetVisualDescendants().OfType<Control>())
                 {
-                    if (cell.Column == column) return cell;
+                    if (TableCells.GetColumn(candidate) == column) return candidate;
                 }
             }
 
             return null;
         }
+
+        // The same lookup narrowed to a cell an editor can go into. A Check or Template cell answers
+        // null here and that is what makes Edit refuse them without a kind test of its own.
+        private TableCell? TextCellOf(T item, int column) => Cell(item, column) as TableCell;
 
         // THE INDENT AND THE TOGGLE, in front of the cell that carries the row's name - §55.
         //
@@ -1423,7 +1538,7 @@ namespace EmuSen.LunaP.Controls
         // The whole thing is a DockPanel and not a Grid: two fixed-width things on the left and one
         // elastic thing filling the rest is exactly what docking is, and a Grid here would need
         // three ColumnDefinitions per row per level for the same picture.
-        private Control Expander(T item, TableCell cell)
+        private Control Expander(T item, Control cell, int column)
         {
             object key = KeyOf(item);
             int depth = _depth.TryGetValue(key, out int found) ? found : 0;
@@ -1449,7 +1564,13 @@ namespace EmuSen.LunaP.Controls
             // a sortable heading is one (§27.3) - a tree a mouse can open and a keyboard cannot is a
             // tree half this toolkit's users cannot read. The name says what pressing it does rather
             // than what it is, because "expander" tells a reader nothing about which row.
-            AutomationProperties.SetName(toggle, $"{(expanded ? "Collapse" : "Expand")} {cell.Text}");
+            //
+            // NAMED FROM THE PROJECTION AND NOT OFF THE CELL, since §57. Reading cell.Text was fine
+            // while every cell was a TextBlock; an ExpanderColumn that is a checkbox or a template
+            // has no text to read, and the projection answers for all three kinds.
+            AutomationProperties.SetName(
+                toggle,
+                $"{(expanded ? "Collapse" : "Expand")} {_columns[column].Text(item) ?? string.Empty}");
 
             toggle.Click += (_, e) =>
             {
@@ -1614,9 +1735,15 @@ namespace EmuSen.LunaP.Controls
             Func<T, string, string?>? Validate,
             double? MinWidth,
             double? MaxWidth,
-            bool IsVisible)
+            bool IsVisible,
+            LunaCellKind Kind,
+            Func<T, bool>? Checked,
+            Action<T, bool>? Toggle,
+            Func<T, Control>? Build)
         {
-            public bool IsEditable => Commit is not null;
+            // Matches LunaColumn<T>.IsEditable rather than restating it loosely: a Check column is
+            // changed by being ticked and must not answer to the text editor, or F2 stops at it.
+            public bool IsEditable => Kind == LunaCellKind.Text && Commit is not null;
         }
 
         // The heading control for a column, and its glyph when it has one. Held so that a sort can

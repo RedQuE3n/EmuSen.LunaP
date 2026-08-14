@@ -1,10 +1,38 @@
 using System;
+using Avalonia;
 using Avalonia.Automation.Peers;
 using Avalonia.Automation.Provider;
 using Avalonia.Controls;
 
 namespace EmuSen.LunaP.Controls
 {
+    // WHICH COLUMN A CELL IS, ON ANY CONTROL AT ALL - see docs/LunaP.md §57.
+    //
+    // This was an instance property on TableCell until a cell stopped always being one. A Check
+    // column's cell is a stock Avalonia CheckBox and a Template column's cell is whatever the caller
+    // built, and neither can be made to carry a field - so the index moves to an attached property,
+    // which is Avalonia's own answer to "annotate a control you did not write".
+    //
+    // NOT READ BACK OFF Grid.GetColumn, which was true before there were cell kinds and is still the
+    // reason this exists at all: an expander puts a panel between the cell and the row grid (§55), so
+    // the cell's own Grid.Column is 0 whatever column it belongs to. Storing the index makes every
+    // lookup independent of how deep the cell sits.
+    //
+    // THE DEFAULT IS -1 AND NOT 0, so "no column was set" is distinguishable from "column 0". The
+    // lookup walks every descendant of a row, and a template column's cell is a caller's own control
+    // with a caller's own children under it; at a default of 0 the first of those children answers as
+    // column 0 and Edit opens an editor on somebody's Button. Sabotaged by changing it, which turns
+    // the lookup and Edit's refusal red together.
+    internal static class TableCells
+    {
+        public static readonly AttachedProperty<int> ColumnProperty =
+            AvaloniaProperty.RegisterAttached<TableCell, Control, int>("Column", -1);
+
+        public static void SetColumn(Control cell, int column) => cell.SetValue(ColumnProperty, column);
+
+        public static int GetColumn(Control cell) => cell.GetValue(ColumnProperty);
+    }
+
     // One cell of a LunaTable row - see docs/LunaP.md §50.6.
     //
     // A PLAIN TextBlock UNTIL THE TABLE COULD BE EDITED, and this type exists for exactly one
@@ -23,12 +51,6 @@ namespace EmuSen.LunaP.Controls
     // rather than two that can disagree.
     internal sealed class TableCell : TextBlock
     {
-        // WHICH COLUMN THIS IS, CARRIED ON THE CELL rather than read back off Grid.GetColumn.
-        // Once §55 puts an expander in front of a cell, the cell is no longer a direct child of the
-        // row grid - it sits inside a panel that is - so its Grid.GetColumn is 0 whatever column it
-        // belongs to. Storing the index makes every lookup independent of how deep the cell is.
-        internal int Column { get; set; }
-
         internal Func<string>? Read { get; set; }
 
         internal Action<string>? Write { get; set; }

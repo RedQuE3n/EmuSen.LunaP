@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -91,13 +92,42 @@ namespace EmuSen.LunaP.Gallery
                   {
                       Width = "40",
                       Sort = (a, b) => a.Page.CompareTo(b.Page),
+                  })
+
+                  // THE OTHER TWO CELL KINDS, because a table that can only be shown drawing text is
+                  // a table whose §57 is a paragraph nobody can see. A check column is the commonest
+                  // non-text column there is, and this one is live: tick it and the model changes.
+                  .Column(new LunaColumn<Field>("req", f => f.Required, (f, on) => f.Required = on)
+                  {
+                      Width = "40",
+                  })
+
+                  // AND THE ESCAPE HATCH, DELIBERATELY SHOWN AS SOMETHING UNREADABLE. A coloured dot
+                  // is exactly the cell a screen reader cannot describe, which is why the template
+                  // form REQUIRES its third argument - the sentence a reader hears in place of the
+                  // shape. Seeing the dot beside "kind: text" in the row's spoken name is the whole
+                  // argument for that being required rather than optional (§24, §57.2).
+                  .Column(new LunaColumn<Field>(
+                      "kind",
+                      f => new Ellipse
+                      {
+                          Width = 8,
+                          Height = 8,
+                          Fill = f.Type == "checkbox" ? LunaPalette.Info : LunaPalette.Nominal,
+                          VerticalAlignment = VerticalAlignment.Center,
+                          HorizontalAlignment = HorizontalAlignment.Left,
+                      },
+                      f => f.Type)
+                  {
+                      Width = "30",
                   });
+
             fields.Refresh(new[]
             {
-                new Field("Site", "text", 1),
-                new Field("Technician", "text", 1),
-                new Field("Approved", "checkbox", 2),
-                new Field("Total aid retained", "text", 2),
+                new Field("Site", "text", 1, required: true),
+                new Field("Technician", "text", 1, required: true),
+                new Field("Approved", "checkbox", 2, required: false),
+                new Field("Total aid retained", "text", 2, required: false),
             });
 
             // THE ONLY SAMPLES HERE THIS TOOLKIT DID NOT WRITE, and that is the reason they are
@@ -302,16 +332,21 @@ namespace EmuSen.LunaP.Gallery
         // than in a consumer's own code.
         private sealed class Field
         {
-            public Field(string name, string type, int page)
+            public Field(string name, string type, int page, bool required)
             {
                 Name = name;
                 Type = type;
                 Page = page;
+                Required = required;
             }
 
             public string Name { get; set; }
             public string Type { get; set; }
             public int Page { get; set; }
+
+            // Written by the check column's toggle, which is the point of it being here: the gallery
+            // table is live, and a tick changes a model rather than a picture.
+            public bool Required { get; set; }
         }
 
         // Real pixels, so the image view is not just showing a flat rectangle.

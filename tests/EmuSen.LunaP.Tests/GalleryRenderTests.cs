@@ -53,8 +53,12 @@ namespace EmuSen.LunaP.Tests
             // when the table happens to be in view, which is a test that breaks when somebody
             // adds a section above it. TableTests asserts all three rows against a table that is
             // actually on screen.
+            // FIVE SINCE §57, three of text and one each of the other two cell kinds. The number is
+            // asserted rather than "more than one" because it is the header definitions that prove
+            // the template applied, and a header that lost a column is exactly the failure this
+            // line is here to catch.
             LunaTable table = window.FindPart<LunaTable>()!;
-            Assert.Equal(3, table.FindNamed<Grid>("PART_Header").ColumnDefinitions.Count);
+            Assert.Equal(5, table.FindNamed<Grid>("PART_Header").ColumnDefinitions.Count);
             Assert.True(table.CountParts<ListBoxItem>() >= 1);
 
             // FOUR, and three of them are the shell's own. AppWindow builds one divider per edge
