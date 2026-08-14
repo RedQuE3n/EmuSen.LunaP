@@ -77,6 +77,33 @@ pixels.**
   aspect ratio. It defaults to `Stretch.None`, which does not scale at all. The
   value never changed, only the sentence describing it (`§52`).
 
+**A table cell no longer has to be text.**
+
+- A **checkbox column**: `new LunaColumn<T>("req", r => r.Required, (r, on) =>
+  r.Required = on)`. Leave the third argument off and the column is read-only —
+  which means genuinely read-only, including to a screen reader (`§57.3`).
+- A **template column**: `new LunaColumn<T>("kind", r => BuildMyControl(r), r =>
+  r.Kind)`. The third argument is **required**, and it is what a screen reader
+  hears in place of your control. There is no way to declare a cell nobody can
+  read (`§57.2`).
+- Both are ordinary constructors, so `Width`, `Sort`, `MinWidth`, `IsVisible` and
+  the rest apply exactly as they do to a text column (`§57.1`).
+- A `Toggle` that declines to write leaves the tick where it was — the table
+  re-reads your model rather than trusting the box. What it cannot do is say
+  *why*, which a text column's `Validate` can; that gap is recorded rather than
+  approximated (`§57.4`).
+- `TryGetCell` now returns `Control?` and finds all three kinds.
+- **Nothing changes for a table of text columns**, which is still every column
+  you have declared so far.
+
+**Disabled checkboxes change colour, including ones you built yourself.** Fluent's
+disabled checkbox is translucent white, which on the light surface put a white
+tick on light grey at **1.78:1** — unreadable. `FluentBridge` now overrides three
+keys so a disabled box holds 3:1 in both variants. WCAG exempts disabled controls
+from any contrast requirement; that exemption assumes you never need to *read*
+one, and a read-only cell breaks the assumption (`§57.3`). This affects any
+`CheckBox` in your application, not just table cells.
+
 ---
 
 ## 0.7.1

@@ -165,10 +165,22 @@ public class EmuSen.LunaP.Controls.FilterBar : Avalonia.Controls.Primitives.Temp
 public class EmuSen.LunaP.Controls.HintText : Avalonia.Controls.TextBlock
     public HintText()
 
+public enum EmuSen.LunaP.Controls.LunaCellKind
+    public const EmuSen.LunaP.Controls.LunaCellKind Check = 1
+    public const EmuSen.LunaP.Controls.LunaCellKind Template = 2
+    public const EmuSen.LunaP.Controls.LunaCellKind Text = 0
+    public int value__
+
 public sealed class EmuSen.LunaP.Controls.LunaColumn<T>
+    public EmuSen.LunaP.Controls.LunaCellKind Kind { get; }
+    public LunaColumn<T>(string header, System.Func<T, Avalonia.Controls.Control> build, System.Func<T, string> spoken)
+    public LunaColumn<T>(string header, System.Func<T, bool> read, System.Action<T, bool>? write = null, System.Func<T, string>? spoken = null)
     public LunaColumn<T>(string header, System.Func<T, string> text)
+    public System.Action<T, bool>? Toggle { get; }
     public System.Action<T, string>? Commit { get; set; }
     public System.Comparison<T>? Sort { get; set; }
+    public System.Func<T, Avalonia.Controls.Control>? Build { get; }
+    public System.Func<T, bool>? Checked { get; }
     public System.Func<T, string, string?>? Validate { get; set; }
     public System.Func<T, string> Text { get; }
     public bool IsEditable { get; }

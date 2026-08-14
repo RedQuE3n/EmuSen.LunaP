@@ -69,6 +69,42 @@
     <SolidColorBrush x:Key="CheckBoxForegroundUnchecked" Color="{DynamicResource LunaTextColor}" />
     <SolidColorBrush x:Key="CheckBoxForegroundChecked" Color="{DynamicResource LunaTextColor}" />
 
+    <!-- THE DISABLED STATES, WHICH §48 SWEPT PAST AND §57 HAD TO COME BACK FOR.
+         WCAG 1.4.11 exempts a disabled control from any contrast requirement,
+         and that exemption assumes something a read-only table cell breaks: it
+         assumes you do not need to READ a control you cannot use. A read-only
+         check column exists to be read. Its value is information, not chrome.
+
+         Fluent's own disabled colours are a translucent white over whatever is
+         behind, and measured against LunaP's surfaces they are:
+
+             dark   checked   white tick on #787878    4.42:1
+             dark   unchecked stroke #787878           3.78:1
+             light  checked   white tick on #c2c2c2    1.78:1
+             light  unchecked stroke #929292           2.80:1
+
+         The light column is the defect - a white tick on light grey is a value
+         nobody can read. §57.3 carries the measurement.
+
+         The rule these three encode: THE OUTLINE IS STRUCTURE AND DOES NOT CHANGE
+         WITH ENABLEMENT; THE FILL CARRIES STATE, AND A DISABLED FILL IS MUTED
+         RATHER THAN ACCENTED. So an empty box keeps LunaBorder either way
+         (3.27:1 dark, 3.03:1 light - the same figures the enabled one already
+         has), and a ticked-but-disabled box goes from accent to LunaMuted, which
+         is the token that already means "present, not active": 4.22:1 dark and
+         5.75:1 light against the surface, carrying a LunaOnAccent tick at 3.95:1
+         and 6.39:1. Every figure clears 1.4.11's 3:1.
+
+         Indeterminate takes the same pair. A LunaTable check column cannot be
+         indeterminate - Checked is a Func<T, bool> - but a consumer's own
+         CheckBox can, and a third state that stayed Fluent's would be the one
+         illegible box left in the set. -->
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedDisabled" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundCheckedDisabled" Color="{DynamicResource LunaOnAccentColor}" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedDisabled" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillIndeterminateDisabled" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundIndeterminateDisabled" Color="{DynamicResource LunaOnAccentColor}" />
+
     <SolidColorBrush x:Key="RadioButtonForeground" Color="{DynamicResource LunaTextColor}" />
     <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFill" Color="{DynamicResource LunaAccentColor}" />
 

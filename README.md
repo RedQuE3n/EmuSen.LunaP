@@ -179,11 +179,39 @@ fields.TableKey = "fields";          // remember widths and sort order
 the table; a rejected edit keeps the caret rather than throwing away what was
 typed. Double-click or F2 opens an editor, Enter commits, Escape cancels.
 
-**It is flat and stays flat: no tree.** If you want hierarchy or a real data
-grid, `Avalonia.Controls.TreeDataGrid` is the one to reach for — but check
-`docs/LunaP.md` §27.1 first, because it requires a paid Avalonia Accelerate
-licence at run time, in *your* executable project, and LunaP therefore does not
-depend on it.
+**A cell does not have to be text.** A checkbox column takes a boolean projection
+and, optionally, somewhere to write it back; a template column takes a control and
+the sentence a screen reader hears in its place, which is required rather than
+optional because a coloured dot describes itself to nobody:
+
+```csharp
+fields.Column(new LunaColumn<Field>("req", f => f.Required, (f, on) => f.Required = on)
+      {
+          Width = "40",                // read-only if you leave the writer off
+      })
+      .Column(new LunaColumn<Field>(
+          "kind",
+          f => new Ellipse { Width = 8, Height = 8, Fill = ColourFor(f.Type) },
+          f => f.Type));                // what a screen reader hears instead
+```
+
+**Give it a `Children` projection and it is a tree.** Null — the default — means
+it is not one, and a table that never sets it runs the code it always did:
+
+```csharp
+files.Children = f => f.Entries;      // return empty for a leaf
+files.ExpanderColumn = 0;             // which column carries the toggle
+files.ExpandAll();
+```
+
+Rows sort within their level, expansion is keyed by `Key` so it survives a poll
+that hands back new objects, and a `Children` that returns an ancestor is dropped
+rather than overflowing the stack.
+
+If you want a full data grid, `Avalonia.Controls.TreeDataGrid` is the one to reach
+for — but check `docs/LunaP.md` §27.1 and §54.5 first, because it requires a paid
+Avalonia Accelerate licence that fails the **build**, not the run, in *your*
+project. LunaP therefore does not depend on it.
 
 `RgbaImageView` shows a raw RGBA buffer and reuses its bitmap across frames. It
 takes them from wherever you already have them, so a frame in native memory is
