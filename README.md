@@ -179,6 +179,20 @@ fields.TableKey = "fields";          // remember widths and sort order
 the table; a rejected edit keeps the caret rather than throwing away what was
 typed. Double-click or F2 opens an editor, Enter commits, Escape cancels.
 
+Give it a `RowHeader` and it grows a gutter down the left — numbers, or whatever
+the model calls the row:
+
+```csharp
+fields.RowHeader = (_, i) => (i + 1).ToString();   // or (row, _) => row.Address.ToString("X4")
+fields.RowHeaderCaption = "#";
+```
+
+Columns wider than the table scroll sideways, and the header follows. **This is a
+fix rather than a feature**: before 0.8.0 the columns past the right edge were
+resolved, clipped and unreachable by scrollbar, wheel or keyboard. Star-width
+columns — the default — fit by definition and never scroll. Frozen columns are
+*not* here; `docs/LunaP.md` §59.3 has the visual tree walked out and says why.
+
 **A cell does not have to be text.** A checkbox column takes a boolean projection
 and, optionally, somewhere to write it back; a template column takes a control and
 the sentence a screen reader hears in its place, which is required rather than

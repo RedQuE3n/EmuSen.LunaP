@@ -5445,3 +5445,115 @@ different reason), so quieter is not unreadable.
 
 Right-aligned, which matters for the case this is mostly for: numbers and hex addresses are read down
 a column by their last digit, and a left-aligned gutter of 9, 10, 11 puts the units under the tens.
+
+## 59. Columns nobody could reach, and the frozen ones that need a different control
+
+The other half of pass 4. It began as "frozen columns" and turned into something else on the first
+measurement: **there was no horizontal scrolling to freeze anything against.**
+
+### 59.1 The defect, measured
+
+Six columns of `Width = "200"` in a 400-wide table, on Avalonia 12.1.0:
+
+    header bounds     = 12, 4, 376, 20      <- clipped
+    header col0..col5 = 200 each            <- resolved, all six
+    ScrollViewer      = extent 400, viewport 400, HorizontalScrollBarVisibility Disabled
+    row grid bounds   = 12, 4, 376, 20      <- clipped identically
+
+Every column resolved to the width it asked for and the grid was **clipped at the viewport**. The
+ScrollViewer inside the `ListBox` reported extent equal to viewport, so there was no scrollbar, and
+nothing for the wheel or the keyboard to move either. **Columns past the right edge were not awkward
+to reach; they were absent from every means a user has of reaching them**, with no error and nothing
+on screen to suggest anything was missing.
+
+This is a defect and not a missing feature, and it had been there since §27.
+
+### 59.2 The fix is one attached property and one handler
+
+`ScrollViewer.HorizontalScrollBarVisibility="Auto"` on `PART_Rows`. A `ListBox` already contains a
+ScrollViewer; Fluent leaves its horizontal bar `Disabled`. Turning it on gets the bar, the wheel, the
+keyboard and touch from a viewer that was already there — none of which a scrollbar of this control's
+own would have brought without writing all four.
+
+The header is the **one part of this control outside that viewer**, so it is the one part that has to
+be moved by hand: a `ScrollChanged` handler sets a `TranslateTransform` on `PART_Header`.
+`ScrollChanged` is routed, which is what lets `OnPartsAttached` subscribe to a viewer that does not
+exist yet — the `ListBox` has not applied its own template at that point. A render transform rather
+than a margin or a nested ScrollViewer: it moves a laid-out subtree for no measure pass, and it
+cannot disturb the shared size groups that make the header and rows line up at all (§27.10).
+
+The header's `Border` gains `ClipToBounds`, because a translated grid paints outside its parent
+otherwise.
+
+**Measured after, in both directions.** Six 200px columns: extent 1224 against viewport 400, the row
+grid laid out at its natural 1200, the horizontal bar realised with `Maximum` 824, and the header
+tracking at -300 for an offset of 300. Three star columns in a 600-wide window: 379 + 189 + 8 = 576,
+exactly the available width, header and rows agreeing to **0.0** on every column, extent equal to
+viewport and no bar. §27.10's failure mode — a star column behaving as Auto and the table no longer
+filling its own width — does not recur through this route.
+
+The guard that matters is not the scroll but the **alignment**: every heading is measured against its
+own cells, in the table's coordinates, at four offsets. Sabotaging the handler puts heading 0 137
+pixels from its cells at an offset of 137.
+
+### 59.3 Frozen columns need a different control, and here is the walk that says so
+
+`FrozenColumnCount` is the other item §54.3 lists, and it is **not delivered**. Not because it is
+large, but because this control's shape cannot express it, and that is worth recording so it is not
+attempted again the same way.
+
+To freeze a column, it must stay put while its neighbours move. The neighbours move because the
+`ScrollContentPresenter` moves them. So the question is whether any ancestor of a cell can hold still
+— and the ancestor chain from a realised cell up to the `ListBox` was **walked rather than reasoned
+about**:
+
+    Grid → ContentPresenter → ListBoxItem → VirtualizingStackPanel → ItemsPresenter
+         → ScrollContentPresenter → Grid → ScrollViewer → Border → ListBox
+
+Everything below `ScrollContentPresenter` moves; the presenter itself, and everything above it,
+**contains every cell of every column**. There is no ancestor anywhere in that chain that holds some
+columns and not others. Measured directly as well: at an offset of 300, column 0's cell moves from
+x=29 to x=-271 and the gutter from x=12 to x=-288, both exactly -300.
+
+Two ways out, and why neither is a line of code here:
+
+- **Counter-translate the frozen cells** by `+offset`. They then sit still — over the scrolled cells,
+  with nothing behind them, so the scrolling text shows through. Giving them an opaque backdrop needs
+  the row's own background, and that is not reachable: the `ListBoxItem`'s selected and pointer-over
+  fills are painted by *Fluent's* template on a part inside it, not by `ListBoxItem.Background`.
+  Reaching into that template is exactly what §48 refused to do, and for the reason it gave.
+- **Clip the scrolling cells** out of the frozen band. A clip is applied in its own element's
+  coordinate space, so it must live on an element that does not move — and by the walk above, every
+  such element contains all the columns.
+
+Which leaves the frozen region living **outside** the scrolling viewport: either a second list beside
+the first with its vertical offset synced, or one presenter that lays out both regions in a single
+pass. TreeDataGrid has `FrozenColumnCount` on `TreeDataGridCellsPresenter` and
+`TreeDataGridColumnHeadersPresenter` — on the *presenters*, both of them — which is precisely the
+second answer, and is why it is there rather than on a Grid.
+
+The two-list version has a failure this toolkit walked into last week: **row heights need not match.**
+§57 gave columns a `Template` kind, so a cell in the scrolling region can be any height a caller's
+control is, and two lists whose rows disagree in height desync progressively down the screen. One
+presenter is the answer, and replacing the row Grid with an owned layout pass means giving up the
+shared size scopes that §27, §27.7, §27.10 and §27.11 are all about.
+
+**So it is recorded as a pass of its own rather than an item in one**, and the §54.3 line stays open.
+What is delivered instead is the thing that made it look easy: a table whose extra columns can now be
+reached at all.
+
+### 59.4 A consequence, pinned rather than left to be found
+
+The gutter (§58) lives in the row grid, so it scrolls away with everything else. It is the natural
+*first* frozen column and cannot be one yet. A test asserts that it does scroll, so the behaviour is
+a decision on the record rather than a surprise; when the frozen work lands, that test should be
+rewritten rather than deleted.
+
+### 59.5 A warning that hid behind a grep
+
+§56.4 recorded a warning that got into a commit because the check used an incremental build, and
+switched verification to `--no-incremental`. **A warning got into §58's commit anyway**, because the
+verification pipes the build through `grep -E "warning [A-Z]"` — and the analyser IDs are
+`xUnit2029`, lowercase. The build was right, the build was fresh, and the filter threw the line away.
+Verification is `grep -iE "error|warning"` now, and reads the `0 Warning(s)` summary line rather than
+trusting a pattern to match every diagnostic format.

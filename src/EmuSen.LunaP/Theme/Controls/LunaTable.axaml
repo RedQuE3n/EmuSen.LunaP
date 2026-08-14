@@ -35,9 +35,14 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <DockPanel>
+                    <!-- ClipToBounds, because the header is what SCROLLS SIDEWAYS and a
+                         translated grid paints outside its parent unless something
+                         says otherwise. Without it a table scrolled right draws its
+                         leftmost heading over the window beside it. §59. -->
                     <Border DockPanel.Dock="Top"
                             BorderBrush="{DynamicResource LunaBorder}"
                             BorderThickness="0,0,0,1"
+                            ClipToBounds="True"
                             Padding="12,4,12,6">
                         <Grid Name="PART_Header" />
                     </Border>
@@ -57,9 +62,25 @@
                                     Margin="12,4"
                                     IsVisible="False" />
 
+                    <!-- HORIZONTAL SCROLLING, AND WHY IT IS ONE ATTACHED PROPERTY RATHER
+                         THAN A SCROLLBAR OF THIS CONTROL'S OWN. A ListBox already
+                         contains a ScrollViewer; Fluent leaves its horizontal bar
+                         Disabled, which is what made columns past the right edge
+                         unreachable by scrollbar, wheel or keyboard - measured, not
+                         inferred: six columns of 200 in a 400-wide table resolved all
+                         six definitions to 200 and clipped the grid at 376, with the
+                         viewer reporting extent equal to viewport (§59).
+
+                         Turning it on gets the bar, the wheel, the keyboard and touch
+                         from the ScrollViewer that was already there. The header is the
+                         only part outside it, and LunaTable translates that to match -
+                         which is the whole of the code this needs. Auto rather than
+                         Visible, so a table whose columns fit shows no bar and loses no
+                         height. -->
                     <ListBox Name="PART_Rows"
                              Background="Transparent"
-                             BorderThickness="0" />
+                             BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto" />
                 </DockPanel>
             </ControlTemplate>
         </Setter>
