@@ -41,6 +41,22 @@
                             Padding="12,4,12,6">
                         <Grid Name="PART_Header" />
                     </Border>
+                    <!-- WHY THE VALIDATION MESSAGE IS HERE AND NOT IN THE CELL.
+                         A cell is a few characters wide and already full of the
+                         editor; a message inside one would either be clipped or
+                         would widen the column while somebody is typing in it.
+                         Docked under the whole table it has room for a sentence,
+                         and it is the same "message below the thing it is about"
+                         FieldRow settled on (§49.4).
+
+                         Collapsed rather than reserved: a table that keeps an
+                         empty line under it for a message it usually has nothing
+                         to say is a table that is shorter than it looks. §50. -->
+                    <luna:ErrorText Name="PART_Error"
+                                    DockPanel.Dock="Bottom"
+                                    Margin="12,4"
+                                    IsVisible="False" />
+
                     <ListBox Name="PART_Rows"
                              Background="Transparent"
                              BorderThickness="0" />

@@ -4637,3 +4637,130 @@ The field half is done; the cell half is not. `LunaTable<T>.Commit` and `.Valida
 `PLAN-table.md`, and they now have an error presentation to share (§4.8 said they would). Pass H —
 `ISelectionItemProvider` on rows and `IValueProvider` on editable cells — is the automation depth
 §2.1 of that plan identified, and both interfaces were confirmed present in the enumeration above.
+
+## 50. The table can be edited, and a row nobody could hear
+
+Pass G and Pass H of `PLAN-table.md`, which were the last two open items in it. The editing is
+ordinary work that the plan had already designed; **what this section is really for is §50.4 and
+§50.5** — a guard that could not fail, and a defect it led to.
+
+### 50.1 One idea of "invalid", spelled twice
+
+```csharp
+new LunaColumn<Field>("name", f => f.Name)
+{
+    Commit   = (f, text) => f.Name = text.Trim(),
+    Validate = (_, text) => string.IsNullOrWhiteSpace(text) ? "A field needs a name." : null,
+}
+```
+
+`Commit` null means the column is **read-only**, which is the default — so adding editing to this
+toolkit changed no existing table's behaviour (§26.13). `Validate` returns the *problem* rather than
+a bool, for the same reason `FieldRow.Error` is a string with no `IsValid` beside it (§49.1). The two
+are deliberately the same shape, and the message lands in an `ErrorText` under the table: an invalid
+cell and an invalid field are one idea, not two.
+
+Writing is the caller's job because only the caller knows what the column means — parsing lives in
+`Validate` in practice, which leaves `Commit` free to assume the text is good.
+
+Double-click or **F2** opens an editor; **Enter** or focus loss commits; **Escape** cancels, which it
+does by never having written — the model is untouched until `Commit` runs, so there is nothing to roll
+back. A refused value **keeps the caret**, because closing the editor would throw away what was typed
+and then show a message about a value no longer on screen.
+
+### 50.2 The editor goes into the row, not through a rebuild
+
+Trap 2 of `PLAN-table.md` §6: an edit must not make its row jump. The table re-applies its sort
+whenever the view is rebuilt (§27.8), so a commit that called `Show()` would move the row being
+edited to wherever its new value now sorts — with the caret in it. So the editor is placed into the
+existing row grid, over the cell it replaces, and **nothing in the commit path touches `_items`,
+`_view` or the sort.** The next `Refresh` re-sorts, so the sort is deferred rather than lost, and
+the test asserts both halves.
+
+The cell re-reads through the projection afterwards rather than echoing what was typed, so a `Commit`
+that normalises a value cannot leave the display and the model disagreeing.
+
+### 50.3 `Edit` is the one method that refuses to queue
+
+`Select` before the template queues, because a caller saying which row should be highlighted when the
+window opens has asked for something sensible early (§27.6). `Edit` does not. A caret belongs to
+somebody who is looking at the table, and a queued one would open an editor nobody asked for the
+moment the window appeared. It no-ops, and `TemplateOrderTests` carries the exemption with that
+reason — pinned by a test, because §28.2's rule is that an exemption is a claim.
+
+### 50.4 A guard that could not fail, caught by sabotaging it
+
+Trap 1 was "a recycled row must not carry an editor". The first version of that test opened an
+editor, scrolled the row out of view and back, and asserted the model was unchanged. **It passed with
+the mechanism removed.**
+
+The reason is worth keeping: the test never typed anything. Committing an unchanged value and
+cancelling an unchanged value produce the identical model, so the assertion could not tell the two
+apart, and the whole question — *does scrolling away write something?* — was invisible to it.
+
+Typing one string before scrolling made it fail properly, and the failure said what the real
+behaviour was:
+
+> Expected: `"row00"`, Actual: `"SCROLLED AWAY"`
+
+Without the `DetachedFromVisualTree` hook, a row scrolled out of view **commits whatever was in the
+editor**, because recycling removes the editor from the tree and that raises `LostFocus`, and
+`LostFocus` commits. A user scrolling a long table would have written values they never confirmed.
+The hook cancels first, and is what makes the answer "nothing was written".
+
+*This is the second time in this arc that a sabotage found a hollow guard rather than confirming a
+good one (§48.2 was the first). §22.5's rule earns its keep.*
+
+### 50.5 A row nobody could hear, since §27.3
+
+Measuring for Pass H turned up a defect in shipped behaviour.
+
+§27.3 builds every row a spoken name — `"name: Site, type: text, pg: 1"` — because a row of bare
+`TextBlock`s otherwise announces as three values with nothing to say which column each came from.
+That name was set on the row **`Grid`**. The `Grid`'s peer is a `NoneAutomationPeer` with
+`IsControlElement = false`: it is not in the view a screen reader navigates, so **the sentence was
+never reachable**. What a reader actually got was the *container's* name, and a `ListBoxItem` with no
+name of its own falls back to its `DataContext.ToString()`:
+
+> `EmuSen.LunaP.Gallery.GalleryWindow+Field`
+
+Three rows, three announcements of a .NET type name. The feature had never worked.
+
+**The guard could not have caught it.** `TableTests.A_row_says_what_each_of_its_cells_is` reads
+`AutomationProperties.GetName` straight back off the `Grid` — it asserts that a value was *stored*,
+not that anybody can hear it. That is the §5.5 shape again: an assertion about wiring that passes
+while the effect is absent, and §22.6 is the same lesson from the other direction.
+
+The name now goes on the container too, from `ContainerPrepared` so that recycled rows are renamed
+for whatever model they now hold, and from `NameRow` after a commit. The new guard **asks the peer**.
+Sabotaged by removing the container naming, it reports exactly the defect above.
+
+The `Grid` keeps its name as well: it costs nothing, and if Avalonia ever puts row content into the
+control view the sentence is already there.
+
+### 50.6 Pass H, half of which was already done
+
+`PLAN-table.md` §2.1 said the accessibility gap was two providers Avalonia defines and LunaP did not
+use. Enumerating rather than assuming (§48.2):
+
+- **`ISelectionItemProvider` was already there.** A row *is* a `ListBoxItem`, and Avalonia's own
+  `ListItemAutomationPeer` provides it. It was never work. It has a test anyway, because a future
+  change that stopped using a `ListBox` would take it away silently.
+- **`IValueProvider` was not.** `TextBlockAutomationPeer` offers none, so a reader could hear a
+  cell's text and had no way to set it.
+
+So cells are now `TableCell`, an **internal** `TextBlock` subclass with a peer that implements
+`IValueProvider`. Internal because it exists to carry two delegates the table already owns, and §32's
+rule is that everything public is something a consumer can see and cannot patch. `IsReadOnly` answers
+per column, which is why the provider is offered on read-only columns too rather than hidden: a
+column that will not take a value should say so.
+
+**A reader writing a cell goes through the same `Validate` gate a typist does.** Routed through the
+table rather than calling `Commit` directly, or an assistive technology becomes a way around the
+rules the control enforces for everyone else. Sabotaged by removing the gate, the guard fails with
+the `FormatException` the caller's own `int.Parse` throws — which is precisely the crash a consumer
+would have shipped.
+
+§27.3's refusal to claim the `DataGrid` control type still stands, and the enumeration confirms why:
+there is no `IGridProvider` or `ITableProvider` anywhere in `Avalonia.Automation.Provider`. `Group`
+is the platform ceiling rather than a lesser answer.
