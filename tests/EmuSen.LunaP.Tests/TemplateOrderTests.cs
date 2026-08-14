@@ -117,6 +117,34 @@ namespace EmuSen.LunaP.Tests
                     + $"{c.FindNamed<ListBox>("PART_Rows").GetVisualDescendants().OfType<ListBoxItem>().Count(i => i.IsSelected)} row selected, "
                     + $"model {((LunaTable<string>)c).Selected}"),
 
+            // §67's, and it found something. A cell selection is held by KEY rather than by visual,
+            // so it survives having no template with no work at all - but the ROW under the current
+            // cell is put on the ListBox, and before the template there is no ListBox to put it on.
+            // Configured first, the table came up with a boxed cell and Selected reading null, which
+            // is exactly the disagreement this trap exists to catch. The read asks all three: the
+            // model the table thinks is selected, the coordinate, and whether a box was actually
+            // drawn - a selection nothing paints is §5.5's shape again.
+            new("LunaTable.SelectCell/ClearCellSelection",
+                () => new LunaTable<string> { SelectionUnit = LunaSelectionUnit.Cell },
+                c =>
+                {
+                    var table = (LunaTable<string>)c;
+                    table.Column("name", s => s).Column("length", s => s.Length.ToString(), "60");
+                    table.Refresh(new[] { "alpha", "beta", "gamma" });
+                    table.SelectCell("gamma", 1);
+                    table.SelectCell("beta", 1);
+                    table.ClearCellSelection();
+                    table.SelectCell("beta", 0);
+                },
+                c =>
+                {
+                    var table = (LunaTable<string>)c;
+                    return $"model {table.Selected}, "
+                        + $"cell {table.SelectedCell?.Row}:{table.SelectedCell?.Column}, "
+                        + $"selected {table.IsCellSelected("beta", 0)}/{table.IsCellSelected("beta", 1)}, "
+                        + $"boxes {c.GetVisualDescendants().OfType<Border>().Count(b => b.Classes.Contains("cell-selection"))}";
+                }),
+
             new("LunaList.Refresh/Select",
                 () => new LunaList<string>(),
                 c =>
@@ -301,6 +329,14 @@ namespace EmuSen.LunaP.Tests
             (typeof(LunaTable<>), "ExpandAll"),
             (typeof(LunaTable<>), "CollapseAll"),
             (typeof(LunaTable<>), "IsExpanded"),
+
+            // A cell selection is held by key and applied at the next mark, so the same script runs
+            // in both orders - and the LunaTable.SelectCell/ClearCellSelection case runs it.
+            // IsCellSelected is here because that case's read is what asks it.
+            (typeof(LunaTable<>), "SelectCell"),
+            (typeof(LunaTable<>), "ClearCellSelection"),
+            (typeof(LunaTable<>), "IsCellSelected"),
+
             (typeof(LunaList<>), "Refresh"),
             (typeof(LunaList<>), "Select"),
             (typeof(Dropdown), nameof(Dropdown.Fill)),

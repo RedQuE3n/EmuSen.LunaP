@@ -6195,3 +6195,127 @@ that cannot distinguish "set correctly" from "never set".
 The guard uses `ExpanderColumn = 1` and asserts both halves: the attached property, and that the two
 cells do not share an x. Sabotaged by putting the column back on the inner cell, the second assertion
 reports the expander column starting at 0 inside a column 0 that ends at 80.
+
+## 67. Cell selection, and the six guards that could not fail
+
+The last big row of §54.3, and the one §47.3 classified as a *new kind* rather than a completion —
+correctly, which §54.2 kept while overruling what followed from it. It is a new kind: a selection
+stops being a row and becomes a coordinate, and F2, the arrow keys, `SelectedItems` and the automation
+story all change shape around that.
+
+### 67.1 Two properties, because the reference folded two questions into one enum
+
+`TreeDataGridSelectionMode` is `None / Row / Cell / Multiple` — enumerated from the assembly, not
+recalled. Four members carrying two independent questions: *how many* things are selected, and *what
+kind of thing* a selection is. It cannot express single-cell and multi-cell as different states,
+because it has spent one member on each answer to a different question.
+
+LunaP splits them, and `LunaSelectionMode`'s own comment had already committed to this in pass 2
+before there was anything to split with:
+
+```csharp
+table.SelectionUnit = LunaSelectionUnit.Cell;      // Row is the default
+table.SelectionMode = LunaSelectionMode.Multiple;  // and this still means how many
+```
+
+Two properties **multiply** where one enum adds: Row and Cell against None, Single and Multiple is six
+behaviours from five members, and a third unit would cost one member rather than three. This is
+§56.1's argument for `[Flags]` edit gestures arriving at the same place from the other direction —
+*"an enum of named combinations grows a member per pair"*.
+
+### 67.2 A coordinate made of a model, not of two positions
+
+`CellIndex` is `(int ColumnIndex, IndexPath RowIndex)`. Both halves are positions, and a position is
+only true until something is sorted, filtered, expanded or refreshed.
+
+```csharp
+public readonly record struct LunaCell<T>(T Row, int Column) where T : class;
+```
+
+The row half is the **model**, because that is the identity every other selection API on this control
+already uses and the one thing that survives a rebuild — `Selected` is a `T`, `Edit` and `TryGetCell`
+take the model, expansion is keyed by model (§55.4), row selection has been keyed by model since
+§27.6. The column half stays an index because a column has no other identity here: `LunaColumn<T>` is
+a declaration rather than something a caller holds, and headers are not unique.
+
+The selection itself is a set of `(key, column)` pairs. Held by key rather than by model, so a
+`Refresh` that rebuilds every object keeps the selection; walked against the current view on the way
+out, so a sort or an expand reorders `SelectedCells` for free and there is no second copy to keep in
+step.
+
+### 67.3 An outline, never a fill
+
+A selected cell is a `Border` sibling in the cell's grid column — the same shape as a vertical grid
+rule (§56.2) and the frozen seam (§63.1), and for the same reason: no wrapper, so nothing about the
+row's tree changes and `BeginEdit` still finds a `Panel` where it needs one.
+
+**It is drawn as an outline and that is load-bearing rather than decorative.** §57 lets a cell be any
+control a caller returned from `Build` — a coloured dot, a progress bar, a sparkline. A fill would
+paint over all three. A box is drawable around any of them and hides none, and it survives a host
+restyling the row's own selected background, which a fill chosen to sit on top of one would not.
+
+Built on demand rather than one per cell kept hidden, for the reason `Row()` already gives for not
+building hidden columns: *a control that cannot be seen still costs a measure pass per row per frame*.
+
+### 67.4 What the keyboard owns, and what it deliberately does not
+
+Left and Right walk the columns, Home and End go to the ends, and a hidden column is stepped over
+rather than landed on — a selection nobody can see is one the user cannot act on, and the key would
+look like it had done nothing.
+
+**Up and Down are not handled**, which is the more interesting half. The `ListBox` already moves its
+row selection with them, scrolls and virtualises while doing so, and the current cell's row follows
+because the row under the cell is kept in step anyway. Re-implementing them would be a second, worse
+copy of three behaviours. The exception is Shift: `Shift+Up` in a single-selection `ListBox` does
+nothing at all, so a range that grows upwards has to be built here — and once `Shift+Up` is ours,
+`Shift+Down` has to be too, or one key would behave differently from the other.
+
+A Shift range is a **rectangle**, not a reading-order run. `Shift` from (row 0, column 0) to
+(row 1, column 1) is four cells and not three; a spreadsheet's Shift has never meant "everything from
+here to there along the rows", and the difference is cells a caller would act on that the user never
+saw highlighted.
+
+At the edge of the row nothing moves **and the key is still eaten**. Letting `Right` through on the
+last column hands it to Avalonia's directional focus navigation, which moves focus out of the table —
+so walking one column too far would leave the control.
+
+### 67.5 Six guards that could not fail, and one that measured the wrong thing
+
+This is the worst ratio of the whole arc. Nine sabotages were run and **six of the first drafts stayed
+green**, every one of them for a different reason:
+
+| The guard | Why it could not fail |
+|---|---|
+| `ContainerPrepared` marks a recycled row | **The hook is wrong.** At that moment the container has no row grid inside it at all — `grid=False` on every prepare. The call was a no-op, and the sweep it replaced was doing the work. |
+| a sweep of realised containers marks every row | `GetRealizedContainers()` does not include the container being prepared — `listed=False`, measured — so with three rows each is marked when its *successor* arrives, and only the last is missed. A three-row fixture cannot see it; a **one-row table** can. |
+| a departed row's cell is dropped | Every reader resolves a key through the current view, so a departed row answers "not selected" whether or not anything was pruned. The difference only appears when a row with the **same key comes back** — unpruned, its old cell lights up again, selected by nobody. |
+| changing the unit clears the selection | `SelectedCell`, the boxes and the row all follow the *cursor*. A version that dropped the cursor and kept the set passed unchanged, and would have handed a caller a list of cells after the user switched the table to rows. `SelectedCells` is the assertion that bites. |
+| F2 refuses a read-only cell | The test was right and **the sabotage was wrong**: the check it removed was a duplicate of one inside `Edit`. A duplicated rule cannot be sabotaged into failing, which is how the duplicate was found. It is gone — one rule, one owner. |
+| `Right` on the last column is handled | **Avalonia handles the arrow key itself** on the way up, so `e.Handled` is true inside a window whatever this control does. Measured: `handled=False` with no window, `handled=True` in one, with the window's own bubble handler seeing it already true. The assertion is asked of a parentless table now, which leaves exactly one handler in the chain. |
+
+Three of these are the pattern §66.3 named one section earlier — *a fixture where two expressions
+coincide can only be testing one of them* — and one of them is that pattern applied to the harness
+rather than to the code: **a control inside a window cannot answer "did I handle this key", because
+something else will.**
+
+### 67.6 What it changes elsewhere
+
+- **F2 opens the cell the user is on**, where in a row unit it still opens the first editable column.
+  §50's comment saying this control *"has no concept of a focused cell"* was true and is what this
+  section changed; it is amended in place rather than deleted, because the reasoning it gives is
+  still the reasoning for the row half.
+- **`SelectedItems` reports every row a selected cell is in.** Reading the `ListBox` would answer
+  "one" for a selection spanning three rows, because the `ListBox` is holding the current cell's row
+  and nothing else.
+- **The gallery's table selects cells**, and it can afford to only because the `LunaList` of peers
+  above it is a row selection, is selected in the static render, and is the shape almost every list in
+  an application has. A unit is exclusive, so this would otherwise be §65.2's trade again — give up
+  the default to show the new thing — and here it is not a trade at all.
+
+### 67.7 What is not here
+
+**Cell-level automation peers.** A screen reader still meets a row and its sentence (§50.5); there is
+no peer that says "row 4, column 2" and no `ISelectionItemProvider` on a cell. §54.3's automation row
+stays open and is the next pass. Recorded as a **hazard rather than a behaviour**: a user driving this
+control with a reader gets the row's spoken name and no indication that a cell within it is where the
+keyboard is.

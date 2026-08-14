@@ -165,6 +165,18 @@ public class EmuSen.LunaP.Controls.FilterBar : Avalonia.Controls.Primitives.Temp
 public class EmuSen.LunaP.Controls.HintText : Avalonia.Controls.TextBlock
     public HintText()
 
+public struct EmuSen.LunaP.Controls.LunaCell<T> : System.ValueType, System.IEquatable<EmuSen.LunaP.Controls.LunaCell<T>>
+    public LunaCell<T>(T Row, int Column)
+    public T Row { get; set; }
+    public bool Equals(EmuSen.LunaP.Controls.LunaCell<T> other)
+    public int Column { get; set; }
+    public override bool Equals(object obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.LunaCell<T> left, EmuSen.LunaP.Controls.LunaCell<T> right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.LunaCell<T> left, EmuSen.LunaP.Controls.LunaCell<T> right)
+    public void Deconstruct(out T Row, out int Column)
+
 public enum EmuSen.LunaP.Controls.LunaCellKind
     public const EmuSen.LunaP.Controls.LunaCellKind Check = 1
     public const EmuSen.LunaP.Controls.LunaCellKind Template = 2
@@ -222,6 +234,11 @@ public enum EmuSen.LunaP.Controls.LunaSelectionMode
     public const EmuSen.LunaP.Controls.LunaSelectionMode Single = 1
     public int value__
 
+public enum EmuSen.LunaP.Controls.LunaSelectionUnit
+    public const EmuSen.LunaP.Controls.LunaSelectionUnit Cell = 1
+    public const EmuSen.LunaP.Controls.LunaSelectionUnit Row = 0
+    public int value__
+
 public class EmuSen.LunaP.Controls.LunaSwitch : Avalonia.Controls.ToggleSwitch
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override System.Type StyleKeyOverride { get; }
@@ -243,23 +260,28 @@ public abstract class EmuSen.LunaP.Controls.LunaTable : Avalonia.Controls.Primit
 public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTable
     protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
     protected override void OnPartsAttached()
+    public EmuSen.LunaP.Controls.LunaCell<T>? SelectedCell { get; }
     public EmuSen.LunaP.Controls.LunaEditGestures EditGestures { get; set; }
     public EmuSen.LunaP.Controls.LunaGridLines GridLines { get; set; }
     public EmuSen.LunaP.Controls.LunaSelectionMode SelectionMode { get; set; }
+    public EmuSen.LunaP.Controls.LunaSelectionUnit SelectionUnit { get; set; }
     public EmuSen.LunaP.Controls.LunaTable<T> Column(EmuSen.LunaP.Controls.LunaColumn<T> column)
     public EmuSen.LunaP.Controls.LunaTable<T> Column(string header, System.Func<T, string> text, string width = "*")
     public LunaTable<T>()
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.LunaCell<T>> SelectedCells { get; }
     public System.Collections.Generic.IReadOnlyList<T> Models { get; }
     public System.Collections.Generic.IReadOnlyList<T> SelectedItems { get; }
     public System.Func<T, System.Collections.Generic.IEnumerable<T>>? Children { get; set; }
     public System.Func<T, int, string>? RowHeader { get; set; }
     public System.Func<T, object?> Key { get; set; }
     public T? Selected { get; }
+    public bool IsCellSelected(T item, int column)
     public bool IsEditing { get; }
     public bool IsExpanded(T item)
     public bool TryGetCell(T item, int column, out Avalonia.Controls.Control? cell)
     public bool TryGetRow(T item, out Avalonia.Controls.Control? row)
     public double IndentSize { get; set; }
+    public event System.Action<EmuSen.LunaP.Controls.LunaCell<T>?> CellChosen
     public event System.Action<T, Avalonia.Controls.Control> RowClearing
     public event System.Action<T, Avalonia.Controls.Control> RowPrepared
     public event System.Action<T, int> CellValueChanged
@@ -270,6 +292,7 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public string RowHeaderWidth { get; set; }
     public string? TableKey { get; set; }
     public void BringRowIntoView(T item)
+    public void ClearCellSelection()
     public void Collapse(T item)
     public void CollapseAll()
     public void Edit(T item, int column)
@@ -278,6 +301,7 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public void Refresh(System.Collections.Generic.IEnumerable<T> items)
     public void SaveNow()
     public void Select(T? item)
+    public void SelectCell(T item, int column)
 
 public class EmuSen.LunaP.Controls.MenuBar : Avalonia.Controls.Menu
     protected override System.Type StyleKeyOverride { get; }

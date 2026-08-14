@@ -175,6 +175,25 @@
         <Setter Property="Background" Value="{DynamicResource LunaBorder}" />
     </Style>
 
+    <!-- THE SELECTED CELL, drawn as an outline in the accent - see docs/LunaP.md
+         §67.
+
+         LunaAccent rather than a surface token, because this is the one thing on
+         screen that says where the next keystroke goes, and it has to be
+         findable at a glance among several rows that may also be highlighted.
+         It is the same token a focused input takes, which is the same idea: the
+         thing that has the keyboard.
+
+         AN OUTLINE AND NEVER A FILL, and that is not a taste decision. §57 lets
+         a cell be any control a caller returned from Build - a coloured dot, a
+         progress bar, a sparkline - and a fill would paint over it. A box is
+         drawable around all three and hides none of them. It also survives a
+         host restyling the row's own selected background, which a fill chosen
+         to sit on top of one would not. -->
+    <Style Selector=":is(luna|LunaTable) Border.cell-selection">
+        <Setter Property="BorderBrush" Value="{DynamicResource LunaAccent}" />
+    </Style>
+
     <!-- The other half of the alignment. Fluent's ListBoxItem padding is not the
          header's, so left alone the columns start at two different x positions;
          this pins both to 12. The vertical figure is smaller than Fluent's
