@@ -5970,3 +5970,174 @@ One existing test changed rather than being sabotaged: the header's transform is
 rather than a zero translation, so a table at rest carries exactly the visual tree it carried before
 any of this existed. That matters more since §63.2, where a gutter alone is enough to put the whole
 control through `Pin`.
+
+## 65. Frozen columns: the record, and what is left of parity
+
+Pass 5, and the last of the five §60.2 set out. Nothing is built here. What remains of a feature once
+it works is the part that lives outside the control: the sample somebody looks at, the two documents a
+consumer reads, and the parity table this whole arc was measured against.
+
+### 65.1 Two documents that told a consumer the opposite
+
+`README.md` and `CHANGELOG.md` both said frozen columns were not there, and both cited §59.3 for it:
+
+> Frozen columns are *not* here; `docs/LunaP.md` §59.3 has the visual tree walked out and says why.
+
+> **Frozen columns are still not there**, and `§59.3` records why with the visual tree walked out …
+> Reach for `TreeDataGrid` if you need them, licence gate and all.
+
+Both are corrected in place, and **that is not the habit being broken.** Corrections-as-new-sections is
+a rule about *this* document, which is a record kept over time. The README describes today and has no
+history to preserve; the 0.8.0 entry in the changelog is unreleased, so nothing has yet been told to
+anybody in a version they could have taken. The sentence that would have been a correction is the one
+that shipped — and it did not.
+
+It is worth noticing how close it came. Four passes of work sat behind a front door still telling
+people to reach for a licence-gated package instead.
+
+### 65.2 The gallery gives up star widths to show a band
+
+Freezing is only visible when something scrolls past the frozen part, and **a table of star-width
+columns fits by definition and never scrolls.** The gallery's table was three star columns and two
+narrow ones; a `FrozenColumns` on it would have been refused by §64.1 and drawn nothing at all.
+
+So the sample is now a table that deliberately does not fit. Measured after the change: extent
+**622** against a viewport of **510**, columns resolving to 18 / 200 / 120 / 150 / 40 / 40 / 30, and a
+band of **218** — the gutter plus the pinned name column, comfortably inside the viewport.
+
+Two things were paid for that:
+
+- **The name column's `2*` became `200`.** A frozen column's width *is* the band, so a caller who
+  freezes one is declaring how much of the viewport stops scrolling. A star column in a table that
+  overflows resolves to its content anyway, which would have made the band whatever the longest name
+  in the sample data happened to be.
+- **A sixth column that the evidence does not have.** §27's field list is a name, a type and a page;
+  `default` is there to push the table past its own width. It is at least a column such a table really
+  has — a schema that says what a field *is* and not what it starts as is half a schema — but it is
+  here for a feature and the gallery says so beside it.
+
+**What the gallery no longer shows is star widths**, which is a real loss and is recorded rather than
+argued away: the one place a reader could see three columns share a width now shows six that do not.
+The fitting case is measured in §59.2 and guarded in `TableScrollTests`, so it is covered — but it is
+covered by a test rather than by a picture, and those are not the same audience.
+
+### 65.3 A sample can stop demonstrating its feature without failing anything
+
+Every count in `GalleryRenderTests` would still pass if the table quietly fitted again — one more
+section above it, a window a hundred points wider, a column narrowed. §64.1 would refuse the band,
+the seam would vanish, and the gallery would go on rendering a perfectly good table with no evidence
+of §61 through §64 anywhere in it.
+
+So the sample's *overflow* is asserted, with the failure message saying what it means rather than
+which number moved. Sabotaged by narrowing `default` to 20: **extent 510 against viewport 510.**
+
+**The first draft of that guard was hollow, which makes six for this arc.** It asserted the seam was
+visible — and a gutter is pinned on its own account (§63.2), so a table with a row header and
+`FrozenColumns = 0` draws a visible seam too, at the gutter's own edge. Setting the gallery to freeze
+nothing left the assertion green. What distinguishes them is *where* the seam is: column 0 is the
+gutter, so only a seam in column 1 says a column the **caller** asked to freeze is inside the band.
+
+That is the same shape as both of §63.4's: an assertion true for a reason other than the code under
+test, in a fixture where two different things happen to coincide.
+
+### 65.4 `FrozenColumns` is not remembered, and that is the rule rather than an omission
+
+§27.11 remembers column widths and the sort order. It would be one line to remember the frozen count
+beside them, and it is deliberately not there.
+
+**What that file holds is what the user did** — dragged a column, clicked a heading. `FrozenColumns`
+is what the *caller* declared, in the same class as `Children`, `ExpanderColumn`, `GridLines` and the
+column list itself. Remembering it would mean an application that ships "the first column is pinned"
+finds a user's stale `tables.json` overriding the next release's choice, with no way to push a new
+one.
+
+The case that looks like a counter-example is the one §63.4 built a test around: a **"Freeze first
+column" menu item**, where it *is* something the user did and they will expect it back. That
+application already has `ISettingsStore` (§19.1), and remembering its own menu item is one line on its
+side of the seam — where the decision belongs, because only that application knows whether the pin is
+its own choice or the user's.
+
+### 65.5 The parity table, re-measured against what is actually on the type
+
+§54.3 listed thirteen gaps against `Avalonia.Controls.TreeDataGrid` 12.2.0. Read back off
+`LunaTable<T>`'s and `LunaColumn<T>`'s own public surface — the baseline in
+`tests/EmuSen.LunaP.Tests/ApiSurface/`, not from memory of what was written:
+
+| Gap | Where it stands |
+|---|---|
+| Hierarchy | **Closed.** `Children`, `Expand`/`Collapse`/`ExpandAll`, `ExpanderColumn`, `IndentSize` (§55) |
+| Cell kinds | **Closed.** `LunaCellKind`, check and template columns (§57) |
+| Row headers | **Closed.** `RowHeader`, `RowHeaderWidth`, `RowHeaderCaption` (§58) |
+| Frozen columns | **Closed.** `FrozenColumns` (§60–§65) |
+| Grid lines | **Closed.** `GridLines` (§56) |
+| Edit gestures | **Closed.** `EditGestures` (§56) |
+| Lifecycle events | **Closed.** `RowPrepared`, `RowClearing`, `CellValueChanged` — and `CellPrepared` / `CellClearing` refused with an argument rather than missed (§56.3) |
+| Navigation | **Closed.** `BringRowIntoView`, `TryGetCell`, `TryGetRow` — **no section**, see §65.6 |
+| Multi-row selection | **Closed.** `SelectionMode`: None / Single / Multiple, `SelectedItems` — **no section** |
+| Per-column control | Mostly. `IsVisible`, `MinWidth`, `MaxWidth` — **no section**. Alignment and a programmatic sort direction are **not there at all** |
+| Cell selection | Open. There is no `LunaSelectionMode.Cell`, and §57.5 records the same gap from the check column's side |
+| Automation depth | Partial. Row and cell-value providers (§50.6); no cell-level peer, and `IsOffscreen` is a recorded hazard under a pinned band (§62.4) |
+| Row drag-and-drop | Open. Nothing of it exists |
+| Column virtualization | Open. Every column of every realised row is built |
+
+**Three rows are open, two are partial, and one closed row is missing half its parity item** —
+alignment and `SortDirection` were listed in §54.3 and are not on the type. Writing the table out
+again is what found that: "parity" was a decision taken in §54 with a measurement behind it, and it
+stays honest only if what is left is named rather than rounded to done.
+
+The partial rows are small and the open ones are not. Cell selection is the one that carries others
+with it — it is what a cell-level automation peer would report, and §57.5's read-only check column
+wants it too.
+
+### 65.6 Three capabilities that shipped without a section
+
+Reading the table back off the public surface found something the arc itself did not: **`SelectionMode`
+and `SelectedItems`, the per-column `IsVisible` / `MinWidth` / `MaxWidth`, and the three navigation
+methods have no section in this document.** They landed in pass 2 alongside the three items §56 does
+write up, they are guarded in `TableParityTests`, and each carries its argument in a `//` block beside
+the code — `SelectionMode`'s explains why `None` is a real mode and not an omission, `IsVisible`'s
+explains why a hidden column keeps its index, `MinWidth`'s explains what a star column with no floor
+does under a drag. §56's own first line says *"all three"*, and there were six.
+
+Nothing is broken by it. No citation dangles — the code cites §54.3 for these, and §54.3 resolves —
+and the reasoning is not lost, because it is in the file next to the thing it explains, which is where
+this project puts reasoning first (`CLAUDE.md`, "Code explains itself"). What is missing is the other
+half: the alternatives tried, the measurements, and the shape of the decision, which is what this
+document is for.
+
+**It is recorded here rather than back-filled**, and that is a deliberate choice with a cost. A section
+written now would be reconstructed from the code comments and would read as though it had been argued
+at the time; there are no measurements to put in it, because none were taken. An entry saying *"these
+three shipped without their write-up, here is where their reasoning actually lives"* is true, and a
+smooth §56.5 pretending otherwise would not be. The next pass to touch selection — cell selection is
+the open item and touches all of it — is the honest place for the section, with the argument made
+where it is actually being made.
+
+What it says about method is the useful part. **The record was thinner than the work in exactly the
+place nobody re-read**, and it took writing the parity table out against the API baseline to notice —
+the same enumerate-rather-than-recall move §48.2 argues for, applied to this document instead of to a
+resource tree.
+
+### 65.7 The arc, counted
+
+Five passes, from a blocker to a feature:
+
+| | |
+|---|---|
+| Sections | §60 (the correction) through §65 |
+| Guards added | **27** — 25 in `TableFrozenTests`, one in `TableScrollTests`, one in `GalleryRenderTests` |
+| Guards rewritten rather than deleted | two — §59.4's gutter test, and the header's transform at rest (§64.6) |
+| Hollow guards found by sabotage | **five in this arc** — §61.4, §62.3, two in §63.4, one in §65.3; six counting §57.6 one pass earlier |
+| Sections corrected | **four** — §59.3 (by §60), §59.4 (by §63.2), §59.2 (by §64.2), §62 (by §64.3) |
+| Hazards recorded rather than fixed | two — `IsOffscreen` (§62.4), a `Toggle` that cannot say why (§57.4) |
+
+**Not one of them was found by reading.** Every one was found by breaking the code underneath it and
+watching the test stay green, which is the practice this document has asked for since §22.5 and the
+only reason the number is known at all. The ratio is worth keeping in mind next time a guard is
+trusted because it looks thorough: **five of the twenty-seven guards written in this arc could not
+fail**, and every one of the five had been read over and thought sound.
+
+The four corrections are worth the same look. **Three of them were mine from earlier passes of this
+same arc**, written days apart, and two were defects a user would have hit rather than points of
+record: a header that stopped following any scroll it did not cause (§64.2), and a viewer field that a
+cell editor permanently hijacked (§64.3). Both had passing guards over them the entire time.
