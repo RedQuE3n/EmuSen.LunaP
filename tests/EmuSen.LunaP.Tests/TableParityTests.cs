@@ -479,6 +479,49 @@ namespace EmuSen.LunaP.Tests
                 window.Close();
             }, default);
 
+        // THE EXPANDER IN A COLUMN THAT IS NOT THE FIRST - see docs/LunaP.md §66.
+        //
+        // Every other test in this file, and both in TableCellKindTests, sets ExpanderColumn to 0.
+        // Zero is also Grid.Column's default, so "the column this was put in" and "the column
+        // nothing set" were the same number in every fixture there was - and a Grid.SetColumn left
+        // on the inner cell while the Grid holds the expander's WRAPPER read as column 0 and looked
+        // right. With the expander in column 1, the wrapper landed on top of column 0's cell.
+        //
+        // Asserted as POSITIONS and not only as attached properties: the property is what was wrong,
+        // but two cells sharing an x is what the user saw, and it is the second that says the row is
+        // laid out rather than merely annotated (§5.5's shape).
+        [Fact]
+        public Task An_expander_in_a_later_column_lands_in_that_column() => Session.Dispatch(() =>
+        {
+            var table = new LunaTable<Node> { Key = n => n.Name, ExpanderColumn = 1 };
+            table.Column("size", _ => "12k", "80").Column("name", n => n.Name, "*");
+            table.Children = n => n.Kids;
+            table.Refresh(Tree());
+
+            var window = new ToolWindow { Width = 400, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Grid grid = table.FindNamed<ListBox>("PART_Rows").GetVisualDescendants()
+                .OfType<ListBoxItem>().First()
+                .GetVisualDescendants().OfType<Grid>().First();
+
+            Control wrapper = grid.Children.OfType<Control>()
+                .Single(c => c.GetVisualDescendants().OfType<Button>().Any(b => b.Classes.Contains("expander")));
+
+            Assert.Equal(1, Grid.GetColumn(wrapper));
+
+            Control first = grid.Children.OfType<Control>().Single(c => Grid.GetColumn(c) == 0);
+
+            Assert.True(wrapper.Bounds.X >= first.Bounds.Right,
+                $"the expander column starts at {wrapper.Bounds.X:F0}, inside column 0 which ends at "
+                + $"{first.Bounds.Right:F0} - the two cells are drawn on top of each other.");
+
+            window.Close();
+        }, default);
+
         // A leaf keeps the toggle's WIDTH so its text lines up with its siblings', and loses only
         // the glyph. Omitting the button would shift a leaf left of the folders beside it.
         [Fact]

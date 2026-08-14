@@ -1462,20 +1462,26 @@ namespace EmuSen.LunaP.Controls
                     _ => TextCell(item, index),
                 };
 
-                TableCells.SetColumn(cell, i);
-                Grid.SetColumn(cell, GridColumn(i));
-
                 // The expander column gets the indent and the toggle in front of its text; every
                 // other column, and every column of a flat table, gets the bare cell exactly as
                 // before.
-                if (_children is not null && i == ExpanderColumn)
-                {
-                    grid.Children.Add(Expander(item, cell, index));
-                }
-                else
-                {
-                    grid.Children.Add(cell);
-                }
+                Control placed = _children is not null && i == ExpanderColumn
+                    ? Expander(item, cell, index)
+                    : cell;
+
+                // THE MARKER GOES ON THE CELL AND THE COLUMN GOES ON WHAT THE GRID HOLDS, and those
+                // are two different controls whenever the expander wraps one. Grid reads its attached
+                // properties off its own direct children, so a Grid.SetColumn left on the inner cell
+                // is a number nothing ever reads - the wrapper takes the default of 0 and the row
+                // draws that cell on top of column 0's. §66 has the measurement; it was invisible for
+                // as long as it was, because every test set ExpanderColumn to 0 and 0 is the default.
+                //
+                // The marker stays on the cell on purpose: Cell() walks descendants to find it, so it
+                // is reachable through the wrapper, and putting it on the wrapper instead would make
+                // a template cell's own children answer for the column.
+                TableCells.SetColumn(cell, i);
+                Grid.SetColumn(placed, GridColumn(i));
+                grid.Children.Add(placed);
 
                 if (_gridLines.HasFlag(LunaGridLines.Vertical) && i < LastVisibleColumn)
                 {

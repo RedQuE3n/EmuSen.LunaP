@@ -6141,3 +6141,57 @@ The four corrections are worth the same look. **Three of them were mine from ear
 same arc**, written days apart, and two were defects a user would have hit rather than points of
 record: a header that stopped following any scroll it did not cause (§64.2), and a viewer field that a
 cell editor permanently hijacked (§64.3). Both had passing guards over them the entire time.
+
+## 66. A tree whose expander was not in the first column drew two cells on top of each other
+
+Found while preparing cell selection, which needs to know which grid column a cell is actually in.
+`ExpanderColumn` (§55) has been a public property for the whole of this arc and is wrong for every
+value except its default.
+
+### 66.1 The measurement
+
+A two-column tree, `ExpanderColumn = 1`, in a 400-wide table. The row grid's children, before:
+
+    TableCell gridCol=0 x=0 w=80
+    DockPanel gridCol=0 x=0 w=80
+
+Both in grid column 0, both 80 wide, one drawn over the other. Column 1 — the column with the
+expander, the indent and the row's name in it — is not on screen at all, and the 296 pixels it was
+entitled to are empty. After:
+
+    TableCell gridCol=0 x=0 w=80
+    DockPanel gridCol=1 x=80 w=296
+
+### 66.2 An attached property on an object nothing reads it from
+
+`Row()` built the cell, set `Grid.SetColumn` **on the cell**, and then added either the cell or — for
+the expander column — a `DockPanel` wrapping it. A `Grid` reads its attached properties off its own
+direct children, so in the wrapped case the number was set on a grandchild and the child took
+`Grid.Column`'s default of **0**.
+
+The fix is to place the column on whatever the grid is actually holding. The *marker*
+(`TableCells.ColumnProperty`) stays on the cell, deliberately: `Cell()` finds it by walking
+descendants, so it is reachable through the wrapper, and moving it to the wrapper would let a
+template cell's own children answer for the column (§57.5's reason, unchanged).
+
+**A consequence read from the code rather than measured, and recorded as a thing to check rather than
+as a second symptom:** `Pin` decides what is inside the frozen band with `Grid.GetColumn(child)`, the
+same property. A wrapper reading 0 would have counted as frozen whatever `ExpanderColumn` said. There
+is no test either way yet.
+
+### 66.3 Why nothing caught it, which is the same shape a third time
+
+Four tests exercise `ExpanderColumn` — two here and two in `TableCellKindTests` — and **all four set
+it to 0**. Zero is also `Grid.Column`'s default. So in every fixture that existed, "the column this
+was put in" and "the column nothing set" were the same number, and no assertion could tell the two
+apart.
+
+That is exactly §63.4's pattern and exactly §65.3's: *whenever a fixture makes two expressions
+coincide, it can only be testing one of them.* It has now happened three times in three consecutive
+sections, twice with a literal 0 as the coinciding value. The lesson is not about expanders — it is
+that **a default is the worst possible value to write a fixture with**, because it is the one value
+that cannot distinguish "set correctly" from "never set".
+
+The guard uses `ExpanderColumn = 1` and asserts both halves: the attached property, and that the two
+cells do not share an x. Sabotaged by putting the column back on the inner cell, the second assertion
+reports the expander column starting at 0 inside a column 0 that ends at 80.
