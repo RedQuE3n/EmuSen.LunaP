@@ -5557,3 +5557,71 @@ verification pipes the build through `grep -E "warning [A-Z]"` — and the analy
 `xUnit2029`, lowercase. The build was right, the build was fresh, and the filter threw the line away.
 Verification is `grep -iE "error|warning"` now, and reads the `0 Warning(s)` summary line rather than
 trusting a pattern to match every diagnostic format.
+
+## 60. The frozen-column blocker was not one — a correction to §59.3
+
+§59.3 concluded that frozen columns need a different control: "a clip has nowhere to live that does
+not move with the content", and therefore either a second synced list or a presenter rewrite that
+gives up the shared size scopes of §27, §27.7, §27.10 and §27.11.
+
+**The walk in §59.3 is correct and the conclusion drawn from it is wrong.** Everything it says about
+the ancestor chain holds — every ancestor of a cell either moves with the offset or contains every
+column. What does not follow is that a clip has nowhere to live, and the error is a plain one: a clip
+does not have to live on something that holds still. **It lives on the cell, in the cell's own
+coordinates, and the table already knows the scroll offset**, so the clip can simply be recomputed to
+whatever keeps the visible part of that cell out of the frozen band. Nothing needs to be stationary.
+§59.3 looked for a stationary ancestor because it was thinking of `ClipToBounds`, which does need
+one, and never asked the next question.
+
+### 60.1 The mechanism, and the measurement that settles it
+
+Two rules, applied to the **direct children of the row grid** — which is the right granularity,
+because every child already carries a `Grid.Column`, and that covers a bare cell, a cell inside an
+expander panel (§55), a vertical rule (§56.2) and an open editor without any of them being special
+cases:
+
+- a child in a **frozen** column gets `RenderTransform = Translate(+scrollX)`, which cancels the
+  scroll and leaves it where it was;
+- a child in a **scrolling** column gets a `Clip` whose left edge is
+  `clamp(scrollX + frozenWidth - columnStart, 0, width)`, which is the part of it that would
+  otherwise be inside the band.
+
+The clamp degenerates correctly: unscrolled, `scrollX` is 0 and every scrolling column starts at or
+after `frozenWidth`, so the left edge is 0 and no clip is set at all.
+
+**Measured, at the pixel level.** Six columns of 200 in a 400-wide table, scrolled to 300, with
+column 0's cells painted red and every other column's blue, counting pixels inside the 200-wide band
+the frozen column would occupy:
+
+| | column 0's x | red in band | blue in band |
+|---|---|---|---|
+| scrolled, nothing frozen | **-288** | 0 | **6,419** |
+| the two rules applied | **+12** | **6,399** | **0** |
+
+**Zero blue is the whole result.** The scrolled content is not covered by the frozen cell, it is
+*removed*, so there is nothing to paint a backdrop over — which dissolves the objection §59.3 spent
+most of its length on. The row's selected and pointer-over fill is Fluent's, it is painted behind
+everything, and it goes on being painted behind everything. Nothing reaches into Fluent's template
+and §48's rule is untouched.
+
+And because the clip is render-level rather than layout-level, none of this costs a measure or an
+arrange pass, and **the shared size scopes survive intact**. §27.7 and §27.10 keep working because
+nothing about how a row is laid out changes; only what parts of it are drawn.
+
+### 60.2 What this does not yet say
+
+The mechanism is proven; the control around it is not. Held as **hazards rather than behaviours**
+until each is pinned:
+
+- **Hit-testing under a clip is unmeasured.** The probe that went looking returned no `TextBlock` at
+  any point, including one in a fully visible column — so the path it used does not reach them in
+  headless at all, and its silence means nothing (§48.2). Whether a clipped-away cell still takes a
+  double-click is the question, and it decides whether clipping needs `IsHitTestVisible` beside it.
+- **Focus is unhandled.** Tab reaching a control clipped out of sight is the §24 failure in a new
+  place, and the answer is probably that focus scrolls it into view rather than that it stops being
+  focusable.
+- **`IsOffscreen`** — whether Avalonia's peers already account for a clip, or whether a reader would
+  be told a hidden cell is visible.
+
+§61 onwards is where those are answered. This section is the correction on its own, so the record is
+right whether or not the rest is built.
