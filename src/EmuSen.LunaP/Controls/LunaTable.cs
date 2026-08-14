@@ -343,6 +343,42 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The gutter's width, in Avalonia's own notation. "Auto" by default, which fits the widest label.</summary>
         public string RowHeaderWidth { get; set; } = "Auto";
 
+        // COLUMNS THAT DO NOT SCROLL AWAY - see docs/LunaP.md §61, and §60 for the correction that
+        // made this possible after §59.3 concluded it was not.
+        //
+        // Zero, the default, is a table that behaves exactly as it did: nothing is transformed,
+        // nothing is clipped, and Pin returns before touching a single child (§26.13).
+        //
+        // Counted in COLUMNS AND NOT IN GRID COLUMNS, like every other number a caller gives this
+        // control: FrozenColumns = 2 freezes the first two columns the caller declared, whether or
+        // not there is a gutter in front of them and whether or not one of them is hidden. §58.2 is
+        // the section about keeping those two indices apart, and this is another place they meet.
+        private int _frozenColumns;
+
+        /// <summary>How many leading columns stay put when the table is scrolled sideways. Zero by default.</summary>
+        /// <remarks>
+        /// Counted in columns as they were added, so a hidden column still takes one. A gutter, when there
+        /// is one, is frozen along with them as soon as this is greater than zero. Freezing more columns
+        /// than the table has freezes all of them, which simply leaves nothing to scroll.
+        /// </remarks>
+        public int FrozenColumns
+        {
+            get => _frozenColumns;
+            set
+            {
+                if (_frozenColumns == value) return;
+
+                _frozenColumns = value;
+                Pin();
+            }
+        }
+
+        // The frozen band expressed in GRID columns, which is what Pin walks. Clamped rather than
+        // trusted: a caller who freezes five columns of a three-column table has said something
+        // harmless, and the honest reading is "all of them" rather than an exception at layout time.
+        private int FrozenGridColumns =>
+            _frozenColumns <= 0 ? 0 : GridColumn(Math.Min(_frozenColumns, _columns.Count));
+
         /// <summary>What sits above the gutter, in the header row. Empty by default, which is the spreadsheet's empty corner.</summary>
         public string RowHeaderCaption { get; set; } = string.Empty;
 
@@ -810,7 +846,18 @@ namespace EmuSen.LunaP.Controls
 
                 _scrolledTo = x;
                 HeaderGrid.RenderTransform = new TranslateTransform(-x, 0);
+                Pin();
             });
+
+            // AND AGAIN AFTER EVERY LAYOUT, which is not belt-and-braces. A clip is computed from a
+            // child's arranged Bounds, and the two moments that produce new children with no bounds
+            // yet are exactly the two this control does not otherwise hear about: a row realised by
+            // the virtualising panel while scrolling vertically, and a column resized under the
+            // header. LayoutUpdated is the signal that everything has bounds again.
+            //
+            // Cheap when it does not apply: Pin returns on its first line for a table with no frozen
+            // columns, which is every table that has not asked for them.
+            LayoutUpdated += (_, _) => Pin();
 
             ApplySelectionMode();
             Rebuild();
@@ -947,11 +994,116 @@ namespace EmuSen.LunaP.Controls
             _save.Poke();
         }
 
+        // FROZEN COLUMNS, AND THE TWO RULES THEY ARE - see docs/LunaP.md §61.
+        //
+        // §59.3 said this needed a different control and §60 records why that was wrong. The whole
+        // mechanism is two lines of geometry applied to the row grid's DIRECT CHILDREN:
+        //
+        //   - a child in a frozen column is translated by +scrollX, which cancels the scroll the
+        //     ScrollContentPresenter is applying to everything and leaves it where it started;
+        //   - a child in a scrolling column is CLIPPED so that whatever would fall inside the frozen
+        //     band is not drawn at all.
+        //
+        // CLIPPED AND NOT COVERED, which is the part worth understanding. A frozen cell painted over
+        // its neighbours would need an opaque backdrop, and the row's backdrop is Fluent's selected
+        // and pointer-over fill, which is not reachable without reaching into a template §48 refuses
+        // to touch. Removing the neighbour instead means the thing behind both of them - that same
+        // Fluent fill - carries on showing through, and nothing has to be matched at all. Measured at
+        // 6,399 red pixels and ZERO blue inside the band (§60.1).
+        //
+        // THE DIRECT CHILDREN ARE THE RIGHT GRANULARITY because every one of them already carries a
+        // Grid.Column, so a bare cell, a cell inside an expander panel (§55), a vertical rule (§56.2),
+        // a resize grip and an open editor are all handled without one of them being a special case.
+        //
+        // BOUNDS RATHER THAN COLUMN OFFSETS. The child's own Bounds.X is where it actually sits in
+        // the grid, which already accounts for its alignment, its margin and any column span - a
+        // GridSplitter is aligned right inside its column and would be placed wrongly by arithmetic
+        // over column starts.
+        //
+        // Render-level, both of them: Clip and RenderTransform affect drawing and not layout, so this
+        // costs no measure and no arrange, and the shared size groups that line the header up with
+        // the rows (§27.10) never learn it happened.
+        private void Pin()
+        {
+            int frozen = FrozenGridColumns;
+
+            // Nothing frozen and nothing ever frozen: the common table does not pay for this feature
+            // existing. The flag rather than the count, because turning frozen columns OFF has to
+            // clear what was set once, and then stop.
+            if (frozen <= 0 && !_pinned) return;
+
+            _pinned = frozen > 0;
+
+            if (HeaderGrid is not null) Pin(HeaderGrid, frozen);
+            if (Rows is null) return;
+
+            foreach (Control container in Rows.GetRealizedContainers())
+            {
+                if (RowGridIn(container) is { } grid) Pin(grid, frozen);
+            }
+        }
+
+        private void Pin(Grid grid, int frozen)
+        {
+            // The band, in the grid's own coordinates. The frozen columns start at zero by
+            // definition, so their total width is also where the band ends on screen.
+            double band = 0;
+            for (int i = 0; i < frozen && i < grid.ColumnDefinitions.Count; i++)
+            {
+                band += grid.ColumnDefinitions[i].ActualWidth;
+            }
+
+            foreach (Control child in grid.Children.OfType<Control>())
+            {
+                if (frozen <= 0)
+                {
+                    child.RenderTransform = null;
+                    child.Clip = null;
+                    continue;
+                }
+
+                if (Grid.GetColumn(child) < frozen)
+                {
+                    child.Clip = null;
+                    child.RenderTransform = new TranslateTransform(_scrolledTo, 0);
+                    continue;
+                }
+
+                child.RenderTransform = null;
+
+                Rect bounds = child.Bounds;
+                if (bounds.Width <= 0 || bounds.Height <= 0)
+                {
+                    // Not arranged yet, so there is no honest rectangle to write. The next layout
+                    // pass calls this again with real bounds; guessing one now would clip a cell to
+                    // nothing and leave it that way until something else moved.
+                    child.Clip = null;
+                    continue;
+                }
+
+                // How much of this child is inside the band. Degenerates correctly: unscrolled,
+                // _scrolledTo is zero and a scrolling column starts at or after the band, so this is
+                // zero or negative and no clip is set at all.
+                double hidden = Math.Clamp(_scrolledTo + band - bounds.X, 0, bounds.Width);
+
+                child.Clip = hidden <= 0
+                    ? null
+                    : new RectangleGeometry(new Rect(hidden, 0, bounds.Width - hidden, bounds.Height));
+            }
+        }
+
+        // Whether anything is currently pinned, so that turning frozen columns off clears what was
+        // set and a table that never had any does no work at all.
+        private bool _pinned;
+
+        private static Grid? RowGridIn(Control container) =>
+            container.GetVisualDescendants().OfType<Grid>().FirstOrDefault();
+
         // Brings one row container's columns into line with the specs. Cheap enough to call per
         // container per drag frame - a virtualized list realizes tens of rows, not thousands (§27.7).
         private void Widen(Control? container)
         {
-            if (container?.GetVisualDescendants().OfType<Grid>().FirstOrDefault() is not { } row) return;
+            if (container is null || RowGridIn(container) is not { } row) return;
 
             for (int i = 0; i < _columns.Count; i++)
             {

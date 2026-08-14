@@ -265,6 +265,7 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public event System.Action<T, int> CellValueChanged
     public event System.Action<T> Chose
     public int ExpanderColumn { get; set; }
+    public int FrozenColumns { get; set; }
     public string RowHeaderCaption { get; set; }
     public string RowHeaderWidth { get; set; }
     public string? TableKey { get; set; }
