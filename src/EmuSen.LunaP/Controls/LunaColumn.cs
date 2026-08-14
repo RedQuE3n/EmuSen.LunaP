@@ -1,5 +1,6 @@
 using System;
 using Avalonia.Controls;
+using Avalonia.Layout;
 
 namespace EmuSen.LunaP.Controls
 {
@@ -221,5 +222,32 @@ namespace EmuSen.LunaP.Controls
         // not column 1 is on screen. Rebuilding the table without the column would move all three.
         /// <summary>Whether this column is shown. Hidden columns keep their index, so a remembered layout and a sort still match.</summary>
         public bool IsVisible { get; init; } = true;
+
+        // WHERE THE CONTENT SITS IN THE CELL - see docs/LunaP.md §70.
+        //
+        // NULLABLE, AND NULL IS NOT Left. A column that says nothing about alignment has to leave
+        // each cell kind doing what it already did - a text cell reading from the left, a checkbox
+        // pinned left so the rest of the cell still selects the row (§57), a template cell under
+        // §69.2's rule. A non-nullable property with a default would erase all three on every
+        // column anybody has already declared, which is §26.13's line.
+        //
+        // The case this exists for is the one the gutter already had to solve: numbers and hex
+        // addresses read down a column by their last digit, and a left-aligned column of 9, 10, 11
+        // puts the units under the tens (§58.5). A right-aligned size column is the commonest thing
+        // a table of files or registers wants and there was no way to ask for it.
+        //
+        // Applied as TEXT alignment in a text cell and as layout alignment in the other two, which
+        // is not an inconsistency but the same instruction in the terms each kind has. A TextBlock
+        // that fills its column and draws its text right keeps its ellipsis behaviour; one shrunk to
+        // its content and pushed right loses it (§27.4).
+        /// <summary>Where this column's content sits across the cell, or null to leave each cell kind as it is.</summary>
+        public HorizontalAlignment? Alignment { get; init; }
+
+        // The other axis, and it earns its place on a table whose rows need not be one line tall.
+        // §57's template cells can be any height a caller's control is, so a row can be taller than
+        // its text - and "centred" stops being the only sensible answer the moment one cell in a row
+        // is a two-line control and the rest are values.
+        /// <summary>Where this column's content sits down the cell, or null for the centred default.</summary>
+        public VerticalAlignment? VerticalAlignment { get; init; }
     }
 }

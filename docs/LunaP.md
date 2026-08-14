@@ -6506,3 +6506,93 @@ a consumer no longer has to know to write.
 | a template cell is left centred | it started 56px into a 120px column beside a checkbox at 0 |
 | the alignment default overrules the caller | a right-aligned cell was pulled back to the left |
 | the width test is dropped from the rule | a cell that filled its column collapsed to its content |
+
+## 70. Alignment per column, a sort without a click, and a layout that was never written down
+
+Pass 3 of finishing §54.3's parity, and the smallest row on the list: *"Per-column control —
+`IsVisible`, `MinWidth`, `MaxWidth`, alignment, programmatic `SortDirection`"*. The first three
+landed in pass 2 of the original arc; these two did not. Going to get them found a defect in §27.11
+that had been shipping since it was written.
+
+### 70.1 One instruction, spelled in each cell kind's own terms
+
+`TreeDataGridColumn` carries `HorizontalContentAlignment` and `VerticalContentAlignment` — enumerated
+from 12.2.0. `LunaColumn<T>` takes the same pair as `Alignment` and `VerticalAlignment`, both
+**nullable**, and null is not `Left`: a column that says nothing has to leave each kind doing what it
+already did, or every column anybody has declared changes at once (§26.13).
+
+A text cell takes **`TextAlignment`** and the other two take **`HorizontalAlignment`**, and that is
+one instruction rather than two rules. A `TextBlock` filling its column and drawing its text right
+keeps the ellipsis it trims with; one shrunk to its content and pushed right loses it. The two
+produce the same picture for a short value and differ only on a long one, which is why the guard
+asserts the trimming and the width as well as the property — the "consistent" version would have
+passed a test that only read `TextAlignment`'s effect on a short string.
+
+`Stretch` is the one value with nothing to say to a text cell: filling the cell is what a text cell
+already does and there is no text alignment that expresses it, so it leaves the cell alone rather
+than picking an end.
+
+The translation lives in exactly one place, because the heading needs it too — §69.1's lesson applied
+before it could happen rather than after.
+
+### 70.2 The heading follows the column
+
+A right-aligned column of sizes under a left-aligned word reads as two different columns. The
+alignment goes on the heading's **label** rather than on its `Button`: a sortable heading is a Button
+stretched across the whole column (§27.3), and moving the button would take its hover fill off the
+column it belongs to. An unsortable heading is a bare `TextBlock` and takes the same instruction by a
+different route, which is why both are guarded — the sortable case cannot cover the other.
+
+### 70.3 A sort without a heading to click
+
+`SortBy(column, descending)`, `ClearSort()`, and `SortedColumn` / `SortedDescending` to read it back.
+`SortedColumn` is `-1` when unsorted rather than a nullable, because unsorted is a real state here
+and not an absence: §27's cycle is ascending, descending, **off**, and off returns the rows to the
+order the caller gave them.
+
+**It refuses a column with no comparison** rather than falling back to the projected text. That
+fallback is the bug `Sort` takes a comparison over the model to avoid — "10" before "9" — and letting
+it in through a programmatic door with no heading to click would be worse than the original, because
+there is nothing on screen to suggest the column was ever sortable.
+
+A remembered layout still outranks it. `Restore` runs after a caller's constructor-time `SortBy`, so
+what a user clicked last time beats what the application declared this time — §27.11's principle, and
+the same one §65.4 used to keep `FrozenColumns` out of the file.
+
+### 70.4 A sort was never written down, and every fixture hid it
+
+`Cycle` — the heading click — did not poke the save debounce. Only a column **resize** did. And
+unlike `SplitPane`, which has flushed on `OnDetachedFromVisualTree` since §22, this control never
+flushed at all.
+
+So the promise on the tin — *"columns sort, resize and remember where you left them"* — held for a
+resize and not for a sort. A user who clicked a heading and closed the window lost it, unless the
+application happened to call `SaveNow` itself.
+
+**Every test in `TableLayoutTests` called `SaveNow` by hand**, which is why eleven guards over this
+file never saw it. They were testing the writer, and the defect was in what triggered the writer. The
+scenario nobody had written down is the shortest one there is: *click a heading, close the window.*
+It is a test now, and it fails against the previous commit.
+
+Both halves are fixed: every reason to save goes through one `Remember()`, and the control flushes on
+its way out of the visual tree.
+
+**One honest gap.** With the detach flush in place, sabotaging the debounce poke turns nothing red —
+the flush covers every scenario a guard can observe. The debounce is still there, because it is what
+saves a sort when the process dies with the window still open, and because two ways to write the file
+are two things that can disagree. That difference cannot be tested without waiting on a clock, and
+§22.3 settled that this project does not race clocks in tests. It is recorded here rather than
+asserted, which is the rule for a behaviour with no guard.
+
+### 70.5 The sabotages
+
+| Sabotage | What turned red |
+|---|---|
+| a text cell takes layout alignment instead of text alignment | two, including the trimming assertion |
+| `Stretch` picks an end for text | the leave-it-alone guard |
+| the heading ignores the column's alignment | both heading guards, sortable and not |
+| vertical alignment is dropped | the down-the-cell guard |
+| `SortBy` accepts a column with no comparison | the refusal |
+| a programmatic sort skips the glyph | the heading contradicting the rows |
+| the table stops flushing on detach | both §70.4 guards |
+| a sort no longer pokes the save | **nothing** — see §70.4 |

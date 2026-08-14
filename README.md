@@ -173,6 +173,24 @@ fields.Column(new LunaColumn<Field>("name", f => f.Name)
 fields.TableKey = "fields";          // remember widths and sort order
 ```
 
+Columns align per column, and sort without a click:
+
+```csharp
+fields.Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
+{
+    Width     = "40",
+    Alignment = HorizontalAlignment.Right,   // null - the default - changes nothing
+    Sort      = (a, b) => a.Page.CompareTo(b.Page),
+});
+
+fields.SortBy(2, descending: true);          // as though the heading had been clicked
+fields.ClearSort();                          // back to the order you gave
+```
+
+The heading follows the column, so a right-aligned column of numbers does not sit
+under a left-aligned word. `SortBy` refuses a column with no `Sort`, and a
+remembered layout still wins over a sort you set in code.
+
 `Sort` compares the **models**, not the projected text, because "10" sorts before
 "9" otherwise. `Commit` null — the default — means the column is read-only.
 `Validate` returns the problem rather than a bool, and the message appears under

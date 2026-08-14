@@ -119,6 +119,45 @@ namespace EmuSen.LunaP.Tests
                 Assert.Equal(new[] { "Alpha", "Beta", "Gamma" }, t.Models.Select(f => f.Name)));
         }, default);
 
+        // NOBODY CALLS SaveNow, AND THAT IS THE TEST - see docs/LunaP.md §70.4.
+        //
+        // Every other test in this file calls it by hand, which is how a defect lived here since
+        // §27.11: a heading click never poked the save debounce, and this control never flushed on
+        // the way out of the visual tree the way SplitPane does. So the promise on the tin - "columns
+        // sort, resize and remember where you left them" - held for a resize and not for a sort, and
+        // the suite could not see it because every fixture forced the write.
+        //
+        // A user clicks a heading and closes the window. That is the whole scenario, and it was the
+        // one path not covered.
+        [Fact]
+        public Task A_sort_survives_a_window_closing_without_anyone_asking_it_to() => Session.Dispatch(() =>
+        {
+            Shown(Make("fields"), t => Click(Heading(t, "pg")));
+
+            TableLayout? saved = TableLayoutStore.Load("fields");
+
+            Assert.NotNull(saved);
+            Assert.Equal("pg", saved!.SortedBy);
+            Assert.False(saved.Descending);
+
+            Shown(Make("fields"), t =>
+                Assert.Equal(new[] { "Gamma", "Beta", "Alpha" }, t.Models.Select(f => f.Name)));
+        }, default);
+
+        // The same for a sort nobody clicked, since SortBy is the programmatic door onto the same
+        // state (§70.3) and a menu item is as much "where the user left it" as a heading is.
+        [Fact]
+        public Task A_sort_set_in_code_is_remembered_like_a_clicked_one() => Session.Dispatch(() =>
+        {
+            Shown(Make("fields"), t => t.SortBy(2, descending: true));
+
+            TableLayout? saved = TableLayoutStore.Load("fields");
+
+            Assert.NotNull(saved);
+            Assert.Equal("pg", saved!.SortedBy);
+            Assert.True(saved.Descending);
+        }, default);
+
         // THE HEADING IS SAVED, NOT THE INDEX, and this is the case that makes the difference: a
         // caller who inserts a column at the front between two runs would otherwise come back sorted
         // by its neighbour, with the arrow pointing confidently at the wrong heading.

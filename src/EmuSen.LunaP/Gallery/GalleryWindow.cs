@@ -129,9 +129,15 @@ namespace EmuSen.LunaP.Gallery
                   // than filler: a field list that says what a field IS and not what it starts as is
                   // half a schema.
                   .Column("default", f => f.Default, "150")
+                  // RIGHT-ALIGNED, which is the case per-column alignment exists for and the same
+                  // argument the gutter already carries (§58.5): numbers read down a column by their
+                  // last digit, and a left-aligned run of 9, 10, 11 puts the units under the tens.
+                  // Beside four left-aligned columns it also shows that alignment is a per-column
+                  // decision rather than something the table does.
                   .Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
                   {
                       Width = "40",
+                      Alignment = HorizontalAlignment.Right,
                       Sort = (a, b) => a.Page.CompareTo(b.Page),
                   })
 

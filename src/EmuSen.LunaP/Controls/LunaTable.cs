@@ -787,7 +787,8 @@ namespace EmuSen.LunaP.Controls
                 column.Header, column.Text, GridLength.Parse(column.Width), column.Sort,
                 column.Commit, column.Validate,
                 column.MinWidth, column.MaxWidth, column.IsVisible,
-                column.Kind, column.Checked, column.Toggle, column.Build));
+                column.Kind, column.Checked, column.Toggle, column.Build,
+                column.Alignment, column.VerticalAlignment));
             Rebuild();
 
             // A saved layout can only be matched once the columns it describes exist, and there is
@@ -1290,8 +1291,34 @@ namespace EmuSen.LunaP.Controls
                 foreach (Control container in Rows.GetRealizedContainers()) Widen(container);
             }
 
+            Remember();
+        }
+
+        // THE DEBOUNCED WRITE, AND EVERY REASON TO WRITE GOES THROUGH IT - see docs/LunaP.md §70.4.
+        //
+        // Until §70 only a column RESIZE poked this, so a sort was never written down unless the
+        // application called SaveNow itself. The promise on the tin is "columns sort, resize and
+        // remember where you left them", and half of it did not happen.
+        //
+        // 400ms for SplitPane's reason (§22.3): a drag raises a property change per frame and the
+        // file is a full read-modify-write. A sort click is one act and would not need debouncing on
+        // its own, but sharing the path is worth more than the 400ms - two ways to save are two
+        // things that can disagree about what gets written.
+        private void Remember()
+        {
             _save ??= new Debounce(TimeSpan.FromMilliseconds(400), SaveNow);
             _save.Poke();
+        }
+
+        // AND FLUSHED ON THE WAY OUT, which is the other half and the half that made the defect
+        // invisible. A debounce that has not fired when the window closes has written nothing, so
+        // without this a sort or a drag in the last 400ms of a window's life was simply lost -
+        // and every test in TableLayoutTests called SaveNow by hand, so no fixture ever ran the
+        // path a user actually takes. SplitPane has done this since §22; this control had not.
+        protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            SaveNow();
+            base.OnDetachedFromVisualTree(e);
         }
 
         // FROZEN COLUMNS, AND THE TWO RULES THEY ARE - see docs/LunaP.md §61.
@@ -1590,6 +1617,15 @@ namespace EmuSen.LunaP.Controls
                 VerticalAlignment = VerticalAlignment.Center,
             };
 
+            // THE HEADING FOLLOWS THE COLUMN, or a right-aligned column of sizes sits under a
+            // left-aligned word and the two look like different columns. §70.2.
+            //
+            // On the label's TextAlignment rather than on the Button, because a sortable heading is
+            // a Button stretched across the whole column (§27.3) and moving the button would move
+            // its hover fill off the column it belongs to. The label inside it is the thing that has
+            // to line up with the values below.
+            if (TextAlign(column.Alignment) is { } heading) label.TextAlignment = heading;
+
             if (column.Sort is null)
             {
                 _heads.Add(new Head(label, null));
@@ -1640,6 +1676,64 @@ namespace EmuSen.LunaP.Controls
         // cycle makes that order unreachable the moment somebody clicks a header. The cost is a
         // third click that will surprise somebody; the alternative is a table that can lose
         // information the caller deliberately put in it. docs/LunaP.md §27.
+        // WHICH COLUMN THE TABLE IS SORTED BY - see docs/LunaP.md §70.3.
+        //
+        // -1 for unsorted, which is a real state here rather than an absence: §27's heading cycle is
+        // ascending, descending, OFF, and the third one returns the rows to the order the caller gave
+        // them. A nullable int would say the same thing in a type that invites `.Value`.
+        /// <summary>The column the table is sorted by, or -1 when it is in the order it was given.</summary>
+        public int SortedColumn => _sortColumn;
+
+        /// <summary>Whether the current sort is descending. False when nothing is sorted.</summary>
+        public bool SortedDescending => _sortDescending;
+
+        // Sorting without a click, which is the half of §54.3's "programmatic SortDirection" this
+        // control had no way to do. The obvious callers are a "Sort by size" menu item and an
+        // application restoring its own default before the user has touched anything.
+        //
+        // REFUSES A COLUMN WITH NO COMPARISON rather than throwing or sorting by the projected text.
+        // A column without a Sort is one the caller declared unsortable, and the reason Sort takes a
+        // comparison over the model at all is that sorting the displayed string is wrong in ways that
+        // look right - "10" before "9" (§27). Silently falling back to it would reintroduce exactly
+        // that bug through a door with no heading to click.
+        //
+        // Works before the template for §27.6's reason: the fields are the table's own and Show
+        // applies them, so a caller sorting from a window's constructor gets a sorted table when it
+        // appears. A remembered layout still wins over it - Restore runs after, and what a user
+        // dragged and clicked outranks what the application declared (§27.11, §65.4).
+        /// <summary>Sorts by one column, as though its heading had been clicked.</summary>
+        /// <param name="column">The column index, in the order the columns were added.</param>
+        /// <param name="descending">Which way round. Ascending by default.</param>
+        /// <remarks>Does nothing when the index is out of range or that column has no Sort comparison.</remarks>
+        public void SortBy(int column, bool descending = false)
+        {
+            if (column < 0 || column >= _columns.Count) return;
+            if (_columns[column].Sort is null) return;
+
+            _sortColumn = column;
+            _sortDescending = descending;
+            Apply();
+        }
+
+        /// <summary>Returns the rows to the order they were given in.</summary>
+        public void ClearSort()
+        {
+            if (_sortColumn < 0 && !_sortDescending) return;
+
+            _sortColumn = -1;
+            _sortDescending = false;
+            Apply();
+        }
+
+        // What a heading click does after it has decided the new state, shared so a programmatic sort
+        // and a clicked one cannot end up doing different amounts of work.
+        private void Apply()
+        {
+            Show();
+            ShowSortState();
+            Remember();
+        }
+
         private void Cycle(int index)
         {
             if (_sortColumn != index)
@@ -1657,8 +1751,7 @@ namespace EmuSen.LunaP.Controls
                 _sortDescending = false;
             }
 
-            Show();
-            ShowSortState();
+            Apply();
         }
 
         // UPDATES THE HEADINGS IN PLACE AND NEVER REBUILDS THEM, which is a keyboard requirement
@@ -1752,6 +1845,8 @@ namespace EmuSen.LunaP.Controls
                 // The marker stays on the cell on purpose: Cell() walks descendants to find it, so it
                 // is reachable through the wrapper, and putting it on the wrapper instead would make
                 // a template cell's own children answer for the column.
+                Align(cell, i);
+
                 TableCells.SetColumn(cell, i);
                 Grid.SetColumn(placed, GridColumn(i));
                 grid.Children.Add(placed);
@@ -1909,6 +2004,48 @@ namespace EmuSen.LunaP.Controls
         // for an unknown kind - should not have to invent a blank control.
         // A caller's own control, with one default applied to it - see docs/LunaP.md §69.
         //
+        // ONE COLUMN'S ALIGNMENT, SPELLED IN EACH KIND'S OWN TERMS - see docs/LunaP.md §70.
+        //
+        // A text cell takes TEXT alignment and the other two take LAYOUT alignment, which is one
+        // instruction rather than two rules. A TextBlock filling its column and drawing its text
+        // right keeps the ellipsis it trims with; one shrunk to its content and pushed right loses
+        // it, so the visible result of the "consistent" version would be a right-aligned column that
+        // stops trimming (§27.4). Stretch has no meaning for text and is the one value that does
+        // nothing here, because filling the cell is what a text cell already does.
+        //
+        // AFTER EACH KIND'S OWN DEFAULT AND BEFORE NOTHING, which is the precedence §69.2 set up:
+        // a control that named its own alignment still wins, because Build ran first and this only
+        // assigns what the column actually asked for. Null asks for nothing.
+        private void Align(Control cell, int index)
+        {
+            ColumnSpec column = _columns[index];
+
+            if (column.VerticalAlignment is { } down) cell.VerticalAlignment = down;
+            if (column.Alignment is not { } across) return;
+
+            if (cell is TableCell text)
+            {
+                if (TextAlign(across) is { } spelled) text.TextAlignment = spelled;
+                return;
+            }
+
+            cell.HorizontalAlignment = across;
+        }
+
+        // The same instruction in a TextBlock's terms, and the ONE place that translation lives. The
+        // heading needs it too (§70.2), and a rule with two owners is a rule that will disagree with
+        // itself - which is §69.1's lesson, applied before it could happen rather than after.
+        //
+        // Null for Stretch and for a column that said nothing, because both mean "leave it": filling
+        // the cell is what a text cell does already, and there is no text alignment that expresses it.
+        private static Avalonia.Media.TextAlignment? TextAlign(HorizontalAlignment? across) => across switch
+        {
+            HorizontalAlignment.Left => Avalonia.Media.TextAlignment.Left,
+            HorizontalAlignment.Center => Avalonia.Media.TextAlignment.Center,
+            HorizontalAlignment.Right => Avalonia.Media.TextAlignment.Right,
+            _ => null,
+        };
+
         // DO NOT CENTRE SOMETHING THE CALLER SIZED, which is a narrower rule than the one this
         // started as and the width test is the whole of the difference.
         //
@@ -3031,7 +3168,9 @@ namespace EmuSen.LunaP.Controls
             LunaCellKind Kind,
             Func<T, bool>? Checked,
             Action<T, bool>? Toggle,
-            Func<T, Control>? Build)
+            Func<T, Control>? Build,
+            HorizontalAlignment? Alignment,
+            VerticalAlignment? VerticalAlignment)
         {
             // Matches LunaColumn<T>.IsEditable rather than restating it loosely: a Check column is
             // changed by being ticked and must not answer to the text editor, or F2 stops at it.

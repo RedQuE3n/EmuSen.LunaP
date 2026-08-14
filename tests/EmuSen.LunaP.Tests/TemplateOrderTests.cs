@@ -145,6 +145,33 @@ namespace EmuSen.LunaP.Tests
                         + $"boxes {c.GetVisualDescendants().OfType<Border>().Count(b => b.Classes.Contains("cell-selection"))}";
                 }),
 
+            // §70.3's. A sort set before the template has to be there when the table appears - the
+            // fields are the control's own and Show applies them, which is the §27.6 shape one
+            // property along. The read asks for the ROW ORDER as well as the reported state, because
+            // a table that remembered the sort and never applied it would answer both questions
+            // correctly and show the rows in arrival order.
+            new("LunaTable.SortBy/ClearSort",
+                () => new LunaTable<string>(),
+                c =>
+                {
+                    var table = (LunaTable<string>)c;
+                    table.Column("name", s => s)
+                         .Column(new LunaColumn<string>("length", s => s.Length.ToString())
+                         {
+                             Sort = (a, b) => a.Length.CompareTo(b.Length),
+                         });
+                    table.Refresh(new[] { "gamma", "be", "alpha4" });
+                    table.SortBy(0);
+                    table.ClearSort();
+                    table.SortBy(1, descending: true);
+                },
+                c =>
+                {
+                    var table = (LunaTable<string>)c;
+                    return $"column {table.SortedColumn}, descending {table.SortedDescending}, "
+                        + $"order {string.Join("/", table.Models)}";
+                }),
+
             new("LunaList.Refresh/Select",
                 () => new LunaList<string>(),
                 c =>
@@ -333,6 +360,11 @@ namespace EmuSen.LunaP.Tests
             // A cell selection is held by key and applied at the next mark, so the same script runs
             // in both orders - and the LunaTable.SelectCell/ClearCellSelection case runs it.
             // IsCellSelected is here because that case's read is what asks it.
+            // A sort is two fields the control owns and Show applies, so it survives having no
+            // template - the LunaTable.SortBy/ClearSort case runs exactly that script in both orders.
+            (typeof(LunaTable<>), "SortBy"),
+            (typeof(LunaTable<>), "ClearSort"),
+
             (typeof(LunaTable<>), "SelectCell"),
             (typeof(LunaTable<>), "ClearCellSelection"),
             (typeof(LunaTable<>), "IsCellSelected"),
