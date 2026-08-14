@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -333,8 +334,9 @@ namespace EmuSen.LunaP.Tests
             Tree(() => TreeTable(Tree(), hierarchical: false), table =>
             {
                 Assert.Equal(new[] { "roms", "saves" }, Visible(table));
-                Assert.Empty(table.GetVisualDescendants().OfType<Button>()
-                    .Where(b => b.Classes.Contains("expander")));
+                Assert.DoesNotContain(
+                    table.GetVisualDescendants().OfType<Button>(),
+                    b => b.Classes.Contains("expander"));
             });
 
         [Fact]
@@ -528,5 +530,208 @@ namespace EmuSen.LunaP.Tests
 
             Assert.Equal("name: roms, expanded", Heard("roms"));
         });
+
+        // ---- pass 2: gestures, rules, lifecycle (§56) ----
+
+        private static LunaTable<Node> Editable(Node[] roots, LunaEditGestures gestures)
+        {
+            var table = new LunaTable<Node> { Key = n => n.Name, EditGestures = gestures };
+            table.Column(new LunaColumn<Node>("name", n => n.Name) { Commit = (_, _) => { } });
+            table.Refresh(roots);
+            return table;
+        }
+
+        [Fact]
+        public Task Both_gestures_open_an_editor_by_default() => Tree(() => Editable(Tree(), LunaEditGestures.Default), table =>
+        {
+            table.Select(table.Models[0]);
+            table.RaiseEvent(new Avalonia.Input.KeyEventArgs
+            {
+                RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent,
+                Key = Avalonia.Input.Key.F2,
+            });
+
+            Assert.True(table.IsEditing);
+        });
+
+        [Fact]
+        public Task F2_does_nothing_when_it_is_not_among_the_gestures() =>
+            Tree(() => Editable(Tree(), LunaEditGestures.DoubleTap), table =>
+            {
+                table.Select(table.Models[0]);
+                table.RaiseEvent(new Avalonia.Input.KeyEventArgs
+                {
+                    RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent,
+                    Key = Avalonia.Input.Key.F2,
+                });
+
+                Assert.False(table.IsEditing);
+            });
+
+        // None still allows Edit(), because an application driving editing from its own menu wants
+        // the column editable and the gestures off - and turning the column read-only to get that
+        // would lose its validation with it.
+        [Fact]
+        public Task No_gesture_still_leaves_Edit_working() =>
+            Tree(() => Editable(Tree(), LunaEditGestures.None), table =>
+            {
+                table.Select(table.Models[0]);
+                table.RaiseEvent(new Avalonia.Input.KeyEventArgs
+                {
+                    RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent,
+                    Key = Avalonia.Input.Key.F2,
+                });
+                Assert.False(table.IsEditing);
+
+                table.Edit(table.Models[0], 0);
+                Assert.True(table.IsEditing);
+            });
+
+        // ---- grid lines ----
+
+        private static int Rules(LunaTable<Node> table, string cls) =>
+            table.FindNamed<ListBox>("PART_Rows").GetVisualDescendants().OfType<Border>()
+                .Count(b => b.Classes.Contains(cls));
+
+        [Fact]
+        public Task A_table_draws_no_rules_by_default() => Tree(() => TreeTable(Tree(), hierarchical: false), table =>
+        {
+            Assert.Equal(LunaGridLines.None, table.GridLines);
+            Assert.Equal(0, Rules(table, "row-rule"));
+            Assert.Equal(0, Rules(table, "column-rule"));
+        });
+
+        [Fact]
+        public Task Horizontal_rules_are_one_per_row() => Session.Dispatch(() =>
+        {
+            LunaTable<Node> table = TreeTable(Tree(), hierarchical: false);
+            table.GridLines = LunaGridLines.Horizontal;
+
+            var window = new ToolWindow { Width = 500, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(2, Rules(table, "row-rule"));     // two roots
+            Assert.Equal(0, Rules(table, "column-rule"));
+
+            window.Close();
+        }, default);
+
+        // One per column BOUNDARY, not per column: a rule after the last column would draw on the
+        // table's own edge.
+        [Fact]
+        public Task Vertical_rules_stop_at_the_last_column() => Session.Dispatch(() =>
+        {
+            var table = new LunaTable<Node> { Key = n => n.Name, GridLines = LunaGridLines.Vertical };
+            table.Column("name", n => n.Name)
+                 .Column("kind", _ => "folder")
+                 .Column("size", _ => "0");
+            table.Refresh(new[] { new Node("roms") });
+
+            var window = new ToolWindow { Width = 500, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(2, Rules(table, "column-rule"));  // three columns, two boundaries
+            Assert.Equal(0, Rules(table, "row-rule"));
+
+            window.Close();
+        }, default);
+
+        // A vertical rule must not wrap the cell, or BeginEdit cannot find a Panel to put the editor
+        // in and editing silently stops working with rules turned on (§55.7).
+        [Fact]
+        public Task A_cell_can_still_be_edited_with_rules_on() => Session.Dispatch(() =>
+        {
+            var table = new LunaTable<Node> { Key = n => n.Name, GridLines = LunaGridLines.All };
+            table.Column(new LunaColumn<Node>("name", n => n.Name) { Commit = (_, _) => { } })
+                 .Column("kind", _ => "folder");
+            table.Refresh(new[] { new Node("roms") });
+
+            var window = new ToolWindow { Width = 500, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            table.Edit(table.Models[0], 0);
+
+            Assert.True(table.IsEditing);
+            Assert.Single(table.GetVisualDescendants().OfType<TextBox>());
+
+            window.Close();
+        }, default);
+
+        // ---- lifecycle ----
+
+        [Fact]
+        public Task A_row_reports_when_a_container_starts_standing_for_it() => Session.Dispatch(() =>
+        {
+            var prepared = new List<string>();
+            LunaTable<Node> table = TreeTable(Tree(), hierarchical: false);
+            table.RowPrepared += (model, _) => prepared.Add(model.Name);
+
+            var window = new ToolWindow { Width = 500, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(new[] { "roms", "saves" }, prepared);
+
+            window.Close();
+        }, default);
+
+        [Fact]
+        public Task A_committed_edit_reports_the_model_and_the_column() => Session.Dispatch(() =>
+        {
+            var changed = new List<string>();
+            var node = new Node("roms");
+            var table = new LunaTable<Node> { Key = n => n.Name };
+            table.Column("kind", _ => "folder")
+                 .Column(new LunaColumn<Node>("name", n => n.Name) { Commit = (_, _) => { } });
+            table.Refresh(new[] { node });
+            table.CellValueChanged += (model, column) => changed.Add($"{model.Name}:{column}");
+
+            var window = new ToolWindow { Width = 500, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            table.Edit(node, 1);
+            table.GetVisualDescendants().OfType<TextBox>().Single().RaiseEvent(
+                new Avalonia.Input.KeyEventArgs
+                {
+                    RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent,
+                    Key = Avalonia.Input.Key.Enter,
+                });
+
+            Assert.Equal(new[] { "roms:1" }, changed);
+
+            window.Close();
+        }, default);
+
+        // A cancelled edit changed nothing, so it must not say it did.
+        [Fact]
+        public Task A_cancelled_edit_reports_nothing() => Session.Dispatch(() =>
+        {
+            var changed = new List<string>();
+            var node = new Node("roms");
+            var table = new LunaTable<Node> { Key = n => n.Name };
+            table.Column(new LunaColumn<Node>("name", n => n.Name) { Commit = (_, _) => { } });
+            table.Refresh(new[] { node });
+            table.CellValueChanged += (model, column) => changed.Add($"{model.Name}:{column}");
+
+            var window = new ToolWindow { Width = 500, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            table.Edit(node, 0);
+            table.GetVisualDescendants().OfType<TextBox>().Single().RaiseEvent(
+                new Avalonia.Input.KeyEventArgs
+                {
+                    RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent,
+                    Key = Avalonia.Input.Key.Escape,
+                });
+
+            Assert.Empty(changed);
+
+            window.Close();
+        }, default);
     }
 }
