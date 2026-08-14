@@ -227,6 +227,28 @@ takes `LunaBorder`, and `Border.frozen-edge` restyles it.
 order: those are what your user did, and this is what you declared. If you offer
 it as a "Freeze first column" menu item, remember it in your own settings.
 
+**Rows can be dragged into a new order**, and the table changes nothing itself —
+it tells you where the drop landed and you move your own rows:
+
+```csharp
+fields.CanReorderRows = true;
+fields.RowDropped += drop =>
+{
+    foreach (Field moved in drop.Rows) schema.Remove(moved);
+
+    int at = drop.Target is null ? schema.Count : schema.IndexOf(drop.Target);
+    if (drop.Position == LunaDropPosition.After) at++;
+
+    schema.InsertRange(at, drop.Rows);
+    fields.Refresh(schema);
+};
+```
+
+`Alt+Up`/`Alt+Down` moves the selected row without a pointer. `CanDrop` refuses a
+drop before the indicator promises it. In a tree, dropping into the middle of a
+row reports `Inside` — a reparent rather than a reorder. Dragging a row inside a
+multi-selection takes the whole selection.
+
 **A table can select cells instead of rows.** Two properties, because *how many*
 and *what kind* are different questions:
 
