@@ -6441,3 +6441,68 @@ the selection, there is no way to route around it. What a reader gets instead is
 which §55 made a real `Button`: focusable, invokable, and named *"Expand roms"* rather than
 "expander". That is the capability without the pattern, and it is stated here rather than left to be
 discovered.
+
+## 69. Two things §68 half-finished
+
+Both of §68's findings were fixed where they were found rather than where they live. This is the
+difference, and one of the two fixes was wrong on its first attempt in a way worth keeping.
+
+### 69.1 The stale cell had a third path, and it was the automation one
+
+§68.4 found that a cell can go stale because a *different* cell changed — a template column
+projecting a field that a checkbox two columns away writes — and wired the row-wide refresh into the
+two paths its sabotages happened to cross: a pointer toggle, and a typed commit.
+
+**There are three.** `SetFromAutomation` is where a screen reader's write lands (§50.6), and it
+refreshed the edited cell's text and the row's sentence and nothing else. So a reader that set a name
+through `IValueProvider.SetValue` was left with the template cell beside it describing the value
+before the one it had just written — **the defect live on the automation path, in the pass whose
+entire subject was automation.**
+
+The lesson is not about that method. Sabotage tells you an assertion can fail; it does not tell you
+the assertion covers every route to the same state. §68.4's two fixes were each *correct*, and
+together they were a fix applied to the two examples rather than to the class. The question that
+would have found it is the one the fix should have started from: **what are all the places this
+model can be written?** Three, enumerable in one grep, and one of them had no guard.
+
+A refusal is guarded too, in the same place: a reader's write that `Validate` rejects must leave the
+row exactly as it was, or the refusal is announced and the old value is not.
+
+### 69.2 A template cell was the only kind that did not start at its column's edge
+
+§68.5 recorded a test-side scare — a header-alignment guard reporting 146px of drift that turned out
+to be Avalonia centring an 8px `Ellipse` in a 300px column — and fixed the *fixture*. The fixture was
+not the problem. Every other kind of cell begins at the column's left edge, and a template cell did
+not; §57's `CheckCell` had already met the same default and written down half of it:
+
+> A CheckBox defaults to filling its slot, so in a column two hundred pixels wide the whole cell
+> becomes the toggle - and a user aiming at the row to select it ticks a box instead.
+
+**Stretch does two different things** and that is the part worth knowing. With no explicit width it
+fills the slot, which is what a progress bar or a coloured background in a cell wants. With one it
+centres. So the rule is not "left-align template cells" — it is **do not centre something the caller
+sized.**
+
+The first attempt was the broad version, and it broke eight frozen-band tests in one run: those
+fixtures use `Border` cells with no width, which stretch to fill a column and collapsed to nothing
+under a blanket `Left`. That is a consumer's progress-bar cell disappearing on upgrade, caught by a
+suite that was testing something else entirely. It now has a guard of its own rather than relying on
+that luck a second time.
+
+`IsSet` decides both halves, so a caller who wrote an alignment keeps it — the rule
+`LunaAutomationPeer.GetNameCore` follows for names, applied to layout: **answer where there is no
+answer, never overrule.** A toolkit that silently overrode a caller's alignment would be worse than
+one that never touched it, because their fix would look applied.
+
+The gallery no longer sets the alignment by hand, and its absence is the point: that line is the one
+a consumer no longer has to know to write.
+
+### 69.3 The sabotages
+
+| Sabotage | What turned red |
+|---|---|
+| a reader's write stops refreshing the row | the template cell beside the one it wrote |
+| a reader's write skips validation | the refused write changed the row anyway |
+| a template cell is left centred | it started 56px into a 120px column beside a checkbox at 0 |
+| the alignment default overrules the caller | a right-aligned cell was pulled back to the left |
+| the width test is dropped from the rule | a cell that filled its column collapsed to its content |
