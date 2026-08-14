@@ -25,7 +25,17 @@ namespace EmuSen.LunaP.Controls
         private int _width;
         private int _height;
 
-        /// <summary>How the frame fills the control. Defaults to preserving the aspect ratio, which is what a pixel-accurate view of a framebuffer needs.</summary>
+        // DEFAULTS TO None, WHICH DOES NOT SCALE AT ALL - one bitmap pixel to one layout pixel, and
+        // the frame cropped by the control's bounds rather than fitted to them. That is what a
+        // pixel-accurate view of a framebuffer wants, and it is why the template pins
+        // BitmapInterpolationMode to None beside it: scaling and smoothing are the two ways a
+        // framebuffer stops being the thing that was rendered.
+        //
+        // This summary said "defaults to preserving the aspect ratio" until §52. That describes
+        // Uniform, which is a different member and a different picture - it fits the frame to the
+        // control and letterboxes it. The value was always right; the sentence named the wrong one,
+        // and it is a /// summary, so it was what a consumer's IntelliSense showed.
+        /// <summary>How the frame fills the control. Defaults to Stretch.None, which does not scale: one bitmap pixel to one layout pixel, which is what a pixel-accurate view of a framebuffer needs.</summary>
         public Stretch Stretch
         {
             get => GetValue(StretchProperty);

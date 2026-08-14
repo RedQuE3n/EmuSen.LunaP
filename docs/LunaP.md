@@ -4808,3 +4808,38 @@ the kind of thing that goes unnoticed until a publish job runs:
 
 Both `<Version>` elements moved together, per §22.8 — the harness tracks the toolkit rather than
 keeping its own number.
+
+## 52. A summary that named the wrong enum member
+
+`RgbaImageView.Stretch` defaults to `Stretch.None`. Its `///` summary said it *"defaults to
+preserving the aspect ratio"*, which describes `Uniform` — a different member producing a different
+picture: `Uniform` fits the frame to the control and letterboxes it, `None` does not scale at all.
+
+**The value was always right and only the sentence was wrong**, which is the reason this is worth a
+section rather than a silent edit. Nothing rendered incorrectly and no test could have failed. What
+was wrong was the description of a public property, in a `///` summary — so it was what a consumer's
+IntelliSense showed them, and §33 added those summaries precisely so that a consumer with the DLL and
+nothing else could read them. A wrong one is worse than the blank they had before, because a blank
+sends you to the source and a confident wrong sentence does not.
+
+It was found during the survey written up in `PLAN-general-purpose.md` §2, alongside two other
+observations about the same control, and then **left unfixed through five commits of an arc that
+touched everything around it** — the plan noted it as "worth a one-line fix" and nothing carried that
+note into the code, which is the failure mode §28 exists to end. It is fixed here because somebody
+asked whether it had been.
+
+### 52.1 The two that are still open
+
+Both are from the same survey and both are real, and neither is a defect in what the control claims:
+
+- **`SetFrame` takes `byte[]` only.** A consumer whose pixels are in native memory must marshal into
+  a managed array first, which `Marshal.Copy` then copies again into the framebuffer. At 1080p that
+  is ~8.3 MB per copy; at 60fps, ~500 MB/s of avoidable memcpy. A `ReadOnlySpan<byte>` overload and
+  an `nint` one would remove a copy for very little code — `ILockedFramebuffer.Address` is already in
+  hand.
+- **No integer scaling.** With `Stretch="Uniform"` at a non-integer factor, nearest-neighbour gives
+  uneven pixel rows — a 160×144 frame at 4.17× yields rows 4 and 5 pixels tall — which shimmers on
+  scroll. Every emulator frontend eventually grows an integer-scale option.
+
+Both are additive API and neither blocks 0.8.0. They are recorded here rather than left in a working
+plan that gets deleted, which is what happened to the sentence above.
