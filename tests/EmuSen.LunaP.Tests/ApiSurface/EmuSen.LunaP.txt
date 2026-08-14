@@ -293,12 +293,17 @@ public class EmuSen.LunaP.Controls.PathPickerRow : Avalonia.Controls.Primitives.
 public class EmuSen.LunaP.Controls.RgbaImageView : Avalonia.Controls.Primitives.TemplatedControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     public Avalonia.Media.IImage? Source { get; }
     public Avalonia.Media.Stretch Stretch { get; set; }
     public RgbaImageView()
+    public bool IntegerScale { get; set; }
     public static readonly Avalonia.DirectProperty<EmuSen.LunaP.Controls.RgbaImageView, Avalonia.Media.IImage?> SourceProperty
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Stretch> StretchProperty
+    public static readonly Avalonia.StyledProperty<bool> IntegerScaleProperty
     public void Clear()
+    public void SetFrame(System.IntPtr rgba, int width, int height)
+    public void SetFrame(System.ReadOnlySpan<byte> rgba, int width, int height)
     public void SetFrame(System.ValueTuple<byte[], int, int> frame)
     public void SetFrame(byte[] rgba, int width, int height)
 

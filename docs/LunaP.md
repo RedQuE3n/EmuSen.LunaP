@@ -4843,3 +4843,92 @@ Both are from the same survey and both are real, and neither is a defect in what
 
 Both are additive API and neither blocks 0.8.0. They are recorded here rather than left in a working
 plan that gets deleted, which is what happened to the sentence above.
+
+## 53. Two copies to avoid a pointer, and rows that were not all the same height
+
+The two observations §52.1 left open, both about `RgbaImageView`, both now closed.
+
+### 53.1 The copy that was paid twice
+
+`SetFrame` took `byte[]` and nothing else. A caller whose pixels were already in native memory — an
+emulator core's framebuffer, a decoder's output — had to marshal them into a managed array so that
+this control could `Marshal.Copy` them straight back out into the locked framebuffer. **Two copies to
+avoid a pointer.**
+
+At 1080p a frame is `1920 × 1080 × 4` = **8.29 MB**, so the avoidable one costs about **498 MB/s at
+60fps**. There are now three entry points and one copy path:
+
+| | |
+|---|---|
+| `SetFrame(byte[], int, int)` | unchanged for every existing caller; now delegates |
+| `SetFrame(ReadOnlySpan<byte>, int, int)` | takes a slice of a larger buffer without copying it out first |
+| `SetFrame(nint, int, int)` | copies straight from unmanaged memory |
+
+**`AllowUnsafeBlocks` is now on, and that is a build decision with a `§` because it is one.** Safe C#
+cannot write to native memory at all — there is no safe way to make a `Span<byte>` over
+`ILockedFramebuffer.Address`, and `Marshal.Copy` takes arrays only. A "span" overload implemented
+safely would have to copy the span into a temporary array first, which **adds** an allocation and a
+copy to a method whose entire purpose is to remove one: an API that reads as an optimisation and is a
+pessimisation. The scope is one method, `Blit`, and every entry point bounds-checks before reaching
+it. Nothing else in the toolkit may use `unsafe` without a section of its own.
+
+The pointer overload is the one that cannot check its argument — there is no length in an address, so
+`width` and `height` are a promise the caller makes about memory this control is about to read. It
+says so in its `<remarks>`, and a zero address clears rather than dereferencing, which is the one
+refusal available to it.
+
+### 53.2 A stride that was assumed rather than read
+
+Found while writing the above. `SetFrame` copied `width * height * 4` as a single contiguous block,
+which is correct **only if the framebuffer's stride is exactly `width * 4`**.
+`ILockedFramebuffer.RowBytes` exists precisely because a backend is allowed to align each row: a
+163-pixel frame could sit in rows of 656 bytes rather than 652, and the old copy would have produced
+a progressively skewed image on any backend that did.
+
+**Measured before changing anything**, on Linux with Skia, `WriteableBitmap` at six widths:
+
+| width | 160 | 161 | 163 | 256 | 257 | 1920 |
+|---|---|---|---|---|---|---|
+| `RowBytes` | 640 | 644 | 652 | 1024 | 1028 | 7680 |
+| `width × 4` | 640 | 644 | 652 | 1024 | 1028 | 7680 |
+
+**Never padded, including at odd widths.** So the assumption held everywhere it was tested, and was
+still an assumption about one platform rather than a guarantee of the API. `Blit` now takes the
+single-block path when the stride is tight — the same copy as before, and the common case — and
+copies row by row when it is not.
+
+**A hazard, stated rather than claimed: the padded path is unexercised.** No backend available here
+pads, so no test reaches it. What *is* verified is the loop's arithmetic — forcing the row-by-row
+branch unconditionally leaves all 16 tests green, which says the loop is correct when the stride is
+tight but says nothing about a stride that is not. A platform that pads is where this would first be
+proven, and it is the entry to read if an image ever comes out sheared.
+
+### 53.3 Whole pixels, or the picture shimmers
+
+`IntegerScale`, off by default. Nearest-neighbour at a fractional factor does not enlarge pixels
+evenly — it **duplicates some and not others**. A 160×144 frame in a 667-wide box is 4.17×, so most
+source rows land 4 device pixels tall and every sixth one lands 5. Static, that is faint irregular
+banding; moving, the tall rows travel through the picture and it shimmers.
+
+Turned on, the factor is floored to 4× and the result centred, which is what every emulator frontend
+arrives at. **Opt-in rather than automatic**, because it trades screen area for evenness and a tile
+viewer in a small panel would rather have the area. Never below 1×: a frame larger than its box shows
+at 1:1 and is cropped, because a zero-times scale is not a picture.
+
+The template **no longer `TemplateBinding`s `Stretch`**. Integer scaling has to set an exact size on
+the `Image` and a `Stretch` that fills it, and a binding on the same property would be competing with
+that, so the control drives the `Image`'s geometry from one method and the template carries only
+`Source` and the interpolation mode.
+
+### 53.4 What the sabotages said
+
+Per §22.5, each guard was made to fail before being trusted:
+
+| Sabotage | Result |
+|---|---|
+| `Math.Floor` dropped from the factor | *Expected 640, Actual 666.667* — the fractional scale it exists to prevent |
+| Copy length short by one row | 3 pixel-comparison tests fail |
+| Row-by-row branch forced unconditionally | **all 16 pass** — which is the check, not a failure: it says the loop is right |
+
+The frames compared are ramps where every byte differs, so a copy that drops, doubles or shifts a row
+shows up. A flat colour would have survived most of those.
