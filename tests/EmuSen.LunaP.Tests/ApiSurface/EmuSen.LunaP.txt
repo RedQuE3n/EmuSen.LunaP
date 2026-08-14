@@ -258,6 +258,7 @@ public abstract class EmuSen.LunaP.Controls.LunaTable : Avalonia.Controls.Primit
     protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
 
 public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTable
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
     protected override void OnPartsAttached()
     public EmuSen.LunaP.Controls.LunaCell<T>? SelectedCell { get; }

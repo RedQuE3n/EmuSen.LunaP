@@ -439,6 +439,18 @@ Anything you set wins over the control's own name, so a toolkit default never
 overrides your decision. `StatusBar` is a polite live region by default — set
 `AutomationProperties.LiveSetting` to `Off` if yours updates continuously.
 
+`LunaTable<T>` goes further, because a table is where a reader most needs it. It
+reports itself as a data grid with a selection and a scroll pattern behind the
+claim, so a reader can ask what is selected and move a table bigger than the
+window. Each row announces as a sentence built from its own cells — "name: Site,
+type: text, pg: 1" — and each cell is named for its column, with its value coming
+from the pattern it carries. A template column's spoken sentence is what its cell
+says, which is why that argument is required rather than optional.
+
+One gap, stated rather than left to be found: a tree row exposes no
+`IExpandCollapseProvider`. Its expander is a real focusable button named "Expand
+&lt;row&gt;", which is the capability without the pattern (§68.7).
+
 Worth knowing what this is not: it is measured against Avalonia's automation
 tree, not against a running screen reader. `docs/LunaP.md` §24 has the before
 measurement — nine controls that were not in the tree at all — and §24.4 is
