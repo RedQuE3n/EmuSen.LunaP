@@ -54,5 +54,38 @@ namespace EmuSen.LunaP.Controls
         /// equal keep the order they were given to Refresh in.
         /// </remarks>
         public Comparison<T>? Sort { get; init; }
+
+        // WRITING IS THE CALLER'S JOB, WHICH IS WHY THIS IS AN ACTION AND NOT A SETTER PATH. The
+        // column already turns a model into text one way; the reverse needs to know the model's
+        // type, its property, and how to parse a string into it, and only the caller knows all
+        // three. `(item, text) => item.Name = text` is the whole of it at the call site, and a
+        // record with an init-only property is `(item, text) => Replace(item with { Name = text })`
+        // - which a projection-based design could not have expressed at all.
+        //
+        // Null is the default and means the column is READ-ONLY. That is the important half: a table
+        // is read-only until a caller says otherwise per column, so adding editing to this toolkit
+        // changed no existing table's behaviour (§26.13).
+        /// <summary>Writes an edited value back to the model, or null when the column cannot be edited.</summary>
+        /// <remarks>
+        /// Called only after <see cref="Validate"/> has returned null for the same text. Receives the raw
+        /// string from the editor; parsing and conversion are the caller's, because only the caller knows
+        /// what the column means.
+        /// </remarks>
+        public Action<T, string>? Commit { get; init; }
+
+        // Returns the PROBLEM, not a bool, for the same reason FieldRow.Error is a string and there
+        // is no IsValid beside it (§49.1): a cell that refuses a value without saying why is a cell
+        // the user cannot fix. Null means valid, so the common case stays quiet.
+        //
+        // Runs BEFORE Commit and can veto it. Parsing lives here in practice - a Validate that tries
+        // int.TryParse and returns "Not a number." is the shape this is for - which keeps Commit free
+        // to assume the text is good.
+        /// <summary>Checks an edited value, returning what is wrong with it, or null when it is acceptable. Null itself means the column never rejects anything.</summary>
+        public Func<T, string, string?>? Validate { get; init; }
+
+        // Asked in three places, and a property rather than three `Commit is not null` tests, because
+        // "can this column be edited" is the question being asked and not "is this delegate set".
+        /// <summary>Whether this column can be edited, which is exactly whether it was given a Commit.</summary>
+        public bool IsEditable => Commit is not null;
     }
 }

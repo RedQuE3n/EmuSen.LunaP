@@ -37,6 +37,9 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The row list from the template, or null before the template has been applied.</summary>
         protected ListBox? Rows;
 
+        /// <summary>Where a rejected edit says what is wrong, or null before the template has been applied.</summary>
+        protected ErrorText? Message;
+
         // A Table, not a DataGrid, and the distinction is a promise rather than a label: UIA's
         // DataGrid and Table types come with IGridProvider and ITableProvider, which let a reader
         // ask for "row 4, column 2" and navigate a grid as a grid. This control implements neither
@@ -53,6 +56,7 @@ namespace EmuSen.LunaP.Controls
 
             HeaderGrid = e.NameScope.Find<Grid>("PART_Header");
             Rows = e.NameScope.Find<ListBox>("PART_Rows");
+            Message = e.NameScope.Find<ErrorText>("PART_Error");
             OnPartsAttached();
         }
 
@@ -193,7 +197,9 @@ namespace EmuSen.LunaP.Controls
         {
             if (column is null) throw new ArgumentNullException(nameof(column));
 
-            _columns.Add(new ColumnSpec(column.Header, column.Text, GridLength.Parse(column.Width), column.Sort));
+            _columns.Add(new ColumnSpec(
+                column.Header, column.Text, GridLength.Parse(column.Width), column.Sort,
+                column.Commit, column.Validate));
             Rebuild();
 
             // A saved layout can only be matched once the columns it describes exist, and there is
@@ -377,7 +383,16 @@ namespace EmuSen.LunaP.Controls
             // back into view after a resize would come back at the old widths. This is the hook that
             // catches it - and it fires for every container, so a row realized for the first time
             // after a drag is covered by the same line.
-            Rows.ContainerPrepared += (_, e) => Widen(e.Container);
+            Rows.ContainerPrepared += (_, e) =>
+            {
+                Widen(e.Container);
+
+                // AND THE ROW'S NAME, which has to happen here rather than in Row(): the grid is
+                // built before anything parents it, so at that moment there is no container to put
+                // the name on. This fires for every container including recycled ones, so a row
+                // scrolled back into view is renamed for whatever model it now holds. §50.5.
+                if (e.Container.DataContext is T model) AutomationProperties.SetName(e.Container, Spoken(model));
+            };
 
             Rebuild();
             Restore();
@@ -618,32 +633,332 @@ namespace EmuSen.LunaP.Controls
 
             if (item is null) return grid;
 
-            var spoken = new List<string>(_columns.Count);
-
             for (int i = 0; i < _columns.Count; i++)
             {
-                string value = _columns[i].Text(item) ?? string.Empty;
-                spoken.Add($"{_columns[i].Header}: {value}");
-
-                var cell = new TextBlock
+                int index = i;
+                var cell = new TableCell
                 {
-                    Text = value,
+                    Text = _columns[i].Text(item) ?? string.Empty,
                     TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis,
                     VerticalAlignment = VerticalAlignment.Center,
+
+                    // Read through the projection so a reader always gets the model's current value,
+                    // and Write only where the column can be committed to - which is what makes
+                    // IValueProvider.IsReadOnly answer honestly per column. §50.6.
+                    Read = () => _columns[index].Text(item) ?? string.Empty,
+                    Write = _columns[i].IsEditable
+                        ? text => SetFromAutomation(item, index, text)
+                        : null,
                 };
 
                 Grid.SetColumn(cell, i);
                 grid.Children.Add(cell);
+
+                // DOUBLE-CLICK OPENS THE EDITOR, and the handler goes on the CELL rather than on the
+                // row because the cell is the only thing that knows which column was hit. Doing it
+                // on the row would mean hit-testing the pointer's x against the column boundaries -
+                // arithmetic that has to be kept in step with the Grid, to answer a question the
+                // Grid has already answered by delivering the event here.
+                //
+                // Captured rather than looked up: `cell` and `item` in this closure are the live
+                // visual and its model, so a recycled row's handler refers to that row's own cell.
+                if (_columns[i].IsEditable)
+                {
+                    int column = i;
+                    cell.DoubleTapped += (_, e) =>
+                    {
+                        BeginEdit(item, column, cell);
+                        e.Handled = true;
+                    };
+                }
             }
 
-            // WHAT A READER HEARS, and the reason it is built here rather than left to Avalonia.
-            // A row of bare TextBlocks in a Grid announces as its concatenated text at best -
-            // "Site text 1" - which is three values with nothing to say which column each came
-            // from. Pairing every value with its header turns that into "name: Site, type: text,
-            // pg: 1", which is the information a column layout is carrying visually. §27.3.
-            AutomationProperties.SetName(grid, string.Join(", ", spoken));
+            NameRow(grid, item);
             return grid;
         }
+
+        // EDITING, AND THE THREE WAYS IT ENDS - see docs/LunaP.md §50.
+        //
+        // The editor is put INTO the row's existing grid, over the cell it replaces, rather than the
+        // row being rebuilt with an editor in it. That is not an optimisation, it is what keeps
+        // trap 2 in PLAN-table.md §6 closed: rebuilding the view means calling Show(), Show()
+        // re-applies the sort, and a row whose sorted column has just been edited would leap to a
+        // different position with the caret still in it. Nothing here touches _items, _view or the
+        // sort, so a committed edit changes a value and moves nothing.
+        //
+        // The state is (item, column, cell) and not a row index, because an index is only true until
+        // the list is refreshed under it.
+        private T? _editItem;
+        private int _editColumn = -1;
+        private TextBox? _editor;
+        private TableCell? _editCell;
+
+        // EndEdit can be re-entered - committing moves focus, which raises LostFocus, which commits -
+        // and this is what makes the second call a no-op instead of a second commit.
+        private bool _ending;
+
+        /// <summary>Whether a cell is currently being edited.</summary>
+        public bool IsEditing => _editor is not null;
+
+        // Opens an editor on a cell. Public because F2 is not the only way an application might want
+        // to start one - a "Rename" menu item is the obvious other - and because the alternative is a
+        // consumer synthesising a double-click.
+        /// <summary>Opens an editor on one cell of one row, if that column has a Commit. Does nothing for a read-only column or a row that is not currently realised.</summary>
+        /// <param name="item">The row's model.</param>
+        /// <param name="column">The column index.</param>
+        public void Edit(T item, int column)
+        {
+            if (item is null || column < 0 || column >= _columns.Count) return;
+            if (Cell(item, column) is not { } cell) return;
+
+            BeginEdit(item, column, cell);
+        }
+
+        // F2 EDITS THE SELECTED ROW, because double-click is a mouse gesture and a table whose cells
+        // can only be opened with a pointer is a table half this toolkit's users cannot edit - the
+        // same argument that made a sortable heading a Button and a column grip a GridSplitter
+        // rather than a Thumb (§24).
+        //
+        // The FIRST editable column, and not the selected one, because this control has no concept
+        // of a focused cell: selection is per row (§27.3 declined the grid semantics that would give
+        // a reader "row 4, column 2"). Committing to a cell cursor here would be inventing half a
+        // DataGrid to serve one key.
+        protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+
+            if (e.Handled || e.Key != Avalonia.Input.Key.F2 || IsEditing) return;
+            if (Selected is not { } item) return;
+
+            int column = _columns.FindIndex(c => c.IsEditable);
+            if (column < 0) return;
+
+            Edit(item, column);
+            e.Handled = IsEditing;
+        }
+
+        private void BeginEdit(T item, int column, TableCell cell)
+        {
+            if (!_columns[column].IsEditable) return;
+
+            // An edit already open somewhere else is committed first, which is the same rule as
+            // clicking away from it. Beginning a second editor while the first is still on screen
+            // would leave two carets and one _editor field pointing at one of them.
+            if (IsEditing) EndEdit(commit: true);
+            if (IsEditing) return; // the previous edit refused to close, so it keeps the caret
+
+            if (cell.Parent is not Grid grid) return;
+
+            var editor = new TextBox
+            {
+                Text = _columns[column].Text(item) ?? string.Empty,
+                VerticalAlignment = VerticalAlignment.Center,
+                MinHeight = 0,
+                Padding = new Thickness(2, 0),
+            };
+
+            editor.KeyDown += EditorKey;
+            editor.LostFocus += (_, _) => EndEdit(commit: true);
+
+            // A ROW SCROLLED OUT OF VIEW TAKES ITS EDITOR WITH IT, and this is where that is
+            // noticed. The list recycles containers, so a row that leaves the viewport has its
+            // content rebuilt for a different model - the editor is simply gone from the tree, and
+            // an _editor field still pointing at it would leave the table believing it is editing.
+            // Cancelling rather than committing: the value was never confirmed, and writing one
+            // because the user scrolled would be a change they did not ask for. Trap 1.
+            editor.DetachedFromVisualTree += (_, _) => EndEdit(commit: false);
+
+            Grid.SetColumn(editor, column);
+            grid.Children.Add(editor);
+
+            cell.IsVisible = false;
+
+            _editItem = item;
+            _editColumn = column;
+            _editor = editor;
+            _editCell = cell;
+
+            editor.Focus();
+            editor.SelectAll();
+        }
+
+        // A READER SETTING A CELL GOES THROUGH THE SAME GATE A TYPIST DOES, which is the point of
+        // routing it here rather than letting the peer call Commit directly. Validate runs, a
+        // refusal is refused, and the row's spoken name is rebuilt afterwards - so an assistive
+        // technology cannot write a value that a person typing the same characters would have been
+        // stopped from writing. §50.6.
+        //
+        // The message is shown for the same reason it is shown to a typist: a refusal with no
+        // sentence is a cell that will not take a value and will not say why.
+        private void SetFromAutomation(T item, int column, string text)
+        {
+            if (!_columns[column].IsEditable) return;
+
+            if (_columns[column].Validate?.Invoke(item, text) is { } problem)
+            {
+                ShowMessage(problem);
+                return;
+            }
+
+            _columns[column].Commit?.Invoke(item, text);
+            ShowMessage(null);
+
+            if (Cell(item, column) is { } cell)
+            {
+                cell.Text = _columns[column].Text(item) ?? string.Empty;
+                if (cell.Parent is Grid grid) NameRow(grid, item);
+            }
+        }
+
+        private void EditorKey(object? sender, Avalonia.Input.KeyEventArgs e)
+        {
+            switch (e.Key)
+            {
+                case Avalonia.Input.Key.Enter:
+                    EndEdit(commit: true);
+                    e.Handled = true;
+                    break;
+
+                // Escape restores the prior value by simply not writing one: the model was never
+                // touched, so there is nothing to roll back.
+                case Avalonia.Input.Key.Escape:
+                    EndEdit(commit: false);
+                    e.Handled = true;
+                    break;
+            }
+        }
+
+        // Returns having either closed the editor or left it open because the value was refused.
+        // A rejected commit KEEPS THE CARET, which is the only humane answer - closing the editor
+        // would throw away what was typed and show a message about a value no longer on screen.
+        private void EndEdit(bool commit)
+        {
+            if (_ending || _editor is null || _editItem is null || _editCell is null) return;
+
+            _ending = true;
+            try
+            {
+                T item = _editItem;
+                int column = _editColumn;
+                string text = _editor.Text ?? string.Empty;
+
+                if (commit)
+                {
+                    // Validate can veto. It runs before Commit and never after, so Commit may assume
+                    // the text is good - which is what lets a caller put int.TryParse in Validate and
+                    // a plain assignment in Commit.
+                    if (_columns[column].Validate?.Invoke(item, text) is { } problem)
+                    {
+                        ShowMessage(problem);
+                        _ending = false;
+                        return;
+                    }
+
+                    _columns[column].Commit?.Invoke(item, text);
+                }
+
+                Close(item);
+            }
+            finally
+            {
+                _ending = false;
+            }
+        }
+
+        private void Close(T item)
+        {
+            if (_editor is { } editor)
+            {
+                if (editor.Parent is Grid grid) grid.Children.Remove(editor);
+            }
+
+            if (_editCell is { } cell)
+            {
+                // Re-read through the projection rather than assigning the typed text: a Commit that
+                // normalised the value - trimmed it, title-cased it, rounded it - would otherwise
+                // leave the cell showing what was typed while the model holds something else.
+                cell.Text = _columns[_editColumn].Text(item) ?? string.Empty;
+                cell.IsVisible = true;
+
+                if (cell.Parent is Grid grid) NameRow(grid, item);
+            }
+
+            _editItem = null;
+            _editColumn = -1;
+            _editor = null;
+            _editCell = null;
+            ShowMessage(null);
+        }
+
+        private void ShowMessage(string? problem)
+        {
+            if (Message is null) return;
+
+            Message.Text = problem ?? string.Empty;
+            Message.IsVisible = !string.IsNullOrEmpty(problem);
+        }
+
+        // Finds a realised cell for a model. Null when the row is scrolled out of view, which is a
+        // real answer rather than a failure: there is nothing on screen to put an editor into.
+        private TableCell? Cell(T item, int column)
+        {
+            if (Rows is null) return null;
+
+            foreach (Control container in Rows.GetRealizedContainers())
+            {
+                if (!Equals(container.DataContext, item)) continue;
+
+                foreach (Grid grid in container.GetVisualDescendants().OfType<Grid>())
+                {
+                    foreach (TableCell cell in grid.Children.OfType<TableCell>())
+                    {
+                        if (Grid.GetColumn(cell) == column) return cell;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        // WHAT A READER HEARS, and the reason it is built here rather than left to Avalonia. A row
+        // of bare TextBlocks in a Grid announces as its concatenated text at best - "Site text 1" -
+        // which is three values with nothing to say which column each came from. Pairing every value
+        // with its header turns that into "name: Site, type: text, pg: 1", which is the information
+        // a column layout is carrying visually. §27.3.
+        //
+        // ITS OWN METHOD SINCE §50, because a committed edit changes a value this sentence contains.
+        // Built once at row construction, a reader would announce the old value for as long as the
+        // row stayed realised - which is the whole of trap 3 in PLAN-table.md §6.
+        // SET ON THE CONTAINER AND NOT ONLY ON THE GRID, and that correction is §50.5.
+        //
+        // Until §50 this name went onto the row Grid alone. The Grid's peer is a NoneAutomationPeer
+        // with IsControlElement = false - it is not in the view a screen reader navigates - so the
+        // sentence was never reachable. What a reader actually got was the CONTAINER's name, and a
+        // ListBoxItem with no name of its own falls back to its DataContext's ToString(): a reader
+        // on the gallery's table heard "EmuSen.LunaP.Gallery.GalleryWindow+Field" three times.
+        //
+        // The old guard could not have caught it, because it read the attached property straight
+        // back off the Grid rather than asking the peer - the §5.5 shape, an assertion about wiring
+        // that passes while the effect is absent. It now asks the peer.
+        //
+        // The Grid keeps its name too. It costs nothing, it is what the existing test reads, and if
+        // Avalonia ever puts row content into the control view the sentence is already there.
+        private void NameRow(Grid grid, T item)
+        {
+            string sentence = Spoken(item);
+            AutomationProperties.SetName(grid, sentence);
+
+            // After a commit the grid IS parented, so the container can be renamed from here. On the
+            // first build it is not, and ContainerPrepared does it instead.
+            if (grid.GetVisualAncestors().OfType<ListBoxItem>().FirstOrDefault() is { } container)
+            {
+                AutomationProperties.SetName(container, sentence);
+            }
+        }
+
+        // The sentence itself, so ContainerPrepared can build one without a grid in hand.
+        private string Spoken(T item) =>
+            string.Join(", ", _columns.Select(c => $"{c.Header}: {c.Text(item) ?? string.Empty}"));
 
         // POPULATES THE GRID'S OWN COLLECTION, AND NEVER ASSIGNS A NEW ONE. Not a style preference:
         // swapping this back to `grid.ColumnDefinitions = new ColumnDefinitions { ... }` turns the
@@ -695,8 +1010,20 @@ namespace EmuSen.LunaP.Controls
             }
         }
 
+        // Width is resolved here rather than kept as the caller's string, because a GridLength is
+        // what the Grid wants and parsing it once at declaration is what makes a bad width fail at
+        // the call site instead of at layout. Commit and Validate ride along unresolved - they are
+        // the caller's own delegates and there is nothing to resolve.
         private readonly record struct ColumnSpec(
-            string Header, Func<T, string> Text, GridLength Width, Comparison<T>? Sort);
+            string Header,
+            Func<T, string> Text,
+            GridLength Width,
+            Comparison<T>? Sort,
+            Action<T, string>? Commit,
+            Func<T, string, string?>? Validate)
+        {
+            public bool IsEditable => Commit is not null;
+        }
 
         // The heading control for a column, and its glyph when it has one. Held so that a sort can
         // update what is already on screen rather than building it again - see ShowSortState.

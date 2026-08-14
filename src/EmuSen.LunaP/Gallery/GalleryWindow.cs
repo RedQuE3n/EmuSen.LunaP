@@ -71,10 +71,20 @@ namespace EmuSen.LunaP.Gallery
             // for Sort taking a comparison over the model: sorting the text would put "10" before
             // "9" in a table whose whole job is to be read.
             var fields = new LunaTable<Field> { Key = f => f.Name };
+            // THE NAME COLUMN IS EDITABLE AND THE OTHER TWO ARE NOT, which is the same choice the
+            // sortable/unsortable pair above makes and for the same reason: a gallery where every
+            // column did everything would show the features and hide the fact that each one is a
+            // per-column decision. Double-click a name, or select a row and press F2.
+            //
+            // Validate returns the PROBLEM rather than false, so the message under the table is the
+            // caller's sentence - the same shape FieldRow.Error uses, which is what makes an invalid
+            // cell and an invalid field one idea instead of two (§50.1).
             fields.Column(new LunaColumn<Field>("name", f => f.Name)
                   {
                       Width = "2*",
                       Sort = (a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCulture),
+                      Commit = (f, text) => f.Name = text.Trim(),
+                      Validate = (_, text) => string.IsNullOrWhiteSpace(text) ? "A field needs a name." : null,
                   })
                   .Column("type", f => f.Type)
                   .Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
@@ -286,7 +296,23 @@ namespace EmuSen.LunaP.Gallery
         // A model for the table to project, so the gallery shows the control doing the thing it is
         // for: rows built from a type through three projections, with the type coming back on
         // selection rather than a row index.
-        private sealed record Field(string Name, string Type, int Page);
+        // A CLASS AND NO LONGER A RECORD, because §50 gave the table editing and Commit writes back
+        // into the model. A positional record's properties are init-only, so there is nothing for a
+        // Commit to assign - which is a fact about editing worth meeting here, in the gallery, rather
+        // than in a consumer's own code.
+        private sealed class Field
+        {
+            public Field(string name, string type, int page)
+            {
+                Name = name;
+                Type = type;
+                Page = page;
+            }
+
+            public string Name { get; set; }
+            public string Type { get; set; }
+            public int Page { get; set; }
+        }
 
         // Real pixels, so the image view is not just showing a flat rectangle.
         private static byte[] Ramp(int width, int height)

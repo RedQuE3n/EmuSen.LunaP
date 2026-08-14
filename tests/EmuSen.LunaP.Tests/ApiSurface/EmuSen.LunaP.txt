@@ -167,8 +167,11 @@ public class EmuSen.LunaP.Controls.HintText : Avalonia.Controls.TextBlock
 
 public sealed class EmuSen.LunaP.Controls.LunaColumn<T>
     public LunaColumn<T>(string header, System.Func<T, string> text)
+    public System.Action<T, string>? Commit { get; set; }
     public System.Comparison<T>? Sort { get; set; }
+    public System.Func<T, string, string?>? Validate { get; set; }
     public System.Func<T, string> Text { get; }
+    public bool IsEditable { get; }
     public string Header { get; }
     public string Width { get; set; }
 
@@ -196,12 +199,14 @@ public class EmuSen.LunaP.Controls.LunaSwitch : Avalonia.Controls.ToggleSwitch
 public abstract class EmuSen.LunaP.Controls.LunaTable : Avalonia.Controls.Primitives.TemplatedControl
     protected Avalonia.Controls.Grid? HeaderGrid
     protected Avalonia.Controls.ListBox? Rows
+    protected EmuSen.LunaP.Controls.ErrorText? Message
     protected LunaTable()
     protected abstract void OnPartsAttached()
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
 
 public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTable
+    protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
     protected override void OnPartsAttached()
     public EmuSen.LunaP.Controls.LunaTable<T> Column(EmuSen.LunaP.Controls.LunaColumn<T> column)
     public EmuSen.LunaP.Controls.LunaTable<T> Column(string header, System.Func<T, string> text, string width = "*")
@@ -209,8 +214,10 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public System.Collections.Generic.IReadOnlyList<T> Models { get; }
     public System.Func<T, object?> Key { get; set; }
     public T? Selected { get; }
+    public bool IsEditing { get; }
     public event System.Action<T> Chose
     public string? TableKey { get; set; }
+    public void Edit(T item, int column)
     public void Refresh(System.Collections.Generic.IEnumerable<T> items)
     public void SaveNow()
     public void Select(T? item)

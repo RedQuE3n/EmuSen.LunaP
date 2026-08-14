@@ -273,6 +273,21 @@ namespace EmuSen.LunaP.Tests
                 "as SplitPane.SaveNow - writes column widths and the sort to the settings store. The other "
                 + "half, restoring, is reachable before the template and is covered: TableKey and Column both "
                 + "call Restore, and A_saved_layout_is_restored_whichever_order_it_is_set_in pins both orders.",
+
+            // THE ONE EXEMPTION THAT REFUSES TO QUEUE, and the reason is worth reading before
+            // somebody "fixes" it by giving it a pending field like Select's.
+            //
+            // Select before the template is a caller saying which row should be highlighted when the
+            // window opens, which is a sensible thing to have asked for early and is why it queues.
+            // Edit is not that. It puts a caret in a cell, and a caret belongs to a person who is
+            // looking at the table - queuing one would mean a window that opens with an editor
+            // already open on a row nobody has pointed at, triggered by a line that ran during
+            // construction. So it no-ops, deliberately, and the claim is pinned rather than
+            // asserted here: TableTests.Editing_before_there_is_a_row_does_nothing.
+            [(typeof(LunaTable<>), "Edit")] =
+                "opens a caret on a realised cell, so there is nothing to queue - a table with no rows on "
+                + "screen has no cell to put one in, and a queued caret would open an editor nobody asked "
+                + "for when the window appeared. Pinned by TableTests.Editing_before_there_is_a_row_does_nothing.",
         };
 
         // The half that makes the registry above impossible to forget. Every public imperative
