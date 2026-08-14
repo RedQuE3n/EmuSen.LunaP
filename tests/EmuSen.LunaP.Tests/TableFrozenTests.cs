@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using EmuSen.LunaP.Controls;
@@ -35,7 +36,9 @@ namespace EmuSen.LunaP.Tests
         private sealed class Row
         {
             public Row(string name) => Name = name;
-            public string Name { get; }
+
+            // Settable, because the click guard opens a real editor on a real cell.
+            public string Name { get; set; }
         }
 
         private static readonly Color Frozen = Colors.Red;
@@ -68,6 +71,27 @@ namespace EmuSen.LunaP.Tests
             }
 
             table.Refresh(Enumerable.Range(0, rows).Select(i => new Row($"row{i:D2}")).ToArray());
+            return table;
+        }
+
+        // Text columns rather than coloured borders, because the click test needs a cell an editor
+        // can open on and the render tests need a cell that paints a flat colour. Two shapes, one
+        // question each.
+        private static LunaTable<Row> Editable(int frozen)
+        {
+            var table = new LunaTable<Row> { Key = r => r.Name, FrozenColumns = frozen };
+
+            for (int i = 0; i < 6; i++)
+            {
+                int n = i;
+                table.Column(new LunaColumn<Row>($"col{n}", r => $"{r.Name}-{n}")
+                {
+                    Width = "200",
+                    Commit = (r, text) => r.Name = text,
+                });
+            }
+
+            table.Refresh(new[] { new Row("row00"), new Row("row01") });
             return table;
         }
 
@@ -345,6 +369,129 @@ namespace EmuSen.LunaP.Tests
                 Assert.True(Count(frame, band, Frozen) > 1000);
                 Assert.Equal(0, Count(frame, band, Scrolling));
             });
+
+        // ---- pass 2: input, focus and what a reader is told ----
+
+        // A CLIP REMOVES A CELL FROM HIT-TESTING, MEASURED RATHER THAN HOPED. This is not obvious and
+        // the control depends on it: a scrolling cell whose right-hand part lies under the frozen
+        // band is still LAID OUT there, and grid children later in the collection sit above earlier
+        // ones - so column 1 covers the frozen column 0 at every point of the band. If the clip did
+        // not take it out of hit-testing, every click on a frozen cell would land on an invisible
+        // neighbour, and a double-click would open an editor on a cell nobody can see.
+        //
+        // Driven with real pointer input rather than a hit-test API, because the API probe that went
+        // looking first returned no cell at ANY point, including a fully visible one - silence that
+        // means nothing (§48.2). What a user does is click, so the test clicks.
+        [Fact]
+        public Task A_click_in_the_frozen_band_reaches_the_frozen_cell() => UiTest.Run(() =>
+        {
+            LunaTable<Row> table = Editable(frozen: 1);
+            var window = new ToolWindow { Width = 400, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            ScrollTo(table, 300);
+
+            // x=60 is inside the band, and also inside column 1's laid-out rectangle - which spans
+            // -88..112 at this offset and is therefore the cell that would be hit if clipping did
+            // not count.
+            var inBand = new Point(60, 40);
+            for (int i = 0; i < 2; i++)
+            {
+                window.MouseDown(inBand, MouseButton.Left, RawInputModifiers.None);
+                window.MouseUp(inBand, MouseButton.Left, RawInputModifiers.None);
+            }
+
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.True(table.IsEditing, "a double-click inside the frozen band opened nothing at all.");
+            Assert.Equal(
+                "row00-0",
+                table.GetVisualDescendants().OfType<TextBox>().Single().Text);
+
+            window.Close();
+        });
+
+        // THE DEFECT PASS 2 EXISTS FOR. A ScrollViewer brings a focused control into view by putting
+        // it inside the VIEWPORT, whose left edge is zero - it knows nothing about a band of frozen
+        // columns sitting over the first two hundred pixels. Measured before the fix: tabbing to a
+        // button in column 1 of a table scrolled to 824 left it focused at x=0 with a clip of zero
+        // width, holding the keyboard focus and drawing nothing at all.
+        //
+        // Sabotaged by removing the GotFocus handler, which puts it straight back under the band.
+        [Fact]
+        public Task Focus_never_lands_under_the_frozen_band() => UiTest.Run(() =>
+        {
+            LunaTable<Row> table = Striped(frozen: 1);
+            var window = new ToolWindow { Width = 400, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            ScrollTo(table, 824);
+
+            // Column 1 is the first column that is not frozen, so it is the one BringIntoView parks
+            // exactly under the band.
+            Assert.True(table.TryGetCell(table.Models[0], 1, out Control? found));
+            Control cell = found!;
+            Control target = cell.GetVisualDescendants().OfType<Border>().FirstOrDefault() ?? cell;
+            target.Focusable = true;
+
+            target.Focus();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            double x = cell.TranslatePoint(new Point(0, 0), window)!.Value.X;
+            double bandRight = BandOf(table, window).Right;
+
+            Assert.True(x >= bandRight - 1,
+                $"the focused cell sits at x={x:F0}, under a frozen band that runs to {bandRight:F0}.");
+            Assert.Null(cell.Clip);
+
+            window.Close();
+        });
+
+        // AND FOCUSING A FROZEN CELL MOVES NOTHING. A frozen child sits at a small Bounds.X - column
+        // zero is at zero - so the overlap arithmetic that clears a scrolling cell reads, for a
+        // frozen one, as "the whole scroll offset plus the band", and the table jumps back to the
+        // start the moment a pinned cell takes focus. It is already visible; there is nothing to
+        // clear.
+        //
+        // Sabotaged by dropping the frozen test from the focus walk, which turned NOTHING red until
+        // this existed - the other two focus guards only ever focus a scrolling cell.
+        [Fact]
+        public Task Focusing_a_frozen_cell_does_not_scroll_the_table() => UiTest.Run(() =>
+        {
+            LunaTable<Row> table = Striped(frozen: 1);
+            var window = new ToolWindow { Width = 400, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            ScrollTo(table, 300);
+
+            ScrollViewer viewer = table.FindNamed<ListBox>("PART_Rows")
+                .GetVisualDescendants().OfType<ScrollViewer>().First();
+            double before = viewer.Offset.X;
+
+            Assert.True(table.TryGetCell(table.Models[0], 0, out Control? found));
+            Control frozen = found!;
+            frozen.Focusable = true;
+            frozen.Focus();
+
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(before, viewer.Offset.X, 1);
+
+            window.Close();
+        });
 
         private static Grid RowGrid(LunaTable<Row> table) =>
             table.FindNamed<ListBox>("PART_Rows").GetVisualDescendants().OfType<ListBoxItem>()

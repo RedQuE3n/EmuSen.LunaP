@@ -841,6 +841,8 @@ namespace EmuSen.LunaP.Controls
             {
                 if (e.Source is not ScrollViewer viewer || HeaderGrid is null) return;
 
+                _viewer = viewer;
+
                 double x = viewer.Offset.X;
                 if (Math.Abs(_scrolledTo - x) < 0.01) return;
 
@@ -858,6 +860,15 @@ namespace EmuSen.LunaP.Controls
             // Cheap when it does not apply: Pin returns on its first line for a table with no frozen
             // columns, which is every table that has not asked for them.
             LayoutUpdated += (_, _) => Pin();
+
+            // Bubbling, so it catches a heading, a cell editor and a caller's own control inside a
+            // template column without any of them being registered. Only a flag is set: the
+            // correction needs the ScrollViewer to have finished its own BringIntoView, and that has
+            // not happened yet when this fires.
+            AddHandler(
+                GotFocusEvent,
+                (_, _) => _focusMoved = true,
+                Avalonia.Interactivity.RoutingStrategies.Bubble);
 
             ApplySelectionMode();
             Rebuild();
@@ -1041,17 +1052,81 @@ namespace EmuSen.LunaP.Controls
             {
                 if (RowGridIn(container) is { } grid) Pin(grid, frozen);
             }
+
+            if (!_focusMoved) return;
+
+            _focusMoved = false;
+            ClearFocusFromBand(frozen);
         }
 
-        private void Pin(Grid grid, int frozen)
+        // NOTHING MAY TAKE FOCUS WHERE NOBODY CAN SEE IT - see docs/LunaP.md §62.
+        //
+        // A ScrollViewer brings a newly focused control into view by scrolling the least it can to
+        // put that control inside the VIEWPORT, and the viewport's left edge is zero. It knows
+        // nothing about a band of frozen columns sitting over the first two hundred pixels of it, so
+        // "just visible at the left" means "exactly underneath them". Measured: tabbing to a button
+        // in column 1 of a table scrolled to 824 left it focused, at x=0, with a clip of zero width -
+        // a control holding the keyboard focus and drawing nothing at all. That is §24's failure in a
+        // new place, and it is the reason this pass exists rather than a refinement of pass 1.
+        //
+        // THE CLIP CANNOT SUPPLY THE CORRECTION, which is worth knowing before someone simplifies
+        // this. Pin clamps the hidden amount to the child's own width, because a clip rectangle
+        // cannot be wider than what it clips; the amount needed to clear the band is the UNCLAMPED
+        // overlap, and for a fully hidden control those two are different numbers. Reading it back
+        // off Clip.Bounds.X scrolls a narrow control by its own width and leaves it under the band.
+        //
+        // Scrolling by exactly the overlap lands the control on the band's edge and no further: it
+        // is the smallest move that makes it visible, which is what BringIntoView was trying to do.
+        private void ClearFocusFromBand(int frozen)
         {
-            // The band, in the grid's own coordinates. The frozen columns start at zero by
-            // definition, so their total width is also where the band ends on screen.
+            if (frozen <= 0 || _viewer is null) return;
+            if (TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is not Visual focused) return;
+
+            foreach (Visual step in focused.GetSelfAndVisualAncestors())
+            {
+                if (ReferenceEquals(step, this)) return;
+
+                // The grid child is where a pin lives, so it is the thing whose overlap counts - the
+                // focused control itself may be nested inside a template cell.
+                if (step is not Control child || child.Parent is not Grid grid) continue;
+                if (Grid.GetColumn(child) < frozen) return;
+
+                double overlap = _scrolledTo + BandOf(grid, frozen) - child.Bounds.X;
+                if (overlap > 0.5)
+                {
+                    _viewer.Offset = new Vector(Math.Max(0, _scrolledTo - overlap), _viewer.Offset.Y);
+                }
+
+                return;
+            }
+        }
+
+        // Raised for anything inside the table, including a heading, a cell editor and a caller's own
+        // control in a template column. Handled on the next layout rather than here, because the
+        // ScrollViewer's own BringIntoView has not run yet at this point and correcting a position it
+        // is about to change would be corrected right back.
+        private bool _focusMoved;
+
+        // The viewer the rows scroll in, kept from the scroll event because it lives inside the
+        // ListBox's template and cannot be found before that template is applied.
+        private ScrollViewer? _viewer;
+
+        // The band, in a grid's own coordinates. The frozen columns start at zero by definition, so
+        // their total width is also where the band ends on screen.
+        private static double BandOf(Grid grid, int frozen)
+        {
             double band = 0;
             for (int i = 0; i < frozen && i < grid.ColumnDefinitions.Count; i++)
             {
                 band += grid.ColumnDefinitions[i].ActualWidth;
             }
+
+            return band;
+        }
+
+        private void Pin(Grid grid, int frozen)
+        {
+            double band = BandOf(grid, frozen);
 
             foreach (Control child in grid.Children.OfType<Control>())
             {

@@ -5715,3 +5715,96 @@ Still hazards, and §60.2's list is unchanged by this pass: **hit-testing under 
 focus reaching a clipped control**, and whether a peer reports a clipped cell **offscreen**. Nothing
 here has looked at any of the three, and a clipped cell is still in the automation tree and still, as
 far as anything measured knows, clickable. That is pass 2.
+
+## 62. Frozen columns: whether they are real, or only look right
+
+Pass 2 of the frozen-column arc. §61.5 left three hazards, and this pass answers all three by
+measurement. Two were fine, one was a defect worse than the thing pass 1 fixed.
+
+### 62.1 A clip does remove a cell from hit-testing
+
+**This was load-bearing and unverified.** A scrolling cell whose right-hand part lies under the band
+is still *laid out* there, and grid children later in the collection sit above earlier ones — so
+column 1 covers the frozen column 0 at every point of the band. If a clip did not take it out of hit
+testing, every click on a frozen cell would land on an invisible neighbour, and a double-click would
+open an editor on a cell nobody can see.
+
+Measured with **real pointer input**, because that is what the question is about, and because the
+hit-test API probe that went looking first returned no cell at *any* point including a fully visible
+one — silence that means nothing (§48.2). A double-click at x=60, inside the band and inside column
+1's laid-out rectangle, opens an editor on **`row00-0`**: the frozen column's own cell.
+
+So clipping is enough, and nothing needs `IsHitTestVisible` beside it.
+
+### 62.2 Focus landed under the band, which is §24 in a new place
+
+**The defect this pass exists for.** A `ScrollViewer` brings a newly focused control into view by
+scrolling the least it can to put that control inside the **viewport**, whose left edge is zero. It
+knows nothing about two hundred pixels of frozen columns sitting over it, so "just visible at the
+left" means "exactly underneath them".
+
+Measured, before the fix: tabbing to a control in column 1 of a table scrolled to 824 scrolled to
+offset **212** and left it **focused, at x=0, with a clip of zero width** — holding the keyboard focus
+and drawing nothing at all. A user pressing Tab has no way to know where they are.
+
+The fix scrolls by exactly the overlap, which lands the control on the band's edge and no further —
+the smallest move that makes it visible, which is what `BringIntoView` was trying to do. After it,
+the same control sits at x=212 with no clip.
+
+Two details that are not obvious:
+
+- **The correction cannot be read off the clip.** `Pin` clamps the hidden amount to the child's own
+  width, because a clip rectangle cannot be wider than what it clips. The amount needed to clear the
+  band is the **unclamped** overlap, and for a fully hidden control those are different numbers.
+  Sabotaging that substitution leaves the cell at x=-412.
+- **It runs on the next layout, not in the focus handler.** The ScrollViewer's own `BringIntoView`
+  has not run when `GotFocus` fires, so correcting a position it is about to change would be
+  corrected right back.
+
+The handler is bubbling and registered on the table, so it covers a heading, a cell editor and a
+caller's own control inside a template column without any of them being registered.
+
+### 62.3 The hollow guard, again — focusing a *frozen* cell
+
+Three sabotages, and the third turned nothing red:
+
+| Sabotage | What turned red |
+|---|---|
+| the `GotFocus` handler removed | the focused cell sat at x=0, under a band running to 210 |
+| the correction reads the clamped clip instead of the true overlap | the focused cell sat at x=-412 |
+| **the frozen-column test dropped from the focus walk** | **nothing** |
+
+A frozen child sits at a small `Bounds.X` — column zero is at zero — so the overlap arithmetic that
+clears a *scrolling* cell reads, for a frozen one, as "the whole scroll offset plus the band". Every
+existing focus guard focused a scrolling cell, so none of them noticed. The new guard focuses a
+pinned cell in a table scrolled to 300 and requires the offset not to move; without the early return
+it **snaps back to 0**. A frozen cell is already visible; there is nothing to clear.
+
+That is the third hollow guard this arc has produced (§57.6, §61.4), all found the same way and none
+found by reading.
+
+### 62.4 `IsOffscreen` is not a signal here, and is left alone
+
+Measured across two configurations, and it does not track the pin:
+
+| | what it reports |
+|---|---|
+| a **frozen** cell, visible on screen | `offscreen=True` in one measured shape |
+| a **fully clipped** cell, invisible | `offscreen=False` in the same shape |
+| every cell, with template cells rather than text cells | `offscreen=False`, scrolled or not |
+
+The peer computes from layout, and the pin is render-level, so the two disagree by construction —
+and the answer varies with the peer type, which the table does not choose for a template column
+anyway.
+
+**It is recorded rather than fixed, and the reason is not difficulty.** The obvious lever is
+`AccessibilityView.Raw` on a fully clipped cell, and it is the wrong lever: a cell scrolled off to the
+*right* is equally invisible and stays in the tree, so removing the clipped ones would make the
+control inconsistent with itself, and UIA's own convention for "exists but is not visible" is
+`IsOffscreen` rather than removal. Overriding the peer is not available either — a template column's
+cell is a caller's control with a caller's peer.
+
+What makes this a hazard rather than a defect is §27.3: **the row's spoken sentence carries every
+column's value**, frozen, scrolled or clipped, so a reader navigating rows is told everything. It is
+cell-level navigation that cannot report visibility honestly, and that is the same for any
+horizontally scrolled table.
