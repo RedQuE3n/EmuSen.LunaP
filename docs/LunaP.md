@@ -3046,6 +3046,8 @@ available except one restating the name, and that argument stands. **It says not
 | ~~Nothing enforces that a cited `§` resolves~~ | **closed by §44** | 116 distinct citations, all resolving; `CitationTests` now fails the build on one that does not, with a second assertion so a scan that reads nothing cannot pass quietly |
 | macOS first-draw warm-up: **scope narrowed, mechanism inferred** | §38.4, §38.6 | not per-process and not per-window; `Redraw` is correct under any mechanism with that scope, so this is characterisation debt rather than a defect |
 | `ConsolePane` cannot announce line by line | §24.4 | the trade is recorded; a live region would re-read the whole buffer |
+| A framebuffer stride that is padded is **unexercised** | §53.2 | `Blit` reads `RowBytes` and copies row by row when the stride is not tight, but no backend measured here pads — Linux/Skia returns `width × 4` at every width tried. The loop's arithmetic is verified by forcing that branch; the padded case itself is not. First place to look if an image comes out sheared |
+| An invalid field is not **announced** when it appears | §49.3 | `FieldRow.Error` reaches a reader that visits the field, through `ItemStatus`. Nothing interrupts a reader who has moved on. `AutomationProperties.LiveSetting` would be the mechanism, but the message is a template part and template parts sit outside the control view — whether a live region on one announces at all is unverified, and this suite cannot verify it |
 
 ### 34.3 Versioning, when this is called done
 
