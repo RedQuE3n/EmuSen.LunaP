@@ -81,9 +81,10 @@ namespace EmuSen.LunaP.Tests
                          Height = 8,
                          VerticalAlignment = VerticalAlignment.Center,
 
-                         // LEFT, or Avalonia centres an 8px shape in a 300px column and every
-                         // measurement taken from this cell's x is 146px out - which looked exactly
-                         // like the header failing to follow a scroll. §68.5.
+                         // Stated rather than relied on. §69.2 makes this the default, and the
+                         // alignment guards for it live in TableCellKindTests - a header-alignment
+                         // measurement that silently depended on that default would be measuring two
+                         // things and reporting one. §68.5 is what it cost the first time.
                          HorizontalAlignment = HorizontalAlignment.Left,
                      },
                      // READS BOTH FIELDS, so this column goes stale when the checkbox beside it is
@@ -306,6 +307,58 @@ namespace EmuSen.LunaP.Tests
 
                 Assert.Equal("alpha armed", Peer(CellOf(table, 0, 2)).GetItemStatus());
             });
+
+        // THE THIRD WRITE PATH, and the one §68.4 missed. A screen reader setting a value goes
+        // through SetFromAutomation rather than through an editor, so it is a third place the row can
+        // be left half re-read - and it was, in the pass whose whole subject was automation. The two
+        // paths §68.4 fixed were the two its sabotages happened to cross. §69.1.
+        [Fact]
+        public Task A_value_set_by_a_reader_refreshes_the_rest_of_the_row() =>
+            Realised(() => Table(), table =>
+            {
+                Peer(CellOf(table, 1, 0)).GetProvider<IValueProvider>()!.SetValue("delta");
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+                Assert.Equal("delta armed", Peer(CellOf(table, 1, 2)).GetItemStatus());
+            });
+
+        // And a refused write must leave everything exactly as it was, or a reader would hear a value
+        // the model does not hold.
+        [Fact]
+        public Task A_reader_write_that_validation_refuses_changes_nothing() =>
+            Realised(() => Refusing(), table =>
+            {
+                Peer(CellOf(table, 1, 0)).GetProvider<IValueProvider>()!.SetValue("delta");
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+                Assert.Equal("bravo armed", Peer(CellOf(table, 1, 2)).GetItemStatus());
+                Assert.Equal("bravo", Peer(CellOf(table, 1, 0)).GetProvider<IValueProvider>()!.Value);
+            });
+
+        // A table whose name column refuses everything, so the write above is rejected at the same
+        // gate a typist meets (§50.6) rather than by SetFromAutomation being wired differently.
+        private static LunaTable<Row> Refusing()
+        {
+            var table = new LunaTable<Row> { Key = r => r.Name };
+
+            table.Column(new LunaColumn<Row>("name", r => r.Name)
+                  {
+                      Width = "120",
+                      Commit = (r, text) => r.Name = text,
+                      Validate = (_, _) => "no",
+                  })
+                 .Column(new LunaColumn<Row>("armed", r => r.Armed, (r, on) => r.Armed = on) { Width = "120" })
+                 .Column(new LunaColumn<Row>(
+                     "kind",
+                     _ => new Ellipse { Width = 8, Height = 8 },
+                     r => $"{r.Name} {(r.Armed ? "armed" : "safe")}")
+                  {
+                      Width = "120",
+                  });
+
+            table.Refresh(Rows());
+            return table;
+        }
 
         // ---- moving a table bigger than its window ----
 

@@ -134,7 +134,19 @@ from you.
   that sentence as its item status.
 - **A cell no longer goes stale when a different cell changes it.** A template
   column reading a field that a checkbox two columns over writes was left
-  describing the old value (`§68.4`).
+  describing the old value — on all three write paths, including the one a
+  screen reader uses (`§68.4`, `§69.1`).
+
+**A template cell you gave a size to is no longer centred in its column.** Every
+other kind of cell starts at the column's left edge; a template cell was the
+exception, because Avalonia centres an element that has an explicit width and no
+alignment of its own. `new Ellipse { Width = 8 }` in a 120-wide column sat 56
+pixels in, beside a checkbox that started at zero.
+
+If you had written `HorizontalAlignment` yourself, you keep it — this only fills
+in an answer where there was none. **A template cell with no explicit width still
+stretches to fill its column**, so a progress bar or a coloured background in a
+cell is unchanged (`§69.2`).
 
 Still missing, and stated rather than left to be found: a tree row exposes no
 `IExpandCollapseProvider`. The expander is a real focusable button named "Expand

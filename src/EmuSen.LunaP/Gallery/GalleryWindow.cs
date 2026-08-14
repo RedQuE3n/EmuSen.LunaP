@@ -150,13 +150,16 @@ namespace EmuSen.LunaP.Gallery
                   // argument for that being required rather than optional (§24, §57.2).
                   .Column(new LunaColumn<Field>(
                       "kind",
+                      // NO HorizontalAlignment SINCE §69.2, and its absence is the point. A template
+                      // cell now starts at its column's left edge like every other kind of cell
+                      // unless the caller says otherwise, so the line that used to be here is the
+                      // line a consumer no longer has to know to write.
                       f => new Ellipse
                       {
                           Width = 8,
                           Height = 8,
                           Fill = f.Type == "checkbox" ? LunaPalette.Info : LunaPalette.Nominal,
                           VerticalAlignment = VerticalAlignment.Center,
-                          HorizontalAlignment = HorizontalAlignment.Left,
                       },
                       f => f.Type)
                   {

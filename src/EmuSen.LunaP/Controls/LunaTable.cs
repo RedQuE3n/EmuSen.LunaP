@@ -1907,8 +1907,38 @@ namespace EmuSen.LunaP.Controls
         // A null return is an EMPTY cell rather than a throw, which is the same tolerance Text gets
         // two lines up (`?? string.Empty`). A build that has nothing to show for one row - no icon
         // for an unknown kind - should not have to invent a blank control.
-        private Control TemplateCell(T item, int index) =>
-            _columns[index].Build?.Invoke(item) ?? new Border();
+        // A caller's own control, with one default applied to it - see docs/LunaP.md §69.
+        //
+        // DO NOT CENTRE SOMETHING THE CALLER SIZED, which is a narrower rule than the one this
+        // started as and the width test is the whole of the difference.
+        //
+        // Avalonia's Stretch alignment does two different things depending on whether an element has
+        // an explicit width. Without one it fills its slot - which is what a progress bar or a
+        // coloured background in a cell wants, and is right. With one it CENTRES, so
+        // `new Ellipse { Width = 8 }` in a 300px column sits 146 pixels in, beside a text cell and a
+        // checkbox that both begin at zero. §57's CheckCell had already met the filling half and
+        // written it down; this is the centring half, for the kind that was left out.
+        //
+        // The first version of this defaulted every template cell to Left and broke eight frozen-band
+        // tests at once: their template cells are Borders with no width, which stretch to fill a
+        // column and collapsed to nothing. That is a consumer's progress-bar cell vanishing, and the
+        // suite caught it rather than a reader. §69.2.
+        //
+        // IsSet, so the caller still wins. A template column exists to let somebody put their own
+        // control in a cell, and a toolkit that silently overruled an alignment they had written
+        // would be worse than one that never touched it - their fix would look applied. This only
+        // answers where there is no answer, the rule LunaAutomationPeer.GetNameCore follows for names.
+        private Control TemplateCell(T item, int index)
+        {
+            Control cell = _columns[index].Build?.Invoke(item) ?? new Border();
+
+            if (!cell.IsSet(Layoutable.HorizontalAlignmentProperty) && cell.IsSet(Layoutable.WidthProperty))
+            {
+                cell.HorizontalAlignment = HorizontalAlignment.Left;
+            }
+
+            return cell;
+        }
 
         // THE HORIZONTAL RULE IS ONE BORDER AROUND THE ROW, not a line per cell, because a rule
         // under a row is a property of the row - drawing it per cell would break wherever a column
@@ -2547,7 +2577,18 @@ namespace EmuSen.LunaP.Controls
             if (TextCellOf(item, column) is { } cell)
             {
                 cell.Text = _columns[column].Text(item) ?? string.Empty;
-                if (RowGridOf(cell) is { } grid) NameRow(grid, item);
+
+                // THE WHOLE ROW, and this was the third path and the one that mattered most. §68.4
+                // found a cell going stale because a different cell changed, and fixed the two paths
+                // its sabotages happened to cross - a pointer toggle and a typed commit. This is the
+                // same write arriving from a screen READER, so the defect was live on the automation
+                // path in the pass whose subject was automation: a reader setting a name left the
+                // template cell beside it describing the value before the one it had just written.
+                if (RowGridOf(cell) is { } grid)
+                {
+                    NameRow(grid, item);
+                    NameCells(grid, item);
+                }
             }
 
             CellValueChanged?.Invoke(item, column);

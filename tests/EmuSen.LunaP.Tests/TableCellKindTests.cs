@@ -10,6 +10,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
@@ -388,6 +389,109 @@ namespace EmuSen.LunaP.Tests
                 Assert.True(rows.Single(r => r.Name == "alpha").Armed);
                 Assert.Equal(ToggleState.On, provider.ToggleState);
             });
+
+        // WHERE A TEMPLATE CELL STARTS - see docs/LunaP.md §69.2.
+        //
+        // Every other kind of cell begins at the column's left edge. A template cell did not:
+        // Avalonia centres an element that has an explicit size and the default Stretch alignment,
+        // so a caller's 8px dot in a 120px column sat 56 pixels in, beside a text cell and a
+        // checkbox that both started at zero. It cost an hour of §68.5 looking like a scroll defect.
+        //
+        // Measured as a POSITION rather than as the property, because the property is what was set
+        // and the position is what a person sees - and because a future default applied some other
+        // way would still have to satisfy this.
+        [Fact]
+        public Task A_template_cell_starts_where_every_other_cell_starts() =>
+            Realised(() => Build(Rows()), table =>
+            {
+                Assert.True(table.TryGetCell(table.Models[0], 1, out Control? box));
+                Assert.True(table.TryGetCell(table.Models[0], 2, out Control? dot));
+
+                double boxOffset = box!.Bounds.X - ColumnLeft(table, box!);
+                double dotOffset = dot!.Bounds.X - ColumnLeft(table, dot!);
+
+                Assert.True(Math.Abs(dotOffset - boxOffset) < 1.0,
+                    $"the checkbox starts {boxOffset:F1}px into its column and the template cell "
+                    + $"{dotOffset:F1}px into its own - a caller's control is being centred.");
+            });
+
+        // AND THE CALLER STILL WINS, which is the half that stops this being a toolkit overruling
+        // somebody's layout. A control that names its own alignment keeps it.
+        [Fact]
+        public Task A_template_cell_that_names_its_own_alignment_keeps_it() => Realised(
+            () =>
+            {
+                var table = new LunaTable<Row> { Key = r => r.Name };
+                table.Column("name", r => r.Name)
+                     .Column(new LunaColumn<Row>(
+                         "kind",
+                         _ => new Ellipse
+                         {
+                             Width = 8,
+                             Height = 8,
+                             HorizontalAlignment = HorizontalAlignment.Right,
+                         },
+                         _ => "dot")
+                     {
+                         Width = "120",
+                     });
+                table.Refresh(Rows());
+                return table;
+            },
+            table =>
+            {
+                Assert.True(table.TryGetCell(table.Models[0], 1, out Control? dot));
+
+                Assert.Equal(HorizontalAlignment.Right, ((Control)dot!).HorizontalAlignment);
+                Assert.True(dot!.Bounds.X - ColumnLeft(table, dot) > 50,
+                    "a template cell that asked to be right-aligned was pulled back to the left.");
+            });
+
+        // A TEMPLATE CELL WITH NO WIDTH STILL FILLS ITS COLUMN, which is the half the first version of
+        // §69.2 broke. Avalonia's Stretch fills when there is no explicit width and centres when
+        // there is; defaulting every template cell to Left collapsed the filling ones to nothing, and
+        // eight frozen-band tests went red at once because their cells are exactly this shape.
+        //
+        // That is a consumer's progress-bar or highlight cell disappearing, so it gets a guard of its
+        // own rather than being left to be noticed by tests that are about something else.
+        [Fact]
+        public Task A_template_cell_with_no_width_still_fills_its_column() => Realised(
+            () =>
+            {
+                var table = new LunaTable<Row> { Key = r => r.Name };
+                table.Column("name", r => r.Name)
+                     .Column(new LunaColumn<Row>(
+                         "bar",
+                         _ => new Border { Height = 6, Background = Brushes.Red },
+                         _ => "a bar")
+                     {
+                         Width = "120",
+                     });
+                table.Refresh(Rows());
+                return table;
+            },
+            table =>
+            {
+                Assert.True(table.TryGetCell(table.Models[0], 1, out Control? bar));
+
+                Assert.True(bar!.Bounds.Width > 100,
+                    $"a template cell that named no width came out {bar.Bounds.Width:F1}px wide in a "
+                    + "120px column - a cell that filled its column now collapses to its content.");
+            });
+
+        // The left edge of the grid column a cell sits in, in the same coordinates as the cell's own
+        // bounds - which is what "starts where the column starts" has to be measured against, since
+        // the columns are different widths.
+        private static double ColumnLeft(LunaTable<Row> table, Control cell)
+        {
+            Grid grid = cell.GetVisualAncestors().OfType<Grid>().First();
+            int column = Grid.GetColumn(
+                grid.Children.OfType<Control>().First(c => c == cell || c.GetVisualDescendants().Contains(cell)));
+
+            double left = 0;
+            for (int i = 0; i < column; i++) left += grid.ColumnDefinitions[i].ActualWidth;
+            return left;
+        }
 
         // ---- what a reader hears ----
 

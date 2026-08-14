@@ -245,6 +245,11 @@ fields.Column(new LunaColumn<Field>("req", f => f.Required, (f, on) => f.Require
           f => f.Type));                // what a screen reader hears instead
 ```
 
+A template cell you gave a width to starts at the column's left edge like every
+other cell. One you did not still stretches to fill the column, so a progress bar
+or a background band works as you would expect — and an alignment you write
+yourself always wins.
+
 **Give it a `Children` projection and it is a tree.** Null — the default — means
 it is not one, and a table that never sets it runs the code it always did:
 
