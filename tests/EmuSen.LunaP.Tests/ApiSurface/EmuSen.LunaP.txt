@@ -223,15 +223,23 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public LunaTable<T>()
     public System.Collections.Generic.IReadOnlyList<T> Models { get; }
     public System.Collections.Generic.IReadOnlyList<T> SelectedItems { get; }
+    public System.Func<T, System.Collections.Generic.IEnumerable<T>>? Children { get; set; }
     public System.Func<T, object?> Key { get; set; }
     public T? Selected { get; }
     public bool IsEditing { get; }
+    public bool IsExpanded(T item)
     public bool TryGetCell(T item, int column, out Avalonia.Controls.Control? cell)
     public bool TryGetRow(T item, out Avalonia.Controls.Control? row)
+    public double IndentSize { get; set; }
     public event System.Action<T> Chose
+    public int ExpanderColumn { get; set; }
     public string? TableKey { get; set; }
     public void BringRowIntoView(T item)
+    public void Collapse(T item)
+    public void CollapseAll()
     public void Edit(T item, int column)
+    public void Expand(T item)
+    public void ExpandAll()
     public void Refresh(System.Collections.Generic.IEnumerable<T> items)
     public void SaveNow()
     public void Select(T? item)

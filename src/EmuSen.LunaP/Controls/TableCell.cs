@@ -23,6 +23,12 @@ namespace EmuSen.LunaP.Controls
     // rather than two that can disagree.
     internal sealed class TableCell : TextBlock
     {
+        // WHICH COLUMN THIS IS, CARRIED ON THE CELL rather than read back off Grid.GetColumn.
+        // Once §55 puts an expander in front of a cell, the cell is no longer a direct child of the
+        // row grid - it sits inside a panel that is - so its Grid.GetColumn is 0 whatever column it
+        // belongs to. Storing the index makes every lookup independent of how deep the cell is.
+        internal int Column { get; set; }
+
         internal Func<string>? Read { get; set; }
 
         internal Action<string>? Write { get; set; }
