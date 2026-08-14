@@ -209,6 +209,26 @@ takes `LunaBorder`, and `Border.frozen-edge` restyles it.
 order: those are what your user did, and this is what you declared. If you offer
 it as a "Freeze first column" menu item, remember it in your own settings.
 
+**A table can select cells instead of rows.** Two properties, because *how many*
+and *what kind* are different questions:
+
+```csharp
+fields.SelectionUnit = LunaSelectionUnit.Cell;      // Row is the default
+fields.SelectionMode = LunaSelectionMode.Multiple;  // and this still means how many
+
+fields.CellChosen += cell => Show(cell?.Row, cell?.Column);
+```
+
+Arrow keys walk the columns, Home and End go to the ends, Shift extends a
+**rectangle** and Ctrl+click adds one cell at a time. `SelectedCell` is the
+current one, `SelectedCells` is every one in display order, and `SelectedItems`
+still answers with the rows those cells are in. F2 opens the cell you are on
+rather than the first editable column.
+
+A cell coordinate is `(your model, column index)` — not two positions — so it
+survives a `Refresh` that rebuilds every object, exactly as the row selection
+does. Changing the unit clears the selection: a row has no column to become.
+
 **A cell does not have to be text.** A checkbox column takes a boolean projection
 and, optionally, somewhere to write it back; a template column takes a control and
 the sentence a screen reader hears in its place, which is required rather than

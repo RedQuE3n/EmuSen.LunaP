@@ -84,12 +84,24 @@ namespace EmuSen.LunaP.Gallery
             // its own account and takes none of the count (§63.2). One rather than two, because a
             // band has to leave room for the columns it is pinned in front of and the table refuses
             // one that does not (§64.1) - at which point the gallery would silently show nothing.
+            //
+            // AND IT SELECTS CELLS RATHER THAN ROWS, which the gallery can afford to show precisely
+            // because it is not the only selectable thing on the page. A unit is exclusive - a table
+            // cannot demonstrate both - so this would normally be the same trade as the star widths
+            // above, giving up the default to show the new thing. It is not, because the LunaList of
+            // peers further up is a row selection, is selected in the static render, and is the
+            // shape almost every list in an application has. §67.6.
+            //
+            // Multiple, so Shift and Ctrl do something: single-cell selection is the half of this a
+            // reader would assume, and a rectangle drawn with Shift+arrow is the half they would not.
             var fields = new LunaTable<Field>
             {
                 Key = f => f.Name,
                 RowHeader = (_, i) => (i + 1).ToString(),
                 RowHeaderCaption = "#",
                 FrozenColumns = 1,
+                SelectionUnit = LunaSelectionUnit.Cell,
+                SelectionMode = LunaSelectionMode.Multiple,
             };
             // THE NAME COLUMN IS EDITABLE AND THE OTHER TWO ARE NOT, which is the same choice the
             // sortable/unsortable pair above makes and for the same reason: a gallery where every

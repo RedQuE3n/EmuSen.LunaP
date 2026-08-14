@@ -96,6 +96,34 @@ pixels.**
 - **Nothing changes for a table of text columns**, which is still every column
   you have declared so far.
 
+**A table can select cells instead of rows.** `SelectionUnit = Cell` beside the
+`SelectionMode` you already have, because *how many* and *what kind* are separate
+questions and one enum cannot answer both (`§67.1`). Row is the default, so
+nothing moves for a table that does not ask.
+
+- Arrow keys walk the columns, Home and End go to the ends, Shift extends a
+  **rectangle** rather than a run, and Ctrl+click adds one cell at a time.
+- `SelectedCell` and `SelectedCells` are `LunaCell<T>` — your model and a column
+  index, never two positions, so a coordinate survives a `Refresh` that rebuilds
+  every object (`§67.2`).
+- `SelectedItems` still answers with rows: in a cell unit, a row is selected when
+  any of its cells is.
+- **F2 opens the cell you are on** rather than the first editable column. In a
+  row unit it still opens the first editable column, so no existing table's F2
+  changes.
+- Changing the unit clears the selection. A row has no column to become, and
+  turning a cell into its whole row would select more than was asked for.
+
+**One thing this does not yet do**, and it is the entry to read if you ship to
+screen-reader users: there is no cell-level automation peer. A reader still meets
+the row and its sentence, with nothing to say which cell inside it has the
+keyboard (`§67.7`).
+
+**A defect fixed in the same work.** `ExpanderColumn` was wrong for every value
+except its default: a tree whose expander was not in the first column drew that
+cell on top of column 0's and left its own column empty. If you have a tree with
+`ExpanderColumn` set to anything but 0, this is the entry that matters (`§66`).
+
 **A table can have a gutter down the left.** `RowHeader` takes the row and its
 *displayed* index, so `(_, i) => (i + 1).ToString()` numbers the rows and
 `(row, _) => row.Address.ToString("X4")` labels them from the model. Null - the
