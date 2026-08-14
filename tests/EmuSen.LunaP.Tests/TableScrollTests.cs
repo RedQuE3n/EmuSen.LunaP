@@ -175,8 +175,11 @@ namespace EmuSen.LunaP.Tests
                 ScrollTo(table, 300);
                 Assert.Equal(-300, ((TranslateTransform)header.RenderTransform!).X, 1);
 
+                // BACK TO NULL AND NOT TO A ZERO TRANSLATION, since §64. A table at rest carries
+                // exactly the visual tree it carried before any of this existed, which matters now
+                // that a gutter alone is enough to put the whole control through Pin (§63.2).
                 ScrollTo(table, 0);
-                Assert.Equal(0, ((TranslateTransform)header.RenderTransform!).X, 1);
+                Assert.Null(header.RenderTransform);
             });
 
         // ---- what did not change ----

@@ -341,7 +341,7 @@ namespace EmuSen.LunaP.Tests
         // have one column pinned to nothing.
         [Fact]
         public Task Unfreezing_puts_everything_back() =>
-            Scrolled(frozen: 2, offset: 300, (table, _) =>
+            Scrolled(frozen: 1, offset: 300, (table, _) =>
             {
                 Assert.Contains(RowGrid(table).Children.OfType<Control>(), c => c.RenderTransform is not null);
 
@@ -358,16 +358,28 @@ namespace EmuSen.LunaP.Tests
             });
 
         // Freezing more columns than there are is a harmless thing to say, and the honest reading is
-        // "all of them" - which leaves nothing to scroll rather than throwing at layout time.
+        // "all of them" rather than an exception at layout time. What that then means is worth
+        // stating, because the two bounds meet here: freezing EVERY column makes the band the whole
+        // width of the table, so it can only leave room when the table already fits - and a table
+        // that fits does not scroll. Every other case is refused by §64.1, and what the user gets is
+        // an ordinary scrolling table rather than one with columns it cannot reach.
         [Fact]
-        public Task Freezing_more_columns_than_exist_freezes_all_of_them() =>
-            Scrolled(frozen: 99, offset: 300, (table, window) =>
+        public Task Freezing_more_columns_than_exist_is_harmless() =>
+            // Scrolled to the end - a ScrollViewer clamps to its maximum - because the property being
+            // asserted is that the LAST column can be reached, and at a middle offset it simply has
+            // not been reached yet, which is ordinary scrolling rather than a defect.
+            Scrolled(frozen: 99, offset: 5000, (table, window) =>
             {
-                Rect band = BandOf(table, window);
-                RenderedFrame frame = UiTest.Capture(window);
+                Assert.All(RowGrid(table).Children.OfType<Control>(), child =>
+                {
+                    Assert.Null(child.RenderTransform);
+                    Assert.Null(child.Clip);
+                });
 
-                Assert.True(Count(frame, band, Frozen) > 1000);
-                Assert.Equal(0, Count(frame, band, Scrolling));
+                // And every column is still reachable, which is the property that matters.
+                Assert.True(table.TryGetCell(table.Models[0], 5, out Control? last));
+                double x = last!.TranslatePoint(new Point(0, 0), window)!.Value.X;
+                Assert.True(x is > -1 and < 400, $"the last column is at x={x:F0}.");
             });
 
         // ---- pass 2: input, focus and what a reader is told ----
@@ -529,8 +541,12 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task The_seam_marks_the_edge_of_the_band_at_every_offset() => UiTest.Run(() =>
         {
+            // 700 WIDE, NOT 400, and that is not cosmetic. Two frozen columns of 200 make a band of
+            // 400, and a band is refused when it does not leave room (§64.1) - so at 400 wide
+            // nothing would be frozen and this would be measuring an ordinary scrolling table, where
+            // the seam sits at the same place for a completely different reason.
             LunaTable<Row> table = Striped(frozen: 2);
-            var window = new ToolWindow { Width = 400, Height = 300, Content = table };
+            var window = new ToolWindow { Width = 700, Height = 300, Content = table };
             window.Show();
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
             table.UpdateLayout();
@@ -656,6 +672,222 @@ namespace EmuSen.LunaP.Tests
 
             Assert.True(Count(frame, band, Frozen) > 1000,
                 $"after freezing, the band holds {Count(frame, band, Frozen)} pixels of the frozen column.");
+            Assert.Equal(0, Count(frame, band, Scrolling));
+
+            window.Close();
+        });
+
+        // ---- pass 4: the interactions and the bounds ----
+
+        // EDITING A COLUMN THAT IS NOT ON SCREEN. Edit is public, F2 goes through it, and a "Rename"
+        // menu item is the obvious caller - so the cell being edited need not be anywhere near the
+        // viewport. Measured before the fix: Edit(item, 4) on a 400-wide table left a focused editor
+        // at x=812 and moved the scroll not at all.
+        //
+        // The editor's own Focus() cannot do this, which is why BeginEdit scrolls the CELL: a
+        // ScrollViewer brings a focused control into view from its arranged bounds, and the editor is
+        // created, inserted and focused inside one call, so it has never been laid out and has no
+        // bounds to bring anywhere.
+        [Fact]
+        public Task Editing_an_offscreen_column_brings_it_into_view() => UiTest.Run(() =>
+        {
+            LunaTable<Row> table = Editable(frozen: 1);
+            var window = new ToolWindow { Width = 400, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            table.Edit(table.Models[0], 4);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.True(table.IsEditing);
+            TextBox editor = table.GetVisualDescendants().OfType<TextBox>().Single();
+
+            double x = editor.TranslatePoint(new Point(0, 0), window)!.Value.X;
+            double bandRight = BandOf(table, window).Right;
+
+            Assert.True(x >= bandRight - 1 && x < window.Width,
+                $"the editor opened at x={x:F0}, outside a viewport of {window.Width:F0} "
+                + $"or under a band ending at {bandRight:F0}.");
+            Assert.Null(editor.Clip);
+
+            window.Close();
+        });
+
+        // AND THE HEADER FOLLOWS A SCROLL IT DID NOT CAUSE. This is §64.2's correction to §59.2 and
+        // §64.3's to §62: the offset used to be cached from the ScrollChanged event, which reports a
+        // stale number for a BringIntoView, and the viewer used to be taken from that event's Source -
+        // which is the editor's OWN inner ScrollViewer the moment a cell is edited, whose offset is
+        // always zero.
+        //
+        // Sabotaged either way: the headings end up hundreds of pixels from their own cells.
+        [Fact]
+        public Task The_header_follows_a_scroll_caused_by_editing() => UiTest.Run(() =>
+        {
+            LunaTable<Row> table = Editable(frozen: 1);
+            var window = new ToolWindow { Width = 400, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            table.Edit(table.Models[0], 4);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Grid header = table.FindNamed<Grid>("PART_Header");
+            Control heading = header.Children.OfType<Control>().First(c => c is TextBlock && Grid.GetColumn(c) == 4);
+
+            Assert.True(table.TryGetCell(table.Models[0], 4, out Control? found));
+            double dx = Math.Abs(
+                heading.TranslatePoint(new Point(0, 0), window)!.Value.X
+                - found!.TranslatePoint(new Point(0, 0), window)!.Value.X);
+
+            Assert.True(dx < 1.0, $"after editing scrolled the table, heading 4 is {dx:F1}px from its own cells.");
+
+            window.Close();
+        });
+
+        // DRAGGING A FROZEN COLUMN'S WIDTH MOVES THE BAND WITH IT. Nothing was written for this - Pin
+        // recomputes the band from the live column widths on every layout - but "it happens to work"
+        // and "it is guaranteed to work" are different claims.
+        [Fact]
+        public Task Resizing_a_frozen_column_moves_the_band_and_the_seam() => UiTest.Run(() =>
+        {
+            LunaTable<Row> table = Striped(frozen: 1);
+            var window = new ToolWindow { Width = 400, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            ScrollTo(table, 300);
+
+            Grid header = table.FindNamed<Grid>("PART_Header");
+            header.ColumnDefinitions[0].Width = new GridLength(120);
+            table.GetVisualDescendants().OfType<GridSplitter>().First()
+                .RaiseEvent(new Avalonia.Input.VectorEventArgs { RoutedEvent = Thumb.DragCompletedEvent });
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.True(table.TryGetCell(table.Models[0], 0, out Control? found));
+            Control frozen = found!;
+
+            Assert.Equal(120, frozen.Bounds.Width, 0);
+
+            // Still pinned, at its original x, and the seam still marks its right-hand edge.
+            double x = frozen.TranslatePoint(new Point(0, 0), window)!.Value.X;
+            Border seam = RowGrid(table).Children.OfType<Border>()
+                .First(b => b.Classes.Contains("frozen-edge"));
+            double seamX = seam.TranslatePoint(new Point(0, 0), window)!.Value.X;
+
+            Assert.Equal(12, x, 0);
+            Assert.True(Math.Abs(seamX - (x + 120 - seam.Bounds.Width)) < 1.5,
+                $"the band is {120:F0} wide from x={x:F0} and the seam is at {seamX:F0}.");
+
+            window.Close();
+        });
+
+        // ---- bounds ----
+
+        // A BAND AS WIDE AS THE VIEWPORT LEAVES THE OTHER COLUMNS NOWHERE TO BE, and the table is
+        // back to §59's defect: columns that exist and cannot be reached by scrollbar, wheel or key.
+        // Measured at two frozen columns of 300 in a 400-wide table - every later column clipped to
+        // nothing at maximum scroll. Freezing is a refinement of scrolling and does not get to
+        // remove it, so a band with no room freezes nothing.
+        [Fact]
+        public Task A_band_too_wide_for_the_viewport_freezes_nothing() => UiTest.Run(() =>
+        {
+            var table = new LunaTable<Row> { Key = r => r.Name, FrozenColumns = 2 };
+            for (int i = 0; i < 6; i++)
+            {
+                int n = i;
+                table.Column(new LunaColumn<Row>(
+                    $"col{n}",
+                    _ => new Border { Background = new SolidColorBrush(n == 0 ? Frozen : Scrolling), Height = 16 },
+                    r => $"{r.Name} {n}") { Width = "300" });
+            }
+
+            table.Refresh(new[] { new Row("row00"), new Row("row01") });
+
+            var window = new ToolWindow { Width = 400, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            ScrollTo(table, 1424);
+
+            // Nothing pinned, nothing clipped, and the far columns are reachable again.
+            Assert.All(RowGrid(table).Children.OfType<Control>(), child =>
+            {
+                Assert.Null(child.RenderTransform);
+                Assert.Null(child.Clip);
+            });
+
+            Assert.True(table.TryGetCell(table.Models[0], 5, out Control? last));
+            double x = last!.TranslatePoint(new Point(0, 0), window)!.Value.X;
+            Assert.True(x is > -1 and < 400, $"the last column is at x={x:F0} and cannot be reached.");
+
+            // And the seam does not claim a boundary that is not being kept.
+            Assert.DoesNotContain(
+                RowGrid(table).Children.OfType<Border>().Where(b => b.Classes.Contains("frozen-edge")),
+                b => b.IsVisible);
+
+            window.Close();
+        });
+
+        [Fact]
+        public Task A_negative_count_freezes_nothing() =>
+            Scrolled(frozen: -3, offset: 300, (table, _) =>
+                Assert.All(RowGrid(table).Children.OfType<Control>(), child =>
+                {
+                    Assert.Null(child.RenderTransform);
+                    Assert.Null(child.Clip);
+                }));
+
+        // A HIDDEN COLUMN STILL TAKES ONE, because FrozenColumns is counted in columns as they were
+        // added - the same rule as every other index this control takes (§27.11, §58.2). It
+        // contributes nothing to the band, being pinned to zero width, so freezing two columns of
+        // which the first is hidden pins a band exactly one column wide.
+        [Fact]
+        public Task A_hidden_column_takes_one_of_the_frozen_places() => UiTest.Run(() =>
+        {
+            var table = new LunaTable<Row> { Key = r => r.Name, FrozenColumns = 2 };
+            table.Column(new LunaColumn<Row>(
+                "hidden",
+                _ => new Border { Background = new SolidColorBrush(Scrolling), Height = 16 },
+                _ => "hidden") { Width = "200", IsVisible = false });
+
+            for (int i = 1; i < 6; i++)
+            {
+                int n = i;
+                table.Column(new LunaColumn<Row>(
+                    $"col{n}",
+                    _ => new Border { Background = new SolidColorBrush(n == 1 ? Frozen : Scrolling), Height = 16 },
+                    r => $"{r.Name} {n}") { Width = "200" });
+            }
+
+            table.Refresh(new[] { new Row("row00"), new Row("row01") });
+
+            var window = new ToolWindow { Width = 400, Height = 300, Content = table };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            table.UpdateLayout();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            ScrollTo(table, 300);
+
+            Rect band = BandOf(table, window);
+            RenderedFrame frame = UiTest.Capture(window);
+
+            Assert.True(Count(frame, band, Frozen) > 1000,
+                $"the band holds {Count(frame, band, Frozen)} pixels of column 1.");
             Assert.Equal(0, Count(frame, band, Scrolling));
 
             window.Close();

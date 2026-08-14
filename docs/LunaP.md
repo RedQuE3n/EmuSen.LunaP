@@ -5876,3 +5876,97 @@ freezes after showing and scrolling, and checks the pixels.
 That makes five hollow guards this arc (§57.6, §61.4, §62.3, and both of these). The pattern in all
 five is the same: the assertion was true for a reason other than the code under test, and only
 sabotage said so.
+
+## 64. Frozen columns: the interactions, and two defects older than this pass
+
+Pass 4. Three interactions and two bounds — and the interactions turned up a defect in §59 and a
+defect in §62 that had been shipping quietly since those passes landed.
+
+### 64.1 Freezing must never take scrolling away
+
+A frozen band as wide as the viewport leaves the scrolling columns **nowhere to be**: they are clipped
+to nothing at every offset, and the table is back to §59's defect, where columns exist and no
+scrollbar, wheel or key reaches them. Measured at two frozen columns of 300 in a 400-wide table —
+band 600, viewport 400, columns 2 upwards clipped to zero width at maximum scroll.
+
+So **a band that does not leave room freezes nothing.** Freezing is a refinement of scrolling and does
+not get to remove it. A caller who freezes too much, or a user who drags the window narrow, gets an
+ordinary scrolling table rather than an unusable one, and it comes back by itself when there is room
+again because the decision is recomputed per layout rather than latched.
+
+Two consequences worth stating, because they changed existing tests:
+
+- **Freezing every column always collapses.** The band becomes the whole table width, which can only
+  leave room when the table already fits — and a table that fits does not scroll. `FrozenColumns = 99`
+  is still harmless and still clamped to the column count; what it *means* is an ordinary scrolling
+  table.
+- **The seam is hidden when the band is refused.** It is built into the header and every row from
+  what the caller asked for (§63.1), and a line drawn where nothing is pinned is a statement about
+  the layout that is not true. That in turn required `Pin`'s early-out to test what was **asked for**
+  rather than what was granted, or a refused band left its seams behind.
+
+A hidden column still takes one of the frozen places, because `FrozenColumns` is counted in columns as
+they were added — the same rule as every other index this control takes (§27.11, §58.2). It
+contributes nothing to the band, being pinned to zero width.
+
+### 64.2 A correction to §59.2: the scroll event's offset can be stale
+
+§59.2 cached the horizontal offset from the `ScrollChanged` event's own viewer. **That number is not
+always the one the viewer has settled on.** Measured: a scroll caused by `BringIntoView` — which is
+what Tab, F2 and `Edit` all provoke — raises `ScrollChanged` reporting **0 while the viewer is already
+at 612**, and no later event corrects it.
+
+The consequence was silent and not small: whenever a scroll was caused by anything other than the user
+dragging the bar, the header did not move, and every heading sat hundreds of pixels from its own
+cells. §59's own guards never saw it because every one of them scrolled by assigning `Offset`
+directly.
+
+The offset is now read in `Pin`, from the viewer, at layout time — which cannot be stale, because
+layout is what happens after the offset settles. The event is kept for promptness and its `Offset` is
+ignored.
+
+### 64.3 A correction to §62: the viewer was the wrong one
+
+Worse, and the same shape. §62 took the `ScrollViewer` from the event's `Source`. **A `TextBox` has a
+`ScrollViewer` inside its own template**, so the moment a cell editor was opened, that inner viewer
+raised `ScrollChanged`, the event bubbled to `PART_Rows`, and the table pointed itself at the editor's
+scroller from then on. Its offset is always zero, so the header stopped following and every pin went
+stale — measured as a table sitting at offset 600 with the control's own `_scrolledTo` reading 0, and
+`ReferenceEquals(cached, real)` returning **false**.
+
+The viewer this control owns is now identified as *the one that is not inside a row*, and resolved by
+lookup rather than accepted from an event. It is worth noting how it was found: not by reading the
+code, but by printing the private fields when a fix that should have worked did not.
+
+### 64.4 Editing a column that is not on screen
+
+`Edit` is public, F2 goes through it, and a "Rename" menu item is the obvious caller — so the cell
+being edited need not be anywhere near the viewport. Measured: `Edit(item, 4)` on a 400-wide table left
+a focused editor at **x=812** and moved the scroll not at all.
+
+**The editor's own `Focus()` cannot fix this**, which is the part worth knowing before somebody
+deletes the line. A `ScrollViewer` brings a focused control into view from its *arranged bounds*, and
+the editor is created, inserted and focused inside one call — it has never been laid out and has no
+bounds to bring anywhere. The **cell** has been arranged for as long as its row has, so the cell is
+what gets scrolled to, and §62.2's band correction then moves the editor clear. It lands at the band's
+edge, exactly.
+
+### 64.5 What needed nothing
+
+Dragging a **frozen** column's width moves the band and the seam with it, and no code was written for
+it: `Pin` recomputes the band from the live column widths on every layout. Measured at 200 → 120, with
+the column still pinned at x=12, the seam following to 131, and the neighbours' clips updating. It is
+tested anyway, for §63.3's reason.
+
+### 64.6 The sabotages
+
+| Sabotage | What turned red |
+|---|---|
+| `BeginEdit` stops bringing the cell into view | the editor opened at x=812, outside a 400-wide viewport |
+| the viewer taken from the event's `Source` again | heading 4 sat **600px** from its own cells |
+| the band-too-wide clamp removed | the far columns became unreachable again |
+
+One existing test changed rather than being sabotaged: the header's transform is now **null** at rest
+rather than a zero translation, so a table at rest carries exactly the visual tree it carried before
+any of this existed. That matters more since §63.2, where a gutter alone is enough to put the whole
+control through `Pin`.

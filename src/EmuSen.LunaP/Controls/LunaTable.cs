@@ -860,15 +860,9 @@ namespace EmuSen.LunaP.Controls
             // ListBox has not applied its own template at this point.
             Rows.AddHandler(ScrollViewer.ScrollChangedEvent, (_, e) =>
             {
-                if (e.Source is not ScrollViewer viewer || HeaderGrid is null) return;
-
-                _viewer = viewer;
-
-                double x = viewer.Offset.X;
-                if (Math.Abs(_scrolledTo - x) < 0.01) return;
-
-                _scrolledTo = x;
-                HeaderGrid.RenderTransform = new TranslateTransform(-x, 0);
+                // The event is a nudge and nothing more - what scrolled and by how much is read in
+                // Pin, from the one viewer this control owns. Taking either from the event is what
+                // §64.3 records going wrong.
                 Pin();
             });
 
@@ -1059,12 +1053,68 @@ namespace EmuSen.LunaP.Controls
         // the rows (§27.10) never learn it happened.
         private void Pin()
         {
-            int frozen = FrozenGridColumns;
+            // THE OFFSET IS READ HERE AND NOWHERE ELSE - see docs/LunaP.md §64.2, which is a
+            // correction to §59.2.
+            //
+            // §59 cached the offset from the ScrollChanged event's own viewer, and that number is
+            // not always the one the viewer has settled on. Measured: a scroll caused by
+            // BringIntoView - which is what Tab, F2 and Edit all provoke - raises ScrollChanged
+            // reporting 0 while the viewer is already at 612, and no later event corrects it. The
+            // header stayed put and every heading sat 612 pixels from its own cells, silently,
+            // whenever a scroll was caused by anything other than the user dragging the bar.
+            //
+            // Reading the live offset at layout time cannot be stale, because layout is what happens
+            // after the offset settles. The event is kept for promptness and for catching the viewer
+            // out of the ListBox's template, and its Offset is now ignored.
+            // NOT ANY ScrollViewer UNDER THE ROWS, AND NOT THE EVENT'S EITHER - see §64.3. A TextBox
+            // has a ScrollViewer inside its own template, so the moment a cell editor is opened its
+            // inner viewer raises ScrollChanged, that event bubbles to PART_Rows, and a handler that
+            // trusted e.Source pointed this control at the editor's scroller from then on. Its offset
+            // is always zero, so the header stopped following the rows and every pin went stale -
+            // measured as a table sitting at offset 600 with _scrolledTo reading 0.
+            //
+            // The one this control owns is the one that is not inside a row, which is what the filter
+            // says. Resolved once and kept, because it comes from the ListBox's template and cannot
+            // be found before that template is applied.
+            _viewer ??= Rows?.GetVisualDescendants().OfType<ScrollViewer>()
+                .FirstOrDefault(scroller => !scroller.GetVisualAncestors().OfType<ListBoxItem>().Any());
 
-            // Nothing frozen and nothing ever frozen: the common table does not pay for this feature
-            // existing. The flag rather than the count, because turning frozen columns OFF has to
-            // clear what was set once, and then stop.
-            if (frozen <= 0 && !_pinned) return;
+            double offset = _viewer?.Offset.X ?? 0;
+            if (Math.Abs(_scrolledTo - offset) > 0.01)
+            {
+                _scrolledTo = offset;
+
+                // Null at rest, so an unscrolled table has the tree it always had.
+                if (HeaderGrid is not null)
+                {
+                    HeaderGrid.RenderTransform = offset == 0 ? null : new TranslateTransform(-offset, 0);
+                }
+            }
+
+            // Nothing asked for and nothing ever set: the common table does not pay for this feature
+            // existing, and this is the line that makes that true. It tests what the caller ASKED
+            // for rather than what was granted, because a refused band still has a seam in every row
+            // to hide - and the flag beside it, because turning frozen columns off has to clear what
+            // was set once, and then stop.
+            int asked = FrozenGridColumns;
+            if (asked <= 0 && !_pinned) return;
+
+            int frozen = asked;
+
+            // FREEZING MUST NEVER TAKE SCROLLING AWAY - see docs/LunaP.md §64.
+            //
+            // A frozen band as wide as the viewport leaves the scrolling columns nowhere to be: they
+            // are clipped to nothing at every offset, and the table is back to §59's defect, where
+            // columns exist and no scrollbar, wheel or key can reach them. Measured at two frozen
+            // columns of 300 in a 400-wide table - band 600, viewport 400, and columns 2 upwards
+            // fully clipped at maximum scroll.
+            //
+            // So a band that does not leave room freezes NOTHING. Freezing is a refinement of
+            // scrolling and does not get to remove it; a caller who freezes too much, or a user who
+            // drags the window narrow, gets an ordinary scrolling table rather than an unusable one.
+            // It comes back by itself when there is room again, because this is recomputed per pass
+            // rather than latched.
+            if (frozen > 0 && !LeavesRoom(frozen)) frozen = 0;
 
             _pinned = frozen > 0;
 
@@ -1134,6 +1184,23 @@ namespace EmuSen.LunaP.Controls
         // ListBox's template and cannot be found before that template is applied.
         private ScrollViewer? _viewer;
 
+        // Whether the frozen band leaves anything for the rest of the table to be seen in. Measured
+        // against the viewport the rows actually scroll in, and falling back to the control's own
+        // width before that viewer has been found - which is the state during the first layout, when
+        // nothing has scrolled and the answer does not matter yet.
+        //
+        // A zero-width viewport is "not laid out", not "no room": answering false there would unfreeze
+        // every table for one pass on the way up.
+        private bool LeavesRoom(int frozen)
+        {
+            if (HeaderGrid is null) return true;
+
+            double viewport = _viewer?.Viewport.Width ?? Bounds.Width;
+            if (viewport <= 0) return true;
+
+            return BandOf(HeaderGrid, frozen) < viewport;
+        }
+
         // The band, in a grid's own coordinates. The frozen columns start at zero by definition, so
         // their total width is also where the band ends on screen.
         private static double BandOf(Grid grid, int frozen)
@@ -1153,6 +1220,12 @@ namespace EmuSen.LunaP.Controls
 
             foreach (Control child in grid.Children.OfType<Control>())
             {
+                // THE SEAM ONLY EXISTS WHILE THE BOUNDARY DOES. It is built into the header and every
+                // row from FrozenColumns (§63.1), which is what the caller asked for - but the band
+                // can be refused for want of room, and a line drawn where nothing is pinned is a
+                // statement about the layout that is not true.
+                if (child.Classes.Contains("frozen-edge")) child.IsVisible = frozen > 0;
+
                 if (frozen <= 0)
                 {
                     child.RenderTransform = null;
@@ -1767,6 +1840,24 @@ namespace EmuSen.LunaP.Controls
         private void BeginEdit(T item, int column, TableCell cell)
         {
             if (!_columns[column].IsEditable) return;
+
+            // THE CELL COMES INTO VIEW BEFORE THE CARET GOES INTO IT - see docs/LunaP.md §64.
+            //
+            // Edit is public and F2 goes through it, so the cell being edited need not be anywhere
+            // near the screen: measured on a 400-wide table scrolled to the left, Edit(item, 4) put
+            // a focused editor at x=812 and moved the scroll not at all. A rename that happens where
+            // nobody can see it is worse than one that is refused.
+            //
+            // The editor's own Focus() does NOT do this, which is the part worth knowing. A
+            // ScrollViewer brings a focused control into view from its arranged bounds, and the
+            // editor is created, inserted and focused inside one call - it has never been laid out
+            // at that point and has no bounds to bring anywhere. The CELL has been arranged for as
+            // long as its row has, so it is the thing that can be scrolled to.
+            //
+            // Clearing the frozen band afterwards is §62.2's business and needs nothing here: this
+            // scroll lands the cell at the viewport edge, the editor's Focus raises GotFocus, and the
+            // next layout moves it clear of the band.
+            cell.BringIntoView();
 
             // An edit already open somewhere else is committed first, which is the same rule as
             // clicking away from it. Beginning a second editor while the first is still on screen
