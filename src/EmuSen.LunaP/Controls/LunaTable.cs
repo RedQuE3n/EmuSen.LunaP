@@ -703,9 +703,14 @@ namespace EmuSen.LunaP.Controls
         // Opens an editor on a cell. Public because F2 is not the only way an application might want
         // to start one - a "Rename" menu item is the obvious other - and because the alternative is a
         // consumer synthesising a double-click.
-        /// <summary>Opens an editor on one cell of one row, if that column has a Commit. Does nothing for a read-only column or a row that is not currently realised.</summary>
+        /// <summary>Opens an editor on one cell of one row, if that column has a Commit.</summary>
         /// <param name="item">The row's model.</param>
-        /// <param name="column">The column index.</param>
+        /// <param name="column">The column index, in the order the columns were added.</param>
+        /// <remarks>
+        /// Does nothing, rather than throwing, when the column is read-only, the index is out of range,
+        /// or the row is not currently realised - a row scrolled out of view has no cell to put a caret
+        /// in. Nothing is queued for later either; see docs/LunaP.md §50.3.
+        /// </remarks>
         public void Edit(T item, int column)
         {
             if (item is null || column < 0 || column >= _columns.Count) return;

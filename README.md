@@ -111,8 +111,31 @@ public class SettingsWindow : ToolWindow
 **Controls**: `MeterRow` and `MeterList`, `ConsolePane`, `FieldRow`,
 `PathPickerRow`, `FilterBar`, `RgbaImageView`, `LunaSwitch`, `Dropdown`, `Tabs`,
 `ButtonBar`, `StatusBar`, `EmptyState`, `LunaList<T>`, `LunaTable<T>`, `Card`,
-`SplitPane`, `SidePanel`, `MenuBar`, `ToolBar`, and the three text styles the
-theme knows about — `SectionHeader`, `HintText`, `MonoText`.
+`SplitPane`, `SidePanel`, `MenuBar`, `ToolBar`, and the four text styles the
+theme knows about — `SectionHeader`, `HintText`, `MonoText`, `ErrorText`.
+
+**Stock Avalonia controls are themed too, as of 0.8.0.** A `TextBox`,
+`CheckBox`, `RadioButton`, `Slider`, `NumericUpDown`, `ComboBox`, `ProgressBar`,
+`ToggleSwitch` or `CalendarDatePicker` you create yourself paints in LunaP's
+palette rather than FluentTheme's — you write `new TextBox()` and it fits. This
+is done by handing LunaP's colours to FluentTheme's own resource keys, so the
+templates, keyboard handling and accessibility behaviour are Avalonia's
+untouched, and a control added to Avalonia next year inherits it. A test shows
+every one of them in a live window and requires the colours it actually resolves
+to come from `LunaPalette`. `docs/LunaP.md` §48.
+
+**A field can be wrong and say so.** `FieldRow.Error` shows a message under the
+field; empty means valid, and there is no separate `IsValid` to disagree with it:
+
+```csharp
+new FieldRow
+{
+    Label = "Save State Folder",
+    Hint  = "Where save states are written.",
+    Error = Directory.Exists(path) ? "" : "That folder does not exist.",
+    Content = new TextBox { Text = path },
+}
+```
 
 `LunaList<T>` keeps hold of the type you gave it — you get the model back on
 selection, not a row index into a parallel array — and `Refresh` puts the
@@ -135,10 +158,48 @@ fields.Column("name", f => f.Name, "2*")
 fields.Refresh(detected);            // selection survives the rebuild
 ```
 
-It is flat and stays flat: no tree, no sorting, no cell editing. If you want a
-real data grid, `Avalonia.Controls.TreeDataGrid` is the one to reach for — but
-check `docs/LunaP.md` §27.1 first, because it requires a paid Avalonia
-Accelerate licence and LunaP therefore does not depend on it.
+Columns sort, resize and remember where you left them, and cells can be edited —
+each one opt-in per column, so a table you already had behaves exactly as it did:
+
+```csharp
+fields.Column(new LunaColumn<Field>("name", f => f.Name)
+{
+    Width    = "2*",
+    Sort     = (a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCulture),
+    Commit   = (f, text) => f.Name = text.Trim(),
+    Validate = (_, text) => string.IsNullOrWhiteSpace(text) ? "A field needs a name." : null,
+});
+
+fields.TableKey = "fields";          // remember widths and sort order
+```
+
+`Sort` compares the **models**, not the projected text, because "10" sorts before
+"9" otherwise. `Commit` null — the default — means the column is read-only.
+`Validate` returns the problem rather than a bool, and the message appears under
+the table; a rejected edit keeps the caret rather than throwing away what was
+typed. Double-click or F2 opens an editor, Enter commits, Escape cancels.
+
+**It is flat and stays flat: no tree.** If you want hierarchy or a real data
+grid, `Avalonia.Controls.TreeDataGrid` is the one to reach for — but check
+`docs/LunaP.md` §27.1 first, because it requires a paid Avalonia Accelerate
+licence at run time, in *your* executable project, and LunaP therefore does not
+depend on it.
+
+`RgbaImageView` shows a raw RGBA buffer and reuses its bitmap across frames. It
+takes them from wherever you already have them, so a frame in native memory is
+not copied into a managed array just to be copied straight back out:
+
+```csharp
+view.SetFrame(pixels, w, h);                       // byte[]
+view.SetFrame(buffer.Slice(offset, w * h * 4), w, h);  // ReadOnlySpan<byte>
+view.SetFrame(core.FrameBufferAddress, w, h);      // nint, unchecked - you promise the size
+```
+
+`Stretch` defaults to `Stretch.None`, which does not scale at all — one bitmap
+pixel to one layout pixel, which is what a pixel-accurate view wants. Set
+`IntegerScale = true` with a scaling `Stretch` to enlarge by whole numbers only
+and centre the result; a fractional factor makes nearest-neighbour duplicate some
+rows and not others, which shimmers when anything moves. `docs/LunaP.md` §53.
 
 **Threading**: `UiThread` (marshal onto the UI thread), `Latest<T>` (a fast
 producer, the newest value, one callback), `Suppressor` (stop a control's own
