@@ -11,6 +11,54 @@ answer.
 
 ---
 
+## 0.8.0
+
+**Your form controls will look different. That is the release.**
+
+LunaP ships `<FluentTheme />` and always will, so every stock Avalonia control an
+application reaches for — a `TextBox`, a `CheckBox`, a `Slider` — worked and
+painted in *Fluent's* palette rather than this one, accent `#0078D7` included. An
+application built mostly of form controls came out mostly Fluent, and the join
+showed in accents, borders and the focus ring. It no longer does: LunaP's colours
+are handed to 46 of FluentTheme's own resource keys, so the templates are
+untouched and the values they look up are ours (`§48`).
+
+**This is not additive, and it is the first release since 0.7.0 where that is
+true.** If you use stock Avalonia controls anywhere, they change colour when you
+upgrade. Nothing about their behaviour, layout or API moves — only what they are
+painted in. There is no switch to turn it off; if you had restyled these controls
+yourself, your own styles still win, because this changes resources and not
+templates.
+
+**A minor bump rather than a patch for exactly that reason.** A consumer reading
+`0.7.2` would not expect their text boxes to be repainted.
+
+Two new palette tokens come with it, `LunaAccent` and `LunaOnAccent` — the first
+in this palette for something the toolkit does not draw itself.
+
+**Fields and cells can now be wrong, and say so.**
+
+- `FieldRow.Error` shows what is wrong with a field. Empty means valid; there is
+  no `IsValid` beside it, because the message *is* the state (`§49`).
+- `LunaColumn<T>.Commit` and `.Validate` make a table column editable. Null
+  `Commit` means read-only and is the default, **so no existing table changes
+  behaviour** (`§50`). Double-click or F2 to open, Enter to commit, Escape to
+  cancel.
+- `ErrorText` is a new text idiom, themeable through CSS like the other three.
+
+**One accessibility defect fixed, and it had been there since 0.7.0.** Every
+`LunaTable` row builds a spoken name — "name: Site, type: text, pg: 1" — and it
+was being set on a node screen readers do not visit. What a reader actually heard
+was your model's `ToString()`: for most callers, a .NET type name, once per row.
+The name now goes where the control view can reach it (`§50.5`). If you shipped a
+table, this is the entry to care about.
+
+Also: `LunaTable` rows expose `ISelectionItemProvider` and editable cells expose
+`IValueProvider`, so a screen reader can select a row and set a cell — going
+through your `Validate` first, exactly as typing does (`§50.6`).
+
+---
+
 ## 0.7.1
 
 **Your test suite was writing into a directory shared with every other project
