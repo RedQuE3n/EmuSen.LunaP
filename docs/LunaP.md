@@ -4934,3 +4934,90 @@ Per §22.5, each guard was made to fail before being trusted:
 
 The frames compared are ramps where every byte differs, so a copy that drops, doubles or shifts a row
 shows up. A flat colour would have survived most of those.
+
+## 54. Parity with TreeDataGrid, decided — and a framing this document got wrong
+
+**The decision: `LunaTable<T>` goes to feature parity with `Avalonia.Controls.TreeDataGrid`,
+including hierarchy, and it ships in 0.8.0.** Taken 2026-08-13, by the person who owns the project,
+after the gap was measured rather than estimated.
+
+### 54.1 The framing that was wrong, because it was mine and not this document's
+
+Asked whether the table was at parity, the answer given was *"parity was never the goal"*. **Nothing
+in this document says that.** It was an inference from §27.2's evidence rule, stated as though it
+were a recorded decision, and it is corrected here because a reader would have taken it for one.
+
+Two things make it worse than a slip:
+
+- **Parity with a reference implementation is an established rationale in this project.** §26.1's own
+  table marks `ToolBar`, `Menus.Context`, `SidePanel` and `AppWindow` as **Qt parity** with
+  *"genuinely zero"* counted sites, and says so out loud: *"Qt has one and every application that
+  grows past one window wants one, which is an argument, not a measurement."* Four controls in this
+  toolkit exist on exactly the reasoning that was just denied.
+- **The non-goals quoted were not from here.** "No hierarchy, no cell selection, no grouping" is
+  `PLAN-table.md` §8 — a working file whose own header calls it uncommitted and disposable. It was
+  repeated as settled doctrine. §21's warning covers precisely this: *a doc that says "the remaining
+  option is X" is recording what was considered, not what is possible.* It applies to this document's
+  own readers, including the one writing it.
+
+### 54.2 The correction to §47.3
+
+§47.3 offered a test — *"a completion adds a property to something the caller already declares; a new
+kind adds a noun the caller has to learn"* — and put **hierarchy** and **cell selection** on the
+"new kind" side. **That test is not repealed and both classifications stand: they are new kinds.**
+
+What changes is the consequence. §47.3 treated "new kind" as a reason not to build, because §21's
+rule governs entry and neither had a count. But §26.1 had already established a second door — parity
+with a reference implementation, argued rather than counted — and §47.3 did not consider it. So the
+test was right and the conclusion drawn from it was too narrow.
+
+*This is the second time §47's boundary has needed widening rather than defending, and that is worth
+noticing about the boundary rather than about the cases.*
+
+### 54.3 What parity means, measured
+
+`Avalonia.Controls.TreeDataGrid` **12.2.0** was enumerated from the assembly — **70 public types**,
+against this toolkit's three. What it has and `LunaTable<T>` does not, at the point this was written:
+
+| Gap | |
+|---|---|
+| Multi-row and cell selection | `SelectionMode`: None / Row / Cell / Multiple |
+| Hierarchy | `HierarchicalTreeDataGridSource`, expander column, `IndexPath` |
+| Row drag-and-drop | `AutoDragDropRows`, `RowDragStarted` / `RowDragOver` / `RowDrop` |
+| Frozen columns | `FrozenColumnCount` |
+| Cell kinds | CheckBox and Template columns; LunaTable's cells are text |
+| Row headers | `TreeDataGridRowHeaderColumn` |
+| Grid lines | `GridLinesVisibility`: None / Horizontal / Vertical / All |
+| Per-column control | `IsVisible`, `MinWidth`, `MaxWidth`, alignment, programmatic `SortDirection` |
+| Edit gestures | `BeginEditGestures`: F2 / Tap / DoubleTap / TextInput / WhenSelected |
+| Lifecycle events | `CellPrepared` / `CellClearing` / `RowPrepared` / `RowClearing` / `CellValueChanged` |
+| Navigation | `BringRowIntoView`, `TryGetCell`, `TryGetRow` |
+| Automation depth | eight peer types, including cell-level and `ITreeDataGridCellSelection` |
+| Column virtualization | columnar presenters |
+
+And what `LunaTable<T>` already has that it does not: a **remembered layout** through
+`Settings/ISettingsStore` (§27.11), **validation with a message** shared with `FieldRow` (§50.1), MIT
+with no licence key, and the palette by default.
+
+### 54.4 What parity does not mean
+
+- **Not a dependency.** §27.1 stands entirely — the package is licence-gated and this is a
+  reimplementation, not an adoption.
+- **Not TreeDataGrid's API.** Parity is in what a user can do, not in the types a caller names.
+  `LunaColumn<T>` grows properties; nobody writes `FlatTreeDataGridSource<T>`. §1 is untouched.
+- **Not a break.** Every item is additive and off by default: a table with no `Children`, no
+  `SelectionMode` and no `Commit` behaves exactly as it did in 0.7.0. §26.13 still holds.
+
+### 54.5 A correction to §27.1, which understated the gate
+
+§27.1 records that `Avalonia.Controls.TreeDataGrid` requires an Avalonia Accelerate licence, and
+describes the enforcement as living in the consumer's executable project at run time. **It is
+stronger than that: the gate fails the BUILD.** Adding the package to a throwaway project to
+enumerate it produced:
+
+    AvaloniaUI.Licensing error AVLIC0001: No valid AvaloniaUI license keys found for
+    required commercial products: "Avalonia.Controls.TreeDataGrid"
+
+Not a warning, not a runtime message — the build does not complete. Reproduced 2026-08-13 against
+12.2.0 on a bare `net10.0` project with a single `PackageReference`. The enumeration behind §54.3 had
+to read the cached assembly without referencing it.
