@@ -18,7 +18,17 @@
        consumer is a toolkit only that consumer can use. -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- OFF, SO THAT EVERY FILE SPELLS ITS OWN IMPORTS - see docs/LunaP.md §74.7.
+         The SDK would supply System, System.Collections.Generic, System.Linq and a
+         few more to every file for free. Every file here already writes them, so
+         nothing is gained by the convenience and one real thing is lost: with it
+         ON, a missing `using` is invisible, and there is no way to tell a file
+         that imports what it needs from one that is quietly living off the
+         default set. Two files were, and nobody could have known.
+         Off, the compiler enforces the convention instead of the author
+         remembering it. It does NOT catch an UNNECESSARY using - nothing here
+         does, and §74.6 says why that is recorded rather than guarded. -->
+    <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
 

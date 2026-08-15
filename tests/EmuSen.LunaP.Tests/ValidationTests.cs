@@ -20,9 +20,9 @@ namespace EmuSen.LunaP.Tests
     // were themed.
     //
     // The assertions here are about the two things that are easy to get wrong and impossible to see
-    // afterwards. The MESSAGE IS THE STATE - there is no separate IsValid flag that could disagree
-    // with the text - and the error must not destroy the hint, because the hint is the explanation
-    // and an invalid field is exactly when somebody needs it.
+    // afterwards: that the message is the whole of the state, and that showing an error must not
+    // destroy the hint - because the hint is the explanation, and an invalid field is exactly when
+    // somebody needs it. Each argument sits beside the test that pins it.
     public class ValidationTests
     {
         private static FieldRow Shown(out Window window, string error = "")
