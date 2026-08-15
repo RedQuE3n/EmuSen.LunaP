@@ -6705,3 +6705,318 @@ They are removed. A flag kept "for safety" with a comment explaining why it is e
 than no flag, because the next reader believes the comment.
 
 That is nine hollow guards found by sabotage across §57–§71, and not one of them by reading.
+
+## 72. Columns the table does not build, and two that must never be among them
+
+The last open row of §54.3's parity table, and it was scheduled last on purpose: it is the one item
+that changes what a row *contains*, so it had to be built on top of the frozen band (§61–§65), cell
+selection (§67) and the drag (§71) rather than under them.
+
+### 72.1 What it is worth, and what it costs
+
+Measured on a table of 120 columns of 120 pixels in an 800-wide viewport — 6.7 columns visible out of
+120, which is 5.5% of the table on screen at any moment:
+
+| | 120 columns, whole | 120 columns, virtualized |
+|---|---|---|
+| cells in one row | 120 | 8 |
+| visuals in the control | 2,144 | 576 |
+| twenty refreshes of 200 rows | 853ms | 120ms |
+| one refresh | 42.7ms | 6.0ms |
+
+A six-column table refreshes in 3.0ms, so the wide table was spending roughly 93% of its time on
+cells nobody could see. 42.7ms is two and a half frames at 60Hz, per tick, in a window whose whole
+purpose is to tick (§21).
+
+**Off by default**, like every other item in the §54 arc, and here the default is not merely cautious:
+six columns cost nothing to draw whole, and the machinery below would spend a range computation per
+layout to leave every one of them exactly where it was. `VirtualizeColumns = true` is the opt-in.
+
+**The cost is stated rather than hidden.** A column that is not built has no cell, so `TryGetCell`
+answers false for it and a screen reader walking cells does not reach it — which is exactly what row
+virtualization has always done to a row scrolled away (§54.3), now true sideways as well. What is
+*not* affected is the row's spoken sentence: `Spoken` builds it from the column specs rather than
+from the cells that happen to exist, so a reader hears the whole row whatever the viewport shows.
+
+**The header is never virtualized**, and that is a design decision rather than an oversight. There is
+one heading per column against one cell per column *per row*, so the header is a few percent of the
+cost; and keeping it whole is what leaves the sort state, the resize grips and the shared size groups
+working with nothing to say about this feature at all.
+
+### 72.2 Two markers, because one could not answer both questions
+
+`TableCells.Column` says *this control is column n's cell* and is set on the cell however deep it
+sits — it is what `Cell()` and `Edit` look for. §72 needed a second question answered: *this direct
+child of the row grid exists because of column n and leaves with it*, which is the wrapper when the
+expander wraps one (§66), and is also the vertical rule, which is not a cell at all.
+
+Conflating them fails in both directions, and both were tried:
+
+- Putting `Column` on the wrapper makes `Cell()` return the wrapper, `TextCellOf` cast it to
+  `TableCell`, get null, and `Edit` silently refuse the expander column.
+- Reading ownership off `Grid.GetColumn` instead cannot tell a cell from a selection box or an open
+  editor sitting in the same column — and a fill that removed those would take the caret out of a
+  cell the user was typing in.
+
+So there is `TableCells.Owner`, defaulting to −1 for the same reason `Column` does: the gutter, the
+frozen edge, a selection box and an editor must all read "not mine", and at a default of 0 all four
+would be torn out the moment column 0 scrolled away.
+
+**A cell arriving by a scroll is inserted at the front of the grid's children, not appended.** A
+`Panel` draws its children in the order it holds them, and three things are deliberately drawn on top
+of the cells: the frozen edge, a cell-selection box and an open editor. `Row()` appends cells and
+then adds those, so the order is right by construction — but the fill runs *later* than `MarkCells`
+does, because a box goes on a selected cell of a realized row whether or not that column has ever
+been built. Appended instead, an arriving cell covers the outline and the user scrolls back to a cell
+that is selected and does not look it.
+
+### 72.3 Only a fixed-width column may be left out, and neither reason was the obvious one
+
+A column whose width comes from its **content** stops having a width when its content stops being
+built. Both non-absolute kinds do this, they do it differently, and the first draft of the rule
+covered only one of them.
+
+**A star column collapses immediately.** A row is measured against no width limit, so a star column
+there takes its content's size rather than a share of the viewport. Measured on Avalonia 12.1.0, one
+`*` among twenty-nine fixed columns:
+
+    at rest              175px   extent 3,679
+    scrolled past it       0px   extent 3,504
+    scrolled back        175px   extent 3,679
+
+Every column to its right slides 175 pixels sideways while the user is dragging the scrollbar.
+
+**An Auto column collapses one refresh later**, which is why it was nearly missed. Its width is
+shared between the header and every row by a size group (§27.10), and **a shared size group does not
+shrink when its largest contributor is removed from a grid that already exists**. Measured, same
+shape of fixture:
+
+    at rest                             158px
+    scrolled past it                    158px   (header and rows both, and through a forced re-measure)
+    after one Refresh while scrolled     24px   the bare heading, extent 3,662 -> 3,528
+    scrolled back                        24px   and it does not come back
+
+So an Auto column survives being scrolled past and then collapses *permanently* on the next poll,
+about a second later in the windows this toolkit exists for.
+
+**The guard that was supposed to justify this clause could not fail.** It scrolled past the Auto
+column and read the width back, which is the obvious test and measures nothing — the shared size
+group does not shrink on a scroll, so the fixture was green on a control with the clause deleted. The
+refresh *is* the whole guard. This is the §5.5 shape again, arrived at from a new direction: a
+fixture in which the effect cannot appear can only be testing that it does not.
+
+The scope this leaves is the honest one, and it is the case the feature was measured on: a wide table
+of fixed columns — a disassembly, a memory map, a register dump.
+
+**Frozen columns are also always built**, for the plainer reason that a frozen column is on screen at
+every offset. That is what frozen means.
+
+### 72.4 Two things that go looking for a cell, and would have found nothing
+
+`Edit` and the arrow keys both locate a cell by walking the row, and a virtualized column has no cell
+to walk to — so both would quietly do nothing. That is §64.4's defect arriving by a new road: an edit
+refused, or an arrow key that appears dead, because of where the viewport happens to be.
+
+Both now realize the column first, through one call, and the existing `BringIntoView` then works
+unchanged. The column is held rather than released afterwards, which is also what keeps an open
+editor's cell underneath it.
+
+### 72.5 Two things that are true and are not guarded
+
+Recorded as hazards rather than left looking covered, per §5.
+
+**`Row()` consults the range as it builds**, so a row realized while scrolling down comes up narrow
+instead of being built whole and trimmed. No guard fails if that line goes: the fill corrects the row
+on the layout pass that follows, so by the time any assertion can look, the row is narrow either way.
+A test was written for it and deleted for passing with the line removed. What it saves is work — a
+table scrolled down through two hundred rows builds thirty cells for each and discards twenty-two.
+
+**One column of slack each side of the viewport** is a judgement, not a measurement. Nothing fails
+when the slack is removed, because every assertion is made after layout has settled and the range is
+correct at rest with or without it. What it buys is the frame *during* a drag, which nothing here
+captures.
+
+**The fill's convergence is guarded, but not by counting layout passes.** It runs from
+`LayoutUpdated` and adds children, which invalidates layout and brings it straight back, so the whole
+feature rests on it being a fixpoint. The first version of that guard counted `LayoutUpdated`
+firings — and `LayoutUpdated` fires once per pass whether or not anything was dirty, so ten calls
+report ten passes on a table doing nothing at all. It counts child mutations instead, which is a
+number this control can actually influence, and it asserts that a scroll produces some before
+asserting that the quiet afterwards is quiet.
+
+### 72.6 A clause that could not be made to fail, and went
+
+`Realized` was written with two clauses holding a column against the viewport's wishes: the one
+something last asked for, and the column being edited. Deleting the second turned nothing red.
+
+There is no reachable path that separates them. `Edit` asks for its column on the way in and nothing
+takes that back; `OnKeyDown` returns on `IsEditing` before it reaches the arrows; `Edit` ends one
+editor before opening the next. The clause was a second expression of a rule that already held.
+
+It is removed, on the same grounds and with the same precedent as the duplicate `IsEditable` test in
+`OnKeyDown` — which was also found by removing it and watching every guard stay green. A clause kept
+"for safety" is a claim with nothing behind it, and the next reader has no way to tell it from one
+that matters.
+
+### 72.7 Measured from a row, and not from the header
+
+The header grid is laid out at the *viewport's* width and a row at its own — 776 against 2,400 — so
+the two disagree about any column that is not a fixed width. Measured: one `*` among twenty-nine
+120s resolved to **0 in the header and 175 in the rows**. The row grid's own definitions are the
+geometry of the cells being placed, which is what the question is about.
+
+**No guard fails if the source is swapped**, and that is recorded rather than discovered later. A
+range measured in the header's compressed space comes out *wider* than it needs to be rather than
+displaced, and Auto and star columns are built unconditionally anyway, so they fill the gaps it would
+otherwise leave. What it costs is cells built for nothing.
+
+The guard that does exist is worth keeping for a different reason: it checks that the built cells
+cover the viewport, derived from their arranged bounds rather than from the range computation, so it
+is the one assertion in the file that is not written in the same terms as the thing it is testing. It
+found a real fixture error on its first run — at maximum scroll the viewport reaches 24 pixels past
+the last cell, which is the row padding the theme puts on both ends, so an unclamped expectation
+fails on a correct control by exactly that much.
+
+### 72.8 The gallery does not turn this on
+
+Every other item in this arc went into the gallery (§7). This one does not, and the reason is that it
+would demonstrate nothing: the gallery's table has seven columns and does not scroll sideways, so
+virtualization would leave every one of them exactly where it is. **A feature that is working is a
+feature that is invisible here** — if a reader can see it, it is broken. Turning it on to have
+something to point at would be theatre, and would put the gallery's frozen-column and render guards
+on top of a code path the gallery cannot exercise.
+
+### 72.9 The sabotages
+
+Sixteen, of which thirteen turned red on the guard they were aimed at.
+
+| sabotage | what went red |
+|---|---|
+| `Realized` always true | ten guards |
+| Auto and star both virtualized | three |
+| star virtualized, Auto protected | the star collapse |
+| frozen columns virtualized | the frozen guard |
+| `Edit` does not realize its column | the editor guard |
+| the arrow keys do not realize | the arrow guard |
+| the rule keeps no owner marker | the rule guard |
+| `Owner` defaults to 0 | the gutter and the editor |
+| no fill once the feature is off | turning it off |
+| the range ignores the scroll offset | eight guards |
+| arriving cells appended, not inserted | the draw-order render |
+| **the edited-column clause removed** | **nothing — see §72.6, the clause went** |
+| **`Row()` builds every column** | **nothing — see §72.5, recorded as a hazard** |
+| **the slack column removed** | **nothing — see §72.5, recorded as a hazard** |
+| **the range measured from the header** | **nothing — see §72.7, recorded as a hazard** |
+
+Two defects were found by this pass rather than caused by it, both in Avalonia 12.1.0's layout rather
+than in this control: a star column in an unbounded measure takes its content's width and loses it
+with its content, and a shared size group does not shrink when its largest contributor is removed
+from an existing grid. Neither is a bug in Avalonia — both are what those two sizing modes mean — but
+both are the kind of thing a control that removes cells has to know, and neither is written down
+anywhere that a reader of `Grid` would meet it.
+
+That is eleven hollow guards found by sabotage across §57–§72, and still not one of them by reading.
+
+## 73. Parity, closed — and the record read back against the type
+
+§54 decided that `LunaTable<T>` would reach feature parity with
+`Avalonia.Controls.TreeDataGrid`, and §54.3 wrote down the thirteen gaps that decision was made
+against. This closes it.
+
+### 73.1 The parity table, read off the baseline
+
+Not from memory of what was built, and not from the section headings — from
+`tests/EmuSen.LunaP.Tests/ApiSurface/EmuSen.LunaP.txt`, which is the file a consumer's compiler
+sees. §65.5 made the same move halfway through the arc and found a closed row that was not closed;
+doing it again at the end is the only thing that makes "closed" a measurement rather than a claim.
+
+| §54.3's gap | Where it stands, on the type |
+|---|---|
+| Multi-row selection | **Closed.** `SelectionMode`, `SelectedItems` |
+| Cell selection | **Closed.** `SelectionUnit`, `SelectedCell`, `SelectedCells`, `IsCellSelected`, `SelectCell`, `ClearCellSelection`, `CellChosen` (§67) |
+| Hierarchy | **Closed.** `Children`, `IsExpanded`, `Expand`, `Collapse`, `ExpandAll`, `CollapseAll`, `ExpanderColumn`, `IndentSize` (§55) |
+| Row drag-and-drop | **Closed.** `CanReorderRows`, `RowDropped`, `CanDrop`, `LunaRowDrop<T>`, `LunaDropPosition` (§71) |
+| Frozen columns | **Closed.** `FrozenColumns` (§60–§65) |
+| Cell kinds | **Closed.** `LunaCellKind`, and a constructor per kind on `LunaColumn<T>` (§57) |
+| Row headers | **Closed.** `RowHeader`, `RowHeaderWidth`, `RowHeaderCaption` (§58) |
+| Grid lines | **Closed.** `GridLines` (§56.2) |
+| Per-column control | **Closed.** `IsVisible`, `MinWidth`, `MaxWidth`, `Alignment`, `VerticalAlignment`, `SortBy` / `ClearSort` / `SortedColumn` / `SortedDescending` (§70) |
+| Edit gestures | **Closed.** `EditGestures` (§56.1) |
+| Lifecycle events | **Closed.** `RowPrepared`, `RowClearing`, `CellValueChanged` (§56.3) |
+| Navigation | **Closed.** `BringRowIntoView`, `TryGetRow`, `TryGetCell` |
+| Column virtualization | **Closed.** `VirtualizeColumns` (§72) |
+| Automation depth | **Closed enough to say so, with two hazards named below** (§68, §69) |
+
+Thirteen rows, thirteen closed. **§54.4 held throughout**: none of it is a dependency, none of it is
+TreeDataGrid's API, and every item is additive and off by default — a table with no `Children`, no
+`SelectionMode`, no `Commit`, no `FrozenColumns`, no `CanReorderRows` and no `VirtualizeColumns`
+behaves exactly as it did in 0.7.0.
+
+### 73.2 What is deliberately not there, and why each one is a decision
+
+Parity in what a user can do is not parity in what a type lists. Four things TreeDataGrid has are
+absent on purpose, and each was argued where the work happened rather than skipped:
+
+- **`CellPrepared` / `CellClearing`.** Refused in §56.3. A cell-level lifecycle event fires per cell
+  per row per realization, and the two things a caller wants it for — styling a cell and reading its
+  value — are already a template column and a projection.
+- **A row cannot be dragged out of the table.** §71.2 chose pointer capture over the platform's
+  drag-and-drop, which is a different problem with a different answer. Stated in the README rather
+  than left to be found.
+- **No `IExpandCollapseProvider` on a tree row.** §68.7. The expander is a real focusable button
+  named "Expand &lt;row&gt;", which is the capability without the pattern.
+- **`FrozenColumns` is not remembered** with the widths and the sort (§65.4). That file holds what the
+  user did; this is what the caller declared.
+
+And two hazards stand recorded rather than closed, which is what §5 asks of an untested claim:
+`IsOffscreen` under a pinned band (§62.4), and the three unguarded properties of §72.5 and §72.7.
+
+### 73.3 What LunaP has that the reference does not
+
+Carried forward from §54.3, and still true: a remembered layout through `Settings/ISettingsStore`
+(§27.11), validation with a message shared with `FieldRow` (§50.1), the palette by default, and
+**MIT with no licence key** — against a package whose gate fails the *build* (§54.5).
+
+### 73.4 The arc, counted
+
+Twenty sections, §54 to §73. The two test figures are counted differently and both are stated,
+because a `[Theory]` is one method and several cases and quoting whichever is larger is the kind of
+number this document does not print.
+
+| | |
+|---|---|
+| Test methods before §54 | **312** — `[Fact]` and `[Theory]` in the tree at `65e9361~1` |
+| Test methods now | **527** |
+| Cases the runner executes now | **794** |
+| Table guard files added | ten — `TableParityTests`, `TableScrollTests`, `TableCellKindTests`, `TableRowHeaderTests`, `TableFrozenTests`, `TableCellSelectionTests`, `TableAutomationTests`, `TableColumnTests`, `TableDragTests`, `TableVirtualizationTests` |
+| Table guard files that existed before | three — `TableTests`, `TableEditingTests`, `TableLayoutTests` |
+| Hollow guards found by sabotage | **eleven** |
+| Hollow guards found by reading | **none** |
+| Clauses deleted for being untestable duplicates | two — the `IsEditable` test in `OnKeyDown`, and §72.6's edited-column clause |
+| Defects found that were older than the pass that found them | four — `ExpanderColumn` (§66), the never-persisted sort (§70.4), the header's stale offset (§64.2), the editor's hijacked viewer (§64.3) |
+| Corrections to this document | three — §60 (to §59.3), §68.1 (to §27.3), §65.6 (to §56's "all three") |
+
+**The eleven-to-nothing ratio is the finding**, and it is the one worth carrying to the next arc. Every
+hollow guard in this work was found by breaking the code and watching the test stay green; not one was
+found by reading the test and noticing it was hollow — including the ones written by somebody who had
+just read §22.5 and was actively looking for the pattern. Reviewing an assertion tells you what it
+says. Only sabotage tells you what it *tests*.
+
+Three of the eleven shared one shape, which is the pattern this arc contributes to §5.5: **a fixture
+in which the effect cannot appear can only be testing that it does not.** §72.3's Auto column could
+not shrink on a scroll; §71.6's drag threshold released on the row it pressed, where the drop is
+refused anyway; §67's first cell guard used a table whose fixture and expectation coincided. Each one
+looked like a test of the thing named in its method name, and each was a test of nothing.
+
+### 73.5 What §54.2 got right
+
+§54.2 overruled §47.3, which had classified hierarchy as a different *kind* of work rather than a
+feature of this control — while keeping the classification itself, which was correct. Twenty sections
+later that reading holds: hierarchy was the largest item and it changed nothing about the rest of the
+control, because §55.2 flattened the tree into the sequence a `ListBox` shows and left selection,
+editing, the spoken name, virtualization and the remembered layout working on a flat sequence of `T`.
+Every pass after it — frozen columns, cell selection, automation, alignment, drag, virtualization —
+was built without knowing whether the table was a tree.
+
+That is the load-bearing decision of the whole arc, and it was taken in the section that decided to
+do the work at all.

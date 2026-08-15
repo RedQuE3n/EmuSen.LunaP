@@ -31,6 +31,31 @@ namespace EmuSen.LunaP.Controls
         public static void SetColumn(Control cell, int column) => cell.SetValue(ColumnProperty, column);
 
         public static int GetColumn(Control cell) => cell.GetValue(ColumnProperty);
+
+        // WHOSE ROW CONTENT A DIRECT CHILD OF THE ROW GRID IS - see docs/LunaP.md §72.
+        //
+        // A SECOND MARKER AND NOT THE ONE ABOVE, and they answer two different questions that the
+        // expander column is enough to separate. Column says "this control IS column n's cell", set
+        // on the cell however deep it sits, and it is what Cell() and Edit look for. Owner says
+        // "this direct child of the row grid EXISTS BECAUSE OF column n, and goes away with it" -
+        // which is the wrapper when there is one, and is also the vertical rule, which is not a cell
+        // at all and has no business answering to Cell().
+        //
+        // Conflating them was tried and does not work in either direction: putting Column on the
+        // wrapper makes Cell() return the wrapper, so TextCellOf casts it to TableCell, gets null,
+        // and Edit silently refuses the expander column. Reading Owner off Grid.GetColumn instead
+        // cannot tell a cell from a selection box or an open editor sitting in the same column, and
+        // a fill that removed those would take the caret out of a cell the user was typing in.
+        //
+        // -1 for the same reason: everything else in a row grid - the gutter, the frozen edge, a
+        // selection box, an editor - must read "not mine", and at a default of 0 all four would be
+        // torn out the moment column 0 scrolled away.
+        public static readonly AttachedProperty<int> OwnerProperty =
+            AvaloniaProperty.RegisterAttached<TableCell, Control, int>("Owner", -1);
+
+        public static void SetOwner(Control child, int column) => child.SetValue(OwnerProperty, column);
+
+        public static int GetOwner(Control child) => child.GetValue(OwnerProperty);
     }
 
     // One cell of a LunaTable row - see docs/LunaP.md §50.6.

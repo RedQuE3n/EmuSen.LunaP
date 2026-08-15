@@ -119,6 +119,78 @@ pointer capture rather than the platform's drag-and-drop, so a row can be
 reordered inside its table but **cannot be dragged out of it** into another
 control (`§71.2`).
 
+**A table can be a tree.** One projection, and null — the default — is a flat
+table, so nothing changes for a table that does not set it:
+
+```csharp
+files.Children = node => node.Kids;      // null is a flat table
+files.ExpanderColumn = 0;                // which column carries the toggle
+```
+
+`Expand`, `Collapse`, `ExpandAll`, `CollapseAll` and `IsExpanded` drive it from
+code; `IndentSize` sets the step. A projection rather than an interface, so your
+model needs no base class and no knowledge that LunaP exists — a model that keeps
+its children elsewhere writes `n => index[n.Id]`, which an interface could not
+express (`§55.1`). Sorting applies **at every level**, so a tree stays a tree
+(`§55.2`). Expansion is keyed by your model, so it survives a `Refresh` that
+rebuilds every object (`§55.4`).
+
+**A table can select more than one row.**
+
+```csharp
+fields.SelectionMode = LunaSelectionMode.Multiple;   // None, Single (default), Multiple
+```
+
+`SelectedItems` gives them in display order. `None` is a real mode rather than an
+omission — a table nobody can select a row in is a reasonable thing to want.
+
+**Columns gained bounds, visibility, and a way to find things.**
+
+- `LunaColumn<T>.MinWidth` and `.MaxWidth` bound a column under a resize drag.
+  Both nullable, and null — the default — leaves the Grid's own 0 and infinity,
+  so no existing column moves.
+- `LunaColumn<T>.IsVisible` hides a column **without moving any index**: a hidden
+  column keeps its place, so a remembered layout, a sort and `Edit(item, 2)` all
+  still mean what they meant.
+- `BringRowIntoView`, `TryGetRow` and `TryGetCell` navigate. The two `TryGet`
+  methods answer **false** for a row that is not currently realised, rather than
+  forcing one into existence — which is why `BringRowIntoView` exists.
+
+**Grid lines, edit gestures, and two lifecycle events.**
+
+- `GridLines` is `None` (the default), `Horizontal`, `Vertical` or `All`. None is
+  what every table drew before, and is the better default for an instrument panel
+  where a meter list should read as a block rather than a spreadsheet (`§56.2`).
+- `EditGestures` is a `[Flags]` set — `F2`, `DoubleTap`, `Tap`, `WhenSelected` —
+  rather than a mode, because they compose: an enum of named combinations grows a
+  member per pair (`§56.1`).
+- `RowPrepared` and `RowClearing` fire as rows are realised and recycled, and
+  `CellValueChanged` fires when a commit or a toggle writes. **`CellPrepared` and
+  `CellClearing` are deliberately absent** — refused with an argument rather than
+  missed (`§56.3`).
+
+**A wide table can build only the columns it can show.** `VirtualizeColumns =
+true`, off by default, so nothing moves for a table that does not ask.
+
+- Measured on 120 columns of 120 pixels in an 800-wide viewport, where 6.7 of
+  them are visible: a refresh went from **42.7ms to 6.0ms**, and one row held
+  eight cells instead of 120 (`§72.1`).
+- **Only fixed-width columns are ever left out.** An `Auto` or star column takes
+  its width from its content, so dropping its cells would change how wide it is —
+  a star column measured 175 pixels at rest and **0** while scrolled past, moving
+  every column to its right by that much (`§72.3`). Frozen columns are on screen
+  at every offset by definition. A table of star columns therefore gains nothing,
+  which is the same table that never scrolls sideways anyway.
+- **A column that is not built has no cell**, so `TryGetCell` answers false for it
+  and a screen reader walking cells does not reach it — the same trade row
+  virtualization has always made for a row scrolled away. Editing and the arrow
+  keys are unaffected: both bring a column back before going looking for it
+  (`§72.4`).
+- The sentence a screen reader hears for the **row** is unchanged, because it is
+  built from your columns rather than from the cells that happen to exist.
+
+This closes `§54`'s parity arc with `Avalonia.Controls.TreeDataGrid`.
+
 **Columns can be aligned, and sorted without a click.**
 
 - `LunaColumn<T>.Alignment` and `.VerticalAlignment` say where a column's content

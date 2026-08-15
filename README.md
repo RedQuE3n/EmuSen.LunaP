@@ -197,6 +197,59 @@ remembered layout still wins over a sort you set in code.
 the table; a rejected edit keeps the caret rather than throwing away what was
 typed. Double-click or F2 opens an editor, Enter commits, Escape cancels.
 
+Per column, you can also bound the width and take the column away entirely:
+
+```csharp
+fields.Column(new LunaColumn<Field>("type", f => f.Type)
+{
+    MinWidth  = 60,          // null - the default - is the Grid's own 0 and infinity
+    MaxWidth  = 200,
+    IsVisible = showTypes,   // hides it WITHOUT moving any index
+});
+```
+
+A hidden column keeps its place, so a remembered layout, a sort and
+`Edit(item, 2)` all still mean what they meant.
+
+**A table can be a tree.** One projection, and null — the default — is a flat
+table:
+
+```csharp
+files.Children = node => node.Kids;   // null is a flat table
+files.ExpanderColumn = 0;             // which column carries the toggle
+files.IndentSize = 16;
+files.ExpandAll();                    // Expand, Collapse, CollapseAll, IsExpanded
+```
+
+A projection rather than an interface, so your model needs no base class and no
+knowledge that LunaP exists — one that keeps its children elsewhere writes
+`n => index[n.Id]`. Sorting applies at **every level**, so a tree stays a tree
+rather than becoming an alphabetical list of everything, and expansion is keyed
+by your model, so it survives a `Refresh` that rebuilds every object.
+
+**Rows, gestures and lifecycle:**
+
+```csharp
+fields.SelectionMode = LunaSelectionMode.Multiple;  // None, Single (default), Multiple
+fields.GridLines = LunaGridLines.All;               // None (default), Horizontal, Vertical, All
+fields.EditGestures = LunaEditGestures.F2 | LunaEditGestures.DoubleTap;
+
+fields.RowPrepared += (row, container) => { };      // realised
+fields.RowClearing += (row, container) => { };      // recycled
+fields.CellValueChanged += (row, column) => { };    // a commit or a toggle wrote
+
+fields.BringRowIntoView(row);
+fields.TryGetRow(row, out Control? visual);
+fields.TryGetCell(row, 2, out Control? cell);
+```
+
+`EditGestures` is a set rather than a mode because the gestures compose. The two
+`TryGet` methods answer **false** for a row that is not currently realised rather
+than forcing one into existence — which is why `BringRowIntoView` exists. There
+is deliberately no `CellPrepared`/`CellClearing`: it would fire per cell per row
+per realization, and the two things it is wanted for are already a template
+column and a projection.
+
 Give it a `RowHeader` and it grows a gutter down the left — numbers, or whatever
 the model calls the row:
 
@@ -226,6 +279,30 @@ takes `LunaBorder`, and `Border.frozen-edge` restyles it.
 `FrozenColumns` is deliberately **not** remembered with the widths and the sort
 order: those are what your user did, and this is what you declared. If you offer
 it as a "Freeze first column" menu item, remember it in your own settings.
+
+**A table too wide to draw whole can build only what it can show:**
+
+```csharp
+fields.VirtualizeColumns = true;     // off by default
+```
+
+Worth it when a table scrolls sideways past many columns, and worth leaving off
+otherwise. Measured on 120 columns of 120 pixels in an 800-wide viewport, where
+6.7 of them are visible: a refresh went from 42.7ms to 6.0ms, and one row held
+eight cells instead of 120 (`§72.1`).
+
+Two things to know before you turn it on. **Only fixed-width columns are ever
+left out** — an `Auto` or star column takes its width from its content, so
+dropping its cells would change how wide it is, and frozen columns are on screen
+at every offset by definition. A table of star columns therefore gains nothing,
+which is the same table that never scrolls sideways anyway. And **a column that
+is not built has no cell**, so `TryGetCell` answers false for it and a screen
+reader walking cells does not reach it — the same trade row virtualization has
+always made for a row scrolled away. Editing and the arrow keys are unaffected:
+both bring a column back before they go looking for it.
+
+What does *not* change is the sentence a screen reader hears for the row, which
+is built from your columns rather than from the cells that happen to exist.
 
 **Rows can be dragged into a new order**, and the table changes nothing itself —
 it tells you where the drop landed and you move your own rows:
