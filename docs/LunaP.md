@@ -7020,3 +7020,323 @@ was built without knowing whether the table was a tree.
 
 That is the load-bearing decision of the whole arc, and it was taken in the section that decided to
 do the work at all.
+
+---
+
+## 74. One control, fourteen files — and five comments that had drifted
+
+`Controls/LunaTable.cs` had reached **3,801 lines**. The next largest file in the toolkit is
+`Gallery/GalleryWindow.cs` at 445 and the next largest control is `SplitPane.cs` at 442, so the
+table was not merely the biggest thing here — it was eight and a half times the biggest thing here.
+
+This is §29 arriving at the control kit. `Theme/Controls.axaml` accumulated to 508 lines and
+`Theme/CssTheme.cs` to 547, and both were split for the same reason: *a file that accumulates has no
+natural place to stop, so "where does this go" has exactly one answer, which means the answer carries
+no information.* Nothing was wrong with any line of `LunaTable.cs` either. The shape was wrong, and
+this section records what that cost before it records the split.
+
+### 74.1 It was not bloat, which is why it took until now
+
+The obvious reading of a 3,801-line file is that it needs pruning. Measured, it does not:
+
+| | `LunaTable.cs` | `SplitPane.cs` | `GalleryWindow.cs` |
+|---|---|---|---|
+| Total lines | **3,801** | 442 | 445 |
+| Code | **1,763** | 267 | 260 |
+| Comment | 1,534 | 108 | 137 |
+| Comment share of non-blank | **46%** | 29% | 35% |
+
+The house style is not merely intact in that file, it is heavier there than anywhere else. What the
+file holds is **fourteen features** — §27, §50, §54, §55, §56, §57, §58, §61–§64, §67, §68, §69,
+§70, §71, §72 — every one of which mutates the same two things: the column list, and the grids in
+the header and the rows. The coupling is real. There is nothing to delete.
+
+**The telling detail is that the arc split everything except the control.** Twelve of the thirty
+files in `Controls/` were table files, and **eleven of those twelve were already satellites**, one
+public type each — `LunaCell`, `LunaCellKind`, `LunaColumn`, `LunaDropPosition`, `LunaEditGestures`,
+`LunaGridLines`, `LunaRowDrop`, `LunaSelectionMode`, `LunaSelectionUnit`, `TableCell`,
+`TableLayoutStore`. The twelfth was `LunaTable.cs`. CLAUDE.md's rule was followed for every type the
+control *uses*, and never once for the control itself.
+
+### 74.2 What the size actually cost: five comments beside the wrong code
+
+The argument for splitting a large file is usually navigability, which is a preference. This one has
+a defect behind it, and it is this project's own named failure: *a comment that has drifted from the
+code beside it is worse than no comment, because it is believed.*
+
+Five had drifted. Every one is an insertion made into a file too big to see the whole of, landing
+between a comment and the member it explains:
+
+| The comment | Sat above | Belongs to | Distance |
+|---|---|---|---|
+| "A recycled container keeps the `ColumnDefinitions` it was built with… **this is the hook that catches it**" | the `ClickedCell` handler | the `Widen` call in `ContainerPrepared` | 52 lines |
+| "ASCENDING, DESCENDING, THEN BACK TO THE ORDER `REFRESH` WAS GIVEN" | `SortedColumn` | `Cycle`, which had no comment at all | 66 lines |
+| "WHATEVER THE CALLER BUILT, UNWRAPPED", the null-return tolerance, and the §69 citation | `Align` | `TemplateCell` | 52 lines |
+| "THE HORIZONTAL RULE IS ONE BORDER AROUND THE ROW" | `LastVisibleColumn` | `Ruled` | 19 lines |
+| "WHAT A READER HEARS", and the §50.5 correction about naming the container | `NameCell` | `Spoken` and `NameRow` | 56 and 77 lines |
+
+None of them is wrong about the code it describes. All five are in the wrong place, and a reader
+arriving at `Cycle` — the method that implements the three-state sort cycle — found no explanation
+of the three-state sort cycle, because it was sixty-six lines above, over a property that is one
+expression long.
+
+**This is the measurement that turns the split from tidying into a repair.** The five are corrected
+as part of the move rather than left to be found again; each pass puts its own comments back beside
+their members.
+
+### 74.3 Fourteen files, chosen by what makes each one change
+
+§29.4's criterion, unchanged. `Controls/Table/` holds the whole subject — the fourteen partials and
+the eleven satellites — because twenty-five table files loose in `Controls/` would bury the other
+eighteen files in it.
+
+| File | Lines | What makes it change | Owns |
+|---|---|---|---|
+| `LunaTable.cs` | 406 | the data model or the wiring | the base type, `Key`/`_items`/`_view`/`Refresh`/`Show`, every framework override |
+| `TableFind.cs` | 110 | what counts as realised | `Cell`, `TryGetRow`, `TryGetCell`, `BringRowIntoView` (§54.3) |
+| `TableColumns.cs` | 408 | a column gains a property | `ColumnSpec`, `Column`, `Define`, `Rebuild`, `Grip`, `Resized`, the gutter (§27.7, §27.10, §58) |
+| `TableLayout.cs` | 151 | what is written to `tables.json` | `TableKey`, `SaveNow`, `Restore`, `Remember` (§27.11, §70.4) |
+| `TableSorting.cs` | 241 | the heading or the cycle | `Heading`, `Cycle`, `SortBy`, `Ordered`, `ShowSortState` (§27, §70.3) |
+| `TableRows.cs` | 444 | a cell kind is added | `Row`, `AddCell`, the three kinds, `Align`, the rules (§57, §69, §70) |
+| `TableTree.cs` | 268 | hierarchy | `Children`, `Expand`/`Collapse`, `Flatten`, `Walk`, `Expander` (§55) |
+| `TableSelection.cs` | 168 | row selection | `SelectionMode`, `SelectedItems`, `Select`, `Chose` (§27.6, §54) |
+| `TableCellSelection.cs` | 496 | cell selection | `_cells`, `SelectCell`, ranges, boxes, arrows, `ClickedCell` (§67) |
+| `TableEditing.cs` | 308 | the editor | `Edit`, `BeginEdit`, `EndEdit`, `Close`, `SetFromAutomation` (§50, §56) |
+| `TableFrozen.cs` | 392 | the band | `FrozenColumns`, `Pin`, `BandOf`, `ClearFocusFromBand`, `OwnViewer` (§61–§64) |
+| `TableColumnFill.cs` | 276 | column virtualization | `VirtualizeColumns`, `Realized`, `WantedRange`, `FillColumns` (§72) |
+| `TableDrag.cs` | 285 | the gesture | the pointer handlers, `DropAt`, `ShowDropLine`, `MoveRow` (§71) |
+| `TableSpeech.cs` | 204 | what a reader hears | `Spoken`, `NameRow`/`NameCell`/`NameCells`, `SelectionPeers` (§68) |
+
+Largest 496, smallest 110, mean 297 — the range the rest of the control kit already
+sits in, where `SplitPane.cs` is 442 and `ConsolePane.cs` is 247.
+
+**The total went UP, from 3,801 to 4,157, and that is not an accounting error to hide.** 356 lines
+are the fourteen file headers, their `using` blocks and their `namespace`/`class` scaffolding. Every
+one of those headers is an argument that was previously either stranded on whichever field happened
+to be declared first, or nowhere — §74.2 is what "nowhere" cost.
+
+`OnPartsAttached` stays in `LunaTable.cs` with the other overrides. Its comments explain *why each
+handler is registered in that order on that routing strategy* — the tunnel for the drag press
+(§71.3), the three-way `LayoutUpdated` (§72, §61.4, §67.5) — which is a fact about wiring rather
+than about any one feature.
+
+**The namespace does not follow the folder**, exactly as `CssTheme` stayed in `EmuSen.LunaP.Theme`
+after moving to `Theme/Css/`. `LunaTable<T>`, `LunaColumn<T>` and seven enums are public names a
+consumer has already written a `using` for; moving them to match a directory would be a breaking
+change bought with nothing but tidiness.
+
+### 74.4 What was deliberately not extracted
+
+The alternative to a `partial` split is real decomposition — a `CellSelection<T>`, a `TableEditor<T>`,
+a `FrozenBand` — and it was considered and refused rather than not thought of.
+
+Each of them needs the header grid, the `ListBox`, the column list, `KeyOf`, and a way to ask for a
+relayout. That is five seams injected in order to move one file's worth of code into a type that then
+reaches back through all five to do its job, which is the thing CLAUDE.md means by *"reaching across
+layers to do one"* rather than a cure for it. A partial keeps the coupling visible and honest; a
+collaborator with a back-reference hides it behind a constructor.
+
+**The parts that genuinely stand alone already do, and that is the evidence.** `TableLayoutStore`
+knows about JSON and not about tables; `TableCell` and `TableCells` know about a cell and not about
+the control; `LunaColumn<T>` is a declaration with no behaviour. Every one of those left the control
+years before this split, on its own merits. Nothing left in `LunaTable.cs` had that property.
+
+### 74.5 The proof that it is a move and not a repair
+
+§29.5 could only argue this by counting tests. This split has direct assertions available, which is
+what §32 built `ApiSurfaceTests` for and what §28 built the reflective guards for:
+
+- **`ApiSurface/EmuSen.LunaP.txt` is byte-identical.** Regenerated with `EMUSEN_API_APPROVE=1` after
+  the last pass, `git status` reports the file unmodified. 743 lines of committed public surface,
+  and nothing a consumer can see moved — which is also why `CHANGELOG.md` records nothing.
+- **794 tests before, 794 after**, run after every one of the fourteen passes rather than at the end,
+  so any drift would have been attributable to one move.
+- **Not one code line was lost across fourteen cuts, checked rather than assumed.** Every non-comment
+  line of the original file was counted into a multiset and compared against the union of the
+  fourteen. The single difference is `public class LunaTable<T>` becoming `public partial class
+  LunaTable<T>`; everything else new is `namespace`, `using`, braces and the partial declarations.
+  The extractor was held to the same standard first: before any cut, it was made to prove that every
+  non-blank line of the class body fell inside exactly one member span, so that keeping the
+  complement of a selection could not silently drop anything.
+- `TemplateOrderTests`, `TemplateReachTests`, `MemberDocumentationTests`, `LayeringTests` and
+  `StyleKeyTests` all find their subjects by reflection over types, so not one of them needed
+  touching — which is the property §28 was built for, arriving as a dividend.
+- No `.csproj` change: sources are globbed.
+
+`CitationTests` earned its place on the first commit of the work. The `§74` written into the new file
+header failed the suite before a single member had moved, because §74 did not exist yet — a broken
+citation caught in the same minute it was written rather than at the next renumbering.
+
+### 74.6 A tidiness check that could not fail, and the honest version of it
+
+Fourteen new files need fourteen `using` blocks, and copying the original file's list into each would
+leave most of them carrying imports they do not use. The obvious check is `IDE0005`, the compiler's
+own "unnecessary using directive", switched on with `EnforceCodeStyleInBuild`.
+
+It reported nothing. **So it was sabotaged before being believed, which is §22.5's rule applied to a
+tidiness check rather than to a test**: a deliberately unused `using System.Text.Json;` was pasted at
+the top of `TableFind.cs` and the build run again. Still nothing — `0 Warning(s)`. The check cannot
+fail in this repository, so its silence had meant nothing, and eight minutes earlier it had been
+about to be reported as "usings verified".
+
+The first honest attempt was wrong in a second way that is worth recording, because it looks like
+measurement and is not. Each `using` was deleted in turn and the build watched for an error. Every
+`using System;`, `using System.Collections.Generic;` and `using System.Linq;` in the toolkit came
+back "unnecessary" — because `<ImplicitUsings>enable</ImplicitUsings>` is set in both `.csproj`
+files, so those three are always in scope and deleting them can never break a build. **The
+measurement was real and the question was wrong**: it answered "does this file compile without the
+line", when the house convention is that every file spells its imports whether or not the SDK would
+have supplied them. Six files that were only being *moved* had their imports stripped by that sweep
+and were restored from the index.
+
+What answered the actual question was building with `/p:ImplicitUsings=disable`, and probing **one
+file at a time**. Both halves are needed. Disabling the implicit set is what makes the compiler
+answer about the file rather than about the SDK; probing one file at a time is what keeps error
+attribution intact, because fourteen files stripped at once produce more than the hundred errors
+`csc` reports before it stops — and the ones it drops read as "that import was not needed", which is
+the wrong direction to be wrong in.
+
+Two unrelated files, `Gallery/GalleryWindow.cs` and `Theme/Css/CssParser.cs`, do rely on the implicit
+set and fail under that switch. §74.7 is what was done about them.
+
+**What is fixed and what is only recorded, stated plainly, because this section read for a while as
+though the whole thing had been dealt with.** The `using` lists on the fourteen files are correct and
+were measured; the eleven files the bad sweep stripped were restored from the index and verified
+byte-identical by blob hash. **Neither of those is a guard.** §74.7 closes the half that can be
+closed — a file living off the implicit set is now a compile error. The other half is not closed: an
+*unnecessary* `using` is still caught by nothing.
+
+That is a decision rather than an omission. The honest check needs Roslyn, which is a
+`PackageReference`, which under CLAUDE.md is a decision carrying a `§` and a licence — and the thing
+it would buy is tidiness, against `ApiSurfaceTests`' precedent of refusing an analyzer package for a
+job eighty lines of reflection could do. Here there is no eighty-line version: a text heuristic that
+guessed at whether an import is used would be one more check that cannot fail, which is the defect
+this section is about rather than a cure for it. So it is written down as a hazard (§21's rule) and
+left.
+
+### 74.7 The implicit `using` set, switched off
+
+`<ImplicitUsings>enable</ImplicitUsings>` was set in all three `.csproj` files, so the SDK handed
+`System`, `System.Collections.Generic`, `System.Linq` and several more to every file for free. Every
+file in this repository also spells those imports itself, which means the convenience was buying
+nothing — and it was costing something that only became visible in §74.6.
+
+**With it on, a missing `using` is invisible, and a file that imports what it needs cannot be told
+apart from one quietly living off the default set.** Two were: `Gallery/GalleryWindow.cs` was missing
+`System` and used `Math`, `DateTime` and `StringComparison` through the implicit set;
+`Theme/Css/CssParser.cs` was missing `System.Linq` and used `Skip`. Neither was a defect anybody
+could have found by reading, and neither would have survived a reader who moved the file to a
+project without the switch.
+
+Both were given their imports, and the switch is now `disable` in all three projects. The comment
+beside it says why, as `.csproj` comments here are load-bearing.
+
+**Made to fail on purpose**, because a guard nobody has broken is a guard nobody has tested (§22.5):
+deleting `using System;` from `Controls/Table/TableDrag.cs` — which was invisible the day before —
+produced six errors, including `Action<>` and `Func<,>` not found. Restoring it returned the build to
+zero. The convention is now enforced by the compiler rather than by the author remembering it.
+
+**What this does not do** is catch an *unnecessary* `using`, which is a different direction and stays
+unguarded for the reasons at the end of §74.6.
+
+### 74.8 A file header may orient, and may not argue
+
+The split in §74.3 gave fourteen files fourteen headers, and **nine of them re-argued something a
+member comment below already argued.** `TableSorting.cs` restated most of `Heading`'s case for a
+sortable heading being a `Button`; `TableFrozen.cs` restated `Pin`'s clip-and-not-cover mechanism
+almost in full; `TableLayout.cs` restated `TableKey`'s argument about saving Avalonia's notation
+rather than resolved pixels.
+
+**That is §74.2's defect committed again, by the pass whose subject was §74.2's defect.** Two copies
+of one argument is precisely the thing that drifts, and the copy beside the code is the one a reader
+with the file open will trust. It was caught by scanning for it rather than by re-reading, which is
+the same lesson §73.4 records at greater length.
+
+So the rule is now written down and asserted: **a header may say what the file holds, why those
+members are together, and where the argument lives. The argument itself belongs beside the code,
+once.** All nine were rewritten to that shape.
+
+`CommentTests` enforces it by looking for the **shouted phrase** — this codebase opens a real
+argument with a capitalised clause, so four or more consecutive shouted words is a reliable marker
+for "a claim is being made here" and a poor marker for anything else. Three words catches ordinary
+emphasis and produces noise that would get the guard suppressed rather than obeyed. Prose that
+repeats an idea in different words is **not** caught and cannot be; this catches the copy-paste,
+which is the case that actually happened nine times in one afternoon.
+
+#### 74.8.1 What it found, and what its own sabotage found
+
+On its first run it failed, which is the right outcome twice over.
+
+**It found a duplication nobody was looking for.** `ValidationTests.cs` — nothing to do with the
+table — had "THE MESSAGE IS THE STATE" in its file header and again over the test that pins it. Two
+copies, written months apart, and the guard found it on the first pass over a directory it was not
+written for.
+
+**And it failed on its own numbers, because they were estimated rather than measured.** The
+anti-silence floors were written from a guess at how many shouted phrases the tree contains — 2,192,
+against a real 397 — so the floor of 500 turned the suite red immediately. Guessing high is a red
+test and costs an hour; guessing low is a guard that quietly stops guarding, which is the failure
+mode this repository keeps finding. The floors are now measured: 122 files, 121 split, 118 shouted
+phrases in headers, 397 in bodies, with the floors about a quarter under.
+
+Then it was sabotaged four ways, and **one sabotage went green**:
+
+| Sabotage | Turned red |
+|---|---|
+| A header made to restate a member's argument again | **yes** — named the file and the phrase |
+| `Halves` pointed at a directory that does not exist | **yes** — both assertions |
+| `Halves` made to put the whole file in the header | **yes** — the body-phrase floor |
+| `readonly` dropped from `Halves`' modifier list | **no** — see below |
+
+The last one is the finding. Without `readonly`, `public readonly record struct` does not match, so
+`LunaCell.cs` and `LunaRowDrop.cs` returned null and were skipped in silence — **two files quietly
+unchecked, suite green.** That defect was in the first draft and was found by counting what the scan
+reached rather than by reading the pattern.
+
+The floor written to catch it did not, and that is the part worth keeping. It read
+`files.Count - split <= 3`, allowing "a few" files not to split. Three files stopped splitting;
+three was within tolerance. **A floor with slack in it is a floor the failure fits through.** It is
+now `<= 1` — exactly `AssemblyInfo.cs`, which is attributes and no type — and the same sabotage
+turns it red. That makes twelve hollow guards found by sabotage in this repository and still none
+found by reading (§73.4).
+
+### 74.9 The style file stays one, and §29.1's rule was phrased for a simpler world
+
+§29.1 set the rule as **"the theme file mirrors the source file"**, with a table row reading
+`LunaTable.axaml | 2 | Controls/LunaTable.cs`. Both halves of that row are now false: the path does
+not exist, and the two selectors are fourteen. The row stays exactly as written, because §29.1's
+table is a record of what was split and why, and a table edited to match today would stop being
+evidence of anything.
+
+**What needs saying is that the rule's WORDING was always narrower than the rule.** "Mirrors the
+source file" happened to be true when every control was one file. The rule that was actually being
+kept — and that is still kept — is **one theme file per CONTROL**. `LunaTable<T>` is one control
+whether it is written in one file or fourteen, so `Theme/Controls/LunaTable.axaml` is where its
+styles belong and it does not move.
+
+#### Why it is not split fourteen ways to match
+
+It could be. The selectors partition along the same seams the source does — `Button.heading` and
+`TextBlock.sort` are §74's `TableSorting.cs`, `Border.frozen-edge` is `TableFrozen.cs`,
+`Border.drop-line` and `Border.drop-into` are `TableDrag.cs`. The mirror is available and is refused
+on three grounds, in order of weight:
+
+- **It is not big enough to have §29's problem.** §29 split `Controls.axaml` at 508 lines and 23
+  selectors, and the argument was that a file which accumulates has no natural place to stop, so
+  "where does this style go" has one answer carrying no information. This file is 226 lines and 14
+  selectors, and **every selector begins `:is(luna|LunaTable)`** — there is one subject, so the
+  question still has an informative answer. That is a different situation from 23 unrelated controls
+  sharing a file, which is what §29 was about.
+- **Splitting multiplies the one failure §29.2 measured.** A style file that exists, compiles, and is
+  not named in `LunaTheme.axaml` does nothing at all — no template, no error, nothing on screen, the
+  §5.5 symptom reachable by forgetting one line. §29.5 also records that this cannot be guarded,
+  because Avalonia strips compiled `.axaml` from the resource blob so the shipped assembly cannot be
+  asked what style files exist. Seven more files is seven more index lines and seven more chances at
+  a silent nothing, bought for tidiness.
+- **§29.5 already declined the same trade once.** `Palette.axaml` and `LunaPalette.cs` were left
+  whole at 127 and 79 lines because they are flat lists a reader reads top to bottom. So is this.
+
+It is three times the next largest style file — `ConsolePane.axaml` at 75 — and that is worth knowing
+rather than hiding. **The trigger to revisit is the one §29 used: not length, but whether "where does
+this style go" stops being answerable.** While every selector in the file names the same control, it
+is answerable.
