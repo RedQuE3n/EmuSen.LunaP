@@ -307,6 +307,7 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public bool SortedDescending { get; }
     public bool TryGetCell(T item, int column, out Avalonia.Controls.Control? cell)
     public bool TryGetRow(T item, out Avalonia.Controls.Control? row)
+    public bool VirtualizeColumns { get; set; }
     public double IndentSize { get; set; }
     public event System.Action<EmuSen.LunaP.Controls.LunaCell<T>?> CellChosen
     public event System.Action<EmuSen.LunaP.Controls.LunaRowDrop<T>> RowDropped
