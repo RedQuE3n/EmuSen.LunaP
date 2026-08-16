@@ -6,9 +6,16 @@
         <Setter Property="HorizontalAlignment" Value="Left" />
         <Setter Property="Template">
             <ControlTemplate>
+                <!-- Stretch is NOT TemplateBound, and that is deliberate since
+                     §53.1: integer scaling sets an exact size on this Image and
+                     a Stretch that fills it, so the control drives both from
+                     ApplyScale rather than the two competing for one property.
+
+                     BitmapInterpolationMode stays None, which is the other half
+                     of a pixel-accurate view - it is what makes an integer
+                     factor produce crisp square pixels rather than a blur. -->
                 <Image Name="PART_Image"
                        Source="{TemplateBinding Source}"
-                       Stretch="{TemplateBinding Stretch}"
                        RenderOptions.BitmapInterpolationMode="None" />
             </ControlTemplate>
         </Setter>

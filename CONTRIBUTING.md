@@ -128,6 +128,20 @@ Three habits this project keeps:
   "reports itself to a screen reader" is a hazard until a test pins it.
 - **No invented results, ever.** A render count, a contrast ratio, a passing
   suite — measured or not stated.
+- **No guessing.** Guessing is permissible only when there is genuinely no other
+  way to get the answer, and then it is labelled as a guess. This is the rule
+  above applied to *method* rather than to results: if the real value can be
+  enumerated, reflected over, read out of a package or measured, do that.
+
+  **Probing a guessed list is still guessing.** Testing sixty recalled resource
+  key names against a live application looks like measurement and is not — it can
+  only find the names already thought of, and its silence means nothing.
+  Enumerating the actual resource tree and searching it for the value in question
+  is the same work done honestly.
+
+  **A recorded shortfall is not a substitute for a cause.** "These four values
+  remain" is an honest entry once the cause is known and leaving it is a decision;
+  reaching for it because the search got tedious is the failure mode.
 
 ## Structure
 
@@ -135,10 +149,14 @@ Three habits this project keeps:
       Automation/                automation peers
       Commands/                  LunaAction, LunaMenu, the menu builder
       Controls/                  the control kit
+        Table/                   LunaTable: one type in fourteen files, plus its
+                                 eleven satellites (§74)
       Fluent/                    the fluent layout surface
       Gallery/                   every control, on one page
       Settings/                  ISettingsStore, the one host seam
       Theme/                     Palette.axaml + LunaPalette.cs
+        Controls/                one style file per control (§29.1, §74.9)
+        Css/                     CssTheme: one type in four files (§29.4)
       Threading/                 Latest, Suppressor, Debounce, UiThread
       Windowing/                 ToolWindow, PollingWindow, WindowSlot, AppWindow
     src/EmuSen.LunaP.Testing/    the harness, as a package
@@ -149,6 +167,24 @@ Three habits this project keeps:
   not belong in any existing file wants a new file, not a new section of one.
 - **No spaghetti.** If a control is doing two things, or reaching across
   layers to do one, split it before extending it.
+- **When one type outgrows a file it becomes a folder of `partial` files, not
+  several types.** `CssTheme` did it at 547 lines (§29.4) and `LunaTable<T>` at
+  3,801 (§74), and both chose the split the same way: *by what makes each file
+  change*, one feature per file, its `§` over it. Real decomposition was
+  considered both times and refused both times for the same reason — a
+  collaborator that needs the header grid, the row list, the column list and a
+  relayout callback injected into it is reaching back through four seams to do
+  its job, which is the spaghetti rule above wearing a constructor. **The parts
+  that genuinely stand alone already have**: `TableLayoutStore` knows about JSON
+  and not about tables, `LunaColumn<T>` is a declaration with no behaviour.
+  **The namespace does not follow the folder** — those are public names a
+  consumer has written a `using` for, and moving them is a breaking change
+  bought with tidiness.
+- **The theme keeps one style file per CONTROL, not per source file** (§74.9).
+  §29.1 phrased it as "mirrors the source file" when every control was one file;
+  a control split across fourteen still has one `.axaml`. Splitting it would
+  multiply the one failure §29.2 measured and cannot guard — a style file not
+  named in `LunaTheme.axaml` compiles, matches nothing, and says nothing.
 - **The palette is spelled twice on purpose** — `Palette.axaml` for XAML,
   `LunaPalette.cs` for controls built in C#. `LunaPaletteTests` resolves every
   key from the live headless application and asserts it equals the C# field.

@@ -1,0 +1,32 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- The form controls whose colours are NOT reachable through a resource key
+         - see docs/LunaP.md §48 and Theme/FluentBridge.axaml for the ones that
+         are.
+
+         Theme/FluentBridge.axaml does almost all of this work by handing LunaP's
+         colours to FluentTheme's own keys, which leaves every template alone.
+         A handful of controls do not read a key at all: their ControlTheme sets
+         Foreground and Background on the control itself, so the only way to
+         reach them is a Setter of our own.
+
+         THESE ARE STYLES AND NOT TEMPLATES, which is the whole of §48's method.
+         A Setter changes a value Fluent's template then uses; replacing the
+         template would mean owning Fluent's keyboard handling, its focus
+         adorners and its accessibility behaviour forever, for a colour. -->
+
+    <!-- ProgressBar names no resource for either half of itself: the filled part
+         is its Foreground and the track is its Background, both set by Fluent's
+         ControlTheme directly.
+
+         MeterRow is unaffected and that is worth knowing before anybody
+         "simplifies" this away. Its bar takes a colour from the load ramp in
+         code (§2.2), and a local value beats a style, so the ramp still wins
+         where it is set and this only reaches bars nobody has coloured. -->
+    <Style Selector="ProgressBar">
+        <Setter Property="Foreground" Value="{DynamicResource LunaAccent}" />
+        <Setter Property="Background" Value="{DynamicResource LunaBorder}" />
+    </Style>
+
+</Styles>

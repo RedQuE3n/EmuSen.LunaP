@@ -25,14 +25,76 @@ namespace EmuSen.LunaP.Settings
         /// <param name="root">The directory categories are created under. Created on demand; nothing is written until something is saved.</param>
         public JsonSettingsStore(string root) => _root = root;
 
-        // Named after the entry assembly when the host says nothing, so an application that never configures LunaP still gets its own folder.
+        // Named after the entry assembly when the host says nothing, so an application that never
+        // configures LunaP still gets its own folder.
+        //
+        // EXCEPT UNDER A TEST RUNNER, WHERE THE ENTRY ASSEMBLY IS NOT THE APPLICATION. Under
+        // `dotnet test` with VSTest it is `testhost`, and that is not a guess that happens to be
+        // wrong - it is the SAME wrong answer for every project on the machine. Two consumers' test
+        // suites then share one directory under the user's real config root, and they share it in
+        // both directions. The write is litter; the READ is a test restoring a window placement that
+        // some other repository's suite saved last week, under a WindowKey they both happened to
+        // call "main" - a failure that depends on what else has been built on that machine.
+        //
+        // Found rather than reasoned about: `~/.config/testhost/windows.json` here held `pegasus`
+        // and `pegasus-signin`, written by a consumer whose suite never touches LunaSettings.Store
+        // because nothing told it that it should. See docs/LunaP.md §43.
+        //
+        // The diverted root is the test project's own output directory - per-project by
+        // construction rather than by heuristic, already ignored by git, wiped by `dotnet clean`,
+        // and where somebody hunting for the file would think to look. Deliberately not a temp
+        // directory keyed by a hash of that same path, which buys identical isolation and no
+        // legibility.
+        //
+        // A name the host PASSES is honoured whatever it says, including "testhost". Only a name we
+        // guessed is ever overridden.
         /// <summary>A store under the usual per-user configuration directory for this platform.</summary>
-        /// <param name="programName">The folder to use under it. Defaults to the entry assembly name.</param>
+        /// <param name="programName">The folder to use under it. Defaults to the entry assembly name, except under a test runner - see the remarks.</param>
         /// <returns>A store rooted at that directory.</returns>
-        public static JsonSettingsStore ForApplication(string? programName = null) =>
-            new(Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                programName ?? Assembly.GetEntryAssembly()?.GetName().Name ?? "LunaP"));
+        /// <remarks>When <paramref name="programName"/> is null and the process is a test runner, the entry assembly is the runner rather than the application and carries the same name for every project. Rather than root a consumer's settings in a directory shared with every other project's test suite, the store is rooted under the test project's own output directory instead.</remarks>
+        public static JsonSettingsStore ForApplication(string? programName = null)
+        {
+            if (programName is not null) return new(Path.Combine(ConfigRoot, programName));
+
+            string? entry = Assembly.GetEntryAssembly()?.GetName().Name;
+            if (!IsSharedRunnerName(entry)) return new(Path.Combine(ConfigRoot, entry ?? "LunaP"));
+
+            string diverted = Path.Combine(AppContext.BaseDirectory, DivertedFolderName);
+            LunaSettings.Report(
+                $"The entry assembly is '{entry}', which is a test runner rather than an application and is "
+                + $"named the same in every project. Settings are under {diverted} rather than a shared "
+                + "directory in your real configuration folder. Assign LunaSettings.Store to choose your own.");
+
+            return new(diverted);
+        }
+
+        // Named so that finding it in a bin directory answers its own question.
+        private const string DivertedFolderName = "lunap-settings";
+
+        private static string ConfigRoot => Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+        // Runner names that are one name for every project on the machine.
+        //
+        // Microsoft.Testing.Platform is deliberately absent: it runs the test ASSEMBLY as the entry
+        // point, so the name is already the test project's own and already distinct per project.
+        // There is nothing to divert, and matching it would move settings for no reason.
+        private static readonly string[] SharedRunnerNames = { "testhost", "vstest.console", "dotnet-vstest" };
+
+        // Exact, or the name followed by a dot - `testhost` ships architecture variants named
+        // `testhost.x86` and `testhost.arm64`.
+        //
+        // NOT A BARE StartsWith, which is what this was first written as. That matches an
+        // application genuinely called `TestHostApp`, and matching it would silently move a real
+        // user's settings out of their configuration directory into a bin folder that the next
+        // `dotnet clean` deletes. The false positive is far more expensive than the false negative
+        // it guards against, because a missed runner litters a directory and a wrong match destroys
+        // somebody's window layout. `Matching_is_tight_enough_not_to_catch_a_real_application` is
+        // the assertion; see docs/LunaP.md §43.3.
+        private static bool IsSharedRunnerName(string? name) =>
+            name is not null
+            && Array.Exists(SharedRunnerNames, r =>
+                name.Equals(r, StringComparison.OrdinalIgnoreCase)
+                || name.StartsWith(r + ".", StringComparison.OrdinalIgnoreCase));
 
         /// <summary>The directory a category resolves to, created if it does not exist.</summary>
         /// <param name="category">The subdirectory, or null for the root.</param>

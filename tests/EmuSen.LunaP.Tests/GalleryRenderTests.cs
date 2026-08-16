@@ -1,6 +1,8 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.VisualTree;
 using EmuSen.LunaP.Controls;
 using EmuSen.LunaP.Gallery;
@@ -20,7 +22,10 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(2, window.CountParts<MonoText>());
             Assert.Equal(4, window.CountParts<MeterRow>());
             Assert.Equal(1, window.CountParts<RgbaImageView>());
-            Assert.Equal(2, window.CountParts<FieldRow>());
+            // THREE since §49: two valid and one showing an error, because an error state that is
+            // only ever exercised by its own unit test is a state nobody looks at.
+            Assert.Equal(3, window.CountParts<FieldRow>());
+            Assert.Equal(1, window.FindParts<ErrorText>().Count(t => t.IsVisible));
             Assert.Equal(1, window.CountParts<PathPickerRow>());
             Assert.Equal(1, window.CountParts<ConsolePane>());
             Assert.Equal(1, window.CountParts<StatusBar>());
@@ -49,8 +54,12 @@ namespace EmuSen.LunaP.Tests
             // when the table happens to be in view, which is a test that breaks when somebody
             // adds a section above it. TableTests asserts all three rows against a table that is
             // actually on screen.
+            // SEVEN SINCE §65: the gutter, then four of text and one each of the other two cell
+            // kinds. The number is asserted rather than "more than one" because it is the header
+            // definitions that prove the template applied, and a header that lost a column is
+            // exactly the failure this line is here to catch.
             LunaTable table = window.FindPart<LunaTable>()!;
-            Assert.Equal(3, table.FindNamed<Grid>("PART_Header").ColumnDefinitions.Count);
+            Assert.Equal(7, table.FindNamed<Grid>("PART_Header").ColumnDefinitions.Count);
             Assert.True(table.CountParts<ListBoxItem>() >= 1);
 
             // FOUR, and three of them are the shell's own. AppWindow builds one divider per edge
@@ -64,6 +73,46 @@ namespace EmuSen.LunaP.Tests
             Assert.True(window.FindPart<LunaSwitch>()!.GetVisualChildren().Any());
             Assert.NotNull(window.FindPart<MenuBar>()!.FindPart<MenuItem>());
             Assert.NotNull(window.FindPart<ToolBar>()!.FindPart<ActionButton>());
+        });
+
+        // THE SAMPLE HAS TO OVERFLOW OR IT DEMONSTRATES NOTHING, and nothing else would say so.
+        // Freezing is only visible when something scrolls past the frozen part, and §64.1 refuses a
+        // band that does not leave room - quietly and by design, because the alternative is a table
+        // whose far columns cannot be reached. So a gallery whose table has been widened, or whose
+        // columns have been narrowed, until it fits is a gallery that still draws, still passes
+        // every count above, and no longer shows the feature §65.2 gave up star widths for.
+        //
+        // The seam is the assertion that the band was GRANTED rather than merely asked for: it is
+        // built from what the caller declared and hidden again when the band is refused (§64.1).
+        //
+        // WHERE THE SEAM IS AND NOT MERELY THAT IT IS VISIBLE, and the first draft of this test got
+        // that wrong. A gutter is pinned on its own account (§63.2), so a table with a row header
+        // and FrozenColumns = 0 draws a visible seam too - just at the gutter's own edge. Sabotaging
+        // the gallery to freeze nothing left the assertion green, which is the same hollow-guard
+        // shape §63.4 recorded twice. Column 0 is the gutter; a seam in column 1 is the only thing
+        // that says a column the CALLER asked to freeze is inside the band.
+        [Fact]
+        public Task The_gallery_table_actually_scrolls_and_actually_pins() => UiTest.Run(() =>
+        {
+            var window = new GalleryWindow();
+            window.Show();
+
+            LunaTable table = window.FindPart<LunaTable>()!;
+
+            ScrollViewer viewer = table.FindNamed<ListBox>("PART_Rows")
+                .GetVisualDescendants().OfType<ScrollViewer>()
+                .First(s => !s.GetVisualAncestors().OfType<ListBoxItem>().Any());
+
+            Assert.True(viewer.Extent.Width > viewer.Viewport.Width,
+                $"the gallery's table fits: extent {viewer.Extent.Width:F0} against viewport "
+                + $"{viewer.Viewport.Width:F0}. Nothing scrolls past the frozen column, so the "
+                + "sample shows a gutter and a seam over a table that never moves.");
+
+            Control seam = table.FindNamed<Grid>("PART_Header").Children.OfType<Control>()
+                .Single(c => c.Classes.Contains("frozen-edge"));
+
+            Assert.True(seam.IsVisible, "the frozen band was refused, so the gallery pins nothing.");
+            Assert.Equal(1, Grid.GetColumn(seam));
         });
 
         [Fact]
@@ -80,5 +129,37 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task The_gallery_renders_the_same_way_twice() =>
             UiTest.Run(() => UiTest.AssertStable("gallery", () => new GalleryWindow()));
+
+        // A GUARD THAT FINDS ITS OWN SUBJECTS, in the shape §28 prefers over a paragraph asking the
+        // next author to remember.
+        //
+        // §48 re-skinned nine stock Avalonia controls and FormControlTests swept them, and for the
+        // length of that arc the gallery showed exactly one of the nine - a ComboBox, which was
+        // already there for another reason. The sweep passed the whole time. That is the §24 shape
+        // repeating: a control can be correct and still be invisible, and the thing that noticed
+        // last time was a person looking rather than a test.
+        //
+        // So the two are tied together at the source. FormControlTests.Kinds() is the list of
+        // controls this toolkit has decided to support, and every one of them now has to appear in
+        // the gallery. Adding a control to the sweep and forgetting the gallery fails here, which is
+        // the only moment anybody would find out.
+        [Fact]
+        public Task Every_control_the_form_sweep_covers_is_in_the_gallery() => UiTest.Run(() =>
+        {
+            var window = new GalleryWindow();
+            window.Show();
+
+            Type[] shown = window.GetSelfAndVisualDescendants().Select(v => v.GetType()).Distinct().ToArray();
+
+            string[] missing = FormControlTests.KindNames
+                .Where(name => !shown.Any(t => t.Name == name))
+                .ToArray();
+
+            Assert.True(missing.Length == 0,
+                "FormControlTests sweeps these controls, but the gallery never shows them, so nobody "
+                + "can see whether the seam §48 closed is actually closed: "
+                + string.Join(", ", missing)
+                + ". Add them to the \"Form controls\" section of GalleryWindow. See docs/LunaP.md §48.6.");
+        });
     }
 }
