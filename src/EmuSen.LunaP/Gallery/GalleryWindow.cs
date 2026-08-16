@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -59,19 +61,182 @@ namespace EmuSen.LunaP.Gallery
             tabs.Add("NES", Ui.Hint("Appended by Tabs.Add, not declared in XAML."));
             tabs.Add("SNES", Ui.Hint("RemoveFrom(1) drops these again."));
 
-            // Three columns over a model, which is the shape the one piece of evidence for this
-            // control actually has - a field list with a name, a type and a page number (§27).
-            var fields = new LunaTable<Field> { Key = f => f.Name };
-            fields.Column("name", f => f.Name, "2*")
-                  .Column("type", f => f.Type)
-                  .Column("pg", f => f.Page.ToString(), "40");
-            fields.Refresh(new[]
+            // Columns over a model, which is the shape the one piece of evidence for this control
+            // actually has - a field list with a name, a type and a page number (§27). The other
+            // three columns are here to show a feature rather than because the evidence has them,
+            // and each says which below.
+            //
+            // TWO SORTABLE AND ONE NOT, on purpose. A gallery that made every column sortable would
+            // show the feature and hide the choice; a heading with no comparison stays a plain
+            // label, and seeing the two side by side is the only way to notice that "sortable" is
+            // something a caller decides per column rather than something the table does.
+            //
+            // The page column sorts NUMERICALLY while displaying a string, which is the argument
+            // for Sort taking a comparison over the model: sorting the text would put "10" before
+            // "9" in a table whose whole job is to be read.
+            //
+            // A GUTTER, AND THE FIRST COLUMN PINNED - which between them are why this table is wider
+            // than the space it is in, deliberately. Freezing is only a thing you can see when
+            // something scrolls past the frozen part, and a table of star-width columns fits by
+            // definition and never scrolls. So the sample gives up demonstrating star widths in
+            // order to demonstrate the gutter, the seam and the pin; §65.2 is that trade, argued.
+            //
+            // FrozenColumns counts the caller's columns and not the grid's - the gutter is pinned on
+            // its own account and takes none of the count (§63.2). One rather than two, because a
+            // band has to leave room for the columns it is pinned in front of and the table refuses
+            // one that does not (§64.1) - at which point the gallery would silently show nothing.
+            //
+            // AND IT SELECTS CELLS RATHER THAN ROWS, which the gallery can afford to show precisely
+            // because it is not the only selectable thing on the page. A unit is exclusive - a table
+            // cannot demonstrate both - so this would normally be the same trade as the star widths
+            // above, giving up the default to show the new thing. It is not, because the LunaList of
+            // peers further up is a row selection, is selected in the static render, and is the
+            // shape almost every list in an application has. §67.6.
+            //
+            // Multiple, so Shift and Ctrl do something: single-cell selection is the half of this a
+            // reader would assume, and a rectangle drawn with Shift+arrow is the half they would not.
+            var fields = new LunaTable<Field>
             {
-                new Field("Site", "text", 1),
-                new Field("Technician", "text", 1),
-                new Field("Approved", "checkbox", 2),
-                new Field("Total aid retained", "text", 2),
-            });
+                Key = f => f.Name,
+                RowHeader = (_, i) => (i + 1).ToString(),
+                RowHeaderCaption = "#",
+                FrozenColumns = 1,
+                SelectionUnit = LunaSelectionUnit.Cell,
+                SelectionMode = LunaSelectionMode.Multiple,
+            };
+            // THE NAME COLUMN IS EDITABLE AND THE OTHER TWO ARE NOT, which is the same choice the
+            // sortable/unsortable pair above makes and for the same reason: a gallery where every
+            // column did everything would show the features and hide the fact that each one is a
+            // per-column decision. Double-click a name, or select a row and press F2.
+            //
+            // Validate returns the PROBLEM rather than false, so the message under the table is the
+            // caller's sentence - the same shape FieldRow.Error uses, which is what makes an invalid
+            // cell and an invalid field one idea instead of two (§50.1).
+            //
+            // AN ABSOLUTE WIDTH RATHER THAN THE "2*" THIS COLUMN CARRIED UNTIL §65. A frozen
+            // column's width IS the band, so a caller who freezes one is declaring how much of the
+            // viewport stops scrolling - and a star column in a table that overflows resolves to its
+            // content anyway, which would make the band whatever the longest name happened to be.
+            fields.Column(new LunaColumn<Field>("name", f => f.Name)
+                  {
+                      Width = "200",
+                      Sort = (a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCulture),
+                      Commit = (f, text) => f.Name = text.Trim(),
+                      Validate = (_, text) => string.IsNullOrWhiteSpace(text) ? "A field needs a name." : null,
+                  })
+                  .Column("type", f => f.Type, "120")
+
+                  // The column that pushes the table past its own width, and it is a real one rather
+                  // than filler: a field list that says what a field IS and not what it starts as is
+                  // half a schema.
+                  .Column("default", f => f.Default, "150")
+                  // RIGHT-ALIGNED, which is the case per-column alignment exists for and the same
+                  // argument the gutter already carries (§58.5): numbers read down a column by their
+                  // last digit, and a left-aligned run of 9, 10, 11 puts the units under the tens.
+                  // Beside four left-aligned columns it also shows that alignment is a per-column
+                  // decision rather than something the table does.
+                  .Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
+                  {
+                      Width = "40",
+                      Alignment = HorizontalAlignment.Right,
+                      Sort = (a, b) => a.Page.CompareTo(b.Page),
+                  })
+
+                  // THE OTHER TWO CELL KINDS, because a table that can only be shown drawing text is
+                  // a table whose §57 is a paragraph nobody can see. A check column is the commonest
+                  // non-text column there is, and this one is live: tick it and the model changes.
+                  .Column(new LunaColumn<Field>("req", f => f.Required, (f, on) => f.Required = on)
+                  {
+                      Width = "40",
+                  })
+
+                  // AND THE ESCAPE HATCH, DELIBERATELY SHOWN AS SOMETHING UNREADABLE. A coloured dot
+                  // is exactly the cell a screen reader cannot describe, which is why the template
+                  // form REQUIRES its third argument - the sentence a reader hears in place of the
+                  // shape. Seeing the dot beside "kind: text" in the row's spoken name is the whole
+                  // argument for that being required rather than optional (§24, §57.2).
+                  .Column(new LunaColumn<Field>(
+                      "kind",
+                      // NO HorizontalAlignment SINCE §69.2, and its absence is the point. A template
+                      // cell now starts at its column's left edge like every other kind of cell
+                      // unless the caller says otherwise, so the line that used to be here is the
+                      // line a consumer no longer has to know to write.
+                      f => new Ellipse
+                      {
+                          Width = 8,
+                          Height = 8,
+                          Fill = f.Type == "checkbox" ? LunaPalette.Info : LunaPalette.Nominal,
+                          VerticalAlignment = VerticalAlignment.Center,
+                      },
+                      f => f.Type)
+                  {
+                      Width = "30",
+                  });
+
+            var schema = new List<Field>
+            {
+                new Field("Site", "text", 1, required: true, @default: "(from job)"),
+                new Field("Technician", "text", 1, required: true, @default: "(current user)"),
+                new Field("Approved", "checkbox", 2, required: false, @default: "no"),
+                new Field("Total aid retained", "text", 2, required: false, @default: "0.00"),
+            };
+
+            fields.Refresh(schema);
+
+            // ROWS THE USER CAN REORDER, AND THE HANDLER A CONSUMER ACTUALLY WRITES. The table
+            // reports where the drop landed and changes nothing itself (§71.1), so this is not
+            // ceremony the gallery is adding on top - it is the whole of what the feature asks of a
+            // caller, and showing it with the collection missing would show half an idea.
+            //
+            // A field list is the right sample for it: the order of fields on a form is a decision
+            // somebody makes by looking at it, which is exactly when dragging beats retyping.
+            fields.CanReorderRows = true;
+            fields.RowDropped += drop =>
+            {
+                foreach (Field moved in drop.Rows) schema.Remove(moved);
+
+                int at = drop.Target is null ? schema.Count : schema.IndexOf(drop.Target);
+                if (drop.Position == LunaDropPosition.After) at++;
+
+                schema.InsertRange(Math.Clamp(at, 0, schema.Count), drop.Rows);
+                fields.Refresh(schema);
+            };
+
+            // THE ONLY SAMPLES HERE THIS TOOLKIT DID NOT WRITE, and that is the reason they are
+            // here. §48 handed LunaP's colours to FluentTheme's own resource keys so that a stock
+            // TextBox, CheckBox or Slider paints in this palette instead of Fluent's #0078D7 - and
+            // until this section existed, the only evidence of that was a test.
+            //
+            // A gallery that shows nine LunaP controls and none of the controls an application is
+            // actually mostly made of is a gallery that cannot answer the question §48 was built to
+            // answer: does the join show? Put them on the same page as the rest and the answer is
+            // one look rather than an argument.
+            //
+            // A RadioButton PAIR rather than one, because a single radio button shows the fill and
+            // hides the thing the fill is for. Both states of the CheckBox and the ToggleSwitch for
+            // the same reason: LunaAccent and LunaOnAccent are a pairing (§48.3), and a sample that
+            // only ever shows the checked half never shows the pairing failing.
+            var forms = Ui.Stack(10,
+                new TextBox { Text = "smw.sfc", Width = 220, HorizontalAlignment = HorizontalAlignment.Left },
+                // PlaceholderText and not Watermark: the latter is [Obsolete] in Avalonia 12.1.0 and
+                // the build says so. The placeholder is here because it is the one piece of a
+                // TextBox that reads through its own key - TextControlPlaceholderForeground, which
+                // the bridge maps to LunaMuted - so an unstyled placeholder is a visible seam.
+                new TextBox { PlaceholderText = "Search titles", Width = 220, HorizontalAlignment = HorizontalAlignment.Left },
+                Ui.Row(16,
+                    new CheckBox { Content = "Pause when unfocused", IsChecked = true },
+                    new CheckBox { Content = "Confirm on exit" }),
+                Ui.Row(16,
+                    new RadioButton { Content = "Nearest", GroupName = "scale", IsChecked = true },
+                    new RadioButton { Content = "Linear", GroupName = "scale" }),
+                Ui.Row(16,
+                    new ToggleSwitch { IsChecked = true },
+                    new ToggleSwitch()),
+                new Slider { Minimum = 0, Maximum = 100, Value = 40, Width = 220, HorizontalAlignment = HorizontalAlignment.Left },
+                new ProgressBar { Minimum = 0, Maximum = 100, Value = 60, Width = 220, HorizontalAlignment = HorizontalAlignment.Left },
+                Ui.Row(16,
+                    new NumericUpDown { Value = 3, Width = 120 },
+                    new CalendarDatePicker { SelectedDate = new DateTime(2026, 8, 13) }));
 
             // A splitter with something on each side of it, sized so the divider is visibly not
             // in the middle - a proportional splitter would put it there and the fixed/elastic
@@ -106,7 +271,25 @@ namespace EmuSen.LunaP.Gallery
                     {
                         Label = "Emulator Core",
                         Content = new ComboBox { ItemsSource = new[] { "SNES", "NES" }, SelectedIndex = 0 }.Grow(),
+                    },
+
+                    // AN INVALID FIELD, SHOWN INVALID, because §49's error state is the one thing in
+                    // this kit whose whole job is to appear only when something is wrong - and a
+                    // gallery that shows every control in its happy state never shows it at all.
+                    //
+                    // Hint AND Error together on purpose: the two are different sentences that both
+                    // stay on screen, which is the argument for ItemStatus over HelpText written up
+                    // beside FieldRow's peer. Seeing them stacked is the only way to notice that the
+                    // advice survives the failure.
+                    new FieldRow
+                    {
+                        Label = "Save State Folder",
+                        Hint = "Where save states are written.",
+                        Error = "That folder does not exist.",
+                        Content = new TextBox { Text = "/mnt/roms/states" },
                     })),
+
+                Ui.Section("Form controls", forms),
 
                 Ui.Section("Widgets", Ui.Stack(8,
                     filter,
@@ -191,6 +374,19 @@ namespace EmuSen.LunaP.Gallery
             LunaAction light = variants.Add("Light");
             dark.IsChecked = true;
 
+            // FOLLOWS THE WINDOW RATHER THAN KEEPING ITS OWN ANSWER (§26.3, §75.2). A checkable
+            // action flips its own tick when invoked, which would be right if this item were the
+            // only way in - it is not, so the window's own event is what drives the tick and the
+            // handler only asks the window to toggle.
+            var full = new LunaAction("Full Screen", ToggleFullScreen)
+            {
+                IsCheckable = true,
+                Shortcut = KeyGesture.Parse("F11"),
+                HelpText = "Fills the screen, and comes back to the state it left.",
+            };
+
+            FullScreenChanged += on => full.IsChecked = on;
+
             var explorer = new SidePanel
             {
                 Title = "Explorer",
@@ -205,7 +401,7 @@ namespace EmuSen.LunaP.Gallery
 
             SetMenus(
                 new LunaMenu("File", open, save, LunaAction.Separator(), strip),
-                new LunaMenu("View", grid, LunaAction.Separator(), explorer.ToggleAction,
+                new LunaMenu("View", grid, full, LunaAction.Separator(), explorer.ToggleAction,
                     new LunaAction("Theme") { Submenu = new LunaMenu("Theme", dark, light) }),
                 new LunaMenu("Help", new LunaAction("About LunaP", () => Status = "A small Avalonia toolkit.")));
 
@@ -215,7 +411,30 @@ namespace EmuSen.LunaP.Gallery
         // A model for the table to project, so the gallery shows the control doing the thing it is
         // for: rows built from a type through three projections, with the type coming back on
         // selection rather than a row index.
-        private sealed record Field(string Name, string Type, int Page);
+        // A CLASS AND NO LONGER A RECORD, because §50 gave the table editing and Commit writes back
+        // into the model. A positional record's properties are init-only, so there is nothing for a
+        // Commit to assign - which is a fact about editing worth meeting here, in the gallery, rather
+        // than in a consumer's own code.
+        private sealed class Field
+        {
+            public Field(string name, string type, int page, bool required, string @default)
+            {
+                Name = name;
+                Type = type;
+                Page = page;
+                Required = required;
+                Default = @default;
+            }
+
+            public string Name { get; set; }
+            public string Type { get; set; }
+            public int Page { get; set; }
+            public string Default { get; set; }
+
+            // Written by the check column's toggle, which is the point of it being here: the gallery
+            // table is live, and a tick changes a model rather than a picture.
+            public bool Required { get; set; }
+        }
 
         // Real pixels, so the image view is not just showing a flat rectangle.
         private static byte[] Ramp(int width, int height)

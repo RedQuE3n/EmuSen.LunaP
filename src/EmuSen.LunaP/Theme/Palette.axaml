@@ -46,6 +46,38 @@
             <Color x:Key="LunaSectionHeaderColor">#9CDCFE</Color>
             <Color x:Key="LunaWarningColor">#D08770</Color>
 
+            <!-- THE FIRST TOKEN ADDED FOR SOMETHING THIS TOOLKIT DOES NOT DRAW
+                 ITSELF, and §48 explains why it had to exist. Every stock
+                 Avalonia control - a checked CheckBox, a Slider's filled track,
+                 a focused TextBox's border - paints its interactive state in
+                 FluentTheme's accent, #0078D7, and this palette had no colour
+                 that meant "the accent of a control you are using". The nearest
+                 was LunaSectionHeader, which is a heading colour and would have
+                 been borrowed for a second job it does not mean.
+
+                 #007ACC is VS Code's own accent, which is where #1E1E1E,
+                 #D4D4D4 and #9CDCFE all came from - so this is the same
+                 derivation the palette already had rather than a new taste.
+
+                 3.70:1 on the dark surface. That is WCAG 1.4.11's floor for a
+                 user interface component rather than 1.4.3's 4.5:1 for text,
+                 and it is the right bar: this is a fill you must be able to SEE
+                 in order to use the control, not a colour anybody reads words
+                 in. PaletteVariantTests holds both columns to it. -->
+            <Color x:Key="LunaAccentColor">#007ACC</Color>
+
+            <!-- What goes ON the accent: a checkmark inside a checked box, the
+                 knob of a switch that is on. The same value in both columns,
+                 which is not an oversight - the accent is dark in BOTH, because
+                 a light-mode accent still has to carry a white glyph. A token
+                 whose two columns agree is worth having anyway: it says the
+                 pairing was considered rather than left to whatever the theme
+                 happened to inherit. 4.51:1 on the dark accent, 6.31:1 on the
+                 light one, and PaletteVariantTests holds both - the numbers
+                 first written here were 4.50 and 6.98, and the second was not a
+                 rounding slip but a figure nothing had measured. §48.3. -->
+            <Color x:Key="LunaOnAccentColor">#FFFFFF</Color>
+
             <!-- Outcome, which is not the load ramp - see §22.9. -->
             <Color x:Key="LunaErrorColor">#CD5C5C</Color>
             <Color x:Key="LunaSuccessColor">#2E8B57</Color>
@@ -83,6 +115,11 @@
             <Color x:Key="LunaSectionHeaderColor">#0A5A96</Color>
             <Color x:Key="LunaWarningColor">#A34B1E</Color>
 
+            <!-- 5.68:1 on the light surface. Darkened rather than inverted, the
+                 same derivation as every other colour in this column. -->
+            <Color x:Key="LunaAccentColor">#005FB8</Color>
+            <Color x:Key="LunaOnAccentColor">#FFFFFF</Color>
+
             <Color x:Key="LunaErrorColor">#B3261E</Color>
             <Color x:Key="LunaSuccessColor">#1B6E3C</Color>
             <Color x:Key="LunaInfoColor">#7A5B00</Color>
@@ -113,6 +150,8 @@
     <SolidColorBrush x:Key="LunaError" Color="{DynamicResource LunaErrorColor}" />
     <SolidColorBrush x:Key="LunaSuccess" Color="{DynamicResource LunaSuccessColor}" />
     <SolidColorBrush x:Key="LunaInfo" Color="{DynamicResource LunaInfoColor}" />
+    <SolidColorBrush x:Key="LunaAccent" Color="{DynamicResource LunaAccentColor}" />
+    <SolidColorBrush x:Key="LunaOnAccent" Color="{DynamicResource LunaOnAccentColor}" />
 
     <SolidColorBrush x:Key="LunaNominal" Color="{DynamicResource LunaNominalColor}" />
     <SolidColorBrush x:Key="LunaBusy" Color="{DynamicResource LunaBusyColor}" />

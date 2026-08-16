@@ -11,6 +11,437 @@ answer.
 
 ---
 
+## 0.8.0
+
+**Any window can go full screen, and one that was already remembering its place
+now remembers the right thing.**
+
+```csharp
+window.ToggleFullScreen();               // or: window.IsFullScreen = true
+window.FullScreenChanged += on => full.IsChecked = on;
+```
+
+- `IsFullScreen` is read from the window rather than stored beside it, so it stays
+  right when the platform's own affordance or a window-manager shortcut is what
+  moved it. `FullScreenChanged` exists for the same reason: a checkable "Full
+  Screen" menu item that kept its own tick would say the opposite of the window
+  the first time somebody used one (`§75.2`).
+- Leaving full screen returns the window to the state it came from, so a maximized
+  window is still maximized afterwards (`§75.3`).
+- **F11 is not bound by LunaP.** It is yours, as every other key is.
+- Full screen is deliberately **not** remembered by `WindowKey`, while maximized
+  still is: a window reopening maximized has its title bar and close button, and
+  one reopening full screen has neither (`§75.5`).
+
+**The pointer can get out of the way.** `IdleCursor` hides it once it has been
+still for a while and brings it back the moment it moves:
+
+```csharp
+_idle = new IdleCursor(this);                            // the whole window, three seconds
+_idle = new IdleCursor(screen, TimeSpan.FromSeconds(1)); // or just the framebuffer
+```
+
+- It attaches to **any control**, not just a window, because "hidden over the
+  video and visible over the toolbar beside it" is the common case and a
+  window-level flag cannot express it (`§76.1`).
+- **Dispose it** — the cursor is restored on disposal, and one left hidden is an
+  application whose pointer never comes back.
+- Only pointer *movement* counts as activity. Keystrokes deliberately do not, or
+  an application somebody is holding four keys down in would never hide it
+  (`§76.5`). `Show()` is the seam for your own idea of activity.
+- A child that sets its own cursor keeps it, so the pointer reappears over a
+  sortable table heading (`§76.2`).
+
+**Files can be dropped onto any control.** `FileDrop` hands you their local paths:
+
+```csharp
+_drop = new FileDrop(this, paths => Load(paths[0]));
+_drop.Accept = paths => paths.Count == 1;   // refuses while the drag is still moving
+```
+
+Avalonia already extracts the files; what this removes is four lines of wiring
+with two silent failures in them — forgetting `AllowDrop`, so no drag event is
+raised at all, and forgetting to set an effect in `DragOver`, so the platform
+refuses the drop before your handler runs. Neither produces an error or a mark on
+screen (`§77.2`). **Dispose it**, and your previous `AllowDrop` is restored.
+
+**Four things LunaP deliberately does not wrap**, now written down rather than
+left open: `Window.Topmost`, `Window.Icon`, `TopLevel.Clipboard` and
+`ExtendClientAreaToDecorationsHint` all already exist and work, so a LunaP name
+for them would only add a thing to keep in step (`§77.1`). Keeping the display
+awake, single-instance and a custom title bar are absent with reasons (`§77.3`).
+
+**A defect fixed, and it affects any window with a `WindowKey`.** A window closed
+while maximized *or* full screen saved the **screen's** bounds as its own restored
+size if it had nothing stored from a previous run — so a window maximized on its
+first run and closed reopened as a "normal" window the size of the display, with
+its title bar off the top. It now records the flag and no geometry, and reopens at
+its own default size (`§75.6`). The maximized half of this has been present since
+0.2.0.
+
+**Your form controls will look different. That is the release.**
+
+LunaP ships `<FluentTheme />` and always will, so every stock Avalonia control an
+application reaches for — a `TextBox`, a `CheckBox`, a `Slider` — worked and
+painted in *Fluent's* palette rather than this one, accent `#0078D7` included. An
+application built mostly of form controls came out mostly Fluent, and the join
+showed in accents, borders and the focus ring. It no longer does: LunaP's colours
+are handed to 46 of FluentTheme's own resource keys, so the templates are
+untouched and the values they look up are ours (`§48`).
+
+**This is not additive, and it is the first release since 0.7.0 where that is
+true.** If you use stock Avalonia controls anywhere, they change colour when you
+upgrade. Nothing about their behaviour, layout or API moves — only what they are
+painted in. There is no switch to turn it off; if you had restyled these controls
+yourself, your own styles still win, because this changes resources and not
+templates.
+
+**A minor bump rather than a patch for exactly that reason.** A consumer reading
+`0.7.2` would not expect their text boxes to be repainted.
+
+Two new palette tokens come with it, `LunaAccent` and `LunaOnAccent` — the first
+in this palette for something the toolkit does not draw itself.
+
+**Fields and cells can now be wrong, and say so.**
+
+- `FieldRow.Error` shows what is wrong with a field. Empty means valid; there is
+  no `IsValid` beside it, because the message *is* the state (`§49`).
+- `LunaColumn<T>.Commit` and `.Validate` make a table column editable. Null
+  `Commit` means read-only and is the default, **so no existing table changes
+  behaviour** (`§50`). Double-click or F2 to open, Enter to commit, Escape to
+  cancel.
+- `ErrorText` is a new text idiom, themeable through CSS like the other three.
+
+**One accessibility defect fixed, and it had been there since 0.7.0.** Every
+`LunaTable` row builds a spoken name — "name: Site, type: text, pg: 1" — and it
+was being set on a node screen readers do not visit. What a reader actually heard
+was your model's `ToString()`: for most callers, a .NET type name, once per row.
+The name now goes where the control view can reach it (`§50.5`). If you shipped a
+table, this is the entry to care about.
+
+Also: `LunaTable` rows expose `ISelectionItemProvider` and editable cells expose
+`IValueProvider`, so a screen reader can select a row and set a cell — going
+through your `Validate` first, exactly as typing does (`§50.6`).
+
+**`RgbaImageView` stops copying every frame twice, and can scale by whole
+pixels.**
+
+- `SetFrame` now takes a `ReadOnlySpan<byte>` or an `nint` as well as a `byte[]`.
+  If your pixels were already in native memory you were marshalling them into an
+  array so this control could copy them straight back out — 8.29 MB per frame at
+  1080p, about 498 MB/s at 60fps, for nothing. The `byte[]` overload is unchanged
+  and now delegates to the same path (`§53.1`).
+- `IntegerScale` scales by a whole number of pixels and centres the result, which
+  is what stops nearest-neighbour shimmering at a fractional factor — a 160×144
+  frame at 4.17× has most rows 4 device pixels tall and every sixth one 5
+  (`§53.3`). **Off by default**, so nothing moves unless you ask.
+- **A latent stride bug is fixed.** The copy assumed the framebuffer's rows were
+  exactly `width × 4` bytes; it now reads `RowBytes` and copies row by row when
+  they are not. No backend measured here pads, so this was not visible — it was
+  an assumption about one platform (`§53.2`).
+- One correction: `Stretch`'s documentation said it defaulted to preserving the
+  aspect ratio. It defaults to `Stretch.None`, which does not scale at all. The
+  value never changed, only the sentence describing it (`§52`).
+
+**A table cell no longer has to be text.**
+
+- A **checkbox column**: `new LunaColumn<T>("req", r => r.Required, (r, on) =>
+  r.Required = on)`. Leave the third argument off and the column is read-only —
+  which means genuinely read-only, including to a screen reader (`§57.3`).
+- A **template column**: `new LunaColumn<T>("kind", r => BuildMyControl(r), r =>
+  r.Kind)`. The third argument is **required**, and it is what a screen reader
+  hears in place of your control. There is no way to declare a cell nobody can
+  read (`§57.2`).
+- Both are ordinary constructors, so `Width`, `Sort`, `MinWidth`, `IsVisible` and
+  the rest apply exactly as they do to a text column (`§57.1`).
+- A `Toggle` that declines to write leaves the tick where it was — the table
+  re-reads your model rather than trusting the box. What it cannot do is say
+  *why*, which a text column's `Validate` can; that gap is recorded rather than
+  approximated (`§57.4`).
+- `TryGetCell` now returns `Control?` and finds all three kinds.
+- **Nothing changes for a table of text columns**, which is still every column
+  you have declared so far.
+
+**Rows can be dragged into a new order.** `CanReorderRows = true`, and off by
+default so nothing moves for a table that does not ask.
+
+- **The table reorders nothing itself.** `RowDropped` tells you what landed
+  where; you move your own rows and call `Refresh`. It holds a copy of your list,
+  so reordering it here would be undone by your next refresh - the same rule a
+  checkbox column already follows, where a `Toggle` that declines leaves the tick
+  where it was (`§71.1`).
+- `LunaRowDrop<T>` is your models, the model it landed on, and a position:
+  `Before`, `After`, or `Inside` - which only happens in a tree, where it means
+  reparent rather than reorder (`§71.5`).
+- `CanDrop` refuses a drop before the indicator promises it will work.
+- **Alt+Up/Down moves the selected row**, raising the same event, because a
+  reorder only a pointer can do is a feature half your users do not have
+  (`§71.4`). A bare arrow still moves the selection.
+- Dragging a row that is part of a multi-selection takes the whole selection;
+  dragging one outside it takes only that row.
+
+One difference from `TreeDataGrid`, stated rather than left to be found: this is
+pointer capture rather than the platform's drag-and-drop, so a row can be
+reordered inside its table but **cannot be dragged out of it** into another
+control (`§71.2`).
+
+**A table can be a tree.** One projection, and null — the default — is a flat
+table, so nothing changes for a table that does not set it:
+
+```csharp
+files.Children = node => node.Kids;      // null is a flat table
+files.ExpanderColumn = 0;                // which column carries the toggle
+```
+
+`Expand`, `Collapse`, `ExpandAll`, `CollapseAll` and `IsExpanded` drive it from
+code; `IndentSize` sets the step. A projection rather than an interface, so your
+model needs no base class and no knowledge that LunaP exists — a model that keeps
+its children elsewhere writes `n => index[n.Id]`, which an interface could not
+express (`§55.1`). Sorting applies **at every level**, so a tree stays a tree
+(`§55.2`). Expansion is keyed by your model, so it survives a `Refresh` that
+rebuilds every object (`§55.4`).
+
+**A table can select more than one row.**
+
+```csharp
+fields.SelectionMode = LunaSelectionMode.Multiple;   // None, Single (default), Multiple
+```
+
+`SelectedItems` gives them in display order. `None` is a real mode rather than an
+omission — a table nobody can select a row in is a reasonable thing to want.
+
+**Columns gained bounds, visibility, and a way to find things.**
+
+- `LunaColumn<T>.MinWidth` and `.MaxWidth` bound a column under a resize drag.
+  Both nullable, and null — the default — leaves the Grid's own 0 and infinity,
+  so no existing column moves.
+- `LunaColumn<T>.IsVisible` hides a column **without moving any index**: a hidden
+  column keeps its place, so a remembered layout, a sort and `Edit(item, 2)` all
+  still mean what they meant.
+- `BringRowIntoView`, `TryGetRow` and `TryGetCell` navigate. The two `TryGet`
+  methods answer **false** for a row that is not currently realised, rather than
+  forcing one into existence — which is why `BringRowIntoView` exists.
+
+**Grid lines, edit gestures, and two lifecycle events.**
+
+- `GridLines` is `None` (the default), `Horizontal`, `Vertical` or `All`. None is
+  what every table drew before, and is the better default for an instrument panel
+  where a meter list should read as a block rather than a spreadsheet (`§56.2`).
+- `EditGestures` is a `[Flags]` set — `F2`, `DoubleTap`, `Tap`, `WhenSelected` —
+  rather than a mode, because they compose: an enum of named combinations grows a
+  member per pair (`§56.1`).
+- `RowPrepared` and `RowClearing` fire as rows are realised and recycled, and
+  `CellValueChanged` fires when a commit or a toggle writes. **`CellPrepared` and
+  `CellClearing` are deliberately absent** — refused with an argument rather than
+  missed (`§56.3`).
+
+**A wide table can build only the columns it can show.** `VirtualizeColumns =
+true`, off by default, so nothing moves for a table that does not ask.
+
+- Measured on 120 columns of 120 pixels in an 800-wide viewport, where 6.7 of
+  them are visible: a refresh went from **42.7ms to 6.0ms**, and one row held
+  eight cells instead of 120 (`§72.1`).
+- **Only fixed-width columns are ever left out.** An `Auto` or star column takes
+  its width from its content, so dropping its cells would change how wide it is —
+  a star column measured 175 pixels at rest and **0** while scrolled past, moving
+  every column to its right by that much (`§72.3`). Frozen columns are on screen
+  at every offset by definition. A table of star columns therefore gains nothing,
+  which is the same table that never scrolls sideways anyway.
+- **A column that is not built has no cell**, so `TryGetCell` answers false for it
+  and a screen reader walking cells does not reach it — the same trade row
+  virtualization has always made for a row scrolled away. Editing and the arrow
+  keys are unaffected: both bring a column back before going looking for it
+  (`§72.4`).
+- The sentence a screen reader hears for the **row** is unchanged, because it is
+  built from your columns rather than from the cells that happen to exist.
+
+This closes `§54`'s parity arc with `Avalonia.Controls.TreeDataGrid`.
+
+**Columns can be aligned, and sorted without a click.**
+
+- `LunaColumn<T>.Alignment` and `.VerticalAlignment` say where a column's content
+  sits. Both are nullable and null - the default - leaves every cell kind exactly
+  as it was. A right-aligned column of numbers is the case this exists for:
+  left-aligned, a run of 9, 10, 11 puts the units under the tens.
+- The heading follows the column, so a right-aligned column of sizes no longer
+  sits under a left-aligned word (`§70.2`).
+- `SortBy(column, descending)`, `ClearSort()`, and `SortedColumn` /
+  `SortedDescending` to read it back. `SortBy` **refuses a column with no `Sort`
+  comparison** rather than falling back to sorting the displayed text, which is
+  the "10 before 9" bug `Sort` exists to prevent (`§70.3`).
+- A remembered layout still wins over a sort you set in code, because what your
+  user clicked last time outranks what your application declared this time.
+
+**A sort you left was never written down. It is now.** If you use `TableKey`, this
+is the entry to care about: clicking a heading did not schedule a save, and the
+table never flushed when its window closed - so a user who sorted and closed lost
+the sort, unless you happened to call `SaveNow()` yourself. Column *widths* were
+saved, which is why this looked like it worked. Both halves are fixed: every
+change schedules the write, and the table flushes on its way out of the visual
+tree the way `SplitPane` always has (`§70.4`).
+
+**A table can select cells instead of rows.** `SelectionUnit = Cell` beside the
+`SelectionMode` you already have, because *how many* and *what kind* are separate
+questions and one enum cannot answer both (`§67.1`). Row is the default, so
+nothing moves for a table that does not ask.
+
+- Arrow keys walk the columns, Home and End go to the ends, Shift extends a
+  **rectangle** rather than a run, and Ctrl+click adds one cell at a time.
+- `SelectedCell` and `SelectedCells` are `LunaCell<T>` — your model and a column
+  index, never two positions, so a coordinate survives a `Refresh` that rebuilds
+  every object (`§67.2`).
+- `SelectedItems` still answers with rows: in a cell unit, a row is selected when
+  any of its cells is.
+- **F2 opens the cell you are on** rather than the first editable column. In a
+  row unit it still opens the first editable column, so no existing table's F2
+  changes.
+- Changing the unit clears the selection. A row has no column to become, and
+  turning a cell into its whole row would select more than was asked for.
+
+**A screen reader can now ask a table what is selected, and move it.** This is
+the entry to read if you ship to screen-reader users, and none of it needs a line
+from you.
+
+- The table reports itself as a **data grid** rather than a group, with
+  `ISelectionProvider` and `IScrollProvider` behind the claim. `§27.3` refused
+  that control type and `§68.1` is the correction: the patterns it was refused
+  over do not exist in Avalonia at all.
+- **What is selected comes back as the cells themselves** — so a reader that
+  finds a checkbox cell in the selection can still tick it, and a template cell
+  keeps whatever its own control provides.
+- **Every cell is named for its column.** A reader landing on one hears
+  "armed" and then the state, instead of a bare value with nothing to say which
+  column it came from.
+- **A template cell finally says what it means.** `§57.2` made the spoken
+  sentence mandatory and then only ever used it in the row's name; the cell
+  itself was anonymous, so a coloured dot announced as nothing. It now carries
+  that sentence as its item status.
+- **A cell no longer goes stale when a different cell changes it.** A template
+  column reading a field that a checkbox two columns over writes was left
+  describing the old value — on all three write paths, including the one a
+  screen reader uses (`§68.4`, `§69.1`).
+
+**A template cell you gave a size to is no longer centred in its column.** Every
+other kind of cell starts at the column's left edge; a template cell was the
+exception, because Avalonia centres an element that has an explicit width and no
+alignment of its own. `new Ellipse { Width = 8 }` in a 120-wide column sat 56
+pixels in, beside a checkbox that started at zero.
+
+If you had written `HorizontalAlignment` yourself, you keep it — this only fills
+in an answer where there was none. **A template cell with no explicit width still
+stretches to fill its column**, so a progress bar or a coloured background in a
+cell is unchanged (`§69.2`).
+
+Still missing, and stated rather than left to be found: a tree row exposes no
+`IExpandCollapseProvider`. The expander is a real focusable button named "Expand
+&lt;row&gt;", which is the capability without the pattern (`§68.7`).
+
+**A defect fixed in the same work.** `ExpanderColumn` was wrong for every value
+except its default: a tree whose expander was not in the first column drew that
+cell on top of column 0's and left its own column empty. If you have a tree with
+`ExpanderColumn` set to anything but 0, this is the entry that matters (`§66`).
+
+**A table can have a gutter down the left.** `RowHeader` takes the row and its
+*displayed* index, so `(_, i) => (i + 1).ToString()` numbers the rows and
+`(row, _) => row.Address.ToString("X4")` labels them from the model. Null - the
+default - means no gutter and no change (`§58`). `RowHeaderCaption` puts a
+heading over it and `RowHeaderWidth` sizes it.
+
+The gutter **stays put when the table scrolls sideways**, whatever
+`FrozenColumns` says, because a row label that scrolls away leaves your user
+reading a line of values with nothing to say which row it belongs to (`§63.2`).
+
+**Columns past the right edge of a table are now reachable.** They were not: a
+table whose columns did not fit resolved every column to the width it asked for
+and then clipped the grid at the viewport, with no scrollbar, no wheel and no
+keyboard route to the rest. If you have ever declared absolute column widths that
+added up to more than the window, some of your columns were invisible and nothing
+said so. The table scrolls sideways now and the header follows it (`§59`).
+
+A table of star-width columns - the default - fits by definition, shows no
+scrollbar and is unchanged.
+
+**And the first columns can be frozen.** `fields.FrozenColumns = 1` pins them
+while the rest scroll underneath, with a seam drawn where the pinning stops.
+Zero — the default — pins nothing, so no existing table moves.
+
+- Counted in **your** columns, in the order you declared them; a gutter is pinned
+  on its own account and takes none of the count (`§63.2`). A hidden column takes
+  one of the places, like every other index this control uses.
+- **A band with no room pins nothing at all.** Freezing is a refinement of
+  scrolling and does not get to remove it, so a band as wide as the viewport —
+  from freezing too much, or from a window dragged narrow — leaves you an
+  ordinary scrolling table rather than one whose far columns cannot be reached.
+  It returns by itself when there is room (`§64.1`).
+- Not remembered by `TableKey`, on purpose: that file holds what your *user* did,
+  and this is what *you* declared (`§65.4`).
+
+`§59.3` said this needed a different control, and it was wrong — the correction
+and the walk are in `§60`.
+
+**Two defects fixed in the same work, both of which shipped inside this release's
+own development and neither of which any test caught.** If you take 0.8.0 you
+have neither, but they are the entries worth reading if you build on this: a
+table's header stopped following any scroll it did not cause, including every
+scroll caused by opening an editor (`§64.2`), and a cell editor's own inner
+`ScrollViewer` permanently hijacked the one the table was watching (`§64.3`).
+
+**Disabled checkboxes change colour, including ones you built yourself.** Fluent's
+disabled checkbox is translucent white, which on the light surface put a white
+tick on light grey at **1.78:1** — unreadable. `FluentBridge` now overrides five
+keys so a disabled box holds 3:1 in both variants, checked and indeterminate. WCAG exempts disabled controls
+from any contrast requirement; that exemption assumes you never need to *read*
+one, and a read-only cell breaks the assumption (`§57.3`). This affects any
+`CheckBox` in your application, not just table cells.
+
+---
+
+## 0.7.1
+
+**Your test suite was writing into a directory shared with every other project
+on the machine. It no longer is.**
+
+`JsonSettingsStore.ForApplication()` names itself after the entry assembly. Under
+`dotnet test` that is `testhost` — the same name for every project anybody has
+ever built — so window placement, pane layout and the saved theme name all went
+to one `testhost` folder in your real per-user configuration directory, shared
+with every other repository's test suite on that machine (`§43`).
+
+**Who this affected.** Any suite that showed a `ToolWindow` with a `WindowKey`
+set, or saved a theme, without assigning `LunaSettings.Store` first. It needed no
+mistake on your part; nothing said you had to. It was found by looking at a
+machine where one project's `windows.json` held another project's window keys.
+
+**The read is the part that bites.** `ToolWindow` restores from that same file by
+key, so two projects whose windows are both called `"main"` restored each other's
+geometry — a test that passes or fails according to what else has been built on
+the machine, with no local cause and no reproduction on a fresh checkout.
+
+**What you get instead.** When the entry assembly is a test runner *and* you
+passed no name, the store roots itself at `<your test project's bin>/lunap-settings`
+and says so through `LunaSettings.Diagnostics`. A name you pass is honoured
+whatever it says, including `"testhost"`.
+
+**Nothing moves for an application.** A real entry assembly is never named
+`testhost`, so no user's settings change location. If you already assign
+`LunaSettings.Store`, nothing changes for you either.
+
+**If you want the old files back**, they are in `~/.config/testhost` (or the
+platform equivalent) and can be deleted — but check what is in there first, as
+more than one project may have written it.
+
+### Fixed
+
+- The default settings root under a test runner (`§43`).
+
+### Internal
+
+- `CitationTests` fails the build on a `§` citation that does not resolve to a
+  section of `docs/LunaP.md`. 116 citations, all resolving (`§44`). No effect on
+  the packages.
+
+---
+
 ## 0.7.0
 
 **A shell, and a class of theme rule that never worked.**

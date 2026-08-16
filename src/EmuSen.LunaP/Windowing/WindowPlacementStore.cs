@@ -49,6 +49,55 @@ namespace EmuSen.LunaP.Windowing
             LunaSettings.Store.Save(null, FileName, all);
         }
 
+        // WHAT A CLOSING WINDOW SHOULD WRITE DOWN, as a pure function of what it can see - see docs/LunaP.md §75.4.
+        //
+        // A window that is COVERING the screen - maximized or full screen - has the screen's bounds
+        // as its own, so saving them would record the screen as the window's restored size. Reopen
+        // it, leave the covering state, and the "normal" window is the size of the display with its
+        // title bar off the top. That is the failure this whole function exists to prevent, and it
+        // is why the current geometry is deliberately NOT trusted in either state.
+        //
+        // So a covering window defers to whatever was stored last time, which is the last geometry
+        // the window is known to have had while it was an ordinary window. WITH NOTHING STORED IT
+        // WRITES ZEROES RATHER THAN THE SCREEN, which is not a sentinel invented here: RestorePlacement
+        // already ignores a non-positive size, and IsOnAScreen already answers false for an empty
+        // rectangle. A window maximized on its very first run therefore remembers the flag and no
+        // geometry, and reopens maximized at its own default size - which is the honest record of
+        // the fact that nobody ever saw it as a normal window.
+        //
+        // This is SPLIT OUT AND PURE for the reason §8.1 split IsOnAScreen out: the rule can then be
+        // tested against real full-screen geometry, which the headless platform never produces. It
+        // stores WindowState faithfully and never moves or resizes the window to match, so an
+        // end-to-end test of this rule would pass just as happily without it (§75.4).
+        /// <summary>Works out what a closing window should save, given that a maximized or full-screen window's own bounds are the screen's rather than its own.</summary>
+        /// <param name="state">The state the window is closing in.</param>
+        /// <param name="position">Where the window is now, used only when it is not covering the screen.</param>
+        /// <param name="width">The window's current width, used only when it is not covering the screen.</param>
+        /// <param name="height">The window's current height, used only when it is not covering the screen.</param>
+        /// <param name="previous">What was stored under this key last time, which is where a covering window's geometry comes from. Null means nothing was ever stored, and the result carries no geometry at all.</param>
+        /// <returns>The placement to save.</returns>
+        public static WindowPlacement PlacementToSave(
+            WindowState state, PixelPoint position, double width, double height, WindowPlacement? previous)
+        {
+            bool covering = state is WindowState.Maximized or WindowState.FullScreen;
+
+            return new WindowPlacement
+            {
+                X = covering ? previous?.X ?? 0 : position.X,
+                Y = covering ? previous?.Y ?? 0 : position.Y,
+                Width = covering ? previous?.Width ?? 0 : width,
+                Height = covering ? previous?.Height ?? 0 : height,
+
+                // FULL SCREEN IS NOT REMEMBERED AS A STATE, and that asymmetry with Maximized is the
+                // decision rather than an oversight - see docs/LunaP.md §75.5. A window that reopens
+                // maximized still has its title bar and its close button; one that reopens full
+                // screen has neither, and the key that would let it out belongs to the application
+                // rather than to this toolkit. Somebody who wants it back sets IsFullScreen at
+                // startup, which is one line and is theirs to decide.
+                Maximized = state == WindowState.Maximized,
+            };
+        }
+
         // A monitor that is no longer attached would otherwise restore a window off every screen, where it cannot be dragged back.
         /// <summary>Whether a saved rectangle still lands on a connected display, so a window is not restored onto a monitor that has been unplugged.</summary>
         /// <param name="screens">The screens as Avalonia reports them. Null is treated as unknown and answers true, because refusing to restore is worse than restoring somewhere odd.</param>

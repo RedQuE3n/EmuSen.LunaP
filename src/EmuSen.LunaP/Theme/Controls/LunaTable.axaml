@@ -11,6 +11,13 @@
          nothing would align. The scope goes on the root so both parts are
          inside it.
 
+         This half is necessary and not sufficient, and the other half is not
+         here. A definition only actually joins the scope if it is ADDED to a
+         grid's own collection rather than assigned as a ready-made one - see
+         LunaTable.Define, and docs/LunaP.md §27.7. Setting the scope here and
+         getting that wrong leaves a control that looks correct everywhere
+         except on screen, which is how it shipped.
+
          The header's padding matches the item container's below, because those
          two numbers are what actually decide whether a column heading sits over
          its own cells.
@@ -28,18 +35,182 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <DockPanel>
+                    <!-- ClipToBounds, because the header is what SCROLLS SIDEWAYS and a
+                         translated grid paints outside its parent unless something
+                         says otherwise. Without it a table scrolled right draws its
+                         leftmost heading over the window beside it. §59. -->
                     <Border DockPanel.Dock="Top"
                             BorderBrush="{DynamicResource LunaBorder}"
                             BorderThickness="0,0,0,1"
+                            ClipToBounds="True"
                             Padding="12,4,12,6">
                         <Grid Name="PART_Header" />
                     </Border>
+                    <!-- WHY THE VALIDATION MESSAGE IS HERE AND NOT IN THE CELL.
+                         A cell is a few characters wide and already full of the
+                         editor; a message inside one would either be clipped or
+                         would widen the column while somebody is typing in it.
+                         Docked under the whole table it has room for a sentence,
+                         and it is the same "message below the thing it is about"
+                         FieldRow settled on (§49.4).
+
+                         Collapsed rather than reserved: a table that keeps an
+                         empty line under it for a message it usually has nothing
+                         to say is a table that is shorter than it looks. §50. -->
+                    <luna:ErrorText Name="PART_Error"
+                                    DockPanel.Dock="Bottom"
+                                    Margin="12,4"
+                                    IsVisible="False" />
+
+                    <!-- HORIZONTAL SCROLLING, AND WHY IT IS ONE ATTACHED PROPERTY RATHER
+                         THAN A SCROLLBAR OF THIS CONTROL'S OWN. A ListBox already
+                         contains a ScrollViewer; Fluent leaves its horizontal bar
+                         Disabled, which is what made columns past the right edge
+                         unreachable by scrollbar, wheel or keyboard - measured, not
+                         inferred: six columns of 200 in a 400-wide table resolved all
+                         six definitions to 200 and clipped the grid at 376, with the
+                         viewer reporting extent equal to viewport (§59).
+
+                         Turning it on gets the bar, the wheel, the keyboard and touch
+                         from the ScrollViewer that was already there. The header is the
+                         only part outside it, and LunaTable translates that to match -
+                         which is the whole of the code this needs. Auto rather than
+                         Visible, so a table whose columns fit shows no bar and loses no
+                         height. -->
                     <ListBox Name="PART_Rows"
                              Background="Transparent"
-                             BorderThickness="0" />
+                             BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto" />
                 </DockPanel>
             </ControlTemplate>
         </Setter>
+    </Style>
+
+    <!-- A SORTABLE HEADING IS A BUTTON WEARING NOTHING. LunaTable.Heading makes
+         one for any column with a comparison, because a heading that answers
+         only a click is a sort a keyboard user does not have (§24) - a Button
+         brings focus, Tab, Space, Enter and an invoke peer for free.
+
+         What it also brings is Fluent's chrome, and all of this is taking it
+         off again: the heading has to sit on the same baseline and the same x
+         as the plain TextBlock in the column beside it, or a table with one
+         sortable column among three has a heading row that steps up and down.
+
+         Background is set on the ContentPresenter and not on the Button. Fluent
+         paints a Button's fill in its template, so a Setter on the control is
+         overridden by the theme the moment a pointer enters; the pointerover and
+         pressed rules below reach the presenter, which is what actually draws. -->
+    <Style Selector=":is(luna|LunaTable) Button.heading">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+
+    <Style Selector=":is(luna|LunaTable) Button.heading /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <!-- The hover affordance, and the only one: a heading that looks identical
+         whether it sorts or not gives a mouse user nothing to discover. The
+         glyph tells them afterwards; this is what tells them before. -->
+    <Style Selector=":is(luna|LunaTable) Button.heading:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource LunaInputSurface}" />
+    </Style>
+
+    <Style Selector=":is(luna|LunaTable) Button.heading:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource LunaInputSurface}" />
+    </Style>
+
+    <!-- The sort direction. Hidden entirely in the third state rather than shown
+         as a neutral mark, so the cycle reads as two sorted states and off. -->
+    <Style Selector=":is(luna|LunaTable) TextBlock.sort">
+        <Setter Property="Foreground" Value="{DynamicResource LunaInfo}" />
+    </Style>
+
+    <!-- THE GUTTER DOWN THE LEFT, and the corner above it. LunaMuted rather than LunaText, because a
+         row header is how you REFER to a row rather than something the row says - the same relation a
+         line number has to a line of code, and every editor draws it quieter than the code. It is
+         held to 4.22:1 dark and 5.75:1 light against the surface (measured for §57.3), so quieter
+         does not mean unreadable.
+
+         Right-aligned, which matters for the case this is mostly for: numbers and hex addresses read
+         down a column by their last digit, and a left-aligned gutter of 9, 10, 11 puts the units
+         under the tens. §58. -->
+    <Style Selector=":is(luna|LunaTable) TextBlock.row-header">
+        <Setter Property="Foreground" Value="{DynamicResource LunaMuted}" />
+        <Setter Property="TextAlignment" Value="Right" />
+        <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+
+    <!-- THE GRID LINES, off by default and drawn in LunaBorder when on. That token already means
+         "where one surface stops and the next begins" (§26.9) and is already held to 3:1 against
+         both surfaces, which is exactly what a rule between cells is - so it takes the token rather
+         than introducing a colour of its own. §56. -->
+    <Style Selector=":is(luna|LunaTable) Border.row-rule">
+        <Setter Property="BorderBrush" Value="{DynamicResource LunaBorder}" />
+    </Style>
+
+    <Style Selector=":is(luna|LunaTable) Border.column-rule">
+        <Setter Property="Background" Value="{DynamicResource LunaBorder}" />
+    </Style>
+
+    <!-- WHERE THE FROZEN COLUMNS STOP. Takes LunaBorder for the same reason the
+         grid rules do (§56.2): it is where one surface stops and the next
+         begins, and that token is already held to 3:1 against both surfaces.
+         Drawn whether or not the table has been scrolled yet, because a layout
+         that behaves differently on the left should say so before the user
+         discovers it rather than after. §63.
+
+         Its own class rather than reusing column-rule, so a host that wants the
+         boundary louder than a grid line - a heavier stroke, the accent - can
+         restyle one without the other. -->
+    <Style Selector=":is(luna|LunaTable) Border.frozen-edge">
+        <Setter Property="Background" Value="{DynamicResource LunaBorder}" />
+    </Style>
+
+    <!-- WHERE A DRAGGED ROW WOULD LAND - see docs/LunaP.md §71.
+         LunaAccent rather than LunaBorder, because this is not a boundary
+         between two surfaces the way a grid rule or the frozen seam is (§56.2) -
+         it is a live answer to what the pointer is currently doing, and it has
+         to be findable at a glance while the user is moving. The same token the
+         selected cell takes, for the same reason. -->
+    <Style Selector=":is(luna|LunaTable) Border.drop-line">
+        <Setter Property="Background" Value="{DynamicResource LunaAccent}" />
+    </Style>
+
+    <!-- A REPARENT LOOKS DIFFERENT FROM A REORDER, because it is a different
+         thing: "put this file in that folder" rather than "put this row between
+         those two". An outline round the whole target row rather than a line at
+         one edge, so the two can never be mistaken for each other mid-drag. -->
+    <Style Selector=":is(luna|LunaTable) Border.drop-into">
+        <Setter Property="BorderBrush" Value="{DynamicResource LunaAccent}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
+    <!-- THE SELECTED CELL, drawn as an outline in the accent - see docs/LunaP.md
+         §67.
+
+         LunaAccent rather than a surface token, because this is the one thing on
+         screen that says where the next keystroke goes, and it has to be
+         findable at a glance among several rows that may also be highlighted.
+         It is the same token a focused input takes, which is the same idea: the
+         thing that has the keyboard.
+
+         AN OUTLINE AND NEVER A FILL, and that is not a taste decision. §57 lets
+         a cell be any control a caller returned from Build - a coloured dot, a
+         progress bar, a sparkline - and a fill would paint over it. A box is
+         drawable around all three and hides none of them. It also survives a
+         host restyling the row's own selected background, which a fill chosen
+         to sit on top of one would not. -->
+    <Style Selector=":is(luna|LunaTable) Border.cell-selection">
+        <Setter Property="BorderBrush" Value="{DynamicResource LunaAccent}" />
     </Style>
 
     <!-- The other half of the alignment. Fluent's ListBoxItem padding is not the

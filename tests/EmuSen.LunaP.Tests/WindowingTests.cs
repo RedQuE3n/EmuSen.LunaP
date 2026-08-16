@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -211,6 +212,194 @@ namespace EmuSen.LunaP.Tests
             Assert.True(WindowPlacementStore.IsOnAScreen(Array.Empty<PixelRect>(), new PixelRect(4000, 4000, 100, 100)));
             Assert.True(WindowPlacementStore.IsOnAScreen((Screens?)null, new PixelRect(4000, 4000, 100, 100)));
         }
+
+        // ------------------------------------------------------------------ full screen (§75)
+
+        // THE RULE, HANDED THE GEOMETRY THE HEADLESS PLATFORM WILL NOT PRODUCE - see docs/LunaP.md §75.4.
+        //
+        // Avalonia.Headless stores WindowState and never acts on it: a window put into FullScreen
+        // keeps the position and size it already had. So an end-to-end test of this rule passes
+        // whether or not the rule exists, and the outcome is only assertable against the pure
+        // function. 1920x1080 at (0,0) is what a real platform would have replaced the window's own
+        // bounds with by the time it closes.
+        [Theory]
+        // Full screen: the stored 321x234 at (120, 90) survives, and the flag is NOT set.
+        [InlineData(WindowState.FullScreen, 120, 90, 321d, 234d, false)]
+        // Maximized: same geometry rule, and the flag IS set.
+        [InlineData(WindowState.Maximized, 120, 90, 321d, 234d, true)]
+        // Ordinary: the live geometry is the answer and the stored one is ignored.
+        [InlineData(WindowState.Normal, 0, 0, 1920d, 1080d, false)]
+        public void A_window_covering_the_screen_saves_the_geometry_it_had_before(
+            WindowState state, int x, int y, double width, double height, bool maximized)
+        {
+            var stored = new WindowPlacement { X = 120, Y = 90, Width = 321, Height = 234 };
+
+            WindowPlacement saved = WindowPlacementStore.PlacementToSave(
+                state, new PixelPoint(0, 0), 1920, 1080, stored);
+
+            Assert.Equal(x, saved.X);
+            Assert.Equal(y, saved.Y);
+            Assert.Equal(width, saved.Width);
+            Assert.Equal(height, saved.Height);
+            Assert.Equal(maximized, saved.Maximized);
+        }
+
+        // §75.6: the case §8.1's rule never covered. With nothing stored, the fallback was the live
+        // geometry - which is the screen, which is the whole thing the branch exists to distrust.
+        [Theory]
+        [InlineData(WindowState.FullScreen, false)]
+        [InlineData(WindowState.Maximized, true)]
+        public void A_window_covering_the_screen_on_its_first_run_remembers_no_geometry(
+            WindowState state, bool maximized)
+        {
+            WindowPlacement saved = WindowPlacementStore.PlacementToSave(
+                state, new PixelPoint(0, 0), 1920, 1080, previous: null);
+
+            // Zero rather than the screen: RestorePlacement already ignores a non-positive size and
+            // IsOnAScreen already refuses an empty rectangle, so this reopens at the window's own
+            // default size instead of at the size of the monitor.
+            Assert.Equal(0, saved.Width);
+            Assert.Equal(0, saved.Height);
+            Assert.Equal(0, saved.X);
+            Assert.Equal(0, saved.Y);
+            Assert.Equal(maximized, saved.Maximized);
+
+            Assert.False(
+                WindowPlacementStore.IsOnAScreen(
+                    new[] { new PixelRect(0, 0, 1920, 1080) },
+                    new PixelRect(saved.X, saved.Y, (int)saved.Width, (int)saved.Height)),
+                "An empty remembered rectangle must not be treated as a position worth restoring.");
+        }
+
+        // THE WIRING, AND IT IS ONE STEP WEAKER THAN THE RULE ABOVE - see docs/LunaP.md §75.4.
+        //
+        // What this discriminates is that RememberPlacement consults the STORED placement at all
+        // when it closes full screen. The stored rectangle is deliberately different from the live
+        // one, so code that ignores it saves the live one and fails here. It cannot assert the
+        // outcome, because the live geometry on this platform is not the screen's.
+        [Fact]
+        public Task Closing_full_screen_reaches_for_the_stored_placement() => Session.Dispatch(() =>
+        {
+            WindowPlacementStore.Save("test.full", new WindowPlacement { X = 11, Y = 22, Width = 800, Height = 600 });
+
+            var window = new ToolWindow { WindowKey = "test.full", Width = 321, Height = 234 };
+            window.Show();
+            window.Position = new PixelPoint(120, 90);
+
+            window.IsFullScreen = true;
+            window.Close();
+
+            WindowPlacement? saved = WindowPlacementStore.Load("test.full");
+            Assert.NotNull(saved);
+            Assert.Equal(800, saved!.Width);
+            Assert.Equal(600, saved.Height);
+            Assert.Equal(11, saved.X);
+            Assert.Equal(22, saved.Y);
+
+            // And a window closed full screen does not reopen with no way out of it (§75.5).
+            Assert.False(saved.Maximized);
+        }, default);
+
+        [Fact]
+        public Task Full_screen_goes_in_and_comes_back_out() => Session.Dispatch(() =>
+        {
+            var window = new ToolWindow { Width = 200, Height = 150 };
+            window.Show();
+
+            Assert.False(window.IsFullScreen);
+
+            window.ToggleFullScreen();
+            Assert.True(window.IsFullScreen);
+            Assert.Equal(WindowState.FullScreen, window.WindowState);
+
+            window.ToggleFullScreen();
+            Assert.False(window.IsFullScreen);
+            Assert.Equal(WindowState.Normal, window.WindowState);
+
+            window.Close();
+        }, default);
+
+        // The half that is easy to get wrong: a maximized window must not be un-maximized by a trip
+        // through full screen and back.
+        [Fact]
+        public Task Leaving_full_screen_returns_to_the_state_it_came_from() => Session.Dispatch(() =>
+        {
+            var window = new ToolWindow { Width = 200, Height = 150 };
+            window.Show();
+            window.WindowState = WindowState.Maximized;
+
+            window.ToggleFullScreen();
+            Assert.Equal(WindowState.FullScreen, window.WindowState);
+
+            window.ToggleFullScreen();
+            Assert.Equal(WindowState.Maximized, window.WindowState);
+
+            window.Close();
+        }, default);
+
+        // §75.2: the property setter is not the only way in. The platform's own full-screen
+        // affordance and a caller setting WindowState directly both bypass it, and the state to
+        // return to has to be captured on the way past either way.
+        [Fact]
+        public Task Full_screen_entered_without_the_property_is_still_tracked() => Session.Dispatch(() =>
+        {
+            var window = new ToolWindow { Width = 200, Height = 150 };
+            window.Show();
+            window.WindowState = WindowState.Maximized;
+
+            // Not IsFullScreen, and not ToggleFullScreen.
+            window.WindowState = WindowState.FullScreen;
+            Assert.True(window.IsFullScreen);
+
+            window.ToggleFullScreen();
+            Assert.Equal(WindowState.Maximized, window.WindowState);
+
+            window.Close();
+        }, default);
+
+        // §75.2: the event exists so a checkable menu item can FOLLOW the window instead of keeping
+        // its own answer, which is §26.3's rule. It has to fire for a change this toolkit did not
+        // make, or the tick still goes stale in exactly the case it was added for.
+        [Fact]
+        public Task Full_screen_announces_itself_however_it_was_entered() => Session.Dispatch(() =>
+        {
+            var window = new ToolWindow { Width = 200, Height = 150 };
+            window.Show();
+
+            var seen = new List<bool>();
+            window.FullScreenChanged += on => seen.Add(on);
+
+            window.ToggleFullScreen();
+            window.ToggleFullScreen();
+
+            // Not through the property or the toggle: this is the platform's own affordance.
+            window.WindowState = WindowState.FullScreen;
+            window.WindowState = WindowState.Normal;
+
+            Assert.Equal(new[] { true, false, true, false }, seen);
+
+            // A state change that leaves the answer where it was says nothing.
+            window.WindowState = WindowState.Maximized;
+            window.WindowState = WindowState.Normal;
+            Assert.Equal(4, seen.Count);
+
+            window.Close();
+        }, default);
+
+        // Coming out of full screen into a minimized window reads as the application having closed.
+        [Fact]
+        public Task Full_screen_never_returns_to_minimised() => Session.Dispatch(() =>
+        {
+            var window = new ToolWindow { Width = 200, Height = 150 };
+            window.Show();
+            window.WindowState = WindowState.Minimized;
+
+            window.WindowState = WindowState.FullScreen;
+            window.ToggleFullScreen();
+
+            Assert.Equal(WindowState.Normal, window.WindowState);
+            window.Close();
+        }, default);
 
         [Fact]
         public Task A_slot_opens_one_window_and_then_reuses_it() => Session.Dispatch(() =>

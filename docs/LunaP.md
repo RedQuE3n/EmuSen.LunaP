@@ -4,7 +4,7 @@
 
 *Sections still say `EmuSen.Mistress`, `EmuSen.Hotaru` and `EmuSen.Serenity`. Those are the three applications this toolkit was built for, and their names are left in place rather than generalised, because a record that has been tidied to look like it was always general is a record nobody can check.*
 
-*Revision history, most recent first: **two traps turned into guards** — the style-key trap had been written up four times and the before-the-template trap three, each time as a paragraph asking the next author to remember; both are now swept by reflection, so a control added later is covered without anybody reading the paragraph (§28); **a table, and a dependency refused** — `Avalonia.Controls.TreeDataGrid` turns out to require a paid licence, so `LunaTable<T>` is built on stock Avalonia instead (§27); **a shell** — actions, menus, a toolbar, a splitter, docked panels and an `AppWindow` to hold them (§26), chosen by asking what Qt6 offers and then, belatedly, by running the survey that should have come first (§26.1); the relicence to MIT (§25); accessibility, and nine controls that were not in the automation tree (§24); the light column (§23); **the toolkit left EmuSen** (§20); the settings seam and the two files that had to move for it (§19); a theme may be written in CSS, and building that turned up an Avalonia behaviour sitting under the theme system unnoticed — mutating `Application.Styles` at runtime strips every already-realized control of its styling (§12.2, §12.3); the widget set and user themes from disk; the migration, which removed 863 net lines from two frontends.*
+*Revision history, most recent first: **what the evidence rule governs** — §21 answers what is missing and answers it well; it was never asked when a control that already earned its place is finished, and that is a boundary rather than a fault (§47); **the table sorts** — a column can carry a comparison, headings that sort are buttons so a keyboard can reach them, and the cycle has a third state because the order `Refresh` was given is worth being able to get back to (§27.8); **the audit that followed** — every recorded sabotage re-read to ask whether it broke an outcome or only the wiring the assertion named, which found a shortcut bound to entirely the wrong action (§46); **a guard that could not fail, and six pixels it never saw** — `LunaTable`'s columns were never sharing a size, because Avalonia registers a shared size group on Add and not on assignment; the test watching it asserted the group names, which stayed correct throughout, on data that contained no `Auto` column at all (§27.7); **two traps turned into guards** — the style-key trap had been written up four times and the before-the-template trap three, each time as a paragraph asking the next author to remember; both are now swept by reflection, so a control added later is covered without anybody reading the paragraph (§28); **a table, and a dependency refused** — `Avalonia.Controls.TreeDataGrid` turns out to require a paid licence, so `LunaTable<T>` is built on stock Avalonia instead (§27); **a shell** — actions, menus, a toolbar, a splitter, docked panels and an `AppWindow` to hold them (§26), chosen by asking what Qt6 offers and then, belatedly, by running the survey that should have come first (§26.1); the relicence to MIT (§25); accessibility, and nine controls that were not in the automation tree (§24); the light column (§23); **the toolkit left EmuSen** (§20); the settings seam and the two files that had to move for it (§19); a theme may be written in CSS, and building that turned up an Avalonia behaviour sitting under the theme system unnoticed — mutating `Application.Styles` at runtime strips every already-realized control of its styling (§12.2, §12.3); the widget set and user themes from disk; the migration, which removed 863 net lines from two frontends.*
 
 ---
 
@@ -1807,6 +1807,419 @@ before the template and after it, and the two runs are each other's expected val
 "somebody has to look" into an assertion, and the sabotage table in §28.3 puts this exact defect
 back to prove it fails.
 
+### 27.7 Correction: the shared size groups never worked, and the guard could not have said so
+
+**What §27.5 says**, in its last bullet: *"`Auto` works — every column is put in a shared size group
+and the root is a shared size scope, because a header grid and a row grid are separate grids that
+would otherwise size an `Auto` column independently and line nothing up."* The `//` block on
+`LunaTable.Column` said the same thing at more length, under the heading AUTO IS ACCEPTED AND MADE
+TO WORK, and so did the comment in `LunaTable.axaml`.
+
+**All three were wrong for the life of the control.** The scope was set, the groups were named, and
+no column ever shared a size with anything.
+
+#### The measurement
+
+A three-column table — `2*`, `Auto`, `40` — with the x of each heading and its first-row cell taken
+in the table's own coordinates:
+
+| col | width | heading x | cell x | delta |
+|---|---|---|---|---|
+| 0 `name` | `2*` | 12.0 | 12.0 | 0.0 |
+| 1 `type` | **`Auto`** | 416.0 | 422.0 | **6.0** |
+| 2 `pg` | `40` | 448.0 | 448.0 | 0.0 |
+
+The header sized its `Auto` column to a bold *"type"* at 32 px; each row sized the same column to
+*"text"* at 26 px; the star column absorbed the six pixels, and every cell in that column sat six
+pixels right of the heading it belonged to.
+
+#### The defect, which is Avalonia's
+
+Reduced to two plain sibling `Grid`s in one shared size scope, built the two possible ways:
+
+| | wide grid | narrow grid | equalized |
+|---|---|---|---|
+| `ColumnDefinitions` **assigned** to the Grid | 147.0 | 47.0 | **no** |
+| `ColumnDefinitions` **populated** with `.Add()` | 148.0 | 148.0 | **yes** |
+
+**Avalonia 12.1.0 registers a definition with its shared size scope when the definition is added to
+the collection a Grid already owns, and not when a ready-made collection is assigned to the Grid.**
+An assigned definition keeps a `SharedSizeGroup` that reads back correctly and shares nothing.
+
+Fixed upstream by [AvaloniaUI/Avalonia#21848](https://github.com/AvaloniaUI/Avalonia/pull/21848),
+*"fix(grid): register assigned definition collections with their shared size group"*, merged
+**2026-07-26** — after **12.1.0** was released on **2026-07-09**. A companion,
+[#21837](https://github.com/AvaloniaUI/Avalonia/pull/21837), *"allow shared size groups to shrink"*,
+merged 2026-07-24. Whether either was backported into 12.1.1 is **not verified**, and does not need
+to be: populating works on 12.1.0 as it stands and stays correct when the fix arrives.
+
+`LunaTable` assigned in both places — the header grid in `Rebuild`, each row grid in `Row`. Both now
+populate, through a single `Define(grid, scope)` that carries the argument beside it.
+
+**Why it shipped, and why it stayed.** Star and absolute columns resolve to the same number in both
+grids without needing to share anything, so they line up whether the mechanism works or not. Only an
+`Auto` column can expose this, and only when its heading and its content differ in width. The defect
+was six pixels wide and required a specific column type to see at all.
+
+#### The guard had two holes, and the second one is the lesson
+
+`Columns_share_a_size_group_with_their_header` asserted that the `SharedSizeGroup` names matched
+between the header grid and a row grid, and that none was empty. Both were true every day the
+columns shared nothing. **It asserted the wiring and the defect was in the effect.**
+
+The second hole is worse and more useful: **no test in `TableTests` had ever used an `Auto` column.**
+The fixture is `2*`, default `*`, `40`. The one feature the comment claimed — that `Auto` is made to
+work — was the one feature the test data could not exercise.
+
+**And §27.6's sabotage table records this guard being made to fail.** It says *"columns stop sharing
+a size group with the header"* turned `Columns_share_a_size_group_with_their_header` red, and that
+is true. It is also worth nothing, and this is the correction that matters most:
+
+> **A sabotage that attacks the same wiring the assertion reads proves only that the assertion can
+> see that wiring. It says nothing about whether the wiring does anything.**
+
+Removing the group names turned the test red while the columns were already not sharing. The
+sabotage and the assertion were one claim wearing two hats, and §22.5's method — *make the guard
+fail on purpose* — passed cleanly on a guard that could not fail for the reason it existed. That is
+a real limit of the method and it is worth carrying: **the sabotage has to break the outcome, not
+the mechanism the test happens to name.**
+
+#### What replaced it
+
+`An_auto_column_lines_up_with_its_own_heading` measures where the text lands: for every column, the
+heading's x equals its cell's x, on a fixture whose `Auto` column is headed *"classification"* and
+filled with *"text"*, so a column that is not sharing is off by a wide margin rather than a subtle
+one. Sabotaged by reverting `Define` to an assignment: **red, with "Column 1 (classification)
+heading starts at x=356.0 but its cell starts at x=422.0" — a 66 pixel gap that names the site to
+fix.** The name assertion survives under a smaller name, because it localizes a failure the
+positional one cannot explain.
+
+Two guards were added alongside it:
+
+- `A_long_table_realizes_only_the_rows_that_are_visible`. 10,000 models realize **10** row
+  containers and **30** `TextBlock`s, in 369 ms. This pins what §27.5 asserts loosely — that the
+  control virtualizes — and adds the part that follows from it: cells are built by the row's data
+  template, so cell virtualization is a consequence of row virtualization and needs no machinery of
+  its own. A change of items panel would otherwise turn a long table into 10,000 realized grids with
+  nothing to announce it but a slow window.
+- `Avalonia_still_ignores_an_assigned_definition_collection`, **a canary on upstream rather than a
+  claim about this toolkit.** It asserts that an added definition shares and an assigned one does
+  not, so it **fails the day a version carrying #21848 is taken** — which is the intended outcome
+  and the notice that `Define`'s comment has become history rather than a live hazard. It is not to
+  be deleted to make a version bump green.
+
+#### The same shape, latent, in the fluent surface (§27.7)
+
+`Ui.Cols` and `Ui.Rows` assign their definitions the same way. **Nothing there is broken**: those
+definitions are parsed from a comma-separated string, which has no syntax for a `SharedSizeGroup`,
+so nothing is trying to share. It is a trap rather than a defect — and it sits exactly where the use
+arises, since `Ui.Rows`'s own comment cites §21.2, *"a header-and-body table ends up keeping two
+column strings in step by hand"*, which is the problem shared sizing exists to solve. Both populate
+now, at no behavioural cost, so the trap is not there for the first person to find.
+
+### 27.8 The table sorts, and both decisions were argued rather than defaulted
+
+`LunaTable<T>` sorts by column. §27.5 listed *"No sorting, by header click or otherwise"* as the
+first thing it did not do; that entry is now wrong, and it stays where it is, because what it
+recorded is what makes this section a change rather than a description.
+
+#### A column grew a second declaration form, and it is the last one
+
+`Column(header, text, width)` fits a heading, a projection and a width, and reads well. Sorting is
+the first thing that does not fit — per-column, optional, and the first of several, with editing and
+alignment behind it. Carrying on down the signature means three more optional parameters and then an
+overload per combination.
+
+`LunaColumn<T>` is the answer, and it is the last overload `Column` gets: anything a column grows
+from here is an init-only property, which needs no new method and breaks no call site.
+
+**Both forms are kept, and that was the decision, not the default.** There is no external consumer
+of this package today, so the argument that originally produced the descriptor — a binary-compatible
+growth path — no longer applies, and the shape had to stand on its own or be replaced by a single
+uniform form. It stands: the terse call is what every existing site and the whole gallery use, most
+columns genuinely have no behaviour, and the measured shape is three columns of strings (§27.2).
+
+**But one rule keeps two forms from becoming two behaviours: the terse overload delegates.** There is
+a single path from a declaration to a `ColumnSpec`. Two builders would diverge the first time a
+column gained a fifth property and somebody updated one of them.
+
+#### Ascending, descending, then the order `Refresh` was given
+
+Three states, against a two-state convention that almost every other application follows.
+
+The order a caller hands to `Refresh` carries meaning here more often than in a database front end —
+log order, file order, the order a scan found things in — and a two-state cycle makes that order
+unreachable the moment a header is clicked. The cost is a third click that will surprise somebody
+used to other software; the alternative is a table that can lose information the caller deliberately
+put into it.
+
+Two consequences fall out of the choice and both are in the control:
+
+- **The glyph is absent in the third state**, not a neutral "sortable" mark. Three states with a
+  glyph in each reads as three sorts; two glyphs and nothing reads as what it is.
+- **The heading's automation name carries the state** — *"pg, sorted ascending"*, *"pg, not sorted"*
+  — because the glyph is `AccessibilityView.Raw` and a reader never sees it. A screen-reader user
+  cycling three states with no way to tell which one they are in is the version of this feature that
+  would have shipped without saying it out loud.
+
+#### A sortable heading is a Button; an unsortable one is not
+
+Not for the look — the theme spends more lines taking Fluent's chrome off the button than putting
+anything on it. It is a `Button` because a heading that answers only a click is a sort a keyboard
+user does not have, and §24 is the section about that class of miss. A button brings focus, Tab,
+Space, Enter and an invoke peer; hand-building those on a `TextBlock` means building four things and
+forgetting two.
+
+**The converse is the part worth stating:** a column with no comparison stays a plain `TextBlock`. An
+inert tab stop costs a keyboard user a press and tells them nothing, which is worse than never having
+been a stop.
+
+And the headings are **updated in place, never rebuilt**. That is a keyboard requirement rather than
+a performance one: a user who tabbed to a heading and pressed Space is focused on that button, and
+replacing it drops them to the top of the window having just used the control exactly as intended.
+
+#### Two implementation notes that are easy to get wrong
+
+- **`OrderBy`, not `List<T>.Sort`.** `List<T>.Sort` is an unstable introsort, so rows that compare
+  equal come out in an order that changes between runs — invisible until somebody sorts a column
+  with repeats. LINQ's `OrderBy` is documented stable, so ties keep the order `Refresh` was given.
+- **The sort projects; it does not reorder.** `_items` stays in arrival order and `_view` is what is
+  on screen. Sorting in place would make the third state unreachable, which is most of the argument
+  above.
+- **The sort is re-applied on `Refresh`.** New rows arriving under an active sort land sorted. A
+  table that reverted to arrival order on the next poll would be a table whose sort lasted about a
+  second in a `PollingWindow`.
+
+### 27.9 The guards, and what each sabotage turned red
+
+Eight deliberate breakages, run one at a time. Each was chosen under §46.3 — **it had to break the
+outcome while leaving the mechanism looking right.**
+
+| Sabotage | Turned red |
+|---|---|
+| the third click returns to ascending — a two-state cycle | the cycle test, the automation-name test and the glyph test |
+| `Refresh` clears the active sort | `A_sort_survives_a_refresh` |
+| the sort reorders `_items` in place instead of projecting | the cycle test, at the third click |
+| every heading is a `Button`, sortable or not | `A_column_with_no_comparison_has_no_button_to_press`, and two older heading tests with it |
+| `Cycle` rebuilds the headings instead of updating them | the automation-name test, the glyph test, and `Sorting_from_the_keyboard_leaves_the_focus_on_the_heading` |
+| the selection is not restored after a sort | `A_sort_keeps_the_selected_row`, and the two older selection tests |
+| the terse overload builds its own `ColumnSpec` instead of delegating | `The_terse_column_form_and_the_descriptor_build_the_same_column`, and `Column_widths_are_what_the_caller_wrote` |
+| an unstable sort — equal rows reversed | `Rows_that_compare_equal_keep_the_order_they_arrived_in` |
+
+**Two of these are worth reading twice.**
+
+**The in-place sabotage did not catch instability, and the eighth exists because of it.** Replacing
+`OrderBy` with `List<T>.Sort` turned the *cycle* test red — because it destroyed arrival order — and
+left the stability test green. `List<T>.Sort` falls back to insertion sort below sixteen elements,
+which is stable, so a three-row fixture cannot expose the introsort underneath. The stability guard
+therefore had to be sabotaged directly, by reversing equal rows, or it would have been a guard
+certified by a sabotage that never reached it. That is §46.3 catching a second case in the same
+month it was written down.
+
+**The fixture is part of the cycle guard.** The rows arrive at pages 20, 30, 10 — neither ascending
+nor descending. Given a fixture that happened to arrive sorted, a two-state implementation passes
+the three-state assertion, because its third click lands on ascending and ascending is the arrival
+order. A guard whose data cannot distinguish the two implementations is the §27.7 shape wearing
+different clothes.
+
+#### What it still does not do
+
+§27.5's list loses its first entry and keeps the rest. No cell editing, no multi-column selection,
+no frozen columns, no column reordering or drag-resizing, no hierarchy. **No programmatic `SortBy`
+either** — the sort is a user gesture, and adding a method to set it without a caller asking would be
+the speculative build §21 exists to stop. It arrives when persistence needs it, and not before.
+
+---
+
+### 27.10 Correction: the alignment fix cost the table its width, for a day
+
+§27.7 fixed an `Auto` column that was six pixels out of line by putting every column into a shared
+size group that actually registered. **It also stopped the table filling itself, and nothing noticed
+for a day.**
+
+#### The measurement
+
+A shared size group makes a **star** column behave as `Auto`. Two otherwise identical grids, one
+inside a scope and one outside:
+
+| | resolved width of a `2*` column |
+|---|---|
+| not in a shared size scope | **360.0** |
+| in a shared size scope | **36.0** |
+
+In `LunaTable` that read as a three-column table — `2*`, `Auto`, `40` — whose columns totalled
+**145.0** inside a header grid **476.0** wide. The `name` column had shrunk to its longest name and
+the whole table sat in the left third of its own width.
+
+This is [AvaloniaUI/Avalonia#19114](https://github.com/AvaloniaUI/Avalonia/issues/19114), *"Grid.IsSharedSizeScope
+makes star-width columns not work"*, open since 2025-06-24, and
+[#6455](https://github.com/AvaloniaUI/Avalonia/issues/6455) said the same thing in 2021. Neither was
+read closely enough when #21848 was found; the search that produced them was looking for the
+assignment defect and stopped when it found it.
+
+#### The fix is what should have been written the first time
+
+**Only `Auto` columns join the group.** Not a workaround — the correct rule, and §27.7's own
+measurement contained the argument for it before the cause was understood:
+
+> | col | width | heading x | cell x | delta |
+> |---|---|---|---|---|
+> | 0 `name` | `2*` | 12.0 | 12.0 | **0.0** |
+> | 1 `type` | **`Auto`** | 416.0 | 422.0 | **6.0** |
+> | 2 `pg` | `40` | 448.0 | 448.0 | **0.0** |
+
+The star and absolute columns were **already aligned with nothing shared**. Absolute columns are
+identical in both grids by definition; a star column resolves from whatever the others leave over,
+so once the `Auto` columns agree the remainder agrees and star follows without being told. Only the
+`Auto` column ever needed the group, and grouping the other two bought nothing and cost the layout.
+
+After the correction, the same table: `2*` at **404.0** in both grids, `Auto` at **32.0** in both,
+`40` at **40.0**, totalling **476.0** — the full width. Alignment and fill, together.
+
+#### Why twenty-six tests said nothing
+
+**Every assertion in the file asked where a column STARTS. None asked how wide it ended up.**
+
+That is not the §27.7 failure repeating — the alignment guard was a good guard and it did its job
+throughout, including through the regression. It is the narrower and more ordinary one: a property
+was fixed, a *different* property was broken, and the suite had no opinion about the second because
+nobody had needed one. §46.4 said this in advance and it took a day to be proved right —
+*"a guard in a file with a healthy ratio can still be reading its own wiring, and this sweep would
+not have seen it."*
+
+`The_columns_fill_the_width_they_are_given` sums the resolved widths and requires them to equal the
+grid's own. Summing rather than singling out the star column is deliberate: it needs no arithmetic
+about what the remainder ought to be, and it fails the same way for any column type that stops
+taking its share. Sabotaged by putting every column back in the group: **red, "the columns resolve
+to 175.0 in a header grid 476.0 wide, so 301.0 of the table is empty."**
+
+`Columns_share_a_size_group_name_with_their_header` became
+`Only_auto_columns_share_a_size_group_name_with_their_header`, because "every column has a group" is
+no longer a true statement about this control — it is the defect.
+
+#### The habit worth keeping from this
+
+A fix aimed at one property is a change to all of them. The alignment work measured alignment before
+and after and never measured width at all, which is how a six-pixel improvement shipped alongside a
+three-hundred-pixel regression. **The question to ask of a layout fix is not "is the thing I fixed
+fixed" but "what else does this grid decide."**
+
+### 27.11 Columns the user can drag, and a layout worth remembering
+
+`TableKey` is opt-in, on the same principle as `ToolWindow.WindowKey` and `SplitPane.PaneKey`: **no
+key, no file.** A `tables.json` appears next to `windows.json` and `panes.json` for any table given
+one, and for no other. It is a third file rather than a third field, for the reason §26.6 gave for
+the second — these are different things with different lifetimes, and somebody deleting their window
+layout to reset a bad restore should not lose the columns they spent a minute arranging.
+
+#### The grip is a `GridSplitter`, for the reason the heading is a `Button`
+
+A column width a mouse can change and a keyboard cannot is a feature half the users of this toolkit
+do not have. `GridSplitter` handles arrow keys, takes focus and carries an accessible name; `Thumb`
+is the lighter primitive and gives a drag and nothing else. §26.11 records what happened when
+`SplitPane`'s divider lost its name — *"Focusable but unnamed: GridSplitter"* — and the same guard
+shape covers these.
+
+**There is no grip after the last column.** Nothing is to its right to take the space, so a drag
+there either does nothing or resizes the table out of its own window.
+
+#### A width set on the header does not reach the rows, and this was measured twice
+
+The first measurement was **wrong, and wrong in the encouraging direction.** Taken while every
+column was still in a shared size group (§27.10), it showed a header-only width change propagating
+to the rows and concluded that a resize could set one number. That reading described code that no
+longer existed by the time it was going to be used.
+
+Re-taken against the corrected control:
+
+| | header | row | x delta |
+|---|---|---|---|
+| column 0 (`2*`) set to 150 on the header only | 151.0 | **404.0** | **253.0** |
+
+Only `Auto` columns share a group now, so a star or absolute column's header definition and its row
+definitions are unrelated objects. The resize therefore reads the header back into the column specs
+— the one source of truth — and brings every realized row into line from there. Recycled containers
+are caught by `ContainerPrepared`, which fires both for a row scrolling back into view at an old
+width and for a row realized for the first time after a drag, in one line.
+
+**The general point is worth more than the mechanism.** A measurement describes the code that was
+running when it was taken. This one was hours old, was load-bearing for a design decision, and had
+been invalidated by a fix made in between. Re-running it cost a minute; trusting it would have cost
+a design.
+
+#### What is saved, and what is deliberately not
+
+- **Widths in Avalonia's own notation** — `"2*"`, `"Auto"`, `"150"` — and not resolved pixels. A
+  dragged column and an untouched one are different *kinds* of width, not two values of one. Saving
+  `404` for a star column would pin it at 404 in a window the user has since resized, which is the
+  mistake §26.6 records for saving a divider as a fraction, inverted.
+- **The sorted column by heading, not by index.** A caller who inserts a column at the front between
+  two releases would otherwise come back sorted by its neighbour, with the arrow pointing
+  confidently at the wrong heading.
+- **Nothing about the selection or the scroll position.** Those belong to a session, not to a layout.
+
+#### A layout that no longer describes the table is refused whole
+
+Three ways it can stop matching, and all three end the same way — the layout is ignored and the
+table looks as the caller declared it:
+
+- **The column count changed.** Applying half a layout would move widths onto the wrong columns.
+- **A width does not parse.** There is no `GridLength.TryParse`; `Parse` throws. Every width is
+  parsed before any is applied, so a hand-edited or truncated file cannot leave a table half
+  restored.
+- **The sorted column is no longer sortable.** A caller who dropped a comparison would otherwise get
+  a sort arrow on a heading nobody can click.
+
+A user loses the widths they dragged once, after the application changed its own table. That is a
+better outcome than a table that comes back scrambled and cannot be explained.
+
+#### Restore is called from two places on purpose
+
+There is no rule that sets `TableKey` after the columns, and `new LunaTable<T> { TableKey = "x" }`
+followed by three `Column` calls is exactly what an object initializer invites. So `Restore` runs
+from both the property setter and from `Column`, is idempotent, and refuses a layout whose column
+count does not match — which makes calling it after every column cost two comparisons and removes
+the ordering trap rather than documenting it. §28.2 is the section about traps that were documented
+four times instead.
+
+#### The guards
+
+Seven deliberate breakages. **Two of them turned nothing red on the first run, and those two are
+the entries worth reading** — §26.11 is the precedent for recording a sabotage that failed to fail
+rather than dropping it.
+
+| Sabotage | Turned red |
+|---|---|
+| a table with no key writes anyway | `A_table_with_no_key_is_never_written_down` |
+| the resize updates the header and not the rows | `A_dragged_width_comes_back_and_an_untouched_one_stays_relative` |
+| widths applied as they are parsed rather than all at once | `A_layout_with_an_unparseable_width_is_refused_whole` |
+| a layout is applied without checking the column count | three tests |
+| a grip loses its accessible name | `Every_resize_grip_can_be_found_and_named` |
+| **`Restore` called only from the `TableKey` setter** | **nothing** |
+| *(after adding a columns-after-the-template case)* the same | `A_saved_layout_reaches_columns_added_after_the_template` |
+| **a saved sort applied without checking the column still sorts** | **nothing** |
+| *(after asserting what gets written back)* the same | `A_sort_on_a_column_that_is_no_longer_sortable_is_dropped` |
+
+**The first miss said the guard was wrong, not the code.** Both orderings the ordering test covers —
+key before columns and columns before key — are rescued by `OnPartsAttached`, which runs `Restore`
+once the template arrives and by then has the columns. Neither needed `Column` to call anything. The
+case that does is a caller adding a column *after* the template, which `Column`'s own summary says is
+allowed and which `OnPartsAttached` has already come and gone for. The test existed, passed, and was
+about two paths that could not fail.
+
+**The second miss said the code was very nearly wrong.** Dropping `c.Sort is not null` from the
+lookup changed nothing visible, because `Ordered` refuses to sort a column with no comparison anyway
+— the table looked identical with the check and without it, and by §46.3 a check with no observable
+consequence is not a check. What differs is **what gets written back**: a stale index pointing at an
+unsortable column re-saves that column as the sorted one, so the dead entry outlives every release
+that could have used it. The guard now asserts that `SaveNow` clears it, which is the behaviour the
+check actually buys.
+
+**The gallery gets the grips and not a `TableKey`.** Every control in the kit is in the gallery (§7)
+and column resizing is visible there, but a gallery that wrote `tables.json` on behalf of anybody who
+opened it would be the toolkit writing files nobody asked for — which is the thing `TableKey` exists
+to prevent.
+
 ---
 
 ## 28. Two traps, and the guards that end them
@@ -2629,10 +3042,12 @@ available except one restating the name, and that argument stands. **It says not
 | No icons | §26.12 | needs an icon system, not a property; `Icon=` was used zero times across five repositories |
 | No native macOS menu bar | §26.12 | a genuine platform defect rather than a missing feature — macOS puts a menu strip in the window where the platform expects one at the top of the screen |
 | Contrast shortfall | §23.4 | measured and left alone |
-| `LunaSettings` process-global statics | §21.3 | every consumer suite inherits the race; the harness ships the refusal, the hazard is structural |
-| Nothing enforces that a cited `§` resolves | `CLAUDE.md` | the rule is stated and was checked by hand at §38 — all 100-odd citations in `src/` resolve to a heading. It is a `grep`, a `comm` and a `Fail`, and until it is written the rule holds only as long as somebody remembers to check |
+| `LunaSettings` process-global statics | §21.3 | every consumer suite inherits the race; the harness ships the refusal, the hazard is structural. **The store's default root was a separate defect and is closed by §43** — the race is not |
+| ~~Nothing enforces that a cited `§` resolves~~ | **closed by §44** | 116 distinct citations, all resolving; `CitationTests` now fails the build on one that does not, with a second assertion so a scan that reads nothing cannot pass quietly |
 | macOS first-draw warm-up: **scope narrowed, mechanism inferred** | §38.4, §38.6 | not per-process and not per-window; `Redraw` is correct under any mechanism with that scope, so this is characterisation debt rather than a defect |
 | `ConsolePane` cannot announce line by line | §24.4 | the trade is recorded; a live region would re-read the whole buffer |
+| A framebuffer stride that is padded is **unexercised** | §53.2 | `Blit` reads `RowBytes` and copies row by row when the stride is not tight, but no backend measured here pads — Linux/Skia returns `width × 4` at every width tried. The loop's arithmetic is verified by forcing that branch; the padded case itself is not. First place to look if an image comes out sheared |
+| An invalid field is not **announced** when it appears | §49.3 | `FieldRow.Error` reaches a reader that visits the field, through `ItemStatus`. Nothing interrupts a reader who has moved on. `AutomationProperties.LiveSetting` would be the mechanism, but the message is a template part and template parts sit outside the control view — whether a live region on one announces at all is unverified, and this suite cannot verify it |
 
 ### 34.3 Versioning, when this is called done
 
@@ -3495,3 +3910,3951 @@ lack of confidence in what is here; it is an accurate statement about what is no
   harness tracks the toolkit still holds, and both still agree.
 - **It does not re-derive the register.** §34.2 is where the open work lives; §42.3 quotes three
   entries from it and does not restate the rest.
+
+---
+
+## 43. The default settings root was one directory shared by every project on the machine
+
+`JsonSettingsStore.ForApplication()` named itself after the entry assembly, so an application that
+never configures LunaP still got its own folder. Under `dotnet test` the entry assembly is
+`testhost` — and that is not a guess that happens to be wrong. It is **the same wrong answer for
+every project on the machine**.
+
+### 43.1 What was actually on the machine, and a correction to what was first said about it
+
+`~/.config/testhost/` on the development machine held three things:
+
+| File | Contents | Written by |
+|---|---|---|
+| `windows.json` | `pegasus`, `pegasus-signin` | **Pegasus's test suite** |
+| `luna.json` | `{"Name": "Probe"}` | a throwaway probe run while writing §39 |
+| `themes/Probe.css` | `side-panel .title { color: #FF00FF; }` | the same probe |
+
+**The first account of this was wrong and is corrected here rather than quietly replaced.** It was
+reported as *"LunaP's test suite writes into your real config directory"*, on the evidence that the
+files existed and LunaP's fixtures touch `LunaSettings.Store`. That is presence, not causation, and
+the two were never separated.
+
+They are separable, and the measurement is cheap: move the directory aside, run the suite, look. The
+directory was **not** recreated, and all 465 tests passed. LunaP's own suite redirects the store in
+every fixture that touches it — `WindowingTests`, `ShellTests`, `ThemeTests` and `CssThemeTests` all
+assign one in the constructor and reset it in `Dispose`. It was clean, and the claim that it was not
+was made without checking.
+
+**What the evidence actually showed was worse.** `pegasus` appears nowhere in this repository except
+one comment in `UiSession.cs`. Those keys were written by a *consumer* — `Shell.PegasusWindow` sets
+`WindowKey <- "pegasus"`, `UiTests.fs` shows the window and closes it, and `ToolWindow` saves
+placement on close through the default store. Pegasus is on LunaP 0.6.0, and its suite never touches
+`LunaSettings.Store` because nothing ever told it that it should.
+
+So the defect was never this suite's hygiene. It was **the toolkit handing every consumer's test
+suite a live write into a directory shared with every other project on the machine**, and it had
+already happened to somebody.
+
+### 43.2 The read is worse than the write, and it is why this is not merely untidy
+
+Litter in `~/.config` is a nuisance. The direction that matters is the other one: `ToolWindow`
+*restores* from the same file, keyed by `WindowKey`. Two projects whose windows are both called
+`"main"` — not a stretch — restore each other's geometry, and a test asserting a default size
+passes or fails according to **what else has been built on that machine, and when**. That is a
+failure with no local cause, no reproduction on a fresh checkout, and no reason for anybody to
+suspect the toolkit.
+
+`LunaTheme` reads the same way. A saved theme name lands in `luna.json` at the shared root, so one
+project's test suite can select a theme for another's.
+
+### 43.3 The fix, and the mistake that would have cost more than the bug
+
+The measurement first, because it decided the destination. Under VSTest:
+
+    entry.Name      = testhost
+    entry.Location  = <the test project's own bin>/testhost.dll
+    BaseDirectory   = <the test project's own bin>/
+    ApplicationData = /home/red/.config
+
+The entry assembly's *name* is shared; its *location* is not. So the diverted root is
+`AppContext.BaseDirectory` + `lunap-settings` — per-project by construction rather than by
+heuristic, already ignored by git, wiped by `dotnet clean`, and where somebody hunting for the file
+would think to look. A temp directory keyed by a hash of that same path was considered and rejected:
+identical isolation, none of the legibility.
+
+Three rules, each of which is an assertion in `SettingsRootTests`:
+
+- **A name the host passes is honoured whatever it says**, including `"testhost"`. Only a name that
+  was *guessed* is ever overridden.
+- **The divert is stated, not silent.** It reports through `LunaSettings.Report`, which is where
+  every other "carried on, but you should know" message in the toolkit goes (§26.5).
+- **The match is exact, or the name followed by a dot.** `testhost` ships `testhost.x86` and
+  `testhost.arm64`, which is why there is a suffix rule at all.
+
+That last one was first written as a bare `StartsWith`, which is wrong in the expensive direction.
+It matches an application genuinely called `TestHostApp`, and matching one would move a **real
+user's** settings out of their configuration directory and into a bin folder that the next
+`dotnet clean` deletes. Weigh the two errors: a missed runner litters a directory; a wrong match
+destroys somebody's window layout and theme. The false positive is far more costly, so the rule is
+the tight one.
+
+**And nothing else in the suite could have caught that**, which is the point worth keeping. Every
+assertion in `SettingsRootTests` runs inside a test host, so every one of them exercises the
+diverting branch — widen the match until real applications hit it too and all of them stay green.
+`Matching_is_tight_enough_not_to_catch_a_real_application` is a `[Theory]` over the predicate
+itself, reached by reflection because it is private and should stay private; adding public API to a
+package a consumer cannot patch, for the benefit of one test, is the wrong trade. `TestHostApp` and
+`testhostile` are cases in it so the bare-`StartsWith` version cannot come back.
+
+**Sabotage.** Replacing the predicate with `=> false` turns three of the six behavioural assertions
+red — the two about where the root is, and the one about the report — and correctly leaves the other
+three green, since a name the host passed does not go through that branch at all. Reverted; all
+pass.
+
+**Not a breaking change.** A real application's entry assembly is never named `testhost`, so no
+consumer's settings move. This is a patch.
+
+**Not fixed in the harness, deliberately.** The obvious place looked like `EmuSen.LunaP.Testing`,
+which already refuses to start a suite that has not disabled parallelisation (§22.8). It is the
+wrong place: Pegasus rolls its own harness in F# and never references that package, so a fix there
+would have missed the one consumer known to have hit this. The toolkit is what every consumer has.
+
+## 44. Every `§` now has to resolve
+
+CLAUDE.md has said "every `§` cited from code must resolve" since it existed, and §34.2's register
+has carried "a `§`-citation guard" as an open item for as long. Checking it took one pass over the
+tree: **116 distinct sections cited across the toolkit, the harness, the suite, `README.md`,
+`CHANGELOG.md` and `CLAUDE.md` — and every one of them resolved** against the 199 sections the man
+page defines.
+
+That is a good result, and on its own it would be an argument for leaving the rule as a rule. **The
+argument against that is §16.1, which is this document's own record of the rule failing badly.** At
+the time of the move: **68 citation sites across 43 files, of which 55 named a document that did not
+exist under that name**, fourteen pointed at section numbers that did not exist at all, and four
+numbers each resolved to two different headings, so a citation to any of them was undecidable. The
+file corrected *during* the move came out of it citing a section that resolved to nothing — the
+tidy-up introducing the defect it was tidying.
+
+**The suite was green throughout all of it.** Nothing in a build or a test run could see any of it,
+and it took a deliberate hand audit to find. That is the whole case: this is not a rule that has
+held because it is easy, it is a rule that has already been broken at scale, silently, and was
+restored by one person choosing to check.
+
+The likely cause is not a typo either — it is renumbering. Split a section, fold one into its
+neighbour, drop a number from a heading, and thirty pointers that were correct on Tuesday are wrong
+on Wednesday with nothing to say so.
+
+So it is `CitationTests` now, and the paragraph asking the next author to remember is deleted.
+
+**The trap it would otherwise have fallen into.** The assertion passes if the scan finds nothing at
+all — a renamed directory, a glob that quietly stops matching `.axaml`, a path that resolves
+somewhere empty. A guard that goes quiet when its input vanishes is worse than no guard, because the
+green tick is what gets read. `The_scan_actually_reads_something` puts floors under all three
+inputs, set well below the real counts so ordinary editing never touches them and a collapse to zero
+is caught at once.
+
+It reads the source tree rather than the build output, since neither the man page nor the sources
+being scanned are copied to `bin`. Getting from `bin` back to the tree is the only interesting part
+of it, and the first attempt was wrong.
+
+### 44.1 `[CallerFilePath]` does not survive this package's own build settings
+
+The first version found the repository with `[CallerFilePath]` and walked up from the test file.
+That works locally and **failed on all three CI platforms at once**, with:
+
+    Walked up from /_/tests/EmuSen.LunaP.Tests/CitationTests.cs without finding docs/LunaP.md
+
+`/_` is the tell. §31 turned on SourceLink and symbol packages so a consumer can step into LunaP's
+own source in a debugger, and CI sets `ContinuousIntegrationBuild=true`, which switches on
+**deterministic source paths**: every source path the compiler embeds is rewritten to a fixed root
+so that two checkouts in different directories produce byte-identical binaries. `[CallerFilePath]`
+is one of the things it rewrites. The path compiles to somewhere that has never existed.
+
+**This is a property of LunaP's own packaging decisions, not a CI quirk**, which is why it is worth
+a subsection rather than a commit message. Anybody reaching for `[CallerFilePath]` in this
+repository will hit it again, and it will look like a CI failure rather than a consequence of §31.
+
+**It reproduces locally in one command**, which is the part worth keeping, because the whole cost of
+this mistake was a round trip through CI to discover something a laptop can show in ten seconds:
+
+    dotnet test -c Release -p:ContinuousIntegrationBuild=true
+
+Measured both ways, with a throwaway probe returning `[CallerFilePath]`:
+
+| Build | What the compiler embedded |
+|---|---|
+| `dotnet test` | `/home/red/Projects/EmuSen.LunaP/tests/EmuSen.LunaP.Tests/PathProbe.cs` |
+| `-p:ContinuousIntegrationBuild=true` | `/_/tests/EmuSen.LunaP.Tests/PathProbe.cs` |
+
+That flag is the right way to check **any** change that could behave differently under a packaging
+build, not only this one — it is what CI does, and nothing else here runs it.
+
+`AppContext.BaseDirectory` has none of the problem: it is resolved at run time from where the
+assembly actually sits, which is `<repo>/tests/EmuSen.LunaP.Tests/bin/<config>/net10.0`, and walking
+up from there finds the man page on every platform.
+
+**The guard failed loudly rather than quietly, and that was the design working.** A version that
+silently found no files would have reported "all citations resolve" — a green tick meaning nothing,
+on the exact rule §44 exists to stop being taken on trust. `RepoRoot` asserts rather than returning
+a best guess for precisely this reason, and it is the reason the mistake cost one CI run instead of
+becoming permanent.
+
+## 45. The version: 0.7.1
+
+A patch, and the reasoning is short because the change is narrow.
+
+**No public surface moved.** `ForApplication`'s signature is unchanged and
+`ApiSurfaceTests`' committed baseline needed no edit — the only additions are a
+`<remarks>` block on the method and two private members. Nothing was removed or
+renamed, so nothing a consumer compiles against can break.
+
+**No application behaviour moved.** The divert fires only when the entry assembly
+is a test runner, and a real application's never is. A consumer who upgrades and
+changes nothing sees no difference at run time; only their *test* process does,
+and only if it was relying on the default store, which is the defect.
+
+**So the argument for a minor was weighed and refused.** §42.1's rule for 0.7.0
+was that a release stops being additive when it changes what a consumer already
+sees, and by that rule this qualifies: a suite that read back placement written
+under the shared root will now read back nothing. But what it read back was
+another project's data or its own by luck, `windows.json` is machine-local state
+that no build depends on, and the fix restores the behaviour the documentation
+already described. Calling that a feature change would say the old behaviour was
+a feature.
+
+**§44 ships nothing.** `CitationTests` is in the test project, which is not
+packaged.
+
+Both `<Version>` elements read 0.7.1 and agree, per §22.8. As with §42.4: this
+records a decision and does not tag or publish, because a version on nuget.org
+cannot be replaced and that is a person's call.
+
+---
+
+## 46. The audit §27.7 asked for
+
+§27.7 recorded a guard that could not fail, and the uncomfortable part was not the guard. It was
+that **§22.5's method had already been applied to it and had passed.** *"Make the guard fail on
+purpose"* is this project's oldest testing rule, and it certified a test for the one defect it was
+blind to, because the sabotage broke the same wiring the assertion read.
+
+So the suite was swept, once, asking two questions of every guard in it:
+
+1. **If the mechanism under test silently did nothing, would this still pass?**
+2. **Did its recorded sabotage break the outcome, or only the mechanism the assertion happens to
+   name?**
+
+The second question is the new one, and it is answerable from this document alone, because the
+sabotages are all written down here.
+
+### 46.1 The sabotage tables held, with one exception
+
+Eight tables reviewed — §22.5, §22.6, §24.6, §26.11, §27.6, §28.3, §30.4 and §32.4.
+
+**Every one except §27.6 breaks an outcome.** `Drain`'s ordering, `Suppressor`'s depth, `FilterBar`
+ignoring its delay, a peer removed so a control leaves the control view, a style key dropped so a
+control has no visual children, `Select` throwing away a selection, a base type changed under an API
+baseline — in each case the sabotage produces a wrong *result*, and the assertion reads the result.
+
+§27.6 is the single collapse: *"columns stop sharing a size group with the header"* against an
+assertion that read the group names. Both halves were the same claim, and both were satisfied while
+the columns shared nothing.
+
+**§26.11 is the model entry, and it did not need this audit to be one.** Twelve sabotages, of which
+*two turned nothing red*, and it says so in the table rather than quietly dropping them: dropping
+`StyleKeyOverride` from `ActionButton` and `ActionToggle` broke nothing, which is how §28.1 came to
+know the trap does not bite uniformly. A sabotage table that reports only its successes is a table
+that has been curated.
+
+### 46.2 The one real hole, and the sabotage that proves it
+
+The profile: **29 test files, 598 `Assert.` calls, 105 references** to bounds, geometry, visual
+descendants, a render capture, a template part lookup, or a raised input event.
+
+Six files assert no visual outcome at all, and five of those are correct to: `CitationTests`,
+`DocumentationTests`, `MemberDocumentationTests` and `LayeringTests` are meta-guards whose subject
+*is* the wiring — a citation, a summary, an assembly reference — and `LunaPaletteTests` resolves
+every key from the live application, which is the effect even though nothing is measured on screen.
+The sixth, `StyleKeyTests`, is a wiring guard **by design**, and its own header argues the case at
+length: `TemplateReachTests` cannot see this defect class because a borrowed template always exists,
+and the CSS sweep only covers controls in the vocabulary, which four of the eight are not.
+
+**The hole was in shortcuts.** `Menus.BindShortcuts` was guarded by
+`Binding_shortcuts_puts_one_key_binding_on_the_window_per_gesture`, which asserted that two
+`KeyBinding` objects were on the window and, after `Unbind`, that none were. Nothing in the suite had
+ever pressed a key. A binding carrying a null `Command`, a `Command` wired to the wrong action, a
+gesture parsed to the wrong key, or an Avalonia release that changed how `Window.KeyBindings`
+dispatch would every one of them have left the count at two and the suite green.
+
+`A_bound_shortcut_actually_runs_its_action_when_the_key_is_pressed` shows a real window, presses
+Ctrl+O and Ctrl+S through the headless input path, and asserts that each ran its own handler once —
+then unbinds and presses again, because an empty collection is the mechanism and a key that does
+nothing is the outcome.
+
+**The sabotage was chosen to discriminate, which is the whole point of §46:**
+
+| Sabotage | Turned red |
+|---|---|
+| every gesture bound to the first claimed action rather than its own — **the binding count unchanged** | `A_bound_shortcut_actually_runs_its_action_when_the_key_is_pressed`, reporting *"Ctrl+S ran Open 2 times and Save 0"* |
+| the same | `Binding_shortcuts_puts_one_key_binding_on_the_window_per_gesture` — **nothing; it stayed green** |
+
+Two bindings existed, on the right window, for the right gestures, wired to entirely the wrong
+actions, and the old guard could not tell that from correct. That is §27.7's finding reproduced on a
+different part of the toolkit, found by asking the question rather than by shipping the defect.
+
+The suite is **491**.
+
+### 46.3 The rule this leaves behind
+
+> **A sabotage must break the outcome, not the mechanism the assertion names.** If breaking it turns
+> the guard red for the same reason the guard exists to watch, the sabotage has proved only that the
+> assertion can see what it reads.
+
+The practical test when choosing one: **can the sabotage be built so that the guard's own assertion
+is still satisfied?** If yes, that is the sabotage to run. Binding every shortcut to the wrong action
+keeps the count at two; reverting `Define` to an assignment keeps every `SharedSizeGroup` name
+correct. Both leave the mechanism looking exactly as the test describes it, and both are the only
+sabotages that were worth running.
+
+### 46.4 What this audit does not claim
+
+- **It is one pass by one reader**, not a proof. It asked its two questions of the eight recorded
+  sabotage tables and of the files with no visual assertion; a guard in a file with a healthy ratio
+  can still be reading its own wiring, and this sweep would not have seen it.
+- **It found one hole.** That is a good result for a suite of this size and it is not a clean bill —
+  the same sweep before §27 would also have reported nothing wrong with `LunaTable`, because the
+  question that catches these was not being asked yet.
+- **It did not re-run the historical sabotages.** §46.1 reads them as written. A table entry that
+  was recorded inaccurately would survive this audit intact.
+
+---
+
+## 47. What §21's rule governs, and the one widening it does not cover
+
+**This section exists because four commits broke a rule this document states, and there were two
+honest responses: undo them, or say what the rule actually governs.** This is the second, and it is
+written as a clarification rather than a repeal, because the rule is right about the thing it was
+written for.
+
+### 47.1 The commits, and the count they do not have
+
+§27.8 gave `LunaTable<T>` sorting. §27.11 gave it draggable column widths and a remembered layout.
+**Neither carries a count**, and §21's rule is explicit:
+
+> an item earns a place here by having been written more than once, by somebody who was not trying
+> to write a toolkit … So every item below carries its sites, and the count *is* the argument.
+
+There is no count for a hand-rolled column resize across the five consumers, and there was never
+going to be one. The only columnar site the survey found is `bima/viewer.py:460` (§27.2) — a
+three-column list in a Python application that has not been ported yet. Sorting was argued from
+usefulness; resizing and persistence were argued from neither.
+
+So: either those commits were a mistake, or §21's rule does not govern them. Saying which is the
+whole point of this section, because leaving it unsaid is how a rule quietly stops meaning anything
+while still being quoted.
+
+### 47.2 The rule answers "what is missing", and answers it well
+
+§21 is the forward-looking section — *"where the toolkit is thin"* — and its rule is a rule about
+**entry to that section**. It answers one question: *what is evidence that this toolkit lacks
+something?* It answers it well, and its record is the argument for leaving it exactly as it is. A
+consumer who needs a thing and does not have it builds it badly, in public, where it can be counted
+— and counting is what produced `LunaAction` out of twenty-nine hand-declared `MenuItem`s and seven
+`SubmenuOpened` handlers (§26.1), what kept a hierarchical view out of `LunaTable<T>` when not one
+consumer asked for one (§27.2), and what turned refusing `Avalonia.Controls.TreeDataGrid` into a
+measurement instead of a preference (§27.1). A rule with that record is not one to loosen.
+
+**What it does not answer is a second question that looks like the same one: when is a control that
+already earned its place finished?**
+
+`LunaTable<T>` earned its place on evidence — one site, recorded as the single exception §21 admits
+to. What it earned was *a place*, not a feature list. "Should this toolkit have a table" was settled
+by counting. "Does that table sort" is a question about a control that already exists, and it is a
+different question in a way worth stating exactly:
+
+> A consumer who needs sorting and does not have it **does not hand-roll a sort**. They reach for a
+> different control, or they ship without it. Either way they leave nothing behind to count.
+
+**That is a boundary rather than a fault, and knowing where it runs makes the rule stronger.** A
+method that is precise about what it can see is a method whose silence carries information: when the
+survey finds nothing, that is now a specific claim — nobody is hand-building this — rather than a
+vague one. §26.1 was already close to saying so, and `PLAN-general-purpose.md` arrived at the same
+place from the other end: the five consumers are all one kind of application, so an absent office-app
+feature is a fact about the sample rather than about the toolkit.
+
+**So the rule is kept, unchanged, for exactly what it was written for: a new kind of control.** What
+follows is not a replacement for it. It is an answer to the question it was never asked.
+
+*Written by somebody who had just built three uncounted things, which is worth knowing while reading
+it. The part to argue with is the test in §47.3, because that is the part which will be applied to
+cases this section did not have in mind.*
+
+### 47.3 The boundary, because "completing" is elastic
+
+Left there, "completion" would license anything — `LunaTable<T>` could be *completed* all the way
+into the package §27.1 refused. So the boundary is stated as a test rather than a sentiment:
+
+> **A completion adds a property to something the caller already declares. A new kind adds a noun
+> the caller has to learn.**
+
+| | | |
+|---|---|---|
+| Sorting | a column already had a heading and a projection; it gains a comparison | completion |
+| Column widths | already declared as a string; they become draggable | completion |
+| Remembered layout | the same widths, and the sort, written down under an opt-in key | completion |
+| Cell editing | a column gains a way to write back what it already reads | completion |
+| **Hierarchy** | expansion state, a parent/child model, a path to address a row by | **new kind** |
+| **Cell selection** | a second selection model beside the row one, and a cell coordinate | **new kind** |
+
+The last two are exactly what §27.4 already declined and §27.9 listed as still absent, so this test
+agrees with the decisions the document had already made by instinct. That is the main reason to
+trust it: it was derived to explain choices that were made before it existed, and it does not
+overturn any of them.
+
+### 47.4 The one arc in the general-purpose plan that this does *not* cover
+
+Everything in that plan is a completion under §47.3 — inputs and the theme seam complete a theme
+whose gaps §21.2 counted; validation completes `FieldRow`; fullscreen and cursor handling complete
+the window layer; the table work is done.
+
+**Except one.** A GPU surface — `OpenGlControlBase`, a render callback, a consumer bringing their own
+graphics library — is a new noun in every sense: a new control, a new lifecycle, a new threading
+story, and a seam of a kind the toolkit has exactly one precedent for (`ISettingsStore`, §19.1).
+No count licenses it and none ever will, for the §47.2 reason twice over: nobody hand-rolls a
+graphics surface badly inside an Avalonia window; they write a different application.
+
+**That decision is named here and deliberately not taken.** What taking it would require, so that it
+is a decision rather than a drift when somebody does take it:
+
+- **A stated first consumer.** Not a hypothetical game — a named repository that will use it, because
+  §21's whole method exists to stop this toolkit growing features for an imagined user.
+- **The `§1` argument in writing**, since a graphics seam is the second thing ever to need one, and
+  a seam that names no library is the only shape that keeps the rule.
+- **The hazards recorded before the code**, in the §12.3 style: `NativeControlHost`'s airspace
+  problem and its pointer-event issues are already known and already written down in the plan.
+
+### 47.5 The standard that replaces "count first" for completions
+
+`PLAN-general-purpose.md` proposed one: *the gallery must contain a plausible office-app screen and a
+plausible game shell, built only from LunaP.* **That is rejected here, before it was ever adopted,
+for two reasons that would have made it worse than nothing.**
+
+- **"Built only from LunaP" is false by design.** The plan's own §47 arc is to *re-skin* `TextBox`,
+  `CheckBox`, `Slider` and the rest through styles rather than wrap them — so an office application
+  built on this toolkit calls `new TextBox()`, by intention. The standard would have failed on its
+  first day for a reason that is not a failure.
+- **"Plausible" is not assertable**, and §7's gallery rule works precisely because reflection checks
+  it. A standard judged by the person meeting it is a standard that gets met.
+
+**What replaces it is one layer down and already planned:** sweep every control in a live headless
+application and require its resolved brushes to trace to `LunaPalette` rather than to Fluent's
+defaults. Mechanical, falsifiable, and it states the promise a general-purpose LunaP is actually
+making — *whatever you build out of it looks like one application.* A control added next year that
+nobody remembered to style fails it without anybody remembering to check.
+
+### 47.6 What this does not license
+
+- **§21 is not repealed and not weakened.** A new kind of control still needs its sites counted, and
+  §21's own warning still stands over everything in it — *"a doc that says the remaining option is X
+  is recording what was considered, not what is possible. Re-derive before building on it."* The
+  working plans this arc was drafted from have each already produced a falsified claim.
+  `PLAN-general-purpose.md` said "both dependency routes are closed" when
+  `Avalonia.Controls.DataGrid` is MIT, maintained, and targets this toolkit's exact Avalonia version
+  — it is closed on §1 and on performance, not on licence. `PLAN-table.md` recorded a propagation
+  measurement that described code a later fix had already invalidated, and it was load-bearing for a
+  design when it was re-taken (§27.11).
+- **It does not license the deferred list.** Printing, undo/redo, trees, MDI and an embedded browser
+  are new kinds every one, and they stay where §27.9 and the plan put them.
+- **It does not make completions automatic.** A completion still has to be worth its code, still
+  goes in the gallery (§7) and the automation tree (§24), and still needs guards that were made to
+  fail on purpose — §27.11 records two that did not, on the first try, and what each one turned out
+  to mean.
+
+## 48. The form controls were Fluent's, and one number nothing had measured
+
+**LunaP ships `<FluentTheme />` and always will.** Third-party Avalonia controls assume it is
+present — `Avalonia.Controls.TreeDataGrid` [does not render at all without
+it](https://github.com/AvaloniaUI/Avalonia.Controls.TreeDataGrid/issues/246) — so dropping it to own
+the whole look would make this toolkit unusable beside the ecosystem it is trying to sit inside.
+
+The consequence is the subject of this section. Every stock control an application reaches for — a
+`TextBox`, a `CheckBox`, a `Slider` — works, and paints in **Fluent's** palette rather than this
+one. Its accent is `#0078D7`, measured out of the live application, and it appears through
+`SystemAccentColor` and every key derived from it. An application built mostly of form controls
+therefore came out mostly Fluent, and the join showed in exactly the places a reader's eye goes:
+accents, borders, the focus ring. §21.2 caught the same seam from the other side — three consumer
+sites reaching for `SystemChromeLowColor`, *"a key LunaP's theme cannot reach"*.
+
+### 48.1 Values, not templates
+
+The obvious fix is a style per control and it is the wrong one. Fluent paints most of these colours
+on template **parts** — the border inside a `TextBox`, the ellipse inside a `RadioButton` — which a
+style on the control cannot reach without replacing the template, and replacing the template means
+owning Fluent's keyboard handling, its focus adorners and its accessibility behaviour forever, for a
+colour.
+
+So `Theme/FluentBridge.axaml` does the opposite: it leaves every template exactly as Fluent wrote it
+and changes the **values** those templates look up. Fluent resolves them with `DynamicResource`, so
+overriding the key repaints every control that reads it — including controls this toolkit has never
+heard of, and controls added to Avalonia next year. **46 keys**, and the merge order in
+`LunaTheme.axaml` is load-bearing: the bridge is merged *after* `Palette.axaml`, because every brush
+in it points at a Luna colour key that has to be in scope already.
+
+`Theme/Controls/FormControls.axaml` is the remainder — the controls that read no key at all. There
+is **one**: `ProgressBar` names no resource for either half of itself, taking its `Foreground` as the
+filled part and its `Background` as the track, both set directly by Fluent's `ControlTheme`.
+`MeterRow` is unaffected, and that is worth knowing before somebody simplifies it away — its bar
+takes a colour from the load ramp in code (§2.2), and a local value beats a style.
+
+### 48.2 A list of remembered names is not a measurement
+
+**This is the entry worth keeping.** The first two rounds of this work named likely resource keys
+from memory and probed them against the live application. That looks like measurement and is not:
+a probe over a recalled list can only find the names already thought of, and its silence means
+nothing. Three of the nine swept controls kept painting one panel `#1F1F1F` and two rounds of naming
+never found it.
+
+Enumerating the actual resource tree found it immediately. Walking `Application.Styles` — merged
+dictionaries, theme dictionaries and `StyleInclude.Loaded` alike — reaches **2,052 entries**, and
+asking which of them carry `#1F1F1F` in the dark variant returns **nine keys** rather than a guess.
+Printing the stray's visual ancestry then named the part: `Panel(PART_ScrollBarsSeparator)`, inside
+the `ScrollViewer` inside a `TextBox`. `NumericUpDown` and `CalendarDatePicker` paint it for the same
+reason, because both contain a `TextBox`. One key, three controls.
+
+The same method found the last control still showing Fluent's accent. A `ComboBox` kept its blue
+after every key with `ComboBox` in its name had been mapped, because the part is
+`Border(HighlightBackground)` and the key is `ComboBoxBackgroundUnfocused` — the two words do not
+appear in each other, and no amount of recall was going to bridge that.
+
+**`CLAUDE.md` gained a rule from this**, and it is the rule rather than the bug that matters:
+probing a guessed list is still guessing, and a recorded shortfall is not a substitute for a cause.
+Enumerate the real structure and search it for the value in question; it is the same work, done
+honestly.
+
+All 46 keys were re-checked against the enumerated tree afterwards. **Every one is a key FluentTheme
+actually defines**, and none is duplicated — a key that stops existing in a later Avalonia becomes a
+silent no-op, which is why `FormControlTests` asserts the outcome rather than the overrides.
+
+### 48.3 Corrections: three contrast figures, and one that was invented
+
+The two tokens this arc added — `LunaAccent` and `LunaOnAccent`, the first tokens in this palette
+for something the toolkit does not draw itself — were written up with four contrast figures beside
+them. **Three were wrong, and they were wrong in two different ways that are worth telling apart.**
+
+| Claimed | Measured | |
+|---|---|---|
+| `LunaAccent` on the dark surface, 3.70:1 | **3.70:1** | correct |
+| `LunaAccent` on the light surface, 5.69:1 | **5.68:1** | rounding, `5.68497` |
+| `LunaOnAccent` on the dark accent, 4.50:1 | **4.51:1** | rounding, `4.51056` |
+| `LunaOnAccent` on the light accent, 6.98:1 | **6.31:1** | **nothing measured this** |
+
+The first two are slips. The fourth is the failure this document exists to record: a plausible number
+in a comment, in a file that ships, which a reader has no reason to doubt and every reason to build
+on. It is corrected in place with the old value named, per the house rule that corrections are stated
+rather than quietly fixed.
+
+**The fourth claim was worse than wrong — it was unpinned.** The comment beside `LunaOnAccent` said
+the token was *held* to a floor while nothing held it to anything. `PaletteVariantTests` now does, at
+**4.5:1 and not 3:1**: a tick inside a checkbox and the knob of a switch are shapes you read, which
+is WCAG 1.4.3's bar rather than 1.4.11's. Both columns clear it.
+
+*Made to fail on purpose, per §22.5.* Setting the dark column's `LunaOnAccentColor` to `#8899AA`
+turned it red with *"LunaOnAccent on the Dark accent is 1.54:1, below 4.5:1"* while the light case
+stayed green — which is the part worth checking, since a theory that resolved one variant for both
+cases would pass this sabotage in one of them and look like a working guard.
+
+**And one claim about a control, which is the substantive one.** The bridge said of the two slider
+tracks that *"they have to be told apart at 3:1 or the control cannot be read. Accent against border
+does that."* It does not. Accent against border measures **1.13:1 dark and 1.88:1 light**, confirmed
+in the rendered control: `PART_DecreaseButton` paints `#007ACC` and `PART_IncreaseButton` paints
+`#6E6E6E`.
+
+The standard invoked was also the wrong one, and **no theme meets it**. Fluent's own pair is
+`#0078D7` against `#66FFFFFF`, which composites to `#787878` on this surface and measures **1.02:1**
+— worse than ours. A blue accent and a neutral track sit at nearly the same relative luminance by
+construction: clearing 3:1 against `#007ACC` needs a track at `L >= 0.65` (near-white) or
+`L <= 0.03` (near-black), and a near-black track disappears into the surface instead.
+
+What 1.4.11 actually asks is that the component be distinguishable from its **adjacent background**,
+and both tracks clear that — accent 3.70:1 dark and 5.68:1 light, border 3.27:1 and 3.03:1, each
+already pinned. Between the two tracks the difference carried is hue, and the value is carried by the
+thumb's position, which is what every other theme relies on. **The colours did not change; the claim
+did.**
+
+### 48.4 The guard, and what it does not prove
+
+§47.5 rejected *"the gallery must contain a plausible office-app screen"* as a standard, because
+"plausible" is judged by whoever is meeting it. `FormControlTests` is what replaced it, and it is
+worth having because it is mechanical: show each form control in a live headless application and
+require every colour it actually resolves — background, foreground, border — to be either fully
+transparent or a colour that appears in `LunaPalette`, read by reflection so a palette that gains a
+colour needs no edit here. **Nine controls**, plus a tenth test asserting the sweep still has
+subjects, because a `TheoryData` that quietly emptied would report a pass (§26.11 caught that shape
+before).
+
+Reading the **resolved** brush rather than the style that set it is the point: a `Setter` that names
+the right resource and never matches is the §5.5 symptom, and it reads identically to a correctly
+styled control right up until somebody looks.
+
+**Two things it does not prove, stated because passing it feels like more than it is.** It checks
+provenance, not legibility — the slider in §48.3 passes it, because both colours are palette colours
+and the guard has no opinion about the pair. And it covers three properties on nine named controls,
+so a colour reaching a control through any other property is outside it.
+
+### 48.5 What this leaves
+
+The seam is closed for the controls an office application is mostly made of. `DataValidationErrors`
+has no LunaP answer yet — Avalonia has the mechanism and this toolkit has no error state anywhere,
+and a `FieldRow` that can show an invalid state with a message is the piece an office application
+cannot fake. It is named here rather than built, and it is a completion under §47.3 rather than a new
+kind.
+
+### 48.6 Nine controls themed, one on screen
+
+**Written immediately after §48.5, because the gap was found by reading the gallery rather than by
+any test failing.** `FormControlTests` passed the whole time §48 was being built, and the arc looked
+finished.
+
+The gallery had **one** of the nine controls the sweep covers — a `ComboBox`, and only because a
+`FieldRow` sample needed something to put inside it. The other eight had been re-skinned, swept and
+recorded, and could not be seen. §7's rule is *"every control, on one page"*, and §47.5 chose the
+palette sweep over "a plausible office-app screen" precisely because the sweep is mechanical — but a
+mechanical guard on colour provenance says nothing about whether anybody can look at the result.
+
+**This is §24 repeating.** There, nine controls were correct and absent from the automation tree, and
+what noticed was a person going looking. The same shape twice is the argument for a guard rather than
+a third round of noticing.
+
+So the gallery gained a *Form controls* section — both states of the `CheckBox` and the
+`ToggleSwitch`, a `RadioButton` pair, a `TextBox` with a placeholder because
+`TextControlPlaceholderForeground` is the one part of a text box that reads through its own key — and
+the two lists were tied together at the source. `FormControlTests.KindNames` is now public and the
+`TheoryData` is built from it; `GalleryRenderTests.Every_control_the_form_sweep_covers_is_in_the_gallery`
+reads that same array and fails naming any control the sweep covers that the gallery does not show.
+Two hand-kept lists would have drifted the first time somebody added a control, which is exactly how
+eight of nine went missing.
+
+*Made to fail on purpose, per §22.5.* Deleting the `Slider` from the gallery turned it red with
+*"…the gallery never shows them…: Slider"*, naming the one control removed rather than failing on a
+count.
+
+**One thing the compiler caught on the way in**, worth a line because it is a live deprecation rather
+than a style note: `TextBox.Watermark` is `[Obsolete]` in Avalonia 12.1.0 in favour of
+`PlaceholderText`. The build says so, and this repository builds with zero warnings, so it was fixed
+where it was written rather than becoming the first one.
+
+## 49. A field that is wrong, and the state Avalonia does not have
+
+**§48.5 named this as the piece left open**, and it is the one an office application cannot fake: a
+settings window whose fields can only be right is a settings window that silently keeps a bad value.
+Until now this toolkit had no error state anywhere.
+
+*Numbering note: `PLAN-general-purpose.md` reserved §49 for the graphics door. That plan says at its
+head that its numbering is stale, and §47.4 put the graphics door behind a gate it has not passed —
+a named repository that will use it. Sections are numbered as they are written, so validation took
+the number.*
+
+### 49.1 String in, string out, and the message is the state
+
+```csharp
+new FieldRow { Label = "Save State Folder", Error = "That folder does not exist." }
+```
+
+There is no `IsValid`. **The message is the state**, so the two can never disagree — a control
+carrying both would eventually be set invalid with an empty message, and the user would be blocked
+by a blank line with nothing to fix. Empty means valid, so the common case stays quiet and no caller
+ever writes "no error" out loud.
+
+This is deliberately the same shape as the `Validate` seam `PLAN-table.md` §4.8 settled for
+`LunaTable<T>`, so that an invalid field and an invalid cell are one idea rather than two.
+
+**Not wired to `DataValidationErrors`,** which is the obvious thing to reach for and is the wrong
+shape twice over. It reports errors raised by a *binding*, and LunaP's controls are built in code
+and given values directly (§5.2), so there is frequently no binding to raise one. And it would put
+the decision about what counts as invalid inside the control, when the only thing that knows a ROM
+directory has to exist is the application.
+
+### 49.2 A fourth text idiom, not a hint in red
+
+`ErrorText` joins `SectionHeader`, `HintText` and `MonoText` rather than reusing `HintText` with a
+different brush. **A hint is advice and is true whether or not anything is wrong; an error is a
+consequence and is there because something is.** They wrap the same way and sit in the same place,
+so colour is the only thing telling a reader which one they are looking at — and a host restyling
+"the small text under a field" through CSS (§12.2) would otherwise restyle the error message with
+it. It takes the hint's size and wrapping so that nothing reflows when a field goes invalid, and it
+is **not muted**: every other small line in the kit is grey because it is secondary, and this one is
+the reason the field is refusing to be saved.
+
+It is in `CssVocabulary`, so a host theme can name it like any other element.
+
+### 49.3 Avalonia has no concept of "invalid", enumerated
+
+The obvious question is how a screen reader is told. The answer was **enumerated rather than
+recalled**, per §48.2, by reflecting over Avalonia 12.1.0:
+
+- every overridable member of `AutomationPeer` — 41 of them
+- every attached property on `AutomationProperties` — 22
+- every interface in `Avalonia.Automation.Provider` — 10
+
+**Members whose name contains "Valid" or "Error", across the whole `Avalonia.Automation*` namespace:
+zero.** UIA has `IsDataValidForForm`; Avalonia does not surface it. The near miss is instructive —
+`AutomationProperties.IsRequiredForForm` exists, so a field can say it is *required* and cannot say
+it is *wrong*.
+
+So there is no way to report invalidity as a state, and the only decision left is which sentence
+carries the message. **`ItemStatus`, not `HelpText`.** `HelpText` is already the hint, and
+overwriting it when a field goes invalid would destroy the explanation at the moment it is most
+useful. `ItemStatus` is defined as the state that is not the value, which is what an error message
+is, and `MeterRow` already uses it for that shape of thing (§24.2).
+
+**A hazard, not a behaviour.** Nothing here makes a reader announce the error the moment it appears.
+`AutomationProperties.LiveSetting` exists and would be the mechanism, but the message is a template
+part, and template parts sit outside the control view a reader navigates — so whether a live region
+on one would announce at all is **unverified, and this suite cannot verify it**. A reader that visits
+the field gets the message; a reader that has moved on is not interrupted. Recorded here rather than
+claimed, per §24.4's precedent.
+
+### 49.4 Below the field, and that is an assertion
+
+The message sits under the content. Above it, a field going invalid would **push the control the user
+is typing in downwards** at the exact moment they are told they got it wrong. That is the kind of
+decision that survives in a comment until somebody tidies the template, so
+`The_message_sits_below_the_field_it_is_about` compares the two translated Y positions instead.
+
+### 49.5 Seven guards, three sabotages
+
+`ValidationTests` covers the message appearing and collapsing, clearing being the only way back to
+valid, the peer reporting the error while keeping the hint, a valid field reporting no status, the
+layout, and the colour. Made to fail on purpose per §22.5:
+
+| Sabotage | What turned red |
+|---|---|
+| `PART_Error` moved above the `ContentPresenter` | *"message is at y=43 and the field at y=62… above the control it is about"* |
+| `ErrorText` foreground set to `LunaMuted` | *Expected `IndianRed`, Actual `Gray`* |
+| `status:` dropped from `FieldRow`'s peer | *Expected "That folder does not exist.", Actual `null`* |
+
+The gallery shows one invalid field beside two valid ones, with a hint *and* an error on the same
+row — the two sentences stacked are the only way to see that the advice survives the failure, which
+is the whole argument for `ItemStatus` over `HelpText`.
+
+### 49.6 What this leaves
+
+The field half is done; the cell half is not. `LunaTable<T>.Commit` and `.Validate` are Pass G of
+`PLAN-table.md`, and they now have an error presentation to share (§4.8 said they would). Pass H —
+`ISelectionItemProvider` on rows and `IValueProvider` on editable cells — is the automation depth
+§2.1 of that plan identified, and both interfaces were confirmed present in the enumeration above.
+
+## 50. The table can be edited, and a row nobody could hear
+
+Pass G and Pass H of `PLAN-table.md`, which were the last two open items in it. The editing is
+ordinary work that the plan had already designed; **what this section is really for is §50.4 and
+§50.5** — a guard that could not fail, and a defect it led to.
+
+### 50.1 One idea of "invalid", spelled twice
+
+```csharp
+new LunaColumn<Field>("name", f => f.Name)
+{
+    Commit   = (f, text) => f.Name = text.Trim(),
+    Validate = (_, text) => string.IsNullOrWhiteSpace(text) ? "A field needs a name." : null,
+}
+```
+
+`Commit` null means the column is **read-only**, which is the default — so adding editing to this
+toolkit changed no existing table's behaviour (§26.13). `Validate` returns the *problem* rather than
+a bool, for the same reason `FieldRow.Error` is a string with no `IsValid` beside it (§49.1). The two
+are deliberately the same shape, and the message lands in an `ErrorText` under the table: an invalid
+cell and an invalid field are one idea, not two.
+
+Writing is the caller's job because only the caller knows what the column means — parsing lives in
+`Validate` in practice, which leaves `Commit` free to assume the text is good.
+
+Double-click or **F2** opens an editor; **Enter** or focus loss commits; **Escape** cancels, which it
+does by never having written — the model is untouched until `Commit` runs, so there is nothing to roll
+back. A refused value **keeps the caret**, because closing the editor would throw away what was typed
+and then show a message about a value no longer on screen.
+
+### 50.2 The editor goes into the row, not through a rebuild
+
+Trap 2 of `PLAN-table.md` §6: an edit must not make its row jump. The table re-applies its sort
+whenever the view is rebuilt (§27.8), so a commit that called `Show()` would move the row being
+edited to wherever its new value now sorts — with the caret in it. So the editor is placed into the
+existing row grid, over the cell it replaces, and **nothing in the commit path touches `_items`,
+`_view` or the sort.** The next `Refresh` re-sorts, so the sort is deferred rather than lost, and
+the test asserts both halves.
+
+The cell re-reads through the projection afterwards rather than echoing what was typed, so a `Commit`
+that normalises a value cannot leave the display and the model disagreeing.
+
+### 50.3 `Edit` is the one method that refuses to queue
+
+`Select` before the template queues, because a caller saying which row should be highlighted when the
+window opens has asked for something sensible early (§27.6). `Edit` does not. A caret belongs to
+somebody who is looking at the table, and a queued one would open an editor nobody asked for the
+moment the window appeared. It no-ops, and `TemplateOrderTests` carries the exemption with that
+reason — pinned by a test, because §28.2's rule is that an exemption is a claim.
+
+### 50.4 A guard that could not fail, caught by sabotaging it
+
+Trap 1 was "a recycled row must not carry an editor". The first version of that test opened an
+editor, scrolled the row out of view and back, and asserted the model was unchanged. **It passed with
+the mechanism removed.**
+
+The reason is worth keeping: the test never typed anything. Committing an unchanged value and
+cancelling an unchanged value produce the identical model, so the assertion could not tell the two
+apart, and the whole question — *does scrolling away write something?* — was invisible to it.
+
+Typing one string before scrolling made it fail properly, and the failure said what the real
+behaviour was:
+
+> Expected: `"row00"`, Actual: `"SCROLLED AWAY"`
+
+Without the `DetachedFromVisualTree` hook, a row scrolled out of view **commits whatever was in the
+editor**, because recycling removes the editor from the tree and that raises `LostFocus`, and
+`LostFocus` commits. A user scrolling a long table would have written values they never confirmed.
+The hook cancels first, and is what makes the answer "nothing was written".
+
+*This is the second time in this arc that a sabotage found a hollow guard rather than confirming a
+good one (§48.2 was the first). §22.5's rule earns its keep.*
+
+### 50.5 A row nobody could hear, since §27.3
+
+Measuring for Pass H turned up a defect in shipped behaviour.
+
+§27.3 builds every row a spoken name — `"name: Site, type: text, pg: 1"` — because a row of bare
+`TextBlock`s otherwise announces as three values with nothing to say which column each came from.
+That name was set on the row **`Grid`**. The `Grid`'s peer is a `NoneAutomationPeer` with
+`IsControlElement = false`: it is not in the view a screen reader navigates, so **the sentence was
+never reachable**. What a reader actually got was the *container's* name, and a `ListBoxItem` with no
+name of its own falls back to its `DataContext.ToString()`:
+
+> `EmuSen.LunaP.Gallery.GalleryWindow+Field`
+
+Three rows, three announcements of a .NET type name. The feature had never worked.
+
+**The guard could not have caught it.** `TableTests.A_row_says_what_each_of_its_cells_is` reads
+`AutomationProperties.GetName` straight back off the `Grid` — it asserts that a value was *stored*,
+not that anybody can hear it. That is the §5.5 shape again: an assertion about wiring that passes
+while the effect is absent, and §22.6 is the same lesson from the other direction.
+
+The name now goes on the container too, from `ContainerPrepared` so that recycled rows are renamed
+for whatever model they now hold, and from `NameRow` after a commit. The new guard **asks the peer**.
+Sabotaged by removing the container naming, it reports exactly the defect above.
+
+The `Grid` keeps its name as well: it costs nothing, and if Avalonia ever puts row content into the
+control view the sentence is already there.
+
+### 50.6 Pass H, half of which was already done
+
+`PLAN-table.md` §2.1 said the accessibility gap was two providers Avalonia defines and LunaP did not
+use. Enumerating rather than assuming (§48.2):
+
+- **`ISelectionItemProvider` was already there.** A row *is* a `ListBoxItem`, and Avalonia's own
+  `ListItemAutomationPeer` provides it. It was never work. It has a test anyway, because a future
+  change that stopped using a `ListBox` would take it away silently.
+- **`IValueProvider` was not.** `TextBlockAutomationPeer` offers none, so a reader could hear a
+  cell's text and had no way to set it.
+
+So cells are now `TableCell`, an **internal** `TextBlock` subclass with a peer that implements
+`IValueProvider`. Internal because it exists to carry two delegates the table already owns, and §32's
+rule is that everything public is something a consumer can see and cannot patch. `IsReadOnly` answers
+per column, which is why the provider is offered on read-only columns too rather than hidden: a
+column that will not take a value should say so.
+
+**A reader writing a cell goes through the same `Validate` gate a typist does.** Routed through the
+table rather than calling `Commit` directly, or an assistive technology becomes a way around the
+rules the control enforces for everyone else. Sabotaged by removing the gate, the guard fails with
+the `FormatException` the caller's own `int.Parse` throws — which is precisely the crash a consumer
+would have shipped.
+
+§27.3's refusal to claim the `DataGrid` control type still stands, and the enumeration confirms why:
+there is no `IGridProvider` or `ITableProvider` anywhere in `Avalonia.Automation.Provider`. `Group`
+is the platform ceiling rather than a lesser answer.
+
+## 51. The version: 0.8.0, and a correction to §34.3
+
+**0.8.0, because §48 is the first arc that fails this project's own standard for a
+release.** §26.13 set it and every arc since has been held to it:
+
+> nothing breaks, everything is additive, a consumer who upgrades and changes nothing has the same
+> application.
+
+That does not hold here, and the failure is the point of the arc rather than an accident. §48 hands
+LunaP's colours to FluentTheme's resource keys, so **every stock Avalonia control in a consumer's
+application changes colour on upgrade**. Nothing about behaviour, layout or API moves; only paint. But
+a consumer reading a patch bump would not expect their text boxes repainted, and §30 already taught
+this project what it costs to describe a rendering change as additive — §34.3 recorded that as the
+one entry in 0.7.0 that was not.
+
+Everything else in the release *is* additive. `FieldRow.Error`, `LunaColumn<T>.Commit` and
+`.Validate`, `ErrorText`, `TableCell`'s providers: a table with no `Commit` on any column is
+read-only, which is the default and what every existing table already is.
+
+**The accessibility fix in §50.5 is the entry a consumer should read first**, and it is neither
+additive nor breaking — it is a defect that has been in every release since 0.7.0. A `LunaTable` row
+announced its model's `ToString()` to a screen reader instead of its cells. Anybody who shipped a
+table shipped that.
+
+### 51.1 A correction to §34.3
+
+§34.3 says *"0.7.0 is not released. There is no `v0.7.0` tag."* **Both halves are now false**, and
+the correction is recorded here rather than edited into that section, per the rule this document
+keeps.
+
+`v0.7.0` is tagged, at `9f5311f`. What is true instead, and is worth stating exactly because it is
+the kind of thing that goes unnoticed until a publish job runs:
+
+- **0.7.1 was prepared and never released.** Both `.csproj` files carried `0.7.1` and `CHANGELOG.md`
+  has its entry — the settings-root fix of §43 — but **no `v0.7.1` tag exists**, and the published
+  version comes from the tag. So the fix that entry describes has never reached a consumer.
+- **0.8.0 therefore carries 0.7.1's changes as well as its own.** Its changelog entry stays where it
+  is rather than being folded upward: it describes a real change with a real `§`, and a reader
+  working out why their `testhost` directory moved should find it under the number it was written
+  for.
+
+Both `<Version>` elements moved together, per §22.8 — the harness tracks the toolkit rather than
+keeping its own number.
+
+## 52. A summary that named the wrong enum member
+
+`RgbaImageView.Stretch` defaults to `Stretch.None`. Its `///` summary said it *"defaults to
+preserving the aspect ratio"*, which describes `Uniform` — a different member producing a different
+picture: `Uniform` fits the frame to the control and letterboxes it, `None` does not scale at all.
+
+**The value was always right and only the sentence was wrong**, which is the reason this is worth a
+section rather than a silent edit. Nothing rendered incorrectly and no test could have failed. What
+was wrong was the description of a public property, in a `///` summary — so it was what a consumer's
+IntelliSense showed them, and §33 added those summaries precisely so that a consumer with the DLL and
+nothing else could read them. A wrong one is worse than the blank they had before, because a blank
+sends you to the source and a confident wrong sentence does not.
+
+It was found during the survey written up in `PLAN-general-purpose.md` §2, alongside two other
+observations about the same control, and then **left unfixed through five commits of an arc that
+touched everything around it** — the plan noted it as "worth a one-line fix" and nothing carried that
+note into the code, which is the failure mode §28 exists to end. It is fixed here because somebody
+asked whether it had been.
+
+### 52.1 The two that are still open
+
+Both are from the same survey and both are real, and neither is a defect in what the control claims:
+
+- **`SetFrame` takes `byte[]` only.** A consumer whose pixels are in native memory must marshal into
+  a managed array first, which `Marshal.Copy` then copies again into the framebuffer. At 1080p that
+  is ~8.3 MB per copy; at 60fps, ~500 MB/s of avoidable memcpy. A `ReadOnlySpan<byte>` overload and
+  an `nint` one would remove a copy for very little code — `ILockedFramebuffer.Address` is already in
+  hand.
+- **No integer scaling.** With `Stretch="Uniform"` at a non-integer factor, nearest-neighbour gives
+  uneven pixel rows — a 160×144 frame at 4.17× yields rows 4 and 5 pixels tall — which shimmers on
+  scroll. Every emulator frontend eventually grows an integer-scale option.
+
+Both are additive API and neither blocks 0.8.0. They are recorded here rather than left in a working
+plan that gets deleted, which is what happened to the sentence above.
+
+## 53. Two copies to avoid a pointer, and rows that were not all the same height
+
+The two observations §52.1 left open, both about `RgbaImageView`, both now closed.
+
+### 53.1 The copy that was paid twice
+
+`SetFrame` took `byte[]` and nothing else. A caller whose pixels were already in native memory — an
+emulator core's framebuffer, a decoder's output — had to marshal them into a managed array so that
+this control could `Marshal.Copy` them straight back out into the locked framebuffer. **Two copies to
+avoid a pointer.**
+
+At 1080p a frame is `1920 × 1080 × 4` = **8.29 MB**, so the avoidable one costs about **498 MB/s at
+60fps**. There are now three entry points and one copy path:
+
+| | |
+|---|---|
+| `SetFrame(byte[], int, int)` | unchanged for every existing caller; now delegates |
+| `SetFrame(ReadOnlySpan<byte>, int, int)` | takes a slice of a larger buffer without copying it out first |
+| `SetFrame(nint, int, int)` | copies straight from unmanaged memory |
+
+**`AllowUnsafeBlocks` is now on, and that is a build decision with a `§` because it is one.** Safe C#
+cannot write to native memory at all — there is no safe way to make a `Span<byte>` over
+`ILockedFramebuffer.Address`, and `Marshal.Copy` takes arrays only. A "span" overload implemented
+safely would have to copy the span into a temporary array first, which **adds** an allocation and a
+copy to a method whose entire purpose is to remove one: an API that reads as an optimisation and is a
+pessimisation. The scope is one method, `Blit`, and every entry point bounds-checks before reaching
+it. Nothing else in the toolkit may use `unsafe` without a section of its own.
+
+The pointer overload is the one that cannot check its argument — there is no length in an address, so
+`width` and `height` are a promise the caller makes about memory this control is about to read. It
+says so in its `<remarks>`, and a zero address clears rather than dereferencing, which is the one
+refusal available to it.
+
+### 53.2 A stride that was assumed rather than read
+
+Found while writing the above. `SetFrame` copied `width * height * 4` as a single contiguous block,
+which is correct **only if the framebuffer's stride is exactly `width * 4`**.
+`ILockedFramebuffer.RowBytes` exists precisely because a backend is allowed to align each row: a
+163-pixel frame could sit in rows of 656 bytes rather than 652, and the old copy would have produced
+a progressively skewed image on any backend that did.
+
+**Measured before changing anything**, on Linux with Skia, `WriteableBitmap` at six widths:
+
+| width | 160 | 161 | 163 | 256 | 257 | 1920 |
+|---|---|---|---|---|---|---|
+| `RowBytes` | 640 | 644 | 652 | 1024 | 1028 | 7680 |
+| `width × 4` | 640 | 644 | 652 | 1024 | 1028 | 7680 |
+
+**Never padded, including at odd widths.** So the assumption held everywhere it was tested, and was
+still an assumption about one platform rather than a guarantee of the API. `Blit` now takes the
+single-block path when the stride is tight — the same copy as before, and the common case — and
+copies row by row when it is not.
+
+**A hazard, stated rather than claimed: the padded path is unexercised.** No backend available here
+pads, so no test reaches it. What *is* verified is the loop's arithmetic — forcing the row-by-row
+branch unconditionally leaves all 16 tests green, which says the loop is correct when the stride is
+tight but says nothing about a stride that is not. A platform that pads is where this would first be
+proven, and it is the entry to read if an image ever comes out sheared.
+
+### 53.3 Whole pixels, or the picture shimmers
+
+`IntegerScale`, off by default. Nearest-neighbour at a fractional factor does not enlarge pixels
+evenly — it **duplicates some and not others**. A 160×144 frame in a 667-wide box is 4.17×, so most
+source rows land 4 device pixels tall and every sixth one lands 5. Static, that is faint irregular
+banding; moving, the tall rows travel through the picture and it shimmers.
+
+Turned on, the factor is floored to 4× and the result centred, which is what every emulator frontend
+arrives at. **Opt-in rather than automatic**, because it trades screen area for evenness and a tile
+viewer in a small panel would rather have the area. Never below 1×: a frame larger than its box shows
+at 1:1 and is cropped, because a zero-times scale is not a picture.
+
+The template **no longer `TemplateBinding`s `Stretch`**. Integer scaling has to set an exact size on
+the `Image` and a `Stretch` that fills it, and a binding on the same property would be competing with
+that, so the control drives the `Image`'s geometry from one method and the template carries only
+`Source` and the interpolation mode.
+
+### 53.4 What the sabotages said
+
+Per §22.5, each guard was made to fail before being trusted:
+
+| Sabotage | Result |
+|---|---|
+| `Math.Floor` dropped from the factor | *Expected 640, Actual 666.667* — the fractional scale it exists to prevent |
+| Copy length short by one row | 3 pixel-comparison tests fail |
+| Row-by-row branch forced unconditionally | **all 16 pass** — which is the check, not a failure: it says the loop is right |
+
+The frames compared are ramps where every byte differs, so a copy that drops, doubles or shifts a row
+shows up. A flat colour would have survived most of those.
+
+## 54. Parity with TreeDataGrid, decided — and a framing this document got wrong
+
+**The decision: `LunaTable<T>` goes to feature parity with `Avalonia.Controls.TreeDataGrid`,
+including hierarchy, and it ships in 0.8.0.** Taken 2026-08-13, by the person who owns the project,
+after the gap was measured rather than estimated.
+
+### 54.1 The framing that was wrong, because it was mine and not this document's
+
+Asked whether the table was at parity, the answer given was *"parity was never the goal"*. **Nothing
+in this document says that.** It was an inference from §27.2's evidence rule, stated as though it
+were a recorded decision, and it is corrected here because a reader would have taken it for one.
+
+Two things make it worse than a slip:
+
+- **Parity with a reference implementation is an established rationale in this project.** §26.1's own
+  table marks `ToolBar`, `Menus.Context`, `SidePanel` and `AppWindow` as **Qt parity** with
+  *"genuinely zero"* counted sites, and says so out loud: *"Qt has one and every application that
+  grows past one window wants one, which is an argument, not a measurement."* Four controls in this
+  toolkit exist on exactly the reasoning that was just denied.
+- **The non-goals quoted were not from here.** "No hierarchy, no cell selection, no grouping" is
+  `PLAN-table.md` §8 — a working file whose own header calls it uncommitted and disposable. It was
+  repeated as settled doctrine. §21's warning covers precisely this: *a doc that says "the remaining
+  option is X" is recording what was considered, not what is possible.* It applies to this document's
+  own readers, including the one writing it.
+
+### 54.2 The correction to §47.3
+
+§47.3 offered a test — *"a completion adds a property to something the caller already declares; a new
+kind adds a noun the caller has to learn"* — and put **hierarchy** and **cell selection** on the
+"new kind" side. **That test is not repealed and both classifications stand: they are new kinds.**
+
+What changes is the consequence. §47.3 treated "new kind" as a reason not to build, because §21's
+rule governs entry and neither had a count. But §26.1 had already established a second door — parity
+with a reference implementation, argued rather than counted — and §47.3 did not consider it. So the
+test was right and the conclusion drawn from it was too narrow.
+
+*This is the second time §47's boundary has needed widening rather than defending, and that is worth
+noticing about the boundary rather than about the cases.*
+
+### 54.3 What parity means, measured
+
+`Avalonia.Controls.TreeDataGrid` **12.2.0** was enumerated from the assembly — **70 public types**,
+against this toolkit's three. What it has and `LunaTable<T>` does not, at the point this was written:
+
+| Gap | |
+|---|---|
+| Multi-row and cell selection | `SelectionMode`: None / Row / Cell / Multiple |
+| Hierarchy | `HierarchicalTreeDataGridSource`, expander column, `IndexPath` |
+| Row drag-and-drop | `AutoDragDropRows`, `RowDragStarted` / `RowDragOver` / `RowDrop` |
+| Frozen columns | `FrozenColumnCount` |
+| Cell kinds | CheckBox and Template columns; LunaTable's cells are text |
+| Row headers | `TreeDataGridRowHeaderColumn` |
+| Grid lines | `GridLinesVisibility`: None / Horizontal / Vertical / All |
+| Per-column control | `IsVisible`, `MinWidth`, `MaxWidth`, alignment, programmatic `SortDirection` |
+| Edit gestures | `BeginEditGestures`: F2 / Tap / DoubleTap / TextInput / WhenSelected |
+| Lifecycle events | `CellPrepared` / `CellClearing` / `RowPrepared` / `RowClearing` / `CellValueChanged` |
+| Navigation | `BringRowIntoView`, `TryGetCell`, `TryGetRow` |
+| Automation depth | eight peer types, including cell-level and `ITreeDataGridCellSelection` |
+| Column virtualization | columnar presenters |
+
+And what `LunaTable<T>` already has that it does not: a **remembered layout** through
+`Settings/ISettingsStore` (§27.11), **validation with a message** shared with `FieldRow` (§50.1), MIT
+with no licence key, and the palette by default.
+
+### 54.4 What parity does not mean
+
+- **Not a dependency.** §27.1 stands entirely — the package is licence-gated and this is a
+  reimplementation, not an adoption.
+- **Not TreeDataGrid's API.** Parity is in what a user can do, not in the types a caller names.
+  `LunaColumn<T>` grows properties; nobody writes `FlatTreeDataGridSource<T>`. §1 is untouched.
+- **Not a break.** Every item is additive and off by default: a table with no `Children`, no
+  `SelectionMode` and no `Commit` behaves exactly as it did in 0.7.0. §26.13 still holds.
+
+### 54.5 A correction to §27.1, which understated the gate
+
+§27.1 records that `Avalonia.Controls.TreeDataGrid` requires an Avalonia Accelerate licence, and
+describes the enforcement as living in the consumer's executable project at run time. **It is
+stronger than that: the gate fails the BUILD.** Adding the package to a throwaway project to
+enumerate it produced:
+
+    AvaloniaUI.Licensing error AVLIC0001: No valid AvaloniaUI license keys found for
+    required commercial products: "Avalonia.Controls.TreeDataGrid"
+
+Not a warning, not a runtime message — the build does not complete. Reproduced 2026-08-13 against
+12.2.0 on a bare `net10.0` project with a single `PackageReference`. The enumeration behind §54.3 had
+to read the cached assembly without referencing it.
+
+## 55. The table grew a tree, and a list stayed a list
+
+The largest item in §54's parity arc, and the one §47.3 classified as a different *kind* — correctly,
+which §54.2 kept while overruling what followed from it.
+
+### 55.1 One projection, and null means it is not a tree
+
+```csharp
+table.Children = n => n.Kids;     // null - the default - is a flat table
+```
+
+A projection rather than an interface, for the §1 reason every seam here is one: a caller's model
+needs no base class, no `ITreeNode`, and no knowledge that LunaP exists. A model that stores children
+elsewhere writes `n => index[n.Id]`, which an interface on the model could not express at all.
+
+**The flat case is the old case, exactly.** `Flatten` returns `Ordered(_items)` and returns it before
+touching any of the three dictionaries, so a table that is not a tree does no extra work, allocates
+nothing new and draws no expander. §26.13 holds: a 0.7.0 table upgraded and unchanged is unchanged.
+
+### 55.2 A tree flattened into the list a ListBox can show
+
+A `ListBox` displays a sequence, so hierarchy has to become one: parents followed by their visible
+children, each row remembering how deep it is. **Everything else about the control keeps working on a
+flat sequence of `T` and never learns a tree exists** — selection by model, editing, the row's spoken
+name, virtualization, the remembered layout. That is what made this tractable rather than a rewrite.
+
+**Sorted at every level, which is the only reading that keeps a tree a tree.** Sorting the flattened
+list interleaves children with strangers' parents; sorting only the roots leaves every child list in
+arrival order under a header the user just clicked. Sabotaged by sorting the flattened list, the
+guard reported the tree turning into an alphabetical list of everything:
+
+    Expected: ["roms", "nes", "metroid.nes", "snes", "smw.sfc", ...]
+    Actual:   ["metroid.nes", "nes", "roms", "saves", "smw.sfc", ...]
+
+### 55.3 The cycle guard, and the sabotage that killed the test host
+
+`Children` is a caller's delegate and **nothing stops it returning an ancestor** — a parent index
+built from a bad file, a symlink loop in a directory walk. `Walk` therefore carries a set of the keys
+on the current path and drops a repeat.
+
+This is the one guard in the project whose sabotage did not produce a failing test. Removing the
+path check and running the loop test produced:
+
+    at EmuSen.LunaP.Controls.LunaTable`1.Walk(...)
+    at EmuSen.LunaP.Controls.LunaTable`1.Walk(...)
+    ... hundreds of frames ...
+
+    Test Run Aborted.
+
+**Not a failed assertion — a dead process.** A `StackOverflowException` cannot be caught in .NET, so
+without the guard the first consumer with a looping model loses the whole application rather than the
+table. That is why this is nine lines of guard rather than a documented caveat.
+
+### 55.4 Expansion belongs to the user, and is keyed by model
+
+`_expanded` holds `Key(item)` and not the object, so a `Refresh` handing back new instances for the
+same rows keeps the tree open. That matters more here than it does for selection (§27.6): a
+`PollingWindow` refreshes every second, and a tree that collapsed itself on every poll would be
+unusable rather than merely annoying. Sabotaged to reference identity, the guard reported the
+subtree vanishing on the next refresh — `["roms", "snes", "nes", "saves"]` becoming
+`["roms", "saves"]`.
+
+Expansion state also survives the template, which is why `Expand`, `Collapse`, `ExpandAll`,
+`CollapseAll` and `IsExpanded` are **covered** in `TemplateOrderTests` rather than exempted like
+`Edit` (§50.3). A tree expanded in a window's constructor comes up expanded, and the two runs of that
+case are each other's expected value.
+
+### 55.5 A leaf keeps the space the toggle would have taken
+
+The expander is a `Button` — focusable, invokable and reachable by keyboard, for the same reason a
+sortable heading is one (§27.3): a tree a mouse can open and a keyboard cannot is a tree half this
+toolkit's users cannot read. Its accessible name says what pressing it *does* — "Expand roms" — rather
+than what it is, because "expander" tells a reader nothing about which row.
+
+**A leaf's toggle is made invisible rather than left out.** Omitting it would shift a leaf's text left
+of its siblings' by the width of a glyph, so the files under a folder would not line up with each
+other — the one thing an indent exists to do.
+
+`ExpanderColumn` chooses which column carries it, because the first column is not always the name: a
+table whose leading column is a checkbox wants the toggle beside the label instead.
+
+### 55.6 What a reader hears of a tree
+
+A row that can be opened says so — `"name: roms, collapsed"` — and a leaf says neither, because
+saying "collapsed" about a row with nothing under it is worse than saying nothing. In a tree, *does
+this have more under it* is part of what the row **is**, and a reader that only hears the cells cannot
+tell a leaf from a folder nobody has opened.
+
+### 55.7 Two things the plumbing had assumed
+
+Putting an expander in front of a cell means the cell is no longer a direct child of the row grid,
+and two pieces of §50's editing had quietly depended on that.
+
+- **`Grid.GetColumn(cell)` stopped being the column.** A nested cell reports 0 whatever column it
+  belongs to. `TableCell` now carries its own index, which makes every lookup independent of how deep
+  the cell sits.
+- **A bug that only appears once the editor is inserted rather than appended.** The editor now takes
+  the cell's place in whatever panel holds it, so an edited tree cell opens where the text was rather
+  than to the right of the expander. That turned the recycling path into an
+  `ArgumentOutOfRangeException` out of `OnDetachedFromVisualTreeCore`: the detach handler removed the
+  editor from a children collection **Avalonia was walking by index**, and removing an item before the
+  cursor rather than after it is what made an ordering that had always been wrong start to matter.
+  `EndEdit` now knows it is being called during a detach and clears the state without touching the
+  tree, which is going away regardless.
+
+## 56. Gestures, rules and a lifecycle — and one event deliberately not reproduced
+
+Pass 2 of §54's parity arc: the small independent items. All three are off or unchanged by default.
+
+### 56.1 Editing gestures are a set, not a mode
+
+`LunaEditGestures` is `[Flags]` — `DoubleTap`, `F2`, `Default` being both, `None` being neither —
+because the two are independent choices. A grid where double-click already means "open this row"
+wants F2 alone; an application driving editing from its own *Rename* menu wants neither and calls
+`Edit`. An enum of named combinations grows a member per pair.
+
+**`None` still leaves `Edit` working**, and that is the point of having it: turning the column
+read-only to suppress the gestures would take its `Validate` away with it.
+
+TreeDataGrid's `BeginEditGestures` carries seven values, three of which — `Tap`, `TextInput`,
+`WhenSelected` — are **absent here and named rather than left to be discovered**. They are a
+different feature and not a different spelling: each begins an edit from a gesture that already
+means something else, which needs a rule for resolving the collision. Nothing in this arc has one.
+
+### 56.2 Rules sit beside the cell, never around it
+
+`LunaGridLines` is `[Flags]` over `Horizontal` and `Vertical`, `None` by default — which is what
+every table drew before, and the better default for the instrument panels this toolkit was built
+for, where a meter list should read as a block rather than a spreadsheet.
+
+Both take `LunaBorder`, the token that already means *where one surface stops and the next begins*
+(§26.9) and is already held to 3:1 against both surfaces. A rule between cells is exactly that, so it
+takes the token rather than introducing a colour.
+
+**The vertical rule is a sibling in the column, not a wrapper around the cell, and that is
+load-bearing.** Wrapping would make a cell's parent a `Border` — a `Decorator`, not a `Panel` — and
+`BeginEdit` needs a `Panel` to put the editor in the cell's place (§55.7). Sabotaged into a wrapper,
+the guard fails: **editing silently stops working when rules are turned on.** A `GridSplitter` already
+sits in its column this way (§27.11), so it is the shape the control was using.
+
+The horizontal rule *is* one border around the whole row, because a rule under a row is a property of
+the row — per cell, it would break wherever a column is hidden.
+
+### 56.3 Two lifecycle events, and the three that are not there
+
+`RowPrepared` and `RowClearing` are what recycling makes worth having: a caller attaching per-row
+state — a tooltip, a context menu, a colour from a live source — needs to know when a container
+starts standing for a *different* model. The container is reused, so "when it was created" is the
+wrong hook and there is no other.
+
+`CellValueChanged` fires after a commit, from both the typed path and the automation provider,
+because both go through the same gate (§50.6). It is raised **after** the cell has been re-read and
+the row renamed, so a handler sees the finished state; and a cancelled edit raises nothing, which the
+sabotage confirms by making a cancel report a change.
+
+**`CellPrepared` and `CellClearing` are deliberately not reproduced.** This control builds its cells
+inside the row template rather than realising them independently, so there is no moment at which a
+cell is prepared that is not simply *its row was prepared*. An event firing once per cell during
+`RowPrepared` would carry no information the row event does not, while implying a virtualization
+boundary that does not exist. Saying so is better than approximating it — the parity list in §54.3
+is a list of capabilities, not of method names.
+
+### 56.4 A warning that hid behind an incremental build
+
+The xUnit analyser flagged an `Assert.Empty` that should have been `Assert.DoesNotContain`, and
+**§55's commit went in carrying it**, because the pre-commit check ran `dotnet build` rather than
+`dotnet build --no-incremental` and the test project had not been recompiled. This repository builds
+with zero warnings and that is worth something only if the check actually looks. Verification since
+uses `--no-incremental`.
+
+## 57. A cell stops being a TextBlock
+
+Pass 3 of §54's parity arc: **cell kinds**. Every cell in this control was a `TextBlock` until now,
+which meant a boolean column rendered as `True`/`False` — a value the user has to *read* where every
+other table in the world lets them *see* it. §54.3 lists "CheckBox and Template columns; LunaTable's
+cells are text" as one gap, and it is one idea rather than two: the table has to stop assuming what a
+cell is made of.
+
+Two kinds, and no more. **Check**, because a checkbox is the commonest non-text column there is, and
+**Template**, because everything else a column could ever want — an icon, a spark line, a pair of
+buttons — is a control somebody can build. A toolkit that added a kind per idea would be maintaining
+a gallery inside a table.
+
+`LunaCellKind` is the discriminator and is never set directly. Every kind but `Text` needs delegates
+that only mean anything together, and an init-only `Kind` would let a caller declare a check column
+with no boolean projection and find out about it when a row was drawn.
+
+### 57.1 A constructor per kind, and the factory that lasted an hour
+
+The first attempt was static factories — `LunaColumn<T>.Check(...)`, `LunaColumn<T>.Template(...)` —
+and it read well right up until the gallery wanted a width on one. A factory hands back a finished
+object, and **every other thing a column can be told is an init-only property**: `Width`, `Sort`,
+`MinWidth`, `MaxWidth`, `IsVisible`. None of them is reachable on a method's return value. `with`
+does not help either; `LunaColumn<T>` is a sealed class and not a record.
+
+So the width would have become a parameter, and then the sort, and the growth path §27 built this
+class to have would have been gone by the second one. A **constructor** keeps the object initializer,
+so all three kinds are declared identically and every property already there applies to all of them:
+
+    new LunaColumn<Row>("req", r => r.Required, (r, on) => r.Required = on) { Width = "40" }
+
+Overload resolution separates them on the projection's return type — `Func<T, string>`,
+`Func<T, bool>`, `Func<T, Control>` — so the call site names no kind and cannot pick the wrong one.
+
+### 57.2 `Text` became what the cell *says*, not how it is drawn
+
+This is the one idea that made the whole pass fit without a second kind of column. For a text cell
+the two are the same thing. For a checkbox they are not: the cell shows a tick and `Text` returns
+`"yes"`, and **that string is what the row's spoken sentence and the automation value are built
+from**. Nothing downstream of the cell had to learn that kinds exist.
+
+Which is why the template form **requires** its `spoken` argument while the check form defaults it. A
+boolean's sentence can be derived — `"yes"`/`"no"`, overridable to `"live"`/`"safe"` — and an
+arbitrary control's cannot. A template column is the one place a caller can put something on screen
+this toolkit cannot describe, and §24 is the section about nine controls a screen reader never
+reached. Requiring the sentence makes the unreachable version of this column *impossible to declare*.
+The gallery shows it as a coloured dot on purpose: an eight-pixel ellipse beside a row that announces
+`kind: text` is the argument in one picture.
+
+### 57.3 The read-only mechanism, chosen by measurement and nearly chosen wrong
+
+A check column with no `Toggle` is read-only, and there were two ways to spell that:
+
+- `IsEnabled = false` — greys the box, which costs contrast.
+- `IsHitTestVisible = false` with `Focusable = false` — keeps full contrast, refuses the pointer.
+
+The second looks strictly better and is wrong. **Measured on Avalonia 12.1.0:**
+
+| | provider offered | `Toggle()` |
+|---|---|---|
+| enabled | yes | ticks the box |
+| `IsEnabled = false` | yes | throws `ElementNotEnabledException` |
+| `IsHitTestVisible = false` | yes | **ticks the box** |
+
+`AutomationPeer` has no `EnsureEnabled` member — enumerated, 60-odd members, it is not there — so the
+inference from the API surface was that nothing gates a provider call. That inference was wrong; the
+check lives inside `ToggleButtonAutomationPeer` itself. Had the design been settled on the reasoning
+rather than the measurement, a read-only column would have shipped writable by any screen reader,
+which is exactly the §50.6 defect one decision later.
+
+So `IsEnabled = false` it is, and the contrast is paid for in the theme instead.
+
+**The contrast, measured in both variants.** Fluent's disabled checkbox colours are translucent white
+over whatever is behind:
+
+| | dark | light |
+|---|---|---|
+| disabled **checked** — tick on its own fill | 4.42:1 | **1.78:1** |
+| disabled **unchecked** — stroke on the surface | 3.78:1 | **2.80:1** |
+
+WCAG 1.4.11 exempts inactive components from any contrast requirement, and that exemption **assumes
+you never need to read what you cannot use**. A read-only check column exists to be read; its value
+is information, not chrome. So the exemption does not apply and the light figures are a defect —
+`FluentBridge.axaml` overrides three keys, under a rule worth stating: **the outline is structure and
+does not change with enablement; the fill carries state, and a disabled fill is muted rather than
+accented.** An empty box keeps `LunaBorder` either way (3.27:1 / 3.03:1, the same figures the enabled
+one already has); a ticked-but-disabled box goes from accent to `LunaMuted` — 4.22:1 dark and 5.75:1
+light against the surface, carrying a `LunaOnAccent` tick at 3.95:1 and 6.39:1. Every figure clears
+3:1.
+
+This is a **§48 follow-up rather than a table feature**. §48 swept the enabled states of nine stock
+controls and never looked at a disabled one, so the 1.78:1 was already there for any consumer's own
+greyed checkbox. Pass 3 is what made anybody look.
+
+The keys were found by **enumerating the live resource tree** — 1,174 keys reachable through
+`Application.Styles`, of which 73 carry `CheckBox` in the name — and not by recalling likely ones.
+That is §48.2's rule, applied to the case it was written for.
+
+### 57.4 What a check column cannot do, said rather than approximated
+
+A text column can refuse a value **and say why**: `Validate` returns the problem and the sentence
+appears under the table (§50.1). A check column can refuse — a `Toggle` that declines to write leaves
+the model alone and the tick goes back where it was, because the table re-reads `Checked` after every
+toggle rather than trusting the box — but it **cannot say why**.
+
+Giving it a voice would need a fourth delegate shape of its own. Reusing `Validate` was the tempting
+approximation and is worse than the gap: it would mean handing a `Func<T, string, string?>` the
+string `"True"`, a representation the caller never chose and the column's own `Text` does not
+produce. Recorded as a gap. The re-read is not a workaround for it — it is the same rule that makes
+`Close` re-read a committed cell through the projection instead of keeping the typed text, and it is
+what also makes a *normalising* `Toggle` show what it actually did.
+
+### 57.5 The cell index left the cell
+
+`Cell(item, column)` walked a row looking for a `TableCell` and read an instance property off it.
+Neither half survives kinds: a check cell is a stock `CheckBox` and a template cell is a control this
+toolkit has never seen, and a field cannot be added to either. The index is now an **attached
+property**, which is Avalonia's own answer to annotating a control you did not write.
+
+Its default is **-1 and not 0**, and that is load-bearing. The lookup walks every descendant of a
+row, and a template cell has the caller's own children under it; at a default of 0 the first of those
+answers as column 0, and `Edit(item, 0)` opens a text editor on somebody's `Button`. Sabotaging the
+default turns the lookup and `Edit`'s refusal red together.
+
+`Cell` now returns `Control?` and `TextCellOf` narrows it. That narrowing is what makes `Edit` refuse
+a check or template column **without a kind test of its own** — there is simply no text cell there.
+
+### 57.6 A hollow guard, found by sabotaging it
+
+`ColumnSpec.IsEditable` names the kind: `Kind == LunaCellKind.Text && Commit is not null`. The test
+for it asserted that a check column with a `Toggle` was not editable — and **removing the kind clause
+turned nothing red**, because that column's `Commit` was null either way. The clause under test
+contributed nothing to the assertion. §50.4's shape exactly, caught by sabotage rather than reading.
+
+The clause *is* reachable. `Commit` is init-only like every other property, so this compiles and
+somebody will write it:
+
+    new LunaColumn<Row>("armed", r => r.Armed, (r, on) => r.Armed = on) { Commit = ... }
+
+A check column carrying a text writer it can never use. Ignored rather than rejected — throwing would
+make a meaningless-but-harmless declaration a crash at startup. What must not happen is the column
+answering "editable", because **F2 walks for the *first* editable column**: it would stop at a cell
+with no text editor and the text column behind it would be unreachable from the keyboard. The
+strengthened test sets the `Commit`, and now the sabotage fails both it and the F2 guard.
+
+### 57.7 The sabotages
+
+| Sabotage | What turned red |
+|---|---|
+| Read-only via `IsHitTestVisible` instead of `IsEnabled` | the screen reader ticked the read-only box — no exception thrown |
+| `IsEditable` drops the kind clause | F2 stopped at the check column; the text column became unreachable |
+| The toggle stops re-reading the model | a refused toggle left the tick where it was clicked; a normalising one lied |
+| The `_toggling` suppressor removed | the caller's `Toggle` ran **twice** for one click — not an infinite loop, because the second re-read agrees, but a delegate with a side effect fires twice |
+| The three disabled-checkbox overrides removed | **light** at 1.78:1 and 2.80:1; **dark** stayed green, which is correct — only the light surface was ever the defect |
+| The cell lookup filters by `TableCell` again | check and template cells became unfindable by `TryGetCell` |
+| The marker's default changed to 0 | a template's own child answered as column 0 |
+
+One of these corrected the test rather than the code. The contrast guard first compared **raw ARGB
+values**, and under sabotage reported the dark variant at 1.00:1 — white against an uncomposited
+`#66ffffff` is white against white. It composites over the surface now, so the number it reports is
+the number a user meets whether or not the value happens to be opaque.
+
+### 57.8 What did not change
+
+A table that declares only text columns runs exactly the code it ran in 0.8.0: one `switch` arm, the
+same `TableCell`, the same editor. §26.13 holds. `CellPrepared`/`CellClearing` are still absent for
+§56.3's reason, and cell *selection* is still §54.3's open item — a check column is a cell you can
+change, not a cell you can select.
+
+## 58. A gutter down the left, and two indices that must not be confused
+
+Half of pass 4 of §54's parity arc: **row headers**. `RowHeader` is a projection, null by default,
+and a table that never sets one has exactly the grids it always had.
+
+### 58.1 A projection, not a row number
+
+`TreeDataGridRowHeaderColumn` was enumerated before this was designed, and it is **narrower than it
+looks**: the type has a parameterless constructor and no projection at all, `WithRowHeaderColumn`
+takes only a caption and a width, and the cell — `TreeDataGridRowHeaderCell` — carries a bare
+`string Value`. It is a row *number* and nothing else.
+
+That serves a list of records and serves this toolkit's actual subject badly. The instrument panels
+LunaP was built for want **addresses** down the left of a memory viewer and a disassembly, and an
+address is on the model. So `RowHeader` is `Func<T, int, string>` and both are one line:
+
+    table.RowHeader = (_, i) => (i + 1).ToString();          // number the rows
+    table.RowHeader = (row, _) => row.Address.ToString("X4"); // label them
+
+**The index is the DISPLAYED one**, counted down the view after sorting and flattening. That is the
+one number a caller cannot get from their own model — under a sort, row 1 is whatever is at the top
+now, not whatever was first in the list handed to `Refresh` — and a test drives a header click to
+pin it.
+
+It is built once per rebuild into a key→position map rather than searched per row. A virtualising
+list asks for the index once per realised container, so the obvious `IndexOf(item)` is an O(n) scan
+run per visible row: fine at three rows, ten thousand `Key()` calls per screenful at ten thousand.
+
+### 58.2 The two indices, which are the actual risk
+
+A gutter shifts every column one place right **in the grid** while leaving every column **index**
+where it was. Those are different numbers used by different parts of the control:
+
+| speaks in column indices | speaks in grid indices |
+|---|---|
+| `Edit(item, 2)`, `TryGetCell` | `Grid.SetColumn` |
+| the remembered layout's `Widths` list | `ColumnDefinitions[...]` |
+| the sorted-column number | the shared size groups |
+
+Conflating them is not a crash; it is a dragged width landing on the neighbouring column and then
+being **saved to disk**, and an editor opening one column left of the text it is editing. So there is
+exactly one place that knows about the shift — `GridColumn(int column)` — and every `Grid.SetColumn`
+and every definition lookup goes through it. `Resized` is the delicate one, because it reads
+definitions by grid index and writes specs by column index in the same loop.
+
+Two sabotages, both aimed at that seam:
+
+| Sabotage | What turned red |
+|---|---|
+| the editor placed at the column index | the caret opened one column left of the cell |
+| `Resized` reads definitions by column index | the gutter's width was written onto column 0 |
+
+### 58.3 The gutter is not a cell, and says so three ways
+
+It carries **no column marker**, so `Cell(item, n)` never finds it, `TryGetCell` never returns it and
+no editor can open on it. It has **no resize grip**, because §27.11's remembered layout is a list of
+*column* widths and a gutter is not one. And its caption is a plain `TextBlock` rather than a sort
+button even when every other heading is one — there is nothing to sort by, since "sort by row number"
+is either the identity or a lie, and an inert tab stop costs a keyboard user a press and tells them
+nothing (§27.3).
+
+It does share a size group when its width is `Auto`, which is the default, because that is exactly
+§27.10's case: without it the caption sits a few pixels off the numbers under it.
+
+### 58.4 What a reader hears, and hears once
+
+The gutter goes at the **front** of the row's spoken sentence — `"# 2: name: alpha, size: 10"` — and
+that position is the point. A gutter is how a user refers to a row; a reader that heard it last,
+after every cell, would have to hold the whole sentence to find out which row it was about. The
+caption is included when there is one, so `"addr 8040: op: LDA"` says what the number is, and omitted
+when there is not, because `"1: name: alpha"` is already unambiguous.
+
+The `TextBlock` itself is `AccessibilityView.Raw`, so the label is heard once rather than twice —
+the same choice the sort glyph makes, and closely related to MeterRow's hidden inner bar (§24.2).
+
+### 58.5 Quieter than the cells, and right-aligned
+
+`LunaMuted` rather than `LunaText`, because a row header is how you *refer* to a row rather than
+something the row says — the relation a line number has to a line of code, and every editor draws it
+quieter. It measures 4.22:1 dark and 5.75:1 light against the surface (the figures §57.3 took for a
+different reason), so quieter is not unreadable.
+
+Right-aligned, which matters for the case this is mostly for: numbers and hex addresses are read down
+a column by their last digit, and a left-aligned gutter of 9, 10, 11 puts the units under the tens.
+
+## 59. Columns nobody could reach, and the frozen ones that need a different control
+
+The other half of pass 4. It began as "frozen columns" and turned into something else on the first
+measurement: **there was no horizontal scrolling to freeze anything against.**
+
+### 59.1 The defect, measured
+
+Six columns of `Width = "200"` in a 400-wide table, on Avalonia 12.1.0:
+
+    header bounds     = 12, 4, 376, 20      <- clipped
+    header col0..col5 = 200 each            <- resolved, all six
+    ScrollViewer      = extent 400, viewport 400, HorizontalScrollBarVisibility Disabled
+    row grid bounds   = 12, 4, 376, 20      <- clipped identically
+
+Every column resolved to the width it asked for and the grid was **clipped at the viewport**. The
+ScrollViewer inside the `ListBox` reported extent equal to viewport, so there was no scrollbar, and
+nothing for the wheel or the keyboard to move either. **Columns past the right edge were not awkward
+to reach; they were absent from every means a user has of reaching them**, with no error and nothing
+on screen to suggest anything was missing.
+
+This is a defect and not a missing feature, and it had been there since §27.
+
+### 59.2 The fix is one attached property and one handler
+
+`ScrollViewer.HorizontalScrollBarVisibility="Auto"` on `PART_Rows`. A `ListBox` already contains a
+ScrollViewer; Fluent leaves its horizontal bar `Disabled`. Turning it on gets the bar, the wheel, the
+keyboard and touch from a viewer that was already there — none of which a scrollbar of this control's
+own would have brought without writing all four.
+
+The header is the **one part of this control outside that viewer**, so it is the one part that has to
+be moved by hand: a `ScrollChanged` handler sets a `TranslateTransform` on `PART_Header`.
+`ScrollChanged` is routed, which is what lets `OnPartsAttached` subscribe to a viewer that does not
+exist yet — the `ListBox` has not applied its own template at that point. A render transform rather
+than a margin or a nested ScrollViewer: it moves a laid-out subtree for no measure pass, and it
+cannot disturb the shared size groups that make the header and rows line up at all (§27.10).
+
+The header's `Border` gains `ClipToBounds`, because a translated grid paints outside its parent
+otherwise.
+
+**Measured after, in both directions.** Six 200px columns: extent 1224 against viewport 400, the row
+grid laid out at its natural 1200, the horizontal bar realised with `Maximum` 824, and the header
+tracking at -300 for an offset of 300. Three star columns in a 600-wide window: 379 + 189 + 8 = 576,
+exactly the available width, header and rows agreeing to **0.0** on every column, extent equal to
+viewport and no bar. §27.10's failure mode — a star column behaving as Auto and the table no longer
+filling its own width — does not recur through this route.
+
+The guard that matters is not the scroll but the **alignment**: every heading is measured against its
+own cells, in the table's coordinates, at four offsets. Sabotaging the handler puts heading 0 137
+pixels from its cells at an offset of 137.
+
+### 59.3 Frozen columns need a different control, and here is the walk that says so
+
+`FrozenColumnCount` is the other item §54.3 lists, and it is **not delivered**. Not because it is
+large, but because this control's shape cannot express it, and that is worth recording so it is not
+attempted again the same way.
+
+To freeze a column, it must stay put while its neighbours move. The neighbours move because the
+`ScrollContentPresenter` moves them. So the question is whether any ancestor of a cell can hold still
+— and the ancestor chain from a realised cell up to the `ListBox` was **walked rather than reasoned
+about**:
+
+    Grid → ContentPresenter → ListBoxItem → VirtualizingStackPanel → ItemsPresenter
+         → ScrollContentPresenter → Grid → ScrollViewer → Border → ListBox
+
+Everything below `ScrollContentPresenter` moves; the presenter itself, and everything above it,
+**contains every cell of every column**. There is no ancestor anywhere in that chain that holds some
+columns and not others. Measured directly as well: at an offset of 300, column 0's cell moves from
+x=29 to x=-271 and the gutter from x=12 to x=-288, both exactly -300.
+
+Two ways out, and why neither is a line of code here:
+
+- **Counter-translate the frozen cells** by `+offset`. They then sit still — over the scrolled cells,
+  with nothing behind them, so the scrolling text shows through. Giving them an opaque backdrop needs
+  the row's own background, and that is not reachable: the `ListBoxItem`'s selected and pointer-over
+  fills are painted by *Fluent's* template on a part inside it, not by `ListBoxItem.Background`.
+  Reaching into that template is exactly what §48 refused to do, and for the reason it gave.
+- **Clip the scrolling cells** out of the frozen band. A clip is applied in its own element's
+  coordinate space, so it must live on an element that does not move — and by the walk above, every
+  such element contains all the columns.
+
+Which leaves the frozen region living **outside** the scrolling viewport: either a second list beside
+the first with its vertical offset synced, or one presenter that lays out both regions in a single
+pass. TreeDataGrid has `FrozenColumnCount` on `TreeDataGridCellsPresenter` and
+`TreeDataGridColumnHeadersPresenter` — on the *presenters*, both of them — which is precisely the
+second answer, and is why it is there rather than on a Grid.
+
+The two-list version has a failure this toolkit walked into last week: **row heights need not match.**
+§57 gave columns a `Template` kind, so a cell in the scrolling region can be any height a caller's
+control is, and two lists whose rows disagree in height desync progressively down the screen. One
+presenter is the answer, and replacing the row Grid with an owned layout pass means giving up the
+shared size scopes that §27, §27.7, §27.10 and §27.11 are all about.
+
+**So it is recorded as a pass of its own rather than an item in one**, and the §54.3 line stays open.
+What is delivered instead is the thing that made it look easy: a table whose extra columns can now be
+reached at all.
+
+### 59.4 A consequence, pinned rather than left to be found
+
+The gutter (§58) lives in the row grid, so it scrolls away with everything else. It is the natural
+*first* frozen column and cannot be one yet. A test asserts that it does scroll, so the behaviour is
+a decision on the record rather than a surprise; when the frozen work lands, that test should be
+rewritten rather than deleted.
+
+### 59.5 A warning that hid behind a grep
+
+§56.4 recorded a warning that got into a commit because the check used an incremental build, and
+switched verification to `--no-incremental`. **A warning got into §58's commit anyway**, because the
+verification pipes the build through `grep -E "warning [A-Z]"` — and the analyser IDs are
+`xUnit2029`, lowercase. The build was right, the build was fresh, and the filter threw the line away.
+Verification is `grep -iE "error|warning"` now, and reads the `0 Warning(s)` summary line rather than
+trusting a pattern to match every diagnostic format.
+
+## 60. The frozen-column blocker was not one — a correction to §59.3
+
+§59.3 concluded that frozen columns need a different control: "a clip has nowhere to live that does
+not move with the content", and therefore either a second synced list or a presenter rewrite that
+gives up the shared size scopes of §27, §27.7, §27.10 and §27.11.
+
+**The walk in §59.3 is correct and the conclusion drawn from it is wrong.** Everything it says about
+the ancestor chain holds — every ancestor of a cell either moves with the offset or contains every
+column. What does not follow is that a clip has nowhere to live, and the error is a plain one: a clip
+does not have to live on something that holds still. **It lives on the cell, in the cell's own
+coordinates, and the table already knows the scroll offset**, so the clip can simply be recomputed to
+whatever keeps the visible part of that cell out of the frozen band. Nothing needs to be stationary.
+§59.3 looked for a stationary ancestor because it was thinking of `ClipToBounds`, which does need
+one, and never asked the next question.
+
+### 60.1 The mechanism, and the measurement that settles it
+
+Two rules, applied to the **direct children of the row grid** — which is the right granularity,
+because every child already carries a `Grid.Column`, and that covers a bare cell, a cell inside an
+expander panel (§55), a vertical rule (§56.2) and an open editor without any of them being special
+cases:
+
+- a child in a **frozen** column gets `RenderTransform = Translate(+scrollX)`, which cancels the
+  scroll and leaves it where it was;
+- a child in a **scrolling** column gets a `Clip` whose left edge is
+  `clamp(scrollX + frozenWidth - columnStart, 0, width)`, which is the part of it that would
+  otherwise be inside the band.
+
+The clamp degenerates correctly: unscrolled, `scrollX` is 0 and every scrolling column starts at or
+after `frozenWidth`, so the left edge is 0 and no clip is set at all.
+
+**Measured, at the pixel level.** Six columns of 200 in a 400-wide table, scrolled to 300, with
+column 0's cells painted red and every other column's blue, counting pixels inside the 200-wide band
+the frozen column would occupy:
+
+| | column 0's x | red in band | blue in band |
+|---|---|---|---|
+| scrolled, nothing frozen | **-288** | 0 | **6,419** |
+| the two rules applied | **+12** | **6,399** | **0** |
+
+**Zero blue is the whole result.** The scrolled content is not covered by the frozen cell, it is
+*removed*, so there is nothing to paint a backdrop over — which dissolves the objection §59.3 spent
+most of its length on. The row's selected and pointer-over fill is Fluent's, it is painted behind
+everything, and it goes on being painted behind everything. Nothing reaches into Fluent's template
+and §48's rule is untouched.
+
+And because the clip is render-level rather than layout-level, none of this costs a measure or an
+arrange pass, and **the shared size scopes survive intact**. §27.7 and §27.10 keep working because
+nothing about how a row is laid out changes; only what parts of it are drawn.
+
+### 60.2 What this does not yet say
+
+The mechanism is proven; the control around it is not. Held as **hazards rather than behaviours**
+until each is pinned:
+
+- **Hit-testing under a clip is unmeasured.** The probe that went looking returned no `TextBlock` at
+  any point, including one in a fully visible column — so the path it used does not reach them in
+  headless at all, and its silence means nothing (§48.2). Whether a clipped-away cell still takes a
+  double-click is the question, and it decides whether clipping needs `IsHitTestVisible` beside it.
+- **Focus is unhandled.** Tab reaching a control clipped out of sight is the §24 failure in a new
+  place, and the answer is probably that focus scrolls it into view rather than that it stops being
+  focusable.
+- **`IsOffscreen`** — whether Avalonia's peers already account for a clip, or whether a reader would
+  be told a hidden cell is visible.
+
+§61 onwards is where those are answered. This section is the correction on its own, so the record is
+right whether or not the rest is built.
+
+## 61. Frozen columns: the pin
+
+Pass 1 of the frozen-column arc §60 opened. `FrozenColumns` is an `int`, zero by default, and a table
+that leaves it there does not pay for the feature existing — `Pin` returns on its first line.
+
+### 61.1 Two rules, on the row grid's direct children
+
+    a child in a frozen column     ->  RenderTransform = Translate(+scrollX)
+    a child in a scrolling column  ->  Clip left edge  = clamp(scrollX + band - bounds.X, 0, width)
+
+The transform cancels the scroll the `ScrollContentPresenter` is applying to everything, leaving the
+child where it started. The clip removes whatever would fall inside the band.
+
+**The direct children are the right granularity** because every one already carries a `Grid.Column`.
+That one fact makes a bare cell, a cell inside an expander panel (§55), a vertical rule (§56.2), a
+resize grip and an open editor all fall out of the same loop, with none of them a special case.
+
+**Bounds rather than column offsets.** The clip uses the child's own `Bounds.X` — where it actually
+sits, which already accounts for its alignment, its margin and any column span. Arithmetic over
+column starts places a `GridSplitter` wrongly, because a grip is aligned to the *right* of its
+column. Sabotaging that substitution turns the render red.
+
+The clamp degenerates correctly: unscrolled, `scrollX` is 0 and every scrolling column begins at or
+after the band, so the left edge is 0 and **no clip is set at all**.
+
+Both properties are render-level, so this costs no measure and no arrange, and the shared size groups
+that align the header with the rows (§27.10) never learn it happened.
+
+### 61.2 The guard is a render, because a property read would pass while the feature was absent
+
+This is a feature where every property can be set and the result still wrong: a sign flipped, a band
+measured in the wrong coordinate space, a transform on the wrong parent. All three leave `Clip` and
+`RenderTransform` assigned and the frozen column somewhere else. Asserting they are non-null is the
+§5.5 shape.
+
+So the columns are drawn in flat colour through the public `Template` kind (§57) — nothing reaches
+into the control to paint anything — and the **pixels inside the band are counted**. The assertion is
+not "a clip exists" but **"no pixel of the scrolling column is inside the frozen band"**, and only a
+render can say that. A control case sits beside it: with nothing frozen, that same strip must be full
+of the *scrolling* colour, so the real test cannot pass by the band being empty or misplaced.
+
+### 61.3 Two test-side mistakes, both of which looked like a broken feature
+
+Worth recording because both produce a red that points at the wrong thing:
+
+- **The cells had no height.** The template returned a `Border` with a background and no child, whose
+  desired size is zero — so six of them gave a row of no height and the count found zero pixels of
+  *every* colour. A feature that works, reported as one that draws nothing.
+- **The band was written down rather than derived.** A hard-coded rectangle guessed where the rows
+  begin and was wrong. It is now measured from the control: the rows viewport gives the left edge and
+  a realised cell gives the row's y and height.
+
+And a third, found by the sabotage that followed: `BandOf` picked the first *realised* row, which
+after a vertical scroll is one **half above the top edge** — so the band lay mostly outside the rows
+area and counted 196 pixels where thousands were expected. It now picks a row wholly inside the
+viewport. The fix is to measure a whole row, never to lower the threshold.
+
+### 61.4 The sabotages, and the hook that had no guard
+
+| Sabotage | What turned red |
+|---|---|
+| no clip on the scrolling columns — cover instead of remove | the band filled with the scrolling colour; 0 pixels of the frozen one |
+| the transform's sign flipped | the frozen column sat at x=-262 having started at 12 |
+| the band measured from column starts instead of the child's bounds | the frozen column vanished from the band |
+| the `_pinned` flag dropped | unfreezing left one column pinned to nothing |
+| **the `LayoutUpdated` hook removed** | **nothing, at first** |
+
+That last one is the entry. `Pin` runs from the scroll handler and from `LayoutUpdated`, and removing
+the second changed no test — because every test scrolled a table whose rows were already on screen,
+and for those the scroll handler is enough. The case it exists for is a row **realised by the
+virtualising panel after the horizontal scroll happened**: the handler has already run and will not
+run again, so the row arrives unpinned. A frozen column that is frozen only for the rows that
+happened to be visible when you scrolled sideways.
+
+The new guard scrolls right, then down — throwing those rows away and building new ones — and counts
+the band on a freshly realised row. With the hook removed it reports **0 pixels of the frozen
+column**, which is the defect exactly.
+
+### 61.5 What pass 1 does not claim
+
+`FrozenColumns` is counted in **columns as the caller added them**, not grid columns, so a gutter is
+frozen along with them once the count is above zero, and a hidden column still takes one. Freezing
+more columns than the table has freezes all of them, which leaves nothing to scroll — the honest
+reading of a harmless thing to say, rather than an exception at layout time.
+
+Still hazards, and §60.2's list is unchanged by this pass: **hit-testing under a clip**, **keyboard
+focus reaching a clipped control**, and whether a peer reports a clipped cell **offscreen**. Nothing
+here has looked at any of the three, and a clipped cell is still in the automation tree and still, as
+far as anything measured knows, clickable. That is pass 2.
+
+## 62. Frozen columns: whether they are real, or only look right
+
+Pass 2 of the frozen-column arc. §61.5 left three hazards, and this pass answers all three by
+measurement. Two were fine, one was a defect worse than the thing pass 1 fixed.
+
+### 62.1 A clip does remove a cell from hit-testing
+
+**This was load-bearing and unverified.** A scrolling cell whose right-hand part lies under the band
+is still *laid out* there, and grid children later in the collection sit above earlier ones — so
+column 1 covers the frozen column 0 at every point of the band. If a clip did not take it out of hit
+testing, every click on a frozen cell would land on an invisible neighbour, and a double-click would
+open an editor on a cell nobody can see.
+
+Measured with **real pointer input**, because that is what the question is about, and because the
+hit-test API probe that went looking first returned no cell at *any* point including a fully visible
+one — silence that means nothing (§48.2). A double-click at x=60, inside the band and inside column
+1's laid-out rectangle, opens an editor on **`row00-0`**: the frozen column's own cell.
+
+So clipping is enough, and nothing needs `IsHitTestVisible` beside it.
+
+### 62.2 Focus landed under the band, which is §24 in a new place
+
+**The defect this pass exists for.** A `ScrollViewer` brings a newly focused control into view by
+scrolling the least it can to put that control inside the **viewport**, whose left edge is zero. It
+knows nothing about two hundred pixels of frozen columns sitting over it, so "just visible at the
+left" means "exactly underneath them".
+
+Measured, before the fix: tabbing to a control in column 1 of a table scrolled to 824 scrolled to
+offset **212** and left it **focused, at x=0, with a clip of zero width** — holding the keyboard focus
+and drawing nothing at all. A user pressing Tab has no way to know where they are.
+
+The fix scrolls by exactly the overlap, which lands the control on the band's edge and no further —
+the smallest move that makes it visible, which is what `BringIntoView` was trying to do. After it,
+the same control sits at x=212 with no clip.
+
+Two details that are not obvious:
+
+- **The correction cannot be read off the clip.** `Pin` clamps the hidden amount to the child's own
+  width, because a clip rectangle cannot be wider than what it clips. The amount needed to clear the
+  band is the **unclamped** overlap, and for a fully hidden control those are different numbers.
+  Sabotaging that substitution leaves the cell at x=-412.
+- **It runs on the next layout, not in the focus handler.** The ScrollViewer's own `BringIntoView`
+  has not run when `GotFocus` fires, so correcting a position it is about to change would be
+  corrected right back.
+
+The handler is bubbling and registered on the table, so it covers a heading, a cell editor and a
+caller's own control inside a template column without any of them being registered.
+
+### 62.3 The hollow guard, again — focusing a *frozen* cell
+
+Three sabotages, and the third turned nothing red:
+
+| Sabotage | What turned red |
+|---|---|
+| the `GotFocus` handler removed | the focused cell sat at x=0, under a band running to 210 |
+| the correction reads the clamped clip instead of the true overlap | the focused cell sat at x=-412 |
+| **the frozen-column test dropped from the focus walk** | **nothing** |
+
+A frozen child sits at a small `Bounds.X` — column zero is at zero — so the overlap arithmetic that
+clears a *scrolling* cell reads, for a frozen one, as "the whole scroll offset plus the band". Every
+existing focus guard focused a scrolling cell, so none of them noticed. The new guard focuses a
+pinned cell in a table scrolled to 300 and requires the offset not to move; without the early return
+it **snaps back to 0**. A frozen cell is already visible; there is nothing to clear.
+
+That is the third hollow guard this arc has produced (§57.6, §61.4), all found the same way and none
+found by reading.
+
+### 62.4 `IsOffscreen` is not a signal here, and is left alone
+
+Measured across two configurations, and it does not track the pin:
+
+| | what it reports |
+|---|---|
+| a **frozen** cell, visible on screen | `offscreen=True` in one measured shape |
+| a **fully clipped** cell, invisible | `offscreen=False` in the same shape |
+| every cell, with template cells rather than text cells | `offscreen=False`, scrolled or not |
+
+The peer computes from layout, and the pin is render-level, so the two disagree by construction —
+and the answer varies with the peer type, which the table does not choose for a template column
+anyway.
+
+**It is recorded rather than fixed, and the reason is not difficulty.** The obvious lever is
+`AccessibilityView.Raw` on a fully clipped cell, and it is the wrong lever: a cell scrolled off to the
+*right* is equally invisible and stays in the tree, so removing the clipped ones would make the
+control inconsistent with itself, and UIA's own convention for "exists but is not visible" is
+`IsOffscreen` rather than removal. Overriding the peer is not available either — a template column's
+cell is a caller's control with a caller's peer.
+
+What makes this a hazard rather than a defect is §27.3: **the row's spoken sentence carries every
+column's value**, frozen, scrolled or clipped, so a reader navigating rows is told everything. It is
+cell-level navigation that cannot report visibility honestly, and that is the same for any
+horizontally scrolled table.
+
+## 63. Frozen columns: the seam, and a gutter that stops running away
+
+Pass 3. Two decisions and one thing that needed no code at all.
+
+### 63.1 The boundary is drawn, and drawn at rest
+
+Frozen columns were invisible until the table was scrolled. The user was given a layout that behaves
+differently on the left and told nothing about it until they discovered it — so the edge is now drawn
+**whether or not anything has been scrolled yet**.
+
+**The implementation is a sibling in the last frozen column, and that is the whole of it.** It is the
+same shape as a vertical grid rule (§56.2) — a `Border`, aligned right, one pixel — and because it
+sits in a *frozen* column, `Pin` translates it along with everything else in there. There is no
+positioning code for the seam and no way for it to drift from the boundary it marks: it **is** the
+right-hand edge of that column.
+
+It takes `LunaBorder`, the token the grid rules already take, on §56.2's unchanged argument: it is
+where one surface stops and the next begins, and it is already held to 3:1 against both surfaces.
+When vertical rules are also on, the two coincide exactly rather than doubling up, because both are
+one pixel aligned to the same edge. It keeps its own class so a host that wants the boundary louder
+than a grid line can restyle one without the other.
+
+### 63.2 A gutter is always frozen, which reverses §59.4 on purpose
+
+§59.4 pinned the opposite — that the gutter scrolls away — as *a decision on the record rather than a
+surprise*, because nothing could be frozen when it was written, and said the test should be
+**rewritten rather than deleted** when the frozen work landed. This is that.
+
+A row header is how a user refers to a row. One that scrolls off leaves them reading a line of values
+with nothing to say which row it belongs to, which is the whole of what a gutter is for. So a gutter
+is frozen on its own account, at `FrozenColumns = 0`, and the seam appears for a table that never
+asked for a frozen column at all.
+
+A consequence worth stating: a table with a gutter now goes through `Pin` on every layout where
+before it did not. That is why a frozen child at offset zero gets `RenderTransform = null` rather
+than a zero translation — an unscrolled table has exactly the visual tree it had before frozen
+columns existed, instead of carrying a transform per cell for a scroll that never happened.
+
+### 63.3 Hierarchy needed nothing
+
+A frozen expander column keeps its indent and its toggle on screen, and no code was written for it.
+The expander panel is a grid child like any other (§55), so it is pinned by its column along with
+everything else — which is the §61.1 argument about direct children being the right granularity,
+paying off in a case that was never considered when the granularity was chosen. A test pins it
+anyway, because "it happens to work" and "it is guaranteed to work" are different claims.
+
+### 63.4 Two more hollow guards, and what made them hollow
+
+| Sabotage | First result | After |
+|---|---|---|
+| the seam placed in column 0 instead of the last frozen column | **nothing** | seam at 211, band ending at 412 |
+| `FrozenColumns` no longer rebuilds on assignment | **nothing** | the seam never appears |
+
+**The first is a coincidence dressed as a guard.** Every seam test froze *one* column, and with one
+frozen column the last frozen index **is** zero — so "column 0" and "the last frozen column" are the
+same instruction and no sabotage can tell them apart. Freezing two makes them different numbers.
+Whenever a test's fixture makes two expressions coincide, it can only be testing one of them.
+
+**The second is a fixture artefact.** Every test set `FrozenColumns` in an object initializer, which
+runs *before* the columns are added — and adding a column rebuilds anyway, so the seam appeared
+whether or not the setter asked for it. The case that exercises the setter is the one an application
+actually has: a **"Freeze first column" menu item**, toggled while the table is on screen. That test
+freezes after showing and scrolling, and checks the pixels.
+
+That makes five hollow guards this arc (§57.6, §61.4, §62.3, and both of these). The pattern in all
+five is the same: the assertion was true for a reason other than the code under test, and only
+sabotage said so.
+
+## 64. Frozen columns: the interactions, and two defects older than this pass
+
+Pass 4. Three interactions and two bounds — and the interactions turned up a defect in §59 and a
+defect in §62 that had been shipping quietly since those passes landed.
+
+### 64.1 Freezing must never take scrolling away
+
+A frozen band as wide as the viewport leaves the scrolling columns **nowhere to be**: they are clipped
+to nothing at every offset, and the table is back to §59's defect, where columns exist and no
+scrollbar, wheel or key reaches them. Measured at two frozen columns of 300 in a 400-wide table —
+band 600, viewport 400, columns 2 upwards clipped to zero width at maximum scroll.
+
+So **a band that does not leave room freezes nothing.** Freezing is a refinement of scrolling and does
+not get to remove it. A caller who freezes too much, or a user who drags the window narrow, gets an
+ordinary scrolling table rather than an unusable one, and it comes back by itself when there is room
+again because the decision is recomputed per layout rather than latched.
+
+Two consequences worth stating, because they changed existing tests:
+
+- **Freezing every column always collapses.** The band becomes the whole table width, which can only
+  leave room when the table already fits — and a table that fits does not scroll. `FrozenColumns = 99`
+  is still harmless and still clamped to the column count; what it *means* is an ordinary scrolling
+  table.
+- **The seam is hidden when the band is refused.** It is built into the header and every row from
+  what the caller asked for (§63.1), and a line drawn where nothing is pinned is a statement about
+  the layout that is not true. That in turn required `Pin`'s early-out to test what was **asked for**
+  rather than what was granted, or a refused band left its seams behind.
+
+A hidden column still takes one of the frozen places, because `FrozenColumns` is counted in columns as
+they were added — the same rule as every other index this control takes (§27.11, §58.2). It
+contributes nothing to the band, being pinned to zero width.
+
+### 64.2 A correction to §59.2: the scroll event's offset can be stale
+
+§59.2 cached the horizontal offset from the `ScrollChanged` event's own viewer. **That number is not
+always the one the viewer has settled on.** Measured: a scroll caused by `BringIntoView` — which is
+what Tab, F2 and `Edit` all provoke — raises `ScrollChanged` reporting **0 while the viewer is already
+at 612**, and no later event corrects it.
+
+The consequence was silent and not small: whenever a scroll was caused by anything other than the user
+dragging the bar, the header did not move, and every heading sat hundreds of pixels from its own
+cells. §59's own guards never saw it because every one of them scrolled by assigning `Offset`
+directly.
+
+The offset is now read in `Pin`, from the viewer, at layout time — which cannot be stale, because
+layout is what happens after the offset settles. The event is kept for promptness and its `Offset` is
+ignored.
+
+### 64.3 A correction to §62: the viewer was the wrong one
+
+Worse, and the same shape. §62 took the `ScrollViewer` from the event's `Source`. **A `TextBox` has a
+`ScrollViewer` inside its own template**, so the moment a cell editor was opened, that inner viewer
+raised `ScrollChanged`, the event bubbled to `PART_Rows`, and the table pointed itself at the editor's
+scroller from then on. Its offset is always zero, so the header stopped following and every pin went
+stale — measured as a table sitting at offset 600 with the control's own `_scrolledTo` reading 0, and
+`ReferenceEquals(cached, real)` returning **false**.
+
+The viewer this control owns is now identified as *the one that is not inside a row*, and resolved by
+lookup rather than accepted from an event. It is worth noting how it was found: not by reading the
+code, but by printing the private fields when a fix that should have worked did not.
+
+### 64.4 Editing a column that is not on screen
+
+`Edit` is public, F2 goes through it, and a "Rename" menu item is the obvious caller — so the cell
+being edited need not be anywhere near the viewport. Measured: `Edit(item, 4)` on a 400-wide table left
+a focused editor at **x=812** and moved the scroll not at all.
+
+**The editor's own `Focus()` cannot fix this**, which is the part worth knowing before somebody
+deletes the line. A `ScrollViewer` brings a focused control into view from its *arranged bounds*, and
+the editor is created, inserted and focused inside one call — it has never been laid out and has no
+bounds to bring anywhere. The **cell** has been arranged for as long as its row has, so the cell is
+what gets scrolled to, and §62.2's band correction then moves the editor clear. It lands at the band's
+edge, exactly.
+
+### 64.5 What needed nothing
+
+Dragging a **frozen** column's width moves the band and the seam with it, and no code was written for
+it: `Pin` recomputes the band from the live column widths on every layout. Measured at 200 → 120, with
+the column still pinned at x=12, the seam following to 131, and the neighbours' clips updating. It is
+tested anyway, for §63.3's reason.
+
+### 64.6 The sabotages
+
+| Sabotage | What turned red |
+|---|---|
+| `BeginEdit` stops bringing the cell into view | the editor opened at x=812, outside a 400-wide viewport |
+| the viewer taken from the event's `Source` again | heading 4 sat **600px** from its own cells |
+| the band-too-wide clamp removed | the far columns became unreachable again |
+
+One existing test changed rather than being sabotaged: the header's transform is now **null** at rest
+rather than a zero translation, so a table at rest carries exactly the visual tree it carried before
+any of this existed. That matters more since §63.2, where a gutter alone is enough to put the whole
+control through `Pin`.
+
+## 65. Frozen columns: the record, and what is left of parity
+
+Pass 5, and the last of the five §60.2 set out. Nothing is built here. What remains of a feature once
+it works is the part that lives outside the control: the sample somebody looks at, the two documents a
+consumer reads, and the parity table this whole arc was measured against.
+
+### 65.1 Two documents that told a consumer the opposite
+
+`README.md` and `CHANGELOG.md` both said frozen columns were not there, and both cited §59.3 for it:
+
+> Frozen columns are *not* here; `docs/LunaP.md` §59.3 has the visual tree walked out and says why.
+
+> **Frozen columns are still not there**, and `§59.3` records why with the visual tree walked out …
+> Reach for `TreeDataGrid` if you need them, licence gate and all.
+
+Both are corrected in place, and **that is not the habit being broken.** Corrections-as-new-sections is
+a rule about *this* document, which is a record kept over time. The README describes today and has no
+history to preserve; the 0.8.0 entry in the changelog is unreleased, so nothing has yet been told to
+anybody in a version they could have taken. The sentence that would have been a correction is the one
+that shipped — and it did not.
+
+It is worth noticing how close it came. Four passes of work sat behind a front door still telling
+people to reach for a licence-gated package instead.
+
+### 65.2 The gallery gives up star widths to show a band
+
+Freezing is only visible when something scrolls past the frozen part, and **a table of star-width
+columns fits by definition and never scrolls.** The gallery's table was three star columns and two
+narrow ones; a `FrozenColumns` on it would have been refused by §64.1 and drawn nothing at all.
+
+So the sample is now a table that deliberately does not fit. Measured after the change: extent
+**622** against a viewport of **510**, columns resolving to 18 / 200 / 120 / 150 / 40 / 40 / 30, and a
+band of **218** — the gutter plus the pinned name column, comfortably inside the viewport.
+
+Two things were paid for that:
+
+- **The name column's `2*` became `200`.** A frozen column's width *is* the band, so a caller who
+  freezes one is declaring how much of the viewport stops scrolling. A star column in a table that
+  overflows resolves to its content anyway, which would have made the band whatever the longest name
+  in the sample data happened to be.
+- **A sixth column that the evidence does not have.** §27's field list is a name, a type and a page;
+  `default` is there to push the table past its own width. It is at least a column such a table really
+  has — a schema that says what a field *is* and not what it starts as is half a schema — but it is
+  here for a feature and the gallery says so beside it.
+
+**What the gallery no longer shows is star widths**, which is a real loss and is recorded rather than
+argued away: the one place a reader could see three columns share a width now shows six that do not.
+The fitting case is measured in §59.2 and guarded in `TableScrollTests`, so it is covered — but it is
+covered by a test rather than by a picture, and those are not the same audience.
+
+### 65.3 A sample can stop demonstrating its feature without failing anything
+
+Every count in `GalleryRenderTests` would still pass if the table quietly fitted again — one more
+section above it, a window a hundred points wider, a column narrowed. §64.1 would refuse the band,
+the seam would vanish, and the gallery would go on rendering a perfectly good table with no evidence
+of §61 through §64 anywhere in it.
+
+So the sample's *overflow* is asserted, with the failure message saying what it means rather than
+which number moved. Sabotaged by narrowing `default` to 20: **extent 510 against viewport 510.**
+
+**The first draft of that guard was hollow, which makes six for this arc.** It asserted the seam was
+visible — and a gutter is pinned on its own account (§63.2), so a table with a row header and
+`FrozenColumns = 0` draws a visible seam too, at the gutter's own edge. Setting the gallery to freeze
+nothing left the assertion green. What distinguishes them is *where* the seam is: column 0 is the
+gutter, so only a seam in column 1 says a column the **caller** asked to freeze is inside the band.
+
+That is the same shape as both of §63.4's: an assertion true for a reason other than the code under
+test, in a fixture where two different things happen to coincide.
+
+### 65.4 `FrozenColumns` is not remembered, and that is the rule rather than an omission
+
+§27.11 remembers column widths and the sort order. It would be one line to remember the frozen count
+beside them, and it is deliberately not there.
+
+**What that file holds is what the user did** — dragged a column, clicked a heading. `FrozenColumns`
+is what the *caller* declared, in the same class as `Children`, `ExpanderColumn`, `GridLines` and the
+column list itself. Remembering it would mean an application that ships "the first column is pinned"
+finds a user's stale `tables.json` overriding the next release's choice, with no way to push a new
+one.
+
+The case that looks like a counter-example is the one §63.4 built a test around: a **"Freeze first
+column" menu item**, where it *is* something the user did and they will expect it back. That
+application already has `ISettingsStore` (§19.1), and remembering its own menu item is one line on its
+side of the seam — where the decision belongs, because only that application knows whether the pin is
+its own choice or the user's.
+
+### 65.5 The parity table, re-measured against what is actually on the type
+
+§54.3 listed thirteen gaps against `Avalonia.Controls.TreeDataGrid` 12.2.0. Read back off
+`LunaTable<T>`'s and `LunaColumn<T>`'s own public surface — the baseline in
+`tests/EmuSen.LunaP.Tests/ApiSurface/`, not from memory of what was written:
+
+| Gap | Where it stands |
+|---|---|
+| Hierarchy | **Closed.** `Children`, `Expand`/`Collapse`/`ExpandAll`, `ExpanderColumn`, `IndentSize` (§55) |
+| Cell kinds | **Closed.** `LunaCellKind`, check and template columns (§57) |
+| Row headers | **Closed.** `RowHeader`, `RowHeaderWidth`, `RowHeaderCaption` (§58) |
+| Frozen columns | **Closed.** `FrozenColumns` (§60–§65) |
+| Grid lines | **Closed.** `GridLines` (§56) |
+| Edit gestures | **Closed.** `EditGestures` (§56) |
+| Lifecycle events | **Closed.** `RowPrepared`, `RowClearing`, `CellValueChanged` — and `CellPrepared` / `CellClearing` refused with an argument rather than missed (§56.3) |
+| Navigation | **Closed.** `BringRowIntoView`, `TryGetCell`, `TryGetRow` — **no section**, see §65.6 |
+| Multi-row selection | **Closed.** `SelectionMode`: None / Single / Multiple, `SelectedItems` — **no section** |
+| Per-column control | Mostly. `IsVisible`, `MinWidth`, `MaxWidth` — **no section**. Alignment and a programmatic sort direction are **not there at all** |
+| Cell selection | Open. There is no `LunaSelectionMode.Cell`, and §57.5 records the same gap from the check column's side |
+| Automation depth | Partial. Row and cell-value providers (§50.6); no cell-level peer, and `IsOffscreen` is a recorded hazard under a pinned band (§62.4) |
+| Row drag-and-drop | Open. Nothing of it exists |
+| Column virtualization | Open. Every column of every realised row is built |
+
+**Three rows are open, two are partial, and one closed row is missing half its parity item** —
+alignment and `SortDirection` were listed in §54.3 and are not on the type. Writing the table out
+again is what found that: "parity" was a decision taken in §54 with a measurement behind it, and it
+stays honest only if what is left is named rather than rounded to done.
+
+The partial rows are small and the open ones are not. Cell selection is the one that carries others
+with it — it is what a cell-level automation peer would report, and §57.5's read-only check column
+wants it too.
+
+### 65.6 Three capabilities that shipped without a section
+
+Reading the table back off the public surface found something the arc itself did not: **`SelectionMode`
+and `SelectedItems`, the per-column `IsVisible` / `MinWidth` / `MaxWidth`, and the three navigation
+methods have no section in this document.** They landed in pass 2 alongside the three items §56 does
+write up, they are guarded in `TableParityTests`, and each carries its argument in a `//` block beside
+the code — `SelectionMode`'s explains why `None` is a real mode and not an omission, `IsVisible`'s
+explains why a hidden column keeps its index, `MinWidth`'s explains what a star column with no floor
+does under a drag. §56's own first line says *"all three"*, and there were six.
+
+Nothing is broken by it. No citation dangles — the code cites §54.3 for these, and §54.3 resolves —
+and the reasoning is not lost, because it is in the file next to the thing it explains, which is where
+this project puts reasoning first (`CLAUDE.md`, "Code explains itself"). What is missing is the other
+half: the alternatives tried, the measurements, and the shape of the decision, which is what this
+document is for.
+
+**It is recorded here rather than back-filled**, and that is a deliberate choice with a cost. A section
+written now would be reconstructed from the code comments and would read as though it had been argued
+at the time; there are no measurements to put in it, because none were taken. An entry saying *"these
+three shipped without their write-up, here is where their reasoning actually lives"* is true, and a
+smooth §56.5 pretending otherwise would not be. The next pass to touch selection — cell selection is
+the open item and touches all of it — is the honest place for the section, with the argument made
+where it is actually being made.
+
+What it says about method is the useful part. **The record was thinner than the work in exactly the
+place nobody re-read**, and it took writing the parity table out against the API baseline to notice —
+the same enumerate-rather-than-recall move §48.2 argues for, applied to this document instead of to a
+resource tree.
+
+### 65.7 The arc, counted
+
+Five passes, from a blocker to a feature:
+
+| | |
+|---|---|
+| Sections | §60 (the correction) through §65 |
+| Guards added | **27** — 25 in `TableFrozenTests`, one in `TableScrollTests`, one in `GalleryRenderTests` |
+| Guards rewritten rather than deleted | two — §59.4's gutter test, and the header's transform at rest (§64.6) |
+| Hollow guards found by sabotage | **five in this arc** — §61.4, §62.3, two in §63.4, one in §65.3; six counting §57.6 one pass earlier |
+| Sections corrected | **four** — §59.3 (by §60), §59.4 (by §63.2), §59.2 (by §64.2), §62 (by §64.3) |
+| Hazards recorded rather than fixed | two — `IsOffscreen` (§62.4), a `Toggle` that cannot say why (§57.4) |
+
+**Not one of them was found by reading.** Every one was found by breaking the code underneath it and
+watching the test stay green, which is the practice this document has asked for since §22.5 and the
+only reason the number is known at all. The ratio is worth keeping in mind next time a guard is
+trusted because it looks thorough: **five of the twenty-seven guards written in this arc could not
+fail**, and every one of the five had been read over and thought sound.
+
+The four corrections are worth the same look. **Three of them were mine from earlier passes of this
+same arc**, written days apart, and two were defects a user would have hit rather than points of
+record: a header that stopped following any scroll it did not cause (§64.2), and a viewer field that a
+cell editor permanently hijacked (§64.3). Both had passing guards over them the entire time.
+
+## 66. A tree whose expander was not in the first column drew two cells on top of each other
+
+Found while preparing cell selection, which needs to know which grid column a cell is actually in.
+`ExpanderColumn` (§55) has been a public property for the whole of this arc and is wrong for every
+value except its default.
+
+### 66.1 The measurement
+
+A two-column tree, `ExpanderColumn = 1`, in a 400-wide table. The row grid's children, before:
+
+    TableCell gridCol=0 x=0 w=80
+    DockPanel gridCol=0 x=0 w=80
+
+Both in grid column 0, both 80 wide, one drawn over the other. Column 1 — the column with the
+expander, the indent and the row's name in it — is not on screen at all, and the 296 pixels it was
+entitled to are empty. After:
+
+    TableCell gridCol=0 x=0 w=80
+    DockPanel gridCol=1 x=80 w=296
+
+### 66.2 An attached property on an object nothing reads it from
+
+`Row()` built the cell, set `Grid.SetColumn` **on the cell**, and then added either the cell or — for
+the expander column — a `DockPanel` wrapping it. A `Grid` reads its attached properties off its own
+direct children, so in the wrapped case the number was set on a grandchild and the child took
+`Grid.Column`'s default of **0**.
+
+The fix is to place the column on whatever the grid is actually holding. The *marker*
+(`TableCells.ColumnProperty`) stays on the cell, deliberately: `Cell()` finds it by walking
+descendants, so it is reachable through the wrapper, and moving it to the wrapper would let a
+template cell's own children answer for the column (§57.5's reason, unchanged).
+
+**A consequence read from the code rather than measured, and recorded as a thing to check rather than
+as a second symptom:** `Pin` decides what is inside the frozen band with `Grid.GetColumn(child)`, the
+same property. A wrapper reading 0 would have counted as frozen whatever `ExpanderColumn` said. There
+is no test either way yet.
+
+### 66.3 Why nothing caught it, which is the same shape a third time
+
+Four tests exercise `ExpanderColumn` — two here and two in `TableCellKindTests` — and **all four set
+it to 0**. Zero is also `Grid.Column`'s default. So in every fixture that existed, "the column this
+was put in" and "the column nothing set" were the same number, and no assertion could tell the two
+apart.
+
+That is exactly §63.4's pattern and exactly §65.3's: *whenever a fixture makes two expressions
+coincide, it can only be testing one of them.* It has now happened three times in three consecutive
+sections, twice with a literal 0 as the coinciding value. The lesson is not about expanders — it is
+that **a default is the worst possible value to write a fixture with**, because it is the one value
+that cannot distinguish "set correctly" from "never set".
+
+The guard uses `ExpanderColumn = 1` and asserts both halves: the attached property, and that the two
+cells do not share an x. Sabotaged by putting the column back on the inner cell, the second assertion
+reports the expander column starting at 0 inside a column 0 that ends at 80.
+
+## 67. Cell selection, and the six guards that could not fail
+
+The last big row of §54.3, and the one §47.3 classified as a *new kind* rather than a completion —
+correctly, which §54.2 kept while overruling what followed from it. It is a new kind: a selection
+stops being a row and becomes a coordinate, and F2, the arrow keys, `SelectedItems` and the automation
+story all change shape around that.
+
+### 67.1 Two properties, because the reference folded two questions into one enum
+
+`TreeDataGridSelectionMode` is `None / Row / Cell / Multiple` — enumerated from the assembly, not
+recalled. Four members carrying two independent questions: *how many* things are selected, and *what
+kind of thing* a selection is. It cannot express single-cell and multi-cell as different states,
+because it has spent one member on each answer to a different question.
+
+LunaP splits them, and `LunaSelectionMode`'s own comment had already committed to this in pass 2
+before there was anything to split with:
+
+```csharp
+table.SelectionUnit = LunaSelectionUnit.Cell;      // Row is the default
+table.SelectionMode = LunaSelectionMode.Multiple;  // and this still means how many
+```
+
+Two properties **multiply** where one enum adds: Row and Cell against None, Single and Multiple is six
+behaviours from five members, and a third unit would cost one member rather than three. This is
+§56.1's argument for `[Flags]` edit gestures arriving at the same place from the other direction —
+*"an enum of named combinations grows a member per pair"*.
+
+### 67.2 A coordinate made of a model, not of two positions
+
+`CellIndex` is `(int ColumnIndex, IndexPath RowIndex)`. Both halves are positions, and a position is
+only true until something is sorted, filtered, expanded or refreshed.
+
+```csharp
+public readonly record struct LunaCell<T>(T Row, int Column) where T : class;
+```
+
+The row half is the **model**, because that is the identity every other selection API on this control
+already uses and the one thing that survives a rebuild — `Selected` is a `T`, `Edit` and `TryGetCell`
+take the model, expansion is keyed by model (§55.4), row selection has been keyed by model since
+§27.6. The column half stays an index because a column has no other identity here: `LunaColumn<T>` is
+a declaration rather than something a caller holds, and headers are not unique.
+
+The selection itself is a set of `(key, column)` pairs. Held by key rather than by model, so a
+`Refresh` that rebuilds every object keeps the selection; walked against the current view on the way
+out, so a sort or an expand reorders `SelectedCells` for free and there is no second copy to keep in
+step.
+
+### 67.3 An outline, never a fill
+
+A selected cell is a `Border` sibling in the cell's grid column — the same shape as a vertical grid
+rule (§56.2) and the frozen seam (§63.1), and for the same reason: no wrapper, so nothing about the
+row's tree changes and `BeginEdit` still finds a `Panel` where it needs one.
+
+**It is drawn as an outline and that is load-bearing rather than decorative.** §57 lets a cell be any
+control a caller returned from `Build` — a coloured dot, a progress bar, a sparkline. A fill would
+paint over all three. A box is drawable around any of them and hides none, and it survives a host
+restyling the row's own selected background, which a fill chosen to sit on top of one would not.
+
+Built on demand rather than one per cell kept hidden, for the reason `Row()` already gives for not
+building hidden columns: *a control that cannot be seen still costs a measure pass per row per frame*.
+
+### 67.4 What the keyboard owns, and what it deliberately does not
+
+Left and Right walk the columns, Home and End go to the ends, and a hidden column is stepped over
+rather than landed on — a selection nobody can see is one the user cannot act on, and the key would
+look like it had done nothing.
+
+**Up and Down are not handled**, which is the more interesting half. The `ListBox` already moves its
+row selection with them, scrolls and virtualises while doing so, and the current cell's row follows
+because the row under the cell is kept in step anyway. Re-implementing them would be a second, worse
+copy of three behaviours. The exception is Shift: `Shift+Up` in a single-selection `ListBox` does
+nothing at all, so a range that grows upwards has to be built here — and once `Shift+Up` is ours,
+`Shift+Down` has to be too, or one key would behave differently from the other.
+
+A Shift range is a **rectangle**, not a reading-order run. `Shift` from (row 0, column 0) to
+(row 1, column 1) is four cells and not three; a spreadsheet's Shift has never meant "everything from
+here to there along the rows", and the difference is cells a caller would act on that the user never
+saw highlighted.
+
+At the edge of the row nothing moves **and the key is still eaten**. Letting `Right` through on the
+last column hands it to Avalonia's directional focus navigation, which moves focus out of the table —
+so walking one column too far would leave the control.
+
+### 67.5 Six guards that could not fail, and one that measured the wrong thing
+
+This is the worst ratio of the whole arc. Nine sabotages were run and **six of the first drafts stayed
+green**, every one of them for a different reason:
+
+| The guard | Why it could not fail |
+|---|---|
+| `ContainerPrepared` marks a recycled row | **The hook is wrong.** At that moment the container has no row grid inside it at all — `grid=False` on every prepare. The call was a no-op, and the sweep it replaced was doing the work. |
+| a sweep of realised containers marks every row | `GetRealizedContainers()` does not include the container being prepared — `listed=False`, measured — so with three rows each is marked when its *successor* arrives, and only the last is missed. A three-row fixture cannot see it; a **one-row table** can. |
+| a departed row's cell is dropped | Every reader resolves a key through the current view, so a departed row answers "not selected" whether or not anything was pruned. The difference only appears when a row with the **same key comes back** — unpruned, its old cell lights up again, selected by nobody. |
+| changing the unit clears the selection | `SelectedCell`, the boxes and the row all follow the *cursor*. A version that dropped the cursor and kept the set passed unchanged, and would have handed a caller a list of cells after the user switched the table to rows. `SelectedCells` is the assertion that bites. |
+| F2 refuses a read-only cell | The test was right and **the sabotage was wrong**: the check it removed was a duplicate of one inside `Edit`. A duplicated rule cannot be sabotaged into failing, which is how the duplicate was found. It is gone — one rule, one owner. |
+| `Right` on the last column is handled | **Avalonia handles the arrow key itself** on the way up, so `e.Handled` is true inside a window whatever this control does. Measured: `handled=False` with no window, `handled=True` in one, with the window's own bubble handler seeing it already true. The assertion is asked of a parentless table now, which leaves exactly one handler in the chain. |
+
+Three of these are the pattern §66.3 named one section earlier — *a fixture where two expressions
+coincide can only be testing one of them* — and one of them is that pattern applied to the harness
+rather than to the code: **a control inside a window cannot answer "did I handle this key", because
+something else will.**
+
+### 67.6 What it changes elsewhere
+
+- **F2 opens the cell the user is on**, where in a row unit it still opens the first editable column.
+  §50's comment saying this control *"has no concept of a focused cell"* was true and is what this
+  section changed; it is amended in place rather than deleted, because the reasoning it gives is
+  still the reasoning for the row half.
+- **`SelectedItems` reports every row a selected cell is in.** Reading the `ListBox` would answer
+  "one" for a selection spanning three rows, because the `ListBox` is holding the current cell's row
+  and nothing else.
+- **The gallery's table selects cells**, and it can afford to only because the `LunaList` of peers
+  above it is a row selection, is selected in the static render, and is the shape almost every list in
+  an application has. A unit is exclusive, so this would otherwise be §65.2's trade again — give up
+  the default to show the new thing — and here it is not a trade at all.
+
+### 67.7 What is not here
+
+**Cell-level automation peers.** A screen reader still meets a row and its sentence (§50.5); there is
+no peer that says "row 4, column 2" and no `ISelectionItemProvider` on a cell. §54.3's automation row
+stays open and is the next pass. Recorded as a **hazard rather than a behaviour**: a user driving this
+control with a reader gets the row's spoken name and no indication that a cell within it is where the
+keyboard is.
+
+## 68. What a screen reader gets from a table, and a correction to §27.3
+
+Pass 2 of finishing §54.3's parity: the **automation depth** row. §67.7 closed the previous pass by
+recording a hazard — a reader met the row and its sentence, with nothing to say which cell inside it
+had the keyboard. This is that question having an answer, and two others beside it.
+
+### 68.1 A correction to §27.3: the DataGrid type was refused for a reason that is not true here
+
+§27.3 chose `AutomationControlType.Group` and said why:
+
+> A Table, not a DataGrid, and the distinction is a promise rather than a label: UIA's DataGrid and
+> Table types come with `IGridProvider` and `ITableProvider`, which let a reader ask for "row 4,
+> column 2" and navigate a grid as a grid. This control implements neither.
+
+**Avalonia 12.1.0 has neither interface.** Enumerated from `Avalonia.Controls`, the complete provider
+list is `IEmbeddedRoot`, `IExpandCollapse`, `IInvoke`, `IRangeValue`, `IRoot`, `IScroll`,
+`ISelectionItem`, `ISelection`, `IToggle`, `IValue`. There is no grid pattern for any control in this
+framework to implement, so the control type cannot be a false promise about one.
+
+And the control this is at parity with claims the type. `TreeDataGridAutomationPeer` overrides
+`GetAutomationControlTypeCore`, and the method body is three bytes — `1F 1E 2A`, which is
+`ldc.i4.s 30; ret`. Member 30 of `AutomationControlType` is **`DataGrid`**. It returns that while
+implementing exactly `ISelectionProvider` and `IScrollProvider`, which are exactly the two providers
+added here.
+
+So the type is claimed now, on the generic class where there are columns to be a grid of; the
+non-generic base stays a `Group`, which is what a table with no columns is. **The reasoning §27.3
+used to reach its conclusion was sound and its premise was wrong** — it described UIA in the
+abstract rather than what this framework can express. The rest of §27.3 stands untouched: the row's
+sentence, built from each cell paired with its header, is still the useful half of a table for a
+reader and is still what makes one legible.
+
+The guard was rewritten rather than deleted, with its assertions turned over. What it was written to
+prevent — a control type claimed with nothing behind it — is still what it prevents, so it now
+asserts the type **and** that both providers are reachable.
+
+### 68.2 Peers of the cells, which is what makes three cell kinds one answer
+
+`ISelectionProvider.GetSelection()` returns the peers of the selected cells, or of the selected rows
+in a row unit — the same answer `SelectedCells` and `SelectedItems` give, because a third notion of
+"what is selected" reachable only through automation is a third thing to keep in step.
+
+**Returning each control's own peer is the whole trick.** A check cell is a stock `CheckBox` and a
+template cell is a control the caller built; this toolkit cannot give either of them a peer, and
+wrapping them to get one would undo §67.3's reason for a sibling box and put a `Decorator` where
+`BeginEdit` needs a `Panel`. It does not have to: a peer obtained from the control arrives with
+everything that control already provides, so a reader that finds a check cell in the selection can
+still toggle it through the `IToggleProvider` Avalonia put there.
+
+### 68.3 A cell is named for its column and never for its value
+
+§57 already had this rule and had applied it to one kind — a check cell is named for its header,
+because *"a reader landing on it would otherwise hear 'checkbox, checked' with no column name"*. It
+now applies to all three, and it is `LunaAutomationPeer`'s own split between a name and an item
+status: a name is how you refer to a thing, what it currently says is its value, and folding the
+second into the first means the name of a thing changes every time the model does.
+
+So a reader hears **"armed"**, then the state from the pattern — `ToggleState` for a check cell,
+`IValueProvider.Value` for a text one (§50.6).
+
+**A template cell is the one with no pattern**, and it is why any of this needed writing. §57.2 made
+`spoken` mandatory so that a coloured dot could be described — and delivered that sentence only to
+the *row's* name. The cell itself was anonymous: a reader landing on it heard whatever a caller's
+control says for itself, which for an `Ellipse` is nothing. The sentence now goes in `ItemStatus`,
+which is the field for exactly this, set as an attached property because the control is not ours.
+
+### 68.4 A cell can go stale because a *different* cell changed
+
+Found by sabotage, and it is the finding of this pass. Removing the cell rename from the commit path
+turned nothing red, because with the naming rule above there was nothing there worth doing — a name
+that is a column header never changes.
+
+What does change is a **template cell's status**, and it changes for reasons that have nothing to do
+with that cell. A column projecting `$"{r.Name} {(r.Armed ? "armed" : "safe")}"` goes stale when the
+checkbox two columns to its left is ticked, and again when the name column is committed. Neither path
+touches the dot.
+
+So the refresh walks the whole row rather than taking the column that changed, beside the row-sentence
+refresh that §50 added for the identical reason one level up. **The cell that goes stale is not the
+cell that changed** is the sentence worth keeping.
+
+Both halves needed their own fixture to be provable at all: a template column projecting one field
+can only catch one of the two paths, and the first draft projected `Armed` alone, so the commit path
+stayed green under sabotage.
+
+### 68.5 What did not go wrong, and cost an hour anyway
+
+A guard asserting the header still lines up after a reader scrolls reported heading 2 sitting
+**146px** from its own cells, which reads exactly like §64.2's defect returning. It is not. The
+template cell in that fixture is an 8px `Ellipse` in a 300px column, and Avalonia centres an element
+with an explicit width and a stretch alignment: (300 − 8) / 2 = **146**. The measurement was of a
+centred dot's left edge against a heading's.
+
+The scroll itself was correct throughout — offset 524 of a maximum 524, header transform −524, exact.
+This is §61.3's category, a third time: *a test-side mistake that looks like a broken feature*. The
+fixture pins the alignment now, with the reason beside it.
+
+### 68.6 The sabotages
+
+Ten, of which two first drafts were green and are §68.4.
+
+| Sabotage | What turned red |
+|---|---|
+| cells are not named at all | four guards, including every selected cell coming back nameless |
+| a template cell loses its spoken status | the only cell kind that cannot say it any other way |
+| the selection reports rows even in a cell unit | three, including the toggle surviving the trip |
+| a table that fits claims it can scroll | the no-scroll report |
+| no-scroll reports 0 rather than −1 | the same guard — 0 means "at the start", not "cannot" |
+| `SetScrollPercent` ignores the request | a reader could not move the table |
+| the peer goes back to a bare `Group` | twelve, across three files |
+| a toggle stops refreshing the row's cells | the dot beside the checkbox |
+| a commit stops refreshing the row's cells | the dot beside the edited name |
+
+### 68.7 What is still not here
+
+**`IExpandCollapseProvider` on a tree row.** The reference has it; LunaP's rows are `ListBoxItem`s
+whose peers this control does not own, so the same wrapping problem applies as in §68.2 — and unlike
+the selection, there is no way to route around it. What a reader gets instead is the expander itself,
+which §55 made a real `Button`: focusable, invokable, and named *"Expand roms"* rather than
+"expander". That is the capability without the pattern, and it is stated here rather than left to be
+discovered.
+
+## 69. Two things §68 half-finished
+
+Both of §68's findings were fixed where they were found rather than where they live. This is the
+difference, and one of the two fixes was wrong on its first attempt in a way worth keeping.
+
+### 69.1 The stale cell had a third path, and it was the automation one
+
+§68.4 found that a cell can go stale because a *different* cell changed — a template column
+projecting a field that a checkbox two columns away writes — and wired the row-wide refresh into the
+two paths its sabotages happened to cross: a pointer toggle, and a typed commit.
+
+**There are three.** `SetFromAutomation` is where a screen reader's write lands (§50.6), and it
+refreshed the edited cell's text and the row's sentence and nothing else. So a reader that set a name
+through `IValueProvider.SetValue` was left with the template cell beside it describing the value
+before the one it had just written — **the defect live on the automation path, in the pass whose
+entire subject was automation.**
+
+The lesson is not about that method. Sabotage tells you an assertion can fail; it does not tell you
+the assertion covers every route to the same state. §68.4's two fixes were each *correct*, and
+together they were a fix applied to the two examples rather than to the class. The question that
+would have found it is the one the fix should have started from: **what are all the places this
+model can be written?** Three, enumerable in one grep, and one of them had no guard.
+
+A refusal is guarded too, in the same place: a reader's write that `Validate` rejects must leave the
+row exactly as it was, or the refusal is announced and the old value is not.
+
+### 69.2 A template cell was the only kind that did not start at its column's edge
+
+§68.5 recorded a test-side scare — a header-alignment guard reporting 146px of drift that turned out
+to be Avalonia centring an 8px `Ellipse` in a 300px column — and fixed the *fixture*. The fixture was
+not the problem. Every other kind of cell begins at the column's left edge, and a template cell did
+not; §57's `CheckCell` had already met the same default and written down half of it:
+
+> A CheckBox defaults to filling its slot, so in a column two hundred pixels wide the whole cell
+> becomes the toggle - and a user aiming at the row to select it ticks a box instead.
+
+**Stretch does two different things** and that is the part worth knowing. With no explicit width it
+fills the slot, which is what a progress bar or a coloured background in a cell wants. With one it
+centres. So the rule is not "left-align template cells" — it is **do not centre something the caller
+sized.**
+
+The first attempt was the broad version, and it broke eight frozen-band tests in one run: those
+fixtures use `Border` cells with no width, which stretch to fill a column and collapsed to nothing
+under a blanket `Left`. That is a consumer's progress-bar cell disappearing on upgrade, caught by a
+suite that was testing something else entirely. It now has a guard of its own rather than relying on
+that luck a second time.
+
+`IsSet` decides both halves, so a caller who wrote an alignment keeps it — the rule
+`LunaAutomationPeer.GetNameCore` follows for names, applied to layout: **answer where there is no
+answer, never overrule.** A toolkit that silently overrode a caller's alignment would be worse than
+one that never touched it, because their fix would look applied.
+
+The gallery no longer sets the alignment by hand, and its absence is the point: that line is the one
+a consumer no longer has to know to write.
+
+### 69.3 The sabotages
+
+| Sabotage | What turned red |
+|---|---|
+| a reader's write stops refreshing the row | the template cell beside the one it wrote |
+| a reader's write skips validation | the refused write changed the row anyway |
+| a template cell is left centred | it started 56px into a 120px column beside a checkbox at 0 |
+| the alignment default overrules the caller | a right-aligned cell was pulled back to the left |
+| the width test is dropped from the rule | a cell that filled its column collapsed to its content |
+
+## 70. Alignment per column, a sort without a click, and a layout that was never written down
+
+Pass 3 of finishing §54.3's parity, and the smallest row on the list: *"Per-column control —
+`IsVisible`, `MinWidth`, `MaxWidth`, alignment, programmatic `SortDirection`"*. The first three
+landed in pass 2 of the original arc; these two did not. Going to get them found a defect in §27.11
+that had been shipping since it was written.
+
+### 70.1 One instruction, spelled in each cell kind's own terms
+
+`TreeDataGridColumn` carries `HorizontalContentAlignment` and `VerticalContentAlignment` — enumerated
+from 12.2.0. `LunaColumn<T>` takes the same pair as `Alignment` and `VerticalAlignment`, both
+**nullable**, and null is not `Left`: a column that says nothing has to leave each kind doing what it
+already did, or every column anybody has declared changes at once (§26.13).
+
+A text cell takes **`TextAlignment`** and the other two take **`HorizontalAlignment`**, and that is
+one instruction rather than two rules. A `TextBlock` filling its column and drawing its text right
+keeps the ellipsis it trims with; one shrunk to its content and pushed right loses it. The two
+produce the same picture for a short value and differ only on a long one, which is why the guard
+asserts the trimming and the width as well as the property — the "consistent" version would have
+passed a test that only read `TextAlignment`'s effect on a short string.
+
+`Stretch` is the one value with nothing to say to a text cell: filling the cell is what a text cell
+already does and there is no text alignment that expresses it, so it leaves the cell alone rather
+than picking an end.
+
+The translation lives in exactly one place, because the heading needs it too — §69.1's lesson applied
+before it could happen rather than after.
+
+### 70.2 The heading follows the column
+
+A right-aligned column of sizes under a left-aligned word reads as two different columns. The
+alignment goes on the heading's **label** rather than on its `Button`: a sortable heading is a Button
+stretched across the whole column (§27.3), and moving the button would take its hover fill off the
+column it belongs to. An unsortable heading is a bare `TextBlock` and takes the same instruction by a
+different route, which is why both are guarded — the sortable case cannot cover the other.
+
+### 70.3 A sort without a heading to click
+
+`SortBy(column, descending)`, `ClearSort()`, and `SortedColumn` / `SortedDescending` to read it back.
+`SortedColumn` is `-1` when unsorted rather than a nullable, because unsorted is a real state here
+and not an absence: §27's cycle is ascending, descending, **off**, and off returns the rows to the
+order the caller gave them.
+
+**It refuses a column with no comparison** rather than falling back to the projected text. That
+fallback is the bug `Sort` takes a comparison over the model to avoid — "10" before "9" — and letting
+it in through a programmatic door with no heading to click would be worse than the original, because
+there is nothing on screen to suggest the column was ever sortable.
+
+A remembered layout still outranks it. `Restore` runs after a caller's constructor-time `SortBy`, so
+what a user clicked last time beats what the application declared this time — §27.11's principle, and
+the same one §65.4 used to keep `FrozenColumns` out of the file.
+
+### 70.4 A sort was never written down, and every fixture hid it
+
+`Cycle` — the heading click — did not poke the save debounce. Only a column **resize** did. And
+unlike `SplitPane`, which has flushed on `OnDetachedFromVisualTree` since §22, this control never
+flushed at all.
+
+So the promise on the tin — *"columns sort, resize and remember where you left them"* — held for a
+resize and not for a sort. A user who clicked a heading and closed the window lost it, unless the
+application happened to call `SaveNow` itself.
+
+**Every test in `TableLayoutTests` called `SaveNow` by hand**, which is why eleven guards over this
+file never saw it. They were testing the writer, and the defect was in what triggered the writer. The
+scenario nobody had written down is the shortest one there is: *click a heading, close the window.*
+It is a test now, and it fails against the previous commit.
+
+Both halves are fixed: every reason to save goes through one `Remember()`, and the control flushes on
+its way out of the visual tree.
+
+**One honest gap.** With the detach flush in place, sabotaging the debounce poke turns nothing red —
+the flush covers every scenario a guard can observe. The debounce is still there, because it is what
+saves a sort when the process dies with the window still open, and because two ways to write the file
+are two things that can disagree. That difference cannot be tested without waiting on a clock, and
+§22.3 settled that this project does not race clocks in tests. It is recorded here rather than
+asserted, which is the rule for a behaviour with no guard.
+
+### 70.5 The sabotages
+
+| Sabotage | What turned red |
+|---|---|
+| a text cell takes layout alignment instead of text alignment | two, including the trimming assertion |
+| `Stretch` picks an end for text | the leave-it-alone guard |
+| the heading ignores the column's alignment | both heading guards, sortable and not |
+| vertical alignment is dropped | the down-the-cell guard |
+| `SortBy` accepts a column with no comparison | the refusal |
+| a programmatic sort skips the glyph | the heading contradicting the rows |
+| the table stops flushing on detach | both §70.4 guards |
+| a sort no longer pokes the save | **nothing** — see §70.4 |
+
+## 71. Rows the user can drag, and three things that were not the feature
+
+Pass 4 of finishing §54.3's parity: **row drag-and-drop**. The reference has `AutoDragDropRows` and
+`RowDragStarted` / `RowDragOver` / `RowDrop`, with a four-value position — `None`, `Before`, `After`,
+`Inside` — enumerated from 12.2.0. LunaP takes the same four and reports them in models.
+
+### 71.1 The table reorders nothing, and that is the design
+
+`RowDropped` says what landed where; the caller moves their own rows and calls `Refresh`.
+
+**This control does not own the order.** `_items` is a copy of what `Refresh` was handed, so
+reordering it here would move the rows on screen and leave the caller's collection untouched — until
+the next `Refresh` put them back, which for a polling window is about a second. A reorder that
+survives is one the caller made.
+
+It is §57.4's rule one feature along: *a `Toggle` that declines to write leaves the tick where it
+was, because the table re-reads the model rather than trusting the box.* A `RowDropped` nobody
+handles leaves the rows where they were, for the same reason and with the same sentence behind it —
+the model is the truth and the control is a view of it.
+
+`CanDrop` is a `Func` rather than an event because **an event cannot answer a question**, and the
+indicator has to know before it promises the user anything. The line drawn mid-drag and the drop
+raised on release read the same answer, so a refused drop cannot draw a line saying it will work.
+
+### 71.2 Pointer capture, not the platform's drag-and-drop
+
+`DragDrop.DoDragDrop` moves data *between* controls and applications. This moves a row inside one
+table, which is a different problem: capture gives the whole gesture to this control, needs no data
+object, no format string and no drop-target registration — and it runs under `Avalonia.Headless`, so
+all twenty-two guards drive the real press-move-release rather than asserting about wiring.
+
+**What it gives up, stated rather than discovered: a row cannot be dragged out of this table into
+something else.** That is a real difference from the reference, and it is the price of a feature that
+can be tested at all in this repository.
+
+### 71.3 The press has to be read on the way down, for two separate reasons
+
+Both measured, and the first one hid the second.
+
+**The `ListBox` marks a press handled when it selects the row.** `pressed.Handled=True` by the time
+the event reaches this control on the way back up — so the first version of the drag never started,
+and looked wired up in every way except working. Every guard passed when the private method was
+called directly, which is how it was found.
+
+**And the `ListBox` collapses a multi-selection to the row that was pressed.** No opt-in fixes that
+one: read on the way back up, the selection is one row, and dragging a group of four would silently
+move only the row under the pointer. Read on the way *down*, it is still the four the user picked.
+
+So the drag starts on the **tunnel** route. Once it does, opting into handled events is unnecessary
+everywhere — sabotage confirmed all three `handledEventsToo` flags were dead, and they are gone
+rather than left standing as a comment that claims they matter.
+
+**What is being dragged is decided when the drag starts, not when it ends.** Capturing the row at
+press time and reading the selection at drop time is the same defect wearing a different hat: by
+release, the collapse has already happened.
+
+### 71.4 A reorder a keyboard can do
+
+§24's standard, which this project has applied to a sortable heading (a `Button`) and a column grip (a
+`GridSplitter`): a gesture only a pointer can perform is a feature half this toolkit's users do not
+have. **Alt+Up/Down moves the selected row**, raising the same `RowDropped` a drag does, so a caller
+writes one handler rather than two.
+
+Alt rather than Ctrl, because Ctrl+arrow is the scroll-without-moving idiom and a bare arrow moves the
+selection — which must keep working, or turning reordering on would take the arrow keys away from
+everybody using them to walk the list.
+
+### 71.5 A flat table has no "inside"
+
+In a tree the middle third of a row is a **reparent** — "put this file in that folder" — and the outer
+thirds are a reorder. In a flat table there is no such thing, so the row splits in half and every
+position is a reorder. Offering `Inside` where nothing could act on it would be an indicator
+promising something no caller can perform.
+
+The two are drawn differently for the same reason: a line at one edge for a reorder, an outline round
+the whole row for a reparent. Mid-drag they must not be mistakable for each other.
+
+### 71.6 The sabotages, and two that could not fail
+
+Twelve, of which ten turned red on the first attempt.
+
+| Sabotage | What turned red |
+|---|---|
+| `CanReorderRows` ignored | the off-by-default guard |
+| a row can be dropped on itself | the self-drop refusal |
+| the veto is ignored | three, including the keyboard route |
+| a flat table offers `Inside` too | the flat-table guard |
+| the drop line is never drawn | the mid-drag indicator |
+| the drop line is never removed | two |
+| Alt is not required | the bare-arrow guard |
+| the keyboard move ignores the veto | the keyboard veto |
+| the dragged set is read at drop time | the multi-selection drag |
+| the press handler goes back to bubbling | the multi-selection drag |
+| **the drag threshold is removed** | **nothing** |
+| **`handledEventsToo` dropped** | **nothing** |
+
+**The threshold guard released on the row it pressed**, where a drop is refused anyway because a row
+cannot land on itself — so the self-drop rule was doing all the work and the threshold contributed
+nothing an assertion could see. The case it exists for is a press near the bottom of one row that
+wobbles two pixels into the next, which is a user selecting a row with an unsteady hand. Rewriting it
+took two attempts, because the first version pressed at the row's midpoint and moved thirteen pixels;
+the fixture now asserts that it really does cross the boundary before it asserts anything else.
+
+**The `handledEventsToo` flags were dead** once the press moved to the tunnel, which §71.3 explains.
+They are removed. A flag kept "for safety" with a comment explaining why it is essential is worse
+than no flag, because the next reader believes the comment.
+
+That is nine hollow guards found by sabotage across §57–§71, and not one of them by reading.
+
+## 72. Columns the table does not build, and two that must never be among them
+
+The last open row of §54.3's parity table, and it was scheduled last on purpose: it is the one item
+that changes what a row *contains*, so it had to be built on top of the frozen band (§61–§65), cell
+selection (§67) and the drag (§71) rather than under them.
+
+### 72.1 What it is worth, and what it costs
+
+Measured on a table of 120 columns of 120 pixels in an 800-wide viewport — 6.7 columns visible out of
+120, which is 5.5% of the table on screen at any moment:
+
+| | 120 columns, whole | 120 columns, virtualized |
+|---|---|---|
+| cells in one row | 120 | 8 |
+| visuals in the control | 2,144 | 576 |
+| twenty refreshes of 200 rows | 853ms | 120ms |
+| one refresh | 42.7ms | 6.0ms |
+
+A six-column table refreshes in 3.0ms, so the wide table was spending roughly 93% of its time on
+cells nobody could see. 42.7ms is two and a half frames at 60Hz, per tick, in a window whose whole
+purpose is to tick (§21).
+
+**Off by default**, like every other item in the §54 arc, and here the default is not merely cautious:
+six columns cost nothing to draw whole, and the machinery below would spend a range computation per
+layout to leave every one of them exactly where it was. `VirtualizeColumns = true` is the opt-in.
+
+**The cost is stated rather than hidden.** A column that is not built has no cell, so `TryGetCell`
+answers false for it and a screen reader walking cells does not reach it — which is exactly what row
+virtualization has always done to a row scrolled away (§54.3), now true sideways as well. What is
+*not* affected is the row's spoken sentence: `Spoken` builds it from the column specs rather than
+from the cells that happen to exist, so a reader hears the whole row whatever the viewport shows.
+
+**The header is never virtualized**, and that is a design decision rather than an oversight. There is
+one heading per column against one cell per column *per row*, so the header is a few percent of the
+cost; and keeping it whole is what leaves the sort state, the resize grips and the shared size groups
+working with nothing to say about this feature at all.
+
+### 72.2 Two markers, because one could not answer both questions
+
+`TableCells.Column` says *this control is column n's cell* and is set on the cell however deep it
+sits — it is what `Cell()` and `Edit` look for. §72 needed a second question answered: *this direct
+child of the row grid exists because of column n and leaves with it*, which is the wrapper when the
+expander wraps one (§66), and is also the vertical rule, which is not a cell at all.
+
+Conflating them fails in both directions, and both were tried:
+
+- Putting `Column` on the wrapper makes `Cell()` return the wrapper, `TextCellOf` cast it to
+  `TableCell`, get null, and `Edit` silently refuse the expander column.
+- Reading ownership off `Grid.GetColumn` instead cannot tell a cell from a selection box or an open
+  editor sitting in the same column — and a fill that removed those would take the caret out of a
+  cell the user was typing in.
+
+So there is `TableCells.Owner`, defaulting to −1 for the same reason `Column` does: the gutter, the
+frozen edge, a selection box and an editor must all read "not mine", and at a default of 0 all four
+would be torn out the moment column 0 scrolled away.
+
+**A cell arriving by a scroll is inserted at the front of the grid's children, not appended.** A
+`Panel` draws its children in the order it holds them, and three things are deliberately drawn on top
+of the cells: the frozen edge, a cell-selection box and an open editor. `Row()` appends cells and
+then adds those, so the order is right by construction — but the fill runs *later* than `MarkCells`
+does, because a box goes on a selected cell of a realized row whether or not that column has ever
+been built. Appended instead, an arriving cell covers the outline and the user scrolls back to a cell
+that is selected and does not look it.
+
+### 72.3 Only a fixed-width column may be left out, and neither reason was the obvious one
+
+A column whose width comes from its **content** stops having a width when its content stops being
+built. Both non-absolute kinds do this, they do it differently, and the first draft of the rule
+covered only one of them.
+
+**A star column collapses immediately.** A row is measured against no width limit, so a star column
+there takes its content's size rather than a share of the viewport. Measured on Avalonia 12.1.0, one
+`*` among twenty-nine fixed columns:
+
+    at rest              175px   extent 3,679
+    scrolled past it       0px   extent 3,504
+    scrolled back        175px   extent 3,679
+
+Every column to its right slides 175 pixels sideways while the user is dragging the scrollbar.
+
+**An Auto column collapses one refresh later**, which is why it was nearly missed. Its width is
+shared between the header and every row by a size group (§27.10), and **a shared size group does not
+shrink when its largest contributor is removed from a grid that already exists**. Measured, same
+shape of fixture:
+
+    at rest                             158px
+    scrolled past it                    158px   (header and rows both, and through a forced re-measure)
+    after one Refresh while scrolled     24px   the bare heading, extent 3,662 -> 3,528
+    scrolled back                        24px   and it does not come back
+
+So an Auto column survives being scrolled past and then collapses *permanently* on the next poll,
+about a second later in the windows this toolkit exists for.
+
+**The guard that was supposed to justify this clause could not fail.** It scrolled past the Auto
+column and read the width back, which is the obvious test and measures nothing — the shared size
+group does not shrink on a scroll, so the fixture was green on a control with the clause deleted. The
+refresh *is* the whole guard. This is the §5.5 shape again, arrived at from a new direction: a
+fixture in which the effect cannot appear can only be testing that it does not.
+
+The scope this leaves is the honest one, and it is the case the feature was measured on: a wide table
+of fixed columns — a disassembly, a memory map, a register dump.
+
+**Frozen columns are also always built**, for the plainer reason that a frozen column is on screen at
+every offset. That is what frozen means.
+
+### 72.4 Two things that go looking for a cell, and would have found nothing
+
+`Edit` and the arrow keys both locate a cell by walking the row, and a virtualized column has no cell
+to walk to — so both would quietly do nothing. That is §64.4's defect arriving by a new road: an edit
+refused, or an arrow key that appears dead, because of where the viewport happens to be.
+
+Both now realize the column first, through one call, and the existing `BringIntoView` then works
+unchanged. The column is held rather than released afterwards, which is also what keeps an open
+editor's cell underneath it.
+
+### 72.5 Two things that are true and are not guarded
+
+Recorded as hazards rather than left looking covered, per §5.
+
+**`Row()` consults the range as it builds**, so a row realized while scrolling down comes up narrow
+instead of being built whole and trimmed. No guard fails if that line goes: the fill corrects the row
+on the layout pass that follows, so by the time any assertion can look, the row is narrow either way.
+A test was written for it and deleted for passing with the line removed. What it saves is work — a
+table scrolled down through two hundred rows builds thirty cells for each and discards twenty-two.
+
+**One column of slack each side of the viewport** is a judgement, not a measurement. Nothing fails
+when the slack is removed, because every assertion is made after layout has settled and the range is
+correct at rest with or without it. What it buys is the frame *during* a drag, which nothing here
+captures.
+
+**The fill's convergence is guarded, but not by counting layout passes.** It runs from
+`LayoutUpdated` and adds children, which invalidates layout and brings it straight back, so the whole
+feature rests on it being a fixpoint. The first version of that guard counted `LayoutUpdated`
+firings — and `LayoutUpdated` fires once per pass whether or not anything was dirty, so ten calls
+report ten passes on a table doing nothing at all. It counts child mutations instead, which is a
+number this control can actually influence, and it asserts that a scroll produces some before
+asserting that the quiet afterwards is quiet.
+
+### 72.6 A clause that could not be made to fail, and went
+
+`Realized` was written with two clauses holding a column against the viewport's wishes: the one
+something last asked for, and the column being edited. Deleting the second turned nothing red.
+
+There is no reachable path that separates them. `Edit` asks for its column on the way in and nothing
+takes that back; `OnKeyDown` returns on `IsEditing` before it reaches the arrows; `Edit` ends one
+editor before opening the next. The clause was a second expression of a rule that already held.
+
+It is removed, on the same grounds and with the same precedent as the duplicate `IsEditable` test in
+`OnKeyDown` — which was also found by removing it and watching every guard stay green. A clause kept
+"for safety" is a claim with nothing behind it, and the next reader has no way to tell it from one
+that matters.
+
+### 72.7 Measured from a row, and not from the header
+
+The header grid is laid out at the *viewport's* width and a row at its own — 776 against 2,400 — so
+the two disagree about any column that is not a fixed width. Measured: one `*` among twenty-nine
+120s resolved to **0 in the header and 175 in the rows**. The row grid's own definitions are the
+geometry of the cells being placed, which is what the question is about.
+
+**No guard fails if the source is swapped**, and that is recorded rather than discovered later. A
+range measured in the header's compressed space comes out *wider* than it needs to be rather than
+displaced, and Auto and star columns are built unconditionally anyway, so they fill the gaps it would
+otherwise leave. What it costs is cells built for nothing.
+
+The guard that does exist is worth keeping for a different reason: it checks that the built cells
+cover the viewport, derived from their arranged bounds rather than from the range computation, so it
+is the one assertion in the file that is not written in the same terms as the thing it is testing. It
+found a real fixture error on its first run — at maximum scroll the viewport reaches 24 pixels past
+the last cell, which is the row padding the theme puts on both ends, so an unclamped expectation
+fails on a correct control by exactly that much.
+
+### 72.8 The gallery does not turn this on
+
+Every other item in this arc went into the gallery (§7). This one does not, and the reason is that it
+would demonstrate nothing: the gallery's table has seven columns and does not scroll sideways, so
+virtualization would leave every one of them exactly where it is. **A feature that is working is a
+feature that is invisible here** — if a reader can see it, it is broken. Turning it on to have
+something to point at would be theatre, and would put the gallery's frozen-column and render guards
+on top of a code path the gallery cannot exercise.
+
+### 72.9 The sabotages
+
+Sixteen, of which thirteen turned red on the guard they were aimed at.
+
+| sabotage | what went red |
+|---|---|
+| `Realized` always true | ten guards |
+| Auto and star both virtualized | three |
+| star virtualized, Auto protected | the star collapse |
+| frozen columns virtualized | the frozen guard |
+| `Edit` does not realize its column | the editor guard |
+| the arrow keys do not realize | the arrow guard |
+| the rule keeps no owner marker | the rule guard |
+| `Owner` defaults to 0 | the gutter and the editor |
+| no fill once the feature is off | turning it off |
+| the range ignores the scroll offset | eight guards |
+| arriving cells appended, not inserted | the draw-order render |
+| **the edited-column clause removed** | **nothing — see §72.6, the clause went** |
+| **`Row()` builds every column** | **nothing — see §72.5, recorded as a hazard** |
+| **the slack column removed** | **nothing — see §72.5, recorded as a hazard** |
+| **the range measured from the header** | **nothing — see §72.7, recorded as a hazard** |
+
+Two defects were found by this pass rather than caused by it, both in Avalonia 12.1.0's layout rather
+than in this control: a star column in an unbounded measure takes its content's width and loses it
+with its content, and a shared size group does not shrink when its largest contributor is removed
+from an existing grid. Neither is a bug in Avalonia — both are what those two sizing modes mean — but
+both are the kind of thing a control that removes cells has to know, and neither is written down
+anywhere that a reader of `Grid` would meet it.
+
+That is eleven hollow guards found by sabotage across §57–§72, and still not one of them by reading.
+
+## 73. Parity, closed — and the record read back against the type
+
+§54 decided that `LunaTable<T>` would reach feature parity with
+`Avalonia.Controls.TreeDataGrid`, and §54.3 wrote down the thirteen gaps that decision was made
+against. This closes it.
+
+### 73.1 The parity table, read off the baseline
+
+Not from memory of what was built, and not from the section headings — from
+`tests/EmuSen.LunaP.Tests/ApiSurface/EmuSen.LunaP.txt`, which is the file a consumer's compiler
+sees. §65.5 made the same move halfway through the arc and found a closed row that was not closed;
+doing it again at the end is the only thing that makes "closed" a measurement rather than a claim.
+
+| §54.3's gap | Where it stands, on the type |
+|---|---|
+| Multi-row selection | **Closed.** `SelectionMode`, `SelectedItems` |
+| Cell selection | **Closed.** `SelectionUnit`, `SelectedCell`, `SelectedCells`, `IsCellSelected`, `SelectCell`, `ClearCellSelection`, `CellChosen` (§67) |
+| Hierarchy | **Closed.** `Children`, `IsExpanded`, `Expand`, `Collapse`, `ExpandAll`, `CollapseAll`, `ExpanderColumn`, `IndentSize` (§55) |
+| Row drag-and-drop | **Closed.** `CanReorderRows`, `RowDropped`, `CanDrop`, `LunaRowDrop<T>`, `LunaDropPosition` (§71) |
+| Frozen columns | **Closed.** `FrozenColumns` (§60–§65) |
+| Cell kinds | **Closed.** `LunaCellKind`, and a constructor per kind on `LunaColumn<T>` (§57) |
+| Row headers | **Closed.** `RowHeader`, `RowHeaderWidth`, `RowHeaderCaption` (§58) |
+| Grid lines | **Closed.** `GridLines` (§56.2) |
+| Per-column control | **Closed.** `IsVisible`, `MinWidth`, `MaxWidth`, `Alignment`, `VerticalAlignment`, `SortBy` / `ClearSort` / `SortedColumn` / `SortedDescending` (§70) |
+| Edit gestures | **Closed.** `EditGestures` (§56.1) |
+| Lifecycle events | **Closed.** `RowPrepared`, `RowClearing`, `CellValueChanged` (§56.3) |
+| Navigation | **Closed.** `BringRowIntoView`, `TryGetRow`, `TryGetCell` |
+| Column virtualization | **Closed.** `VirtualizeColumns` (§72) |
+| Automation depth | **Closed enough to say so, with two hazards named below** (§68, §69) |
+
+Thirteen rows, thirteen closed. **§54.4 held throughout**: none of it is a dependency, none of it is
+TreeDataGrid's API, and every item is additive and off by default — a table with no `Children`, no
+`SelectionMode`, no `Commit`, no `FrozenColumns`, no `CanReorderRows` and no `VirtualizeColumns`
+behaves exactly as it did in 0.7.0.
+
+### 73.2 What is deliberately not there, and why each one is a decision
+
+Parity in what a user can do is not parity in what a type lists. Four things TreeDataGrid has are
+absent on purpose, and each was argued where the work happened rather than skipped:
+
+- **`CellPrepared` / `CellClearing`.** Refused in §56.3. A cell-level lifecycle event fires per cell
+  per row per realization, and the two things a caller wants it for — styling a cell and reading its
+  value — are already a template column and a projection.
+- **A row cannot be dragged out of the table.** §71.2 chose pointer capture over the platform's
+  drag-and-drop, which is a different problem with a different answer. Stated in the README rather
+  than left to be found.
+- **No `IExpandCollapseProvider` on a tree row.** §68.7. The expander is a real focusable button
+  named "Expand &lt;row&gt;", which is the capability without the pattern.
+- **`FrozenColumns` is not remembered** with the widths and the sort (§65.4). That file holds what the
+  user did; this is what the caller declared.
+
+And two hazards stand recorded rather than closed, which is what §5 asks of an untested claim:
+`IsOffscreen` under a pinned band (§62.4), and the three unguarded properties of §72.5 and §72.7.
+
+### 73.3 What LunaP has that the reference does not
+
+Carried forward from §54.3, and still true: a remembered layout through `Settings/ISettingsStore`
+(§27.11), validation with a message shared with `FieldRow` (§50.1), the palette by default, and
+**MIT with no licence key** — against a package whose gate fails the *build* (§54.5).
+
+### 73.4 The arc, counted
+
+Twenty sections, §54 to §73. The two test figures are counted differently and both are stated,
+because a `[Theory]` is one method and several cases and quoting whichever is larger is the kind of
+number this document does not print.
+
+| | |
+|---|---|
+| Test methods before §54 | **312** — `[Fact]` and `[Theory]` in the tree at `65e9361~1` |
+| Test methods now | **527** |
+| Cases the runner executes now | **794** |
+| Table guard files added | ten — `TableParityTests`, `TableScrollTests`, `TableCellKindTests`, `TableRowHeaderTests`, `TableFrozenTests`, `TableCellSelectionTests`, `TableAutomationTests`, `TableColumnTests`, `TableDragTests`, `TableVirtualizationTests` |
+| Table guard files that existed before | three — `TableTests`, `TableEditingTests`, `TableLayoutTests` |
+| Hollow guards found by sabotage | **eleven** |
+| Hollow guards found by reading | **none** |
+| Clauses deleted for being untestable duplicates | two — the `IsEditable` test in `OnKeyDown`, and §72.6's edited-column clause |
+| Defects found that were older than the pass that found them | four — `ExpanderColumn` (§66), the never-persisted sort (§70.4), the header's stale offset (§64.2), the editor's hijacked viewer (§64.3) |
+| Corrections to this document | three — §60 (to §59.3), §68.1 (to §27.3), §65.6 (to §56's "all three") |
+
+**The eleven-to-nothing ratio is the finding**, and it is the one worth carrying to the next arc. Every
+hollow guard in this work was found by breaking the code and watching the test stay green; not one was
+found by reading the test and noticing it was hollow — including the ones written by somebody who had
+just read §22.5 and was actively looking for the pattern. Reviewing an assertion tells you what it
+says. Only sabotage tells you what it *tests*.
+
+Three of the eleven shared one shape, which is the pattern this arc contributes to §5.5: **a fixture
+in which the effect cannot appear can only be testing that it does not.** §72.3's Auto column could
+not shrink on a scroll; §71.6's drag threshold released on the row it pressed, where the drop is
+refused anyway; §67's first cell guard used a table whose fixture and expectation coincided. Each one
+looked like a test of the thing named in its method name, and each was a test of nothing.
+
+### 73.5 What §54.2 got right
+
+§54.2 overruled §47.3, which had classified hierarchy as a different *kind* of work rather than a
+feature of this control — while keeping the classification itself, which was correct. Twenty sections
+later that reading holds: hierarchy was the largest item and it changed nothing about the rest of the
+control, because §55.2 flattened the tree into the sequence a `ListBox` shows and left selection,
+editing, the spoken name, virtualization and the remembered layout working on a flat sequence of `T`.
+Every pass after it — frozen columns, cell selection, automation, alignment, drag, virtualization —
+was built without knowing whether the table was a tree.
+
+That is the load-bearing decision of the whole arc, and it was taken in the section that decided to
+do the work at all.
+
+---
+
+## 74. One control, fourteen files — and five comments that had drifted
+
+`Controls/LunaTable.cs` had reached **3,801 lines**. The next largest file in the toolkit is
+`Gallery/GalleryWindow.cs` at 445 and the next largest control is `SplitPane.cs` at 442, so the
+table was not merely the biggest thing here — it was eight and a half times the biggest thing here.
+
+This is §29 arriving at the control kit. `Theme/Controls.axaml` accumulated to 508 lines and
+`Theme/CssTheme.cs` to 547, and both were split for the same reason: *a file that accumulates has no
+natural place to stop, so "where does this go" has exactly one answer, which means the answer carries
+no information.* Nothing was wrong with any line of `LunaTable.cs` either. The shape was wrong, and
+this section records what that cost before it records the split.
+
+### 74.1 It was not bloat, which is why it took until now
+
+The obvious reading of a 3,801-line file is that it needs pruning. Measured, it does not:
+
+| | `LunaTable.cs` | `SplitPane.cs` | `GalleryWindow.cs` |
+|---|---|---|---|
+| Total lines | **3,801** | 442 | 445 |
+| Code | **1,763** | 267 | 260 |
+| Comment | 1,534 | 108 | 137 |
+| Comment share of non-blank | **46%** | 29% | 35% |
+
+The house style is not merely intact in that file, it is heavier there than anywhere else. What the
+file holds is **fourteen features** — §27, §50, §54, §55, §56, §57, §58, §61–§64, §67, §68, §69,
+§70, §71, §72 — every one of which mutates the same two things: the column list, and the grids in
+the header and the rows. The coupling is real. There is nothing to delete.
+
+**The telling detail is that the arc split everything except the control.** Twelve of the thirty
+files in `Controls/` were table files, and **eleven of those twelve were already satellites**, one
+public type each — `LunaCell`, `LunaCellKind`, `LunaColumn`, `LunaDropPosition`, `LunaEditGestures`,
+`LunaGridLines`, `LunaRowDrop`, `LunaSelectionMode`, `LunaSelectionUnit`, `TableCell`,
+`TableLayoutStore`. The twelfth was `LunaTable.cs`. CLAUDE.md's rule was followed for every type the
+control *uses*, and never once for the control itself.
+
+### 74.2 What the size actually cost: five comments beside the wrong code
+
+The argument for splitting a large file is usually navigability, which is a preference. This one has
+a defect behind it, and it is this project's own named failure: *a comment that has drifted from the
+code beside it is worse than no comment, because it is believed.*
+
+Five had drifted. Every one is an insertion made into a file too big to see the whole of, landing
+between a comment and the member it explains:
+
+| The comment | Sat above | Belongs to | Distance |
+|---|---|---|---|
+| "A recycled container keeps the `ColumnDefinitions` it was built with… **this is the hook that catches it**" | the `ClickedCell` handler | the `Widen` call in `ContainerPrepared` | 52 lines |
+| "ASCENDING, DESCENDING, THEN BACK TO THE ORDER `REFRESH` WAS GIVEN" | `SortedColumn` | `Cycle`, which had no comment at all | 66 lines |
+| "WHATEVER THE CALLER BUILT, UNWRAPPED", the null-return tolerance, and the §69 citation | `Align` | `TemplateCell` | 52 lines |
+| "THE HORIZONTAL RULE IS ONE BORDER AROUND THE ROW" | `LastVisibleColumn` | `Ruled` | 19 lines |
+| "WHAT A READER HEARS", and the §50.5 correction about naming the container | `NameCell` | `Spoken` and `NameRow` | 56 and 77 lines |
+
+None of them is wrong about the code it describes. All five are in the wrong place, and a reader
+arriving at `Cycle` — the method that implements the three-state sort cycle — found no explanation
+of the three-state sort cycle, because it was sixty-six lines above, over a property that is one
+expression long.
+
+**This is the measurement that turns the split from tidying into a repair.** The five are corrected
+as part of the move rather than left to be found again; each pass puts its own comments back beside
+their members.
+
+### 74.3 Fourteen files, chosen by what makes each one change
+
+§29.4's criterion, unchanged. `Controls/Table/` holds the whole subject — the fourteen partials and
+the eleven satellites — because twenty-five table files loose in `Controls/` would bury the other
+eighteen files in it.
+
+| File | Lines | What makes it change | Owns |
+|---|---|---|---|
+| `LunaTable.cs` | 406 | the data model or the wiring | the base type, `Key`/`_items`/`_view`/`Refresh`/`Show`, every framework override |
+| `TableFind.cs` | 110 | what counts as realised | `Cell`, `TryGetRow`, `TryGetCell`, `BringRowIntoView` (§54.3) |
+| `TableColumns.cs` | 408 | a column gains a property | `ColumnSpec`, `Column`, `Define`, `Rebuild`, `Grip`, `Resized`, the gutter (§27.7, §27.10, §58) |
+| `TableLayout.cs` | 151 | what is written to `tables.json` | `TableKey`, `SaveNow`, `Restore`, `Remember` (§27.11, §70.4) |
+| `TableSorting.cs` | 241 | the heading or the cycle | `Heading`, `Cycle`, `SortBy`, `Ordered`, `ShowSortState` (§27, §70.3) |
+| `TableRows.cs` | 444 | a cell kind is added | `Row`, `AddCell`, the three kinds, `Align`, the rules (§57, §69, §70) |
+| `TableTree.cs` | 268 | hierarchy | `Children`, `Expand`/`Collapse`, `Flatten`, `Walk`, `Expander` (§55) |
+| `TableSelection.cs` | 168 | row selection | `SelectionMode`, `SelectedItems`, `Select`, `Chose` (§27.6, §54) |
+| `TableCellSelection.cs` | 496 | cell selection | `_cells`, `SelectCell`, ranges, boxes, arrows, `ClickedCell` (§67) |
+| `TableEditing.cs` | 308 | the editor | `Edit`, `BeginEdit`, `EndEdit`, `Close`, `SetFromAutomation` (§50, §56) |
+| `TableFrozen.cs` | 392 | the band | `FrozenColumns`, `Pin`, `BandOf`, `ClearFocusFromBand`, `OwnViewer` (§61–§64) |
+| `TableColumnFill.cs` | 276 | column virtualization | `VirtualizeColumns`, `Realized`, `WantedRange`, `FillColumns` (§72) |
+| `TableDrag.cs` | 285 | the gesture | the pointer handlers, `DropAt`, `ShowDropLine`, `MoveRow` (§71) |
+| `TableSpeech.cs` | 204 | what a reader hears | `Spoken`, `NameRow`/`NameCell`/`NameCells`, `SelectionPeers` (§68) |
+
+Largest 496, smallest 110, mean 297 — the range the rest of the control kit already
+sits in, where `SplitPane.cs` is 442 and `ConsolePane.cs` is 247.
+
+**The total went UP, from 3,801 to 4,157, and that is not an accounting error to hide.** 356 lines
+are the fourteen file headers, their `using` blocks and their `namespace`/`class` scaffolding. Every
+one of those headers is an argument that was previously either stranded on whichever field happened
+to be declared first, or nowhere — §74.2 is what "nowhere" cost.
+
+`OnPartsAttached` stays in `LunaTable.cs` with the other overrides. Its comments explain *why each
+handler is registered in that order on that routing strategy* — the tunnel for the drag press
+(§71.3), the three-way `LayoutUpdated` (§72, §61.4, §67.5) — which is a fact about wiring rather
+than about any one feature.
+
+**The namespace does not follow the folder**, exactly as `CssTheme` stayed in `EmuSen.LunaP.Theme`
+after moving to `Theme/Css/`. `LunaTable<T>`, `LunaColumn<T>` and seven enums are public names a
+consumer has already written a `using` for; moving them to match a directory would be a breaking
+change bought with nothing but tidiness.
+
+### 74.4 What was deliberately not extracted
+
+The alternative to a `partial` split is real decomposition — a `CellSelection<T>`, a `TableEditor<T>`,
+a `FrozenBand` — and it was considered and refused rather than not thought of.
+
+Each of them needs the header grid, the `ListBox`, the column list, `KeyOf`, and a way to ask for a
+relayout. That is five seams injected in order to move one file's worth of code into a type that then
+reaches back through all five to do its job, which is the thing CLAUDE.md means by *"reaching across
+layers to do one"* rather than a cure for it. A partial keeps the coupling visible and honest; a
+collaborator with a back-reference hides it behind a constructor.
+
+**The parts that genuinely stand alone already do, and that is the evidence.** `TableLayoutStore`
+knows about JSON and not about tables; `TableCell` and `TableCells` know about a cell and not about
+the control; `LunaColumn<T>` is a declaration with no behaviour. Every one of those left the control
+years before this split, on its own merits. Nothing left in `LunaTable.cs` had that property.
+
+### 74.5 The proof that it is a move and not a repair
+
+§29.5 could only argue this by counting tests. This split has direct assertions available, which is
+what §32 built `ApiSurfaceTests` for and what §28 built the reflective guards for:
+
+- **`ApiSurface/EmuSen.LunaP.txt` is byte-identical.** Regenerated with `EMUSEN_API_APPROVE=1` after
+  the last pass, `git status` reports the file unmodified. 743 lines of committed public surface,
+  and nothing a consumer can see moved — which is also why `CHANGELOG.md` records nothing.
+- **794 tests before, 794 after**, run after every one of the fourteen passes rather than at the end,
+  so any drift would have been attributable to one move.
+- **Not one code line was lost across fourteen cuts, checked rather than assumed.** Every non-comment
+  line of the original file was counted into a multiset and compared against the union of the
+  fourteen. The single difference is `public class LunaTable<T>` becoming `public partial class
+  LunaTable<T>`; everything else new is `namespace`, `using`, braces and the partial declarations.
+  The extractor was held to the same standard first: before any cut, it was made to prove that every
+  non-blank line of the class body fell inside exactly one member span, so that keeping the
+  complement of a selection could not silently drop anything.
+- `TemplateOrderTests`, `TemplateReachTests`, `MemberDocumentationTests`, `LayeringTests` and
+  `StyleKeyTests` all find their subjects by reflection over types, so not one of them needed
+  touching — which is the property §28 was built for, arriving as a dividend.
+- No `.csproj` change: sources are globbed.
+
+`CitationTests` earned its place on the first commit of the work. The `§74` written into the new file
+header failed the suite before a single member had moved, because §74 did not exist yet — a broken
+citation caught in the same minute it was written rather than at the next renumbering.
+
+### 74.6 A tidiness check that could not fail, and the honest version of it
+
+Fourteen new files need fourteen `using` blocks, and copying the original file's list into each would
+leave most of them carrying imports they do not use. The obvious check is `IDE0005`, the compiler's
+own "unnecessary using directive", switched on with `EnforceCodeStyleInBuild`.
+
+It reported nothing. **So it was sabotaged before being believed, which is §22.5's rule applied to a
+tidiness check rather than to a test**: a deliberately unused `using System.Text.Json;` was pasted at
+the top of `TableFind.cs` and the build run again. Still nothing — `0 Warning(s)`. The check cannot
+fail in this repository, so its silence had meant nothing, and eight minutes earlier it had been
+about to be reported as "usings verified".
+
+The first honest attempt was wrong in a second way that is worth recording, because it looks like
+measurement and is not. Each `using` was deleted in turn and the build watched for an error. Every
+`using System;`, `using System.Collections.Generic;` and `using System.Linq;` in the toolkit came
+back "unnecessary" — because `<ImplicitUsings>enable</ImplicitUsings>` is set in both `.csproj`
+files, so those three are always in scope and deleting them can never break a build. **The
+measurement was real and the question was wrong**: it answered "does this file compile without the
+line", when the house convention is that every file spells its imports whether or not the SDK would
+have supplied them. Six files that were only being *moved* had their imports stripped by that sweep
+and were restored from the index.
+
+What answered the actual question was building with `/p:ImplicitUsings=disable`, and probing **one
+file at a time**. Both halves are needed. Disabling the implicit set is what makes the compiler
+answer about the file rather than about the SDK; probing one file at a time is what keeps error
+attribution intact, because fourteen files stripped at once produce more than the hundred errors
+`csc` reports before it stops — and the ones it drops read as "that import was not needed", which is
+the wrong direction to be wrong in.
+
+Two unrelated files, `Gallery/GalleryWindow.cs` and `Theme/Css/CssParser.cs`, do rely on the implicit
+set and fail under that switch. §74.7 is what was done about them.
+
+**What is fixed and what is only recorded, stated plainly, because this section read for a while as
+though the whole thing had been dealt with.** The `using` lists on the fourteen files are correct and
+were measured; the eleven files the bad sweep stripped were restored from the index and verified
+byte-identical by blob hash. **Neither of those is a guard.** §74.7 closes the half that can be
+closed — a file living off the implicit set is now a compile error. The other half is not closed: an
+*unnecessary* `using` is still caught by nothing.
+
+That is a decision rather than an omission. The honest check needs Roslyn, which is a
+`PackageReference`, which under CLAUDE.md is a decision carrying a `§` and a licence — and the thing
+it would buy is tidiness, against `ApiSurfaceTests`' precedent of refusing an analyzer package for a
+job eighty lines of reflection could do. Here there is no eighty-line version: a text heuristic that
+guessed at whether an import is used would be one more check that cannot fail, which is the defect
+this section is about rather than a cure for it. So it is written down as a hazard (§21's rule) and
+left.
+
+### 74.7 The implicit `using` set, switched off
+
+`<ImplicitUsings>enable</ImplicitUsings>` was set in all three `.csproj` files, so the SDK handed
+`System`, `System.Collections.Generic`, `System.Linq` and several more to every file for free. Every
+file in this repository also spells those imports itself, which means the convenience was buying
+nothing — and it was costing something that only became visible in §74.6.
+
+**With it on, a missing `using` is invisible, and a file that imports what it needs cannot be told
+apart from one quietly living off the default set.** Two were: `Gallery/GalleryWindow.cs` was missing
+`System` and used `Math`, `DateTime` and `StringComparison` through the implicit set;
+`Theme/Css/CssParser.cs` was missing `System.Linq` and used `Skip`. Neither was a defect anybody
+could have found by reading, and neither would have survived a reader who moved the file to a
+project without the switch.
+
+Both were given their imports, and the switch is now `disable` in all three projects. The comment
+beside it says why, as `.csproj` comments here are load-bearing.
+
+**Made to fail on purpose**, because a guard nobody has broken is a guard nobody has tested (§22.5):
+deleting `using System;` from `Controls/Table/TableDrag.cs` — which was invisible the day before —
+produced six errors, including `Action<>` and `Func<,>` not found. Restoring it returned the build to
+zero. The convention is now enforced by the compiler rather than by the author remembering it.
+
+**What this does not do** is catch an *unnecessary* `using`, which is a different direction and stays
+unguarded for the reasons at the end of §74.6.
+
+### 74.8 A file header may orient, and may not argue
+
+The split in §74.3 gave fourteen files fourteen headers, and **nine of them re-argued something a
+member comment below already argued.** `TableSorting.cs` restated most of `Heading`'s case for a
+sortable heading being a `Button`; `TableFrozen.cs` restated `Pin`'s clip-and-not-cover mechanism
+almost in full; `TableLayout.cs` restated `TableKey`'s argument about saving Avalonia's notation
+rather than resolved pixels.
+
+**That is §74.2's defect committed again, by the pass whose subject was §74.2's defect.** Two copies
+of one argument is precisely the thing that drifts, and the copy beside the code is the one a reader
+with the file open will trust. It was caught by scanning for it rather than by re-reading, which is
+the same lesson §73.4 records at greater length.
+
+So the rule is now written down and asserted: **a header may say what the file holds, why those
+members are together, and where the argument lives. The argument itself belongs beside the code,
+once.** All nine were rewritten to that shape.
+
+`CommentTests` enforces it by looking for the **shouted phrase** — this codebase opens a real
+argument with a capitalised clause, so four or more consecutive shouted words is a reliable marker
+for "a claim is being made here" and a poor marker for anything else. Three words catches ordinary
+emphasis and produces noise that would get the guard suppressed rather than obeyed. Prose that
+repeats an idea in different words is **not** caught and cannot be; this catches the copy-paste,
+which is the case that actually happened nine times in one afternoon.
+
+#### 74.8.1 What it found, and what its own sabotage found
+
+On its first run it failed, which is the right outcome twice over.
+
+**It found a duplication nobody was looking for.** `ValidationTests.cs` — nothing to do with the
+table — had "THE MESSAGE IS THE STATE" in its file header and again over the test that pins it. Two
+copies, written months apart, and the guard found it on the first pass over a directory it was not
+written for.
+
+**And it failed on its own numbers, because they were estimated rather than measured.** The
+anti-silence floors were written from a guess at how many shouted phrases the tree contains — 2,192,
+against a real 397 — so the floor of 500 turned the suite red immediately. Guessing high is a red
+test and costs an hour; guessing low is a guard that quietly stops guarding, which is the failure
+mode this repository keeps finding. The floors are now measured: 122 files, 121 split, 118 shouted
+phrases in headers, 397 in bodies, with the floors about a quarter under.
+
+Then it was sabotaged four ways, and **one sabotage went green**:
+
+| Sabotage | Turned red |
+|---|---|
+| A header made to restate a member's argument again | **yes** — named the file and the phrase |
+| `Halves` pointed at a directory that does not exist | **yes** — both assertions |
+| `Halves` made to put the whole file in the header | **yes** — the body-phrase floor |
+| `readonly` dropped from `Halves`' modifier list | **no** — see below |
+
+The last one is the finding. Without `readonly`, `public readonly record struct` does not match, so
+`LunaCell.cs` and `LunaRowDrop.cs` returned null and were skipped in silence — **two files quietly
+unchecked, suite green.** That defect was in the first draft and was found by counting what the scan
+reached rather than by reading the pattern.
+
+The floor written to catch it did not, and that is the part worth keeping. It read
+`files.Count - split <= 3`, allowing "a few" files not to split. Three files stopped splitting;
+three was within tolerance. **A floor with slack in it is a floor the failure fits through.** It is
+now `<= 1` — exactly `AssemblyInfo.cs`, which is attributes and no type — and the same sabotage
+turns it red. That makes twelve hollow guards found by sabotage in this repository and still none
+found by reading (§73.4).
+
+### 74.9 The style file stays one, and §29.1's rule was phrased for a simpler world
+
+§29.1 set the rule as **"the theme file mirrors the source file"**, with a table row reading
+`LunaTable.axaml | 2 | Controls/LunaTable.cs`. Both halves of that row are now false: the path does
+not exist, and the two selectors are fourteen. The row stays exactly as written, because §29.1's
+table is a record of what was split and why, and a table edited to match today would stop being
+evidence of anything.
+
+**What needs saying is that the rule's WORDING was always narrower than the rule.** "Mirrors the
+source file" happened to be true when every control was one file. The rule that was actually being
+kept — and that is still kept — is **one theme file per CONTROL**. `LunaTable<T>` is one control
+whether it is written in one file or fourteen, so `Theme/Controls/LunaTable.axaml` is where its
+styles belong and it does not move.
+
+#### Why it is not split fourteen ways to match
+
+It could be. The selectors partition along the same seams the source does — `Button.heading` and
+`TextBlock.sort` are §74's `TableSorting.cs`, `Border.frozen-edge` is `TableFrozen.cs`,
+`Border.drop-line` and `Border.drop-into` are `TableDrag.cs`. The mirror is available and is refused
+on three grounds, in order of weight:
+
+- **It is not big enough to have §29's problem.** §29 split `Controls.axaml` at 508 lines and 23
+  selectors, and the argument was that a file which accumulates has no natural place to stop, so
+  "where does this style go" has one answer carrying no information. This file is 226 lines and 14
+  selectors, and **every selector begins `:is(luna|LunaTable)`** — there is one subject, so the
+  question still has an informative answer. That is a different situation from 23 unrelated controls
+  sharing a file, which is what §29 was about.
+- **Splitting multiplies the one failure §29.2 measured.** A style file that exists, compiles, and is
+  not named in `LunaTheme.axaml` does nothing at all — no template, no error, nothing on screen, the
+  §5.5 symptom reachable by forgetting one line. §29.5 also records that this cannot be guarded,
+  because Avalonia strips compiled `.axaml` from the resource blob so the shipped assembly cannot be
+  asked what style files exist. Seven more files is seven more index lines and seven more chances at
+  a silent nothing, bought for tidiness.
+- **§29.5 already declined the same trade once.** `Palette.axaml` and `LunaPalette.cs` were left
+  whole at 127 and 79 lines because they are flat lists a reader reads top to bottom. So is this.
+
+It is three times the next largest style file — `ConsolePane.axaml` at 75 — and that is worth knowing
+rather than hiding. **The trigger to revisit is the one §29 used: not length, but whether "where does
+this style go" stops being answerable.** While every selector in the file names the same control, it
+is answerable.
+
+## 75. Full screen, and the guard the plan asked for that could not have failed
+
+`PLAN-general-purpose.md` put fullscreen first in the window-services arc, on the grounds that it is
+small and is most of what a game needs from a window. Both halves are true. It also proposed the
+guard, in one sentence:
+
+> Test: save, fullscreen, save again, restore, assert the pre-fullscreen rect survived.
+
+**That test passes against code with no full-screen handling in it at all**, and finding out why is
+most of what this section is about.
+
+### 75.1 It was counted, and did not need §47.4
+
+§47.4 licensed this as a *completion* of the window layer, which is a scope argument. It turns out
+not to need one. §26.1's audit of the one real menu bar in the corpus lists `HotkeyBindingMap`'s
+seven hotkeys, and **Fullscreen (F11) is one of the six that also name a menu item** — hand-rolled,
+in the consumer, next to Save State and Pause. So this is `§21`'s ordinary method: a site that
+already exists, done badly, counted before it was built. The completion argument is not wrong, it is
+merely weaker than the evidence that was already in this document.
+
+### 75.2 `IsFullScreen` is computed, never stored
+
+```csharp
+public bool IsFullScreen
+{
+    get => WindowState == WindowState.FullScreen;
+    set { if (value != IsFullScreen) WindowState = value ? WindowState.FullScreen : _beforeFullScreen; }
+}
+```
+
+A `bool` field beside `WindowState` would be a second copy of a fact the window already holds, and
+**this window is not the only thing that writes it**: the platform's own full-screen affordance, a
+window-manager shortcut, and a caller setting `WindowState` directly all move it without passing
+through here. The copy would be wrong with nothing to notice — the same failure §26.3 records for a
+toolbar button that snapshots its action's label instead of following it.
+
+The public surface is three members: the property, `ToggleFullScreen()` for the gesture, and
+`FullScreenChanged`. **F11 is deliberately not bound here.** §26 built the vocabulary for an
+application to bind its own keys, and a toolkit that quietly claims a function key is a toolkit that
+collides with an application that had other plans for it.
+
+**The event is the part that was not in the plan, and it exists because the gallery could not be
+written without it.** A checkable `LunaAction` stores its own `IsChecked` and flips it when invoked,
+which is correct for a setting the action owns. Full screen is not one — the same three routes that
+made a stored `IsFullScreen` wrong make a stored tick wrong, and a *"Full Screen ✓"* menu item
+sitting over a window that is not full screen is §26.3's defect exactly. So the window announces and
+the surface follows:
+
+```csharp
+FullScreenChanged += on => full.IsChecked = on;
+```
+
+It fires only when the answer changes, so maximizing and restoring says nothing.
+
+### 75.3 Leaving full screen returns to where it came from
+
+The half that is easy to get wrong: a window that was **maximized**, then made full screen, must go
+back to maximized rather than to normal. So the state to return to is captured — and it is captured
+in `OnPropertyChanged`, not in the property setter above, precisely because the setter is not the
+only way in. A window that entered full screen by the platform's own affordance and then left it
+through `ToggleFullScreen` would otherwise be restored to whatever state it held the last time
+somebody used the property, which could be minutes and several states ago.
+
+`Minimized` is never the state returned to. Coming out of full screen into a minimized window reads
+as the application having closed.
+
+### 75.4 The placement trap is real, and the headless platform cannot show it
+
+The trap the plan named is genuine. A window that closes while covering the screen has the screen's
+bounds as its own, so saving them records the display as the window's *restored* size — reopen it,
+leave the covering state, and the "normal" window is the size of the monitor with its title bar off
+the top. §8.1 already records the maximized half of this rule; nothing had ever asked the question
+about full screen.
+
+**What the plan's guard misses is that `Avalonia.Headless` stores `WindowState` and never acts on
+it.** Measured, 12.1.0, on a window shown at 321×234 and moved to (120, 90):
+
+| state set | reported state | position | size |
+|---|---|---|---|
+| `Normal` | `Normal` | 120, 90 | 321×234 |
+| `FullScreen` | `FullScreen` | **120, 90** | **321×234** |
+| `Normal` | `Normal` | 120, 90 | 321×234 |
+| `Maximized` | `Maximized` | **120, 90** | **321×234** |
+
+The property round-trips faithfully and raises exactly one change notification per transition. The
+geometry never moves. So the end-to-end test — go full screen, close, read the file back — saved
+`x=120 y=90 w=321 h=234` **before any of this was written**, because there was never any screen-sized
+geometry for the bug to write down. It is the §22.5 category exactly: a test that measures a
+mechanism the platform under it does not implement, and it would have shipped green over a defect.
+
+**So the rule is split out and made pure**, the same move and for the same reason §8.1 made
+`IsOnAScreen` a function of plain rectangles so it could be tested without a display:
+
+```csharp
+public static WindowPlacement PlacementToSave(
+    WindowState state, PixelPoint position, double width, double height, WindowPlacement? previous)
+```
+
+Now the guard can hand it the geometry the headless platform will not produce — 1920×1080 at (0, 0),
+with a stored 321×234 at (120, 90) behind it — and assert that the small rectangle is what comes
+back. Delete the `FullScreen` arm and it fails with the screen's size in the message.
+
+The **wiring** is guarded separately and one step weaker, and that is worth stating plainly rather
+than leaving it to look total. A window cannot be shown the poisoned geometry here, so what its test
+discriminates is that `RememberPlacement` consults the stored placement *at all* when it closes full
+screen: with a stored rectangle deliberately different from the live one, code that ignores the
+stored value saves the live one and fails. That is the mechanism, not the outcome. **The outcome is
+unguarded on this platform and is recorded here as a hazard rather than claimed**, per §5 — with the
+cause known and measured above, which is what separates this from the shortfall `CLAUDE.md` warns
+about reaching for when a search gets tedious.
+
+### 75.5 Full screen is not remembered, and maximized is
+
+`Maximized` is written to `windows.json`; `FullScreen` is not, and a window that closes full screen
+reopens as an ordinary window at the geometry it had before.
+
+The asymmetry is the decision. **A window that reopens maximized still has its title bar, its close
+button and its restore button.** A window that reopens full screen has none of them, and the key
+that would let it out is F11 — which §75.2 just declined to bind, because it belongs to the
+application. Restoring a user into a state they may not remember choosing, with the exit bound to
+nothing in particular, is a worse default than losing one bit of state.
+
+It stays available to anyone who disagrees: `IsFullScreen = true` at startup is one line, and it is
+the consumer's call, which is the same shape as §65.4's rule about `FrozenColumns` — that file holds
+what the *user* did, and a mode the application chose belongs to the application.
+
+### 75.6 A hole in the maximized rule, found by writing the full-screen one
+
+The rule §8.1 records has a case it does not cover, and it has been there since §8: *"closing while
+maximised keeps the previously stored normal geometry"* — **when there is no previously stored
+geometry, it kept the screen's.** A window maximized on its very first run, then closed, wrote the
+display's bounds as its normal size.
+
+The old expression made the hole hard to see, because the fallback was spelled three times:
+
+```csharp
+X = maximized && previous is not null ? previous.X : Position.X,
+```
+
+`previous is not null` reads as a null guard and is in fact the whole of the bug: with nothing
+stored, every field falls through to the live geometry, which is the one thing the branch exists to
+distrust.
+
+**A covering window now defers to `previous` unconditionally, and writes zeroes when there is
+nothing there.** That is not a sentinel invented for the occasion — `RestorePlacement` already
+ignores a non-positive size, and `IsOnAScreen` already answers false for an empty rectangle. Such a
+window remembers the flag and no geometry, and reopens maximized at its own default size, which is
+the honest record of the fact that nobody has ever seen it as an ordinary window.
+
+### 75.7 The sabotages
+
+Per §22.5, each guard was made to fail before it was trusted.
+
+| Sabotage | What turned red |
+|---|---|
+| Drop `FullScreen` from the `covering` test in `PlacementToSave` | the rule guard, reporting a saved width of 1920 where 321 was expected |
+| Make `covering` defer to `previous` only `if (previous is not null)` — the §75.6 shape | the first-run guard, saving the screen's 1920×1080 as a normal size |
+| Write `Maximized = covering` rather than `state == WindowState.Maximized` | the guard that a window closed full screen does not reopen maximized |
+| Have `RememberPlacement` load `previous` only when maximized | the wiring guard, saving the live rectangle instead of the stored one |
+| Set `_beforeFullScreen` in the `IsFullScreen` setter instead of `OnPropertyChanged` | the guard that entering full screen by another route is still tracked |
+| Hard-code `_beforeFullScreen = WindowState.Normal` | the guard that a maximized window returns to maximized |
+| Drop the `FullScreenChanged` raise | the guard that the change is announced at all |
+| Drop the `wasFull == isFull` test that precedes it | the same guard, on its second half: maximize and restore then announce a full-screen change twice |
+
+The fourth is the one that matters most, because it is the one the plan's own proposed test would
+have let through.
+
+### 75.8 What this does not do
+
+- **No end-to-end geometry test.** §75.4 above; the platform does not implement the behaviour the
+  test would need. It becomes testable the day `Avalonia.Headless` applies window states, and the
+  canary for that is the probe table in §75.4 — the day those four rows stop reading 321×234, this
+  rule can be asserted whole.
+- **`Minimized` is not treated as a covering state**, and the question is open rather than answered.
+  A window that closes minimized saves whatever geometry the platform reports for a minimized
+  window, which on at least one platform has historically been an off-screen sentinel. There is no
+  measurement here either way, so it is left alone and named rather than guessed at.
+- **Nothing hides the cursor, keeps the display awake, or confines the pointer.** Those are the rest
+  of the window-services arc and are not in this section. Cursor confinement and raw relative mouse
+  motion stay hazards rather than features: Avalonia exposes no API for either, so they remain the
+  developer's problem, honestly labelled — the same shelf as gamepad input (§15) and audio.
+
+## 76. A cursor that gets out of the way, and a move that did not move
+
+The second piece of the window-services arc, and the one §75.8 named as still missing. It is smaller
+than full screen and has one idea in it worth the section.
+
+### 76.1 An object attached to a control, not a flag on the window
+
+`PLAN-general-purpose.md` listed this as *"cursor hide/idle"* next to `Topmost` and keep-awake, which
+reads as a window property. It is not built as one.
+
+§8.1 keeps `ToolWindow` deliberately thin, and a timer plus a pointer subscription is not thin —
+§75 already added three members to it and that is the limit of what belongs there. The stronger
+reason is that **"the whole window" is only one of the two things a caller wants.** An emulator
+frontend running in a window wants the pointer hidden over the *video surface* and perfectly visible
+over the toolbar an inch above it. A window-level flag cannot say that; an object attached to an
+`InputElement` says both, because a `Window` is one:
+
+```csharp
+_idle = new IdleCursor(this);                              // the whole window, three seconds
+_idle = new IdleCursor(screen, TimeSpan.FromSeconds(1));   // just the framebuffer
+```
+
+**It is `IDisposable` and that is load-bearing.** It holds a handler on the target, and a hidden
+cursor left behind by an object nobody unsubscribed is an application whose pointer is gone for good.
+Disposal restores the cursor before it stops watching.
+
+`Show()` and `Hide()` are both public, and `Hide()` earns its place rather than being a test hook:
+**a window entering full screen wants the pointer gone at once**, and waiting three seconds to lose a
+cursor nobody is using reads as the feature being broken. The idle path calls the same method, so
+there is one way for the cursor to go and one way for it to come back.
+
+### 76.2 The mechanism, measured rather than recalled
+
+Three facts about Avalonia 12.1.0 were measured before any of this was written, because all three
+decide the shape:
+
+| Question | Answer |
+|---|---|
+| Is there a "no cursor" cursor? | **Yes** — `StandardCursorType` has 24 members and `None` is one |
+| Does `Cursor` inherit down the visual tree? | **Yes** — `InputElement.CursorProperty.Inherits` is `true` |
+| Is `PointerMoved` reachable before a child consumes it? | **Yes** — it is registered `Tunnel, Bubble` |
+
+The second is what makes attaching to a `Window` work at all: with the window's cursor set to `None`,
+a child that has set no cursor of its own reads `None` too, with `IsSet` still `false` — inherited,
+not assigned. **A child that sets its own cursor keeps it**, which is a real limit and is guarded
+rather than described: a `LunaTable` heading sets `Cursor="Hand"` in the theme (§74.9's file), so the
+pointer reappears over a sortable heading while the rest of the window has none. That is arguably
+correct — the heading is claiming to be clickable — but it is behaviour a caller should not discover
+by accident.
+
+The third is why the handler is added with `RoutingStrategies.Tunnel` **and `handledEventsToo: true`**.
+A table in the middle of a column-resize drag handles `PointerMoved` itself, and a cursor that
+vanished mid-drag because the control underneath was doing its job would be the most confusing
+possible version of this feature.
+
+### 76.3 A move that did not move is not activity
+
+This is the one that makes the feature work rather than refine it, and it would have been missed
+without stating it.
+
+`PointerMoved` does not only arrive when somebody moves the mouse. A window activating under a
+stationary pointer raises one, and so do several other things that are not a person touching
+anything. An implementation that treats every `PointerMoved` as activity is one whose cursor can
+never quite reach its delay on some platforms, and the failure is invisible in testing because the
+mechanism is plainly correct — it is the *input* that is not what it looks like.
+
+So the position is compared against the last one and an identical position is ignored. It costs two
+lines and it is the difference between a feature and a feature that mysteriously does not work on
+somebody's machine.
+
+### 76.4 Restoring a cursor is not the same as putting the value back
+
+The obvious implementation saves `target.Cursor`, sets `None`, and assigns the saved value back. It
+is wrong in a way that does not show up until later, and `IsSet` is the reason.
+
+**Whether the value was LOCAL matters more than what it was.** A control whose cursor comes from a
+style or from its parent reads a perfectly good `Cursor` — and assigning that value back turns it
+into a *local* value, which then outranks the style that owns it for the rest of the control's life.
+The style stops working and nothing says so.
+
+So the local-ness is recorded along with the value, and the restore either assigns or calls
+`ClearValue`. Measured: `IsSet(CursorProperty)` is `false` on a fresh control, `true` after an
+assignment, and `false` again after `ClearValue`.
+
+**And a cursor somebody else changed while it was hidden is left alone.** If the current value is no
+longer the invisible one, another owner has taken it since, and putting the old value back would undo
+their change rather than this one.
+
+### 76.5 Only pointer movement counts, and keystrokes deliberately do not
+
+The application this exists for is one somebody is holding four keys down in. A cursor that came back
+on every keystroke would never be hidden at all — the feature inverted, arrived at by making it more
+thorough.
+
+A caller with its own idea of activity — a gamepad, a media player leaving playback — calls `Show()`,
+which reveals and restarts the clock. That is the seam, and it names no input library, which is §1
+holding in the same shape `ISettingsStore` holds it (§19.1).
+
+### 76.6 The delay is a judgement, not a measurement
+
+Three seconds, and it is worth saying plainly that no measurement produced that number. It is in the
+range the applications this imitates use, and the constructor takes a `TimeSpan` precisely because
+the right answer differs by application: a video player wants about one second, a settings window
+arguably wants never.
+
+### 76.7 The sabotages
+
+| Sabotage | What turned red |
+|---|---|
+| Never hide — make `Hide` return immediately | the guard that a still pointer is hidden after its delay |
+| Treat every `PointerMoved` as activity, dropping the position comparison | the guard that a move to the same point does not keep the cursor alive |
+| Restore by assignment always, never `ClearValue` | the guard that an inherited cursor is still inherited afterwards |
+| Drop the `ReferenceEquals` test in `Reveal` | the guard that a cursor changed by somebody else is not clobbered |
+| Do not restore on `Dispose` | the guard that disposing brings the pointer back |
+| Subscribe with `Bubble` and `handledEventsToo: false` | the guard that a child consuming the move still counts as activity |
+
+### 76.8 What this does not do
+
+- **Nothing confines the pointer, and nothing reads raw relative motion.** Avalonia exposes no API
+  for either, so both stay the developer's problem and are named here rather than approximated. Same
+  shelf as gamepad input (§15) and audio.
+- **The display is not kept awake.** A screensaver over a paused emulator is the same arc and is not
+  this section; it needs a platform call per operating system and has no Avalonia surface at all.
+- **A child with its own cursor keeps it** (§76.2). Guarded, not merely stated.
+
+### 76.9 The delay itself is not asserted, and the reason is measured
+
+Every guard in `IdleCursorTests` drives the transition with `Hide()` or `Show()` and sets the delay
+to **thirty seconds**, so the idle timer cannot fire during a test. That is deliberate, and it is not
+a gap that better test-writing would close.
+
+**A `DispatcherTimer` cannot advance inside `Session.Dispatch`.** The dispatch call owns the loop
+while the test body runs, so the timer never gets to raise. Measured rather than assumed: a 30ms
+timer, slept past by 80ms and then pumped with `RunJobs()`, fired **0** times — and five further
+40ms sleeps with a pump after each one left it at **0**.
+
+The first version of these tests did wait on the clock, and it is worth recording what that looked
+like, because it is the shape that gets committed. **Seven of eleven passed.** Not zero — seven, on
+timing luck, while asserting behaviour the platform was not producing. A suite where four tests fail
+is a suite somebody fixes; a suite where seven pass is one somebody trusts.
+
+`ThreadingTests` had already reached the same conclusion for `Debounce` itself and says so at the top
+of that file: *"a test that waits for a real timer inside a dispatcher it is itself blocking is
+measuring the machine, not the code."* The delay behaviour belongs to `Debounce`, which is tested
+there by the same method — a 30-second interval and an explicit `Flush()`. What `IdleCursor` adds on
+top is one line, `new Debounce(delay, Hide)`, and everything else it does is asserted here without a
+clock.
+
+**What that leaves unasserted, stated plainly:** that the debounce is wired to `Hide` with the delay
+the caller passed. It is one line over a tested primitive, and no test in this harness can watch it
+elapse. Recorded as a hazard per §5 rather than described as covered — the same shape as §75.4, and
+for the same kind of reason: a platform that does not implement the thing the assertion would need.
+
+## 77. The rest of the window-services list, and a plan sentence that was wrong about six of them
+
+`PLAN-general-purpose.md` closed the window-services arc with a list and a promise:
+
+> Then, in rough value order: cursor hide/idle, keep-awake, `Topmost`, clipboard, file drag-and-drop,
+> window icon, single-instance, custom title bar. **Ordinary work, no research problems.**
+
+Cursor hide/idle became §76. **Of the seven that remained, one was built and six were refused**, and
+the promise is false in both directions: four of them are not work at all because Avalonia already
+does them, and three are research problems wearing a list entry's clothes. This is the fifth claim
+these working documents have produced that did not survive being checked (§47.6 counts the others).
+
+The list was written from memory of what a toolkit ought to have. It was never checked against
+`Avalonia.Controls` 12.1.0, and checking it took about twenty minutes.
+
+### 77.1 Four that Avalonia already does, refused on §21.5
+
+Each of these was reflected over in 12.1.0 rather than recalled. A LunaP wrapper would add a name, a
+line of indirection and a thing to keep in step, and would remove nothing.
+
+| Asked for | What already exists | Verdict |
+|---|---|---|
+| `Topmost` | `Window.Topmost`, a plain settable property | **nothing to build** |
+| Window icon | `Window.Icon` and `Window.IconProperty` | **nothing to build** |
+| Clipboard | `TopLevel.Clipboard`, plus `TryGetText`/`TryGetFiles`/`TryGetBitmap` extensions on `IDataTransfer` | **nothing to build** |
+| Custom title bar, the platform half | `ExtendClientAreaToDecorationsHint`, `ExtendClientAreaTitleBarHeightHint`, `SystemDecorations` | **nothing to build** for the hint; the control is §77.3 |
+
+§21.5 is the rule being applied — *what none of this may do* — and the general form is worth stating
+because this list will be written again by somebody: **a toolkit may not charge a name for a property
+that already exists.** `LunaWindow.StayOnTop` is not better than `Topmost`; it is `Topmost` with a
+migration cost and a second place to look.
+
+### 77.2 One that was built: files dropped on a control
+
+`FileDrop` is the exception, and it earns its place on a margin narrow enough to be worth writing
+down, because the same argument refuses the four above.
+
+**Avalonia already extracts the files** — `TryGetFiles(IDataTransfer)` returns `IStorageItem[]` in one
+call, so the interesting part is genuinely done. What remains is four lines of wiring with **two
+silent failures** in them:
+
+- `DragDrop.SetAllowDrop(target, true)` was never set, so no drag event is raised at all.
+- `DragOver` never assigned `DragEffects`, so the platform refuses the drop before `Drop` is reached.
+
+Neither produces an error, a warning or a mark on screen, and the second is the worse one: the code
+that matters is present, correct, and never called. That is the same shape as §29.2's unindexed style
+file and §5.5's missing template — the failure mode this document keeps finding is *nothing happens
+and nothing says why*, and it is the one worth spending a type on.
+
+**It hands back paths, not `IStorageItem`s**, to match `Dialogs`, which has returned `string?` since
+§6. A file with no local path — out of a remote share, or a virtual file from an archive viewer — has
+no path to give, so it is not offered, and **a drop carrying nothing else is refused rather than
+delivered empty.** Handing a caller a shorter list than the user dropped, with no way to tell, is the
+kind of quiet lie this document exists to avoid.
+
+`Accept` is consulted on the way over as well as on the drop, so a refusal shows as the "no entry"
+pointer while the drag is still moving rather than as nothing happening after the user lets go. A
+refusal is left **unhandled**, so a `FileDrop` on an ancestor still gets to answer for itself.
+
+**There is no counted evidence for this one**, and that is stated rather than glossed. §47.3's test is
+what licenses it instead: it introduces no new noun — a consumer already knows what dropping a file
+is, and it carries no new state — so it is a completion of the window layer in the same sense
+fullscreen was, not a new kind.
+
+### 77.3 Three that are new kinds, and are not taken
+
+Each gets the §47.4 treatment: named, argued, and deliberately not built, with what taking it would
+require.
+
+**Keeping the display awake.** Avalonia has **nothing** — reflected over `Avalonia.Base` and
+`Avalonia.Controls` for any type mentioning power, idle, wake or screensaver, and there is no such
+API. It needs three platform implementations (`SetThreadExecutionState`, an `IOPMAssertion`, and a
+`org.freedesktop.ScreenSaver` inhibit over DBus), none of which any test in this harness can observe,
+in a package a consumer cannot patch. §1 survives literally, since a P/Invoke is not a
+`PackageReference` — but three untested platform paths whose failure mode is *the user's machine never
+sleeps* is precisely what "untested claims are recorded as hazards, not behaviours" exists to stop.
+**This is the one on the list with real value for this toolkit's actual consumers**, and it is the one
+that most needs a named first consumer and a §1 argument in writing before anybody starts.
+
+**Single instance.** Not a window service at all — it is process coordination, and the window is only
+where the answer becomes visible. The easy half is a named `Mutex` and is five lines; the half that
+matters is handing the file the user just double-clicked to the instance that is already running,
+which needs an IPC channel per platform and a protocol for it. **A single-instance feature that
+answers "you are not the first, goodbye" is worse than none**, because every application that wants
+this wants the argument passed along, and the half-answer looks like the whole one until the day
+somebody opens a second file.
+
+**A custom title bar.** The platform hints exist (§77.1); the control does not. It is a new noun in
+§47.3's sense — a caption, window buttons, a drag region, a double-click-to-maximize contract, and a
+per-platform argument about which side the buttons live on. It also collides with §26.12's *"no icons
+anywhere"*, since the first thing anybody wants in a title bar is the application's icon. No evidence
+asks for it across five repositories.
+
+### 77.4 What this section is really recording
+
+Not four refusals and a helper. **A list written from memory, checked against the platform for the
+first time, and found to be about two-thirds wrong** — and the checking was twenty minutes against
+work that would have been days.
+
+§21's method is usually described in this document as protecting against building things nobody
+needs. This is the other half of the same protection and it had not been written down: it also
+catches building things that **already exist**, which is a failure the evidence rule cannot see,
+because a count of hand-rolled sites says nothing about whether the framework underneath grew the
+feature in the meantime. `Topmost` would have been counted and built.
+
+The rule that follows, and it belongs beside §21's: **before building a window service, reflect over
+the platform's own surface for it.** Not the documentation, and not memory — the shipped assembly, in
+the version this toolkit references.
+
+### 77.5 An `async` lambda handed to `Dispatch` is a test that cannot fail
+
+The most valuable thing to come out of this section, and it was found the way §22.5 says these are
+found: by sabotaging a guard and watching it stay green.
+
+`FileDrop` has two defects it exists to prevent, and both got a guard. Then the guards were
+sabotaged. Four of six turned red. **The two that did not were the two that mattered** — the one
+asserting that `DragOver` says the drop will be taken, and the one asserting that `Accept` refuses
+before the user lets go. Removing the entire `DragEffects` assignment left them both green.
+
+The first suspicion was a hollow assertion in the §22.6 sense — that `DragEffects` already defaults
+to `Copy`, so asserting it proved nothing. **That was measured and it is false:** `DragEventArgs`
+defaults `DragEffects` to `None`, with or without `AllowDrop` set, and the setter works. The
+assertion was sound.
+
+The real cause is the test's *shape*:
+
+```csharp
+public Task Foo() => Session.Dispatch(async () => { ...; Assert.Equal(x, y); }, default);
+```
+
+`HeadlessUnitTestSession.Dispatch` has three overloads, one of them
+`Dispatch<TResult>(Func<TResult>, CancellationToken)`. An `async () => { … }` lambda binds to **that**
+one, with `TResult` inferred as `Task`. So the call returns `Task<Task>`, and handing it back as the
+`[Fact]`'s `Task` awaits only the **outer** one — which completes at the body's first `await`.
+Everything after that runs detached on a thread nobody is watching, and its failure is swallowed.
+
+The two hollow guards were the only two `async` bodies in the file. The four that turned red were all
+synchronous. Nothing about any of them looked different.
+
+`Unwrap()` is the whole fix, and it is spelled once per test class:
+
+```csharp
+private static Task Run(Func<Task> body) => Session.Dispatch(body, default).Unwrap();
+```
+
+Both sabotages turn red immediately afterwards.
+
+**It is an assertion now, not a paragraph.** `DispatchShapeTests` scans the test sources for
+`Dispatch(async` and fails with the file and line. §28's precedent is the reason: two traps in this
+repository were written up three and four times as prose asking the next author to remember before
+anybody made them fail the build. The scan is deliberately *textual* — the mistake is a compile-time
+overload choice that leaves no runtime trace, so there is nothing to reflect over; by the time a test
+runs, the evidence is a `Task` somebody already dropped. It excludes its own file, which necessarily
+spells the shape out, and it was made to fail on purpose by reintroducing the shape in
+`IdleCursorTests`.
+
+**No other test in the suite had it.** Every existing `Session.Dispatch` body is synchronous, so
+nothing already committed was asserting into the void — this was a trap dug and fallen into on the
+same afternoon.
+
+### 77.6 The sabotages
+
+| Sabotage | What turned red |
+|---|---|
+| `DragDrop.SetAllowDrop` never called | the guard that the target accepts drops at all — defect one |
+| `DragOver` never assigns `DragEffects` | the two drag-over guards — defect two, **and only after §77.5 was fixed** |
+| A refusal is marked `Handled` | the guard that an ancestor still gets to answer |
+| `Accept` ignored | the guard that a filter refuses before the drop, **also only after §77.5** |
+| `Dispose` sets `AllowDrop` to false rather than what it was | the guard that a target which already allowed drops keeps doing so |
+| An empty path list is delivered instead of refused | the guard that a drag carrying no files is refused |
+| The shape of §77.5 reintroduced in `IdleCursorTests` | `DispatchShapeTests`, naming the file and line |
+
+### 77.7 What is not guarded, and why
+
+**A file with no local path.** `FileDrop` skips an `IStorageItem` whose `TryGetLocalPath()` is null
+and refuses a drop carrying nothing else. That branch has no test, and the reason is a measured
+platform fact rather than an omission: **`IStorageItem` is explicitly not implementable by user
+code** — the compiler rejects it in as many words — and Avalonia's only concrete implementations,
+`BclStorageFile` and `BclStorageFolder`, are internal. The one route to a real instance is
+`StorageProviderExtensions.TryGetFileFromPathAsync`, which always produces a `file://` item and
+therefore always has a local path. There is no way from here to construct the input the branch
+exists for. Recorded as a hazard per §5, with the cause, rather than left looking covered.

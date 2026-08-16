@@ -111,8 +111,31 @@ public class SettingsWindow : ToolWindow
 **Controls**: `MeterRow` and `MeterList`, `ConsolePane`, `FieldRow`,
 `PathPickerRow`, `FilterBar`, `RgbaImageView`, `LunaSwitch`, `Dropdown`, `Tabs`,
 `ButtonBar`, `StatusBar`, `EmptyState`, `LunaList<T>`, `LunaTable<T>`, `Card`,
-`SplitPane`, `SidePanel`, `MenuBar`, `ToolBar`, and the three text styles the
-theme knows about — `SectionHeader`, `HintText`, `MonoText`.
+`SplitPane`, `SidePanel`, `MenuBar`, `ToolBar`, and the four text styles the
+theme knows about — `SectionHeader`, `HintText`, `MonoText`, `ErrorText`.
+
+**Stock Avalonia controls are themed too, as of 0.8.0.** A `TextBox`,
+`CheckBox`, `RadioButton`, `Slider`, `NumericUpDown`, `ComboBox`, `ProgressBar`,
+`ToggleSwitch` or `CalendarDatePicker` you create yourself paints in LunaP's
+palette rather than FluentTheme's — you write `new TextBox()` and it fits. This
+is done by handing LunaP's colours to FluentTheme's own resource keys, so the
+templates, keyboard handling and accessibility behaviour are Avalonia's
+untouched, and a control added to Avalonia next year inherits it. A test shows
+every one of them in a live window and requires the colours it actually resolves
+to come from `LunaPalette`. `docs/LunaP.md` §48.
+
+**A field can be wrong and say so.** `FieldRow.Error` shows a message under the
+field; empty means valid, and there is no separate `IsValid` to disagree with it:
+
+```csharp
+new FieldRow
+{
+    Label = "Save State Folder",
+    Hint  = "Where save states are written.",
+    Error = Directory.Exists(path) ? "" : "That folder does not exist.",
+    Content = new TextBox { Text = path },
+}
+```
 
 `LunaList<T>` keeps hold of the type you gave it — you get the model back on
 selection, not a row index into a parallel array — and `Refresh` puts the
@@ -135,10 +158,248 @@ fields.Column("name", f => f.Name, "2*")
 fields.Refresh(detected);            // selection survives the rebuild
 ```
 
-It is flat and stays flat: no tree, no sorting, no cell editing. If you want a
-real data grid, `Avalonia.Controls.TreeDataGrid` is the one to reach for — but
-check `docs/LunaP.md` §27.1 first, because it requires a paid Avalonia
-Accelerate licence and LunaP therefore does not depend on it.
+Columns sort, resize and remember where you left them, and cells can be edited —
+each one opt-in per column, so a table you already had behaves exactly as it did:
+
+```csharp
+fields.Column(new LunaColumn<Field>("name", f => f.Name)
+{
+    Width    = "2*",
+    Sort     = (a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCulture),
+    Commit   = (f, text) => f.Name = text.Trim(),
+    Validate = (_, text) => string.IsNullOrWhiteSpace(text) ? "A field needs a name." : null,
+});
+
+fields.TableKey = "fields";          // remember widths and sort order
+```
+
+Columns align per column, and sort without a click:
+
+```csharp
+fields.Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
+{
+    Width     = "40",
+    Alignment = HorizontalAlignment.Right,   // null - the default - changes nothing
+    Sort      = (a, b) => a.Page.CompareTo(b.Page),
+});
+
+fields.SortBy(2, descending: true);          // as though the heading had been clicked
+fields.ClearSort();                          // back to the order you gave
+```
+
+The heading follows the column, so a right-aligned column of numbers does not sit
+under a left-aligned word. `SortBy` refuses a column with no `Sort`, and a
+remembered layout still wins over a sort you set in code.
+
+`Sort` compares the **models**, not the projected text, because "10" sorts before
+"9" otherwise. `Commit` null — the default — means the column is read-only.
+`Validate` returns the problem rather than a bool, and the message appears under
+the table; a rejected edit keeps the caret rather than throwing away what was
+typed. Double-click or F2 opens an editor, Enter commits, Escape cancels.
+
+Per column, you can also bound the width and take the column away entirely:
+
+```csharp
+fields.Column(new LunaColumn<Field>("type", f => f.Type)
+{
+    MinWidth  = 60,          // null - the default - is the Grid's own 0 and infinity
+    MaxWidth  = 200,
+    IsVisible = showTypes,   // hides it WITHOUT moving any index
+});
+```
+
+A hidden column keeps its place, so a remembered layout, a sort and
+`Edit(item, 2)` all still mean what they meant.
+
+**A table can be a tree.** One projection, and null — the default — is a flat
+table:
+
+```csharp
+files.Children = node => node.Kids;   // null is a flat table
+files.ExpanderColumn = 0;             // which column carries the toggle
+files.IndentSize = 16;
+files.ExpandAll();                    // Expand, Collapse, CollapseAll, IsExpanded
+```
+
+A projection rather than an interface, so your model needs no base class and no
+knowledge that LunaP exists — one that keeps its children elsewhere writes
+`n => index[n.Id]`. Sorting applies at **every level**, so a tree stays a tree
+rather than becoming an alphabetical list of everything, and expansion is keyed
+by your model, so it survives a `Refresh` that rebuilds every object.
+
+**Rows, gestures and lifecycle:**
+
+```csharp
+fields.SelectionMode = LunaSelectionMode.Multiple;  // None, Single (default), Multiple
+fields.GridLines = LunaGridLines.All;               // None (default), Horizontal, Vertical, All
+fields.EditGestures = LunaEditGestures.F2 | LunaEditGestures.DoubleTap;
+
+fields.RowPrepared += (row, container) => { };      // realised
+fields.RowClearing += (row, container) => { };      // recycled
+fields.CellValueChanged += (row, column) => { };    // a commit or a toggle wrote
+
+fields.BringRowIntoView(row);
+fields.TryGetRow(row, out Control? visual);
+fields.TryGetCell(row, 2, out Control? cell);
+```
+
+`EditGestures` is a set rather than a mode because the gestures compose. The two
+`TryGet` methods answer **false** for a row that is not currently realised rather
+than forcing one into existence — which is why `BringRowIntoView` exists. There
+is deliberately no `CellPrepared`/`CellClearing`: it would fire per cell per row
+per realization, and the two things it is wanted for are already a template
+column and a projection.
+
+Give it a `RowHeader` and it grows a gutter down the left — numbers, or whatever
+the model calls the row:
+
+```csharp
+fields.RowHeader = (_, i) => (i + 1).ToString();   // or (row, _) => row.Address.ToString("X4")
+fields.RowHeaderCaption = "#";
+```
+
+Columns wider than the table scroll sideways, and the header follows. **This is a
+fix rather than a feature**: before 0.8.0 the columns past the right edge were
+resolved, clipped and unreachable by scrollbar, wheel or keyboard. Star-width
+columns — the default — fit by definition and never scroll.
+
+And the first columns can be pinned while the rest scroll under them:
+
+```csharp
+fields.FrozenColumns = 1;            // the gutter is always pinned; this counts your columns
+```
+
+Counted in the columns you declared, in the order you declared them, so a hidden
+column takes one of the places. A band that would not leave room for the columns
+behind it pins **nothing** rather than making them unreachable, and comes back by
+itself when the window is widened — so a table that suddenly stops pinning is a
+table that is too narrow, not a bug. There is a line where the pinning stops; it
+takes `LunaBorder`, and `Border.frozen-edge` restyles it.
+
+`FrozenColumns` is deliberately **not** remembered with the widths and the sort
+order: those are what your user did, and this is what you declared. If you offer
+it as a "Freeze first column" menu item, remember it in your own settings.
+
+**A table too wide to draw whole can build only what it can show:**
+
+```csharp
+fields.VirtualizeColumns = true;     // off by default
+```
+
+Worth it when a table scrolls sideways past many columns, and worth leaving off
+otherwise. Measured on 120 columns of 120 pixels in an 800-wide viewport, where
+6.7 of them are visible: a refresh went from 42.7ms to 6.0ms, and one row held
+eight cells instead of 120 (`§72.1`).
+
+Two things to know before you turn it on. **Only fixed-width columns are ever
+left out** — an `Auto` or star column takes its width from its content, so
+dropping its cells would change how wide it is, and frozen columns are on screen
+at every offset by definition. A table of star columns therefore gains nothing,
+which is the same table that never scrolls sideways anyway. And **a column that
+is not built has no cell**, so `TryGetCell` answers false for it and a screen
+reader walking cells does not reach it — the same trade row virtualization has
+always made for a row scrolled away. Editing and the arrow keys are unaffected:
+both bring a column back before they go looking for it.
+
+What does *not* change is the sentence a screen reader hears for the row, which
+is built from your columns rather than from the cells that happen to exist.
+
+**Rows can be dragged into a new order**, and the table changes nothing itself —
+it tells you where the drop landed and you move your own rows:
+
+```csharp
+fields.CanReorderRows = true;
+fields.RowDropped += drop =>
+{
+    foreach (Field moved in drop.Rows) schema.Remove(moved);
+
+    int at = drop.Target is null ? schema.Count : schema.IndexOf(drop.Target);
+    if (drop.Position == LunaDropPosition.After) at++;
+
+    schema.InsertRange(at, drop.Rows);
+    fields.Refresh(schema);
+};
+```
+
+`Alt+Up`/`Alt+Down` moves the selected row without a pointer. `CanDrop` refuses a
+drop before the indicator promises it. In a tree, dropping into the middle of a
+row reports `Inside` — a reparent rather than a reorder. Dragging a row inside a
+multi-selection takes the whole selection.
+
+**A table can select cells instead of rows.** Two properties, because *how many*
+and *what kind* are different questions:
+
+```csharp
+fields.SelectionUnit = LunaSelectionUnit.Cell;      // Row is the default
+fields.SelectionMode = LunaSelectionMode.Multiple;  // and this still means how many
+
+fields.CellChosen += cell => Show(cell?.Row, cell?.Column);
+```
+
+Arrow keys walk the columns, Home and End go to the ends, Shift extends a
+**rectangle** and Ctrl+click adds one cell at a time. `SelectedCell` is the
+current one, `SelectedCells` is every one in display order, and `SelectedItems`
+still answers with the rows those cells are in. F2 opens the cell you are on
+rather than the first editable column.
+
+A cell coordinate is `(your model, column index)` — not two positions — so it
+survives a `Refresh` that rebuilds every object, exactly as the row selection
+does. Changing the unit clears the selection: a row has no column to become.
+
+**A cell does not have to be text.** A checkbox column takes a boolean projection
+and, optionally, somewhere to write it back; a template column takes a control and
+the sentence a screen reader hears in its place, which is required rather than
+optional because a coloured dot describes itself to nobody:
+
+```csharp
+fields.Column(new LunaColumn<Field>("req", f => f.Required, (f, on) => f.Required = on)
+      {
+          Width = "40",                // read-only if you leave the writer off
+      })
+      .Column(new LunaColumn<Field>(
+          "kind",
+          f => new Ellipse { Width = 8, Height = 8, Fill = ColourFor(f.Type) },
+          f => f.Type));                // what a screen reader hears instead
+```
+
+A template cell you gave a width to starts at the column's left edge like every
+other cell. One you did not still stretches to fill the column, so a progress bar
+or a background band works as you would expect — and an alignment you write
+yourself always wins.
+
+**Give it a `Children` projection and it is a tree.** Null — the default — means
+it is not one, and a table that never sets it runs the code it always did:
+
+```csharp
+files.Children = f => f.Entries;      // return empty for a leaf
+files.ExpanderColumn = 0;             // which column carries the toggle
+files.ExpandAll();
+```
+
+Rows sort within their level, expansion is keyed by `Key` so it survives a poll
+that hands back new objects, and a `Children` that returns an ancestor is dropped
+rather than overflowing the stack.
+
+If you want a full data grid, `Avalonia.Controls.TreeDataGrid` is the one to reach
+for — but check `docs/LunaP.md` §27.1 and §54.5 first, because it requires a paid
+Avalonia Accelerate licence that fails the **build**, not the run, in *your*
+project. LunaP therefore does not depend on it.
+
+`RgbaImageView` shows a raw RGBA buffer and reuses its bitmap across frames. It
+takes them from wherever you already have them, so a frame in native memory is
+not copied into a managed array just to be copied straight back out:
+
+```csharp
+view.SetFrame(pixels, w, h);                       // byte[]
+view.SetFrame(buffer.Slice(offset, w * h * 4), w, h);  // ReadOnlySpan<byte>
+view.SetFrame(core.FrameBufferAddress, w, h);      // nint, unchecked - you promise the size
+```
+
+`Stretch` defaults to `Stretch.None`, which does not scale at all — one bitmap
+pixel to one layout pixel, which is what a pixel-accurate view wants. Set
+`IntegerScale = true` with a scaling `Stretch` to enlarge by whole numbers only
+and centre the result; a fractional factor makes nearest-neighbour duplicate some
+rows and not others, which shimmers when anything moves. `docs/LunaP.md` §53.
 
 **Threading**: `UiThread` (marshal onto the UI thread), `Latest<T>` (a fast
 producer, the newest value, one callback), `Suppressor` (stop a control's own
@@ -182,6 +443,73 @@ object* as its close button — so the tick and the panel cannot drift apart.
 pixels, under an opt-in `PaneKey`. What this deliberately does not do — floating
 docks, icons, MDI, a native macOS menu bar — is listed in `docs/LunaP.md` §26.12
 rather than left to be discovered.
+
+**Any window can go full screen**, and coming back out returns it to the state it
+came from rather than always to a normal window:
+
+```csharp
+window.ToggleFullScreen();               // or: window.IsFullScreen = true
+window.FullScreenChanged += on => full.IsChecked = on;
+```
+
+`IsFullScreen` is read from the window rather than stored beside it, so it stays
+right when the platform's own full-screen affordance is what moved it. That is
+also why `FullScreenChanged` exists: a checkable menu item that kept its own tick
+would say the opposite of the window the first time somebody used a window-manager
+shortcut. **F11 is yours to bind** — LunaP does not claim a function key.
+
+A window closed while full screen reopens as an ordinary window at the size it
+had before, and **full screen is deliberately not remembered** while maximized is:
+a window that reopens maximized still has its title bar and its close button, and
+one that reopens full screen has neither, with the key that would let it out bound
+to whatever you chose. Set `IsFullScreen` at startup if you want it back.
+
+**The pointer can get out of the way** when it has been still for a while, which
+is what a full-screen anything wants:
+
+```csharp
+_idle = new IdleCursor(this);                            // the whole window, three seconds
+_idle = new IdleCursor(screen, TimeSpan.FromSeconds(1)); // or just the framebuffer
+```
+
+It attaches to any control rather than being a flag on the window, because
+"hidden over the video and visible over the toolbar" is the common case and a
+window-level switch cannot say it. `Hide()` and `Show()` drive it directly — a
+window entering full screen wants the pointer gone at once rather than in three
+seconds — and `Show()` is also the seam for your own idea of activity, a gamepad
+or a media player leaving playback.
+
+**Dispose it.** The cursor comes back on disposal, and one left hidden by an
+object nobody unsubscribed is an application whose pointer is gone for good.
+
+Only pointer *movement* counts as activity: keystrokes deliberately do not, or an
+application somebody is holding four keys down in would never hide it at all. A
+child that sets its own cursor keeps it, so the pointer reappears over a sortable
+table heading.
+
+**Files can be dropped onto any control**, arriving as local paths:
+
+```csharp
+_drop = new FileDrop(this, paths => Load(paths[0]));
+_drop.Accept = paths => paths.Count == 1;      // refuses while the drag is still moving
+```
+
+Avalonia already extracts the files; what this removes is four lines of wiring
+with two silent failures in them — forgetting `AllowDrop`, so no drag event is
+raised at all, and forgetting to set an effect in `DragOver`, so the platform
+refuses the drop before your handler is reached. Neither produces an error or a
+mark on screen. **Dispose it**, and whatever `AllowDrop` you had is put back.
+
+Paths rather than storage items, to match `Dialogs`. A file with no local path —
+out of a remote share, or a virtual file from an archive viewer — is not offered,
+and a drop carrying nothing else is refused rather than delivered empty.
+
+**What LunaP deliberately does not wrap**, because Avalonia already does it well:
+`Window.Topmost`, `Window.Icon`, `TopLevel.Clipboard` (with `TryGetText` and
+`TryGetFiles`), and `ExtendClientAreaToDecorationsHint` for a borderless window.
+Keeping the display awake, single-instance and a custom title-bar control are
+absent for reasons written down in `docs/LunaP.md` §77.3 rather than left to be
+discovered.
 
 **The gallery** — `GalleryWindow` shows every control in the kit against the
 current theme, which is the fastest way to see what a theme you are writing
@@ -239,6 +567,13 @@ Set nothing and it writes indented JSON under `ApplicationData/<your entry
 assembly>`. Implement `ISettingsStore` — three methods — if you keep settings
 somewhere that is not a directory of JSON files.
 
+**Under a test runner it does something different, on purpose.** The entry
+assembly there is `testhost`, which is the same name for every project on the
+machine — so settings would land in one shared folder that every other
+repository's test suite also reads and writes. Instead the store roots itself
+under your test project's own `bin` directory and reports where through
+`Diagnostics`. A name you pass explicitly is always honoured. See `§43`.
+
 `Diagnostics` is where "this file would not load, and why" goes. Loading is
 best-effort and falls back to defaults either way; the hook only stops it
 happening in silence.
@@ -292,6 +627,18 @@ new TextBox().LabeledBy(theLabelYouAlreadyDrew)
 Anything you set wins over the control's own name, so a toolkit default never
 overrides your decision. `StatusBar` is a polite live region by default — set
 `AutomationProperties.LiveSetting` to `Off` if yours updates continuously.
+
+`LunaTable<T>` goes further, because a table is where a reader most needs it. It
+reports itself as a data grid with a selection and a scroll pattern behind the
+claim, so a reader can ask what is selected and move a table bigger than the
+window. Each row announces as a sentence built from its own cells — "name: Site,
+type: text, pg: 1" — and each cell is named for its column, with its value coming
+from the pattern it carries. A template column's spoken sentence is what its cell
+says, which is why that argument is required rather than optional.
+
+One gap, stated rather than left to be found: a tree row exposes no
+`IExpandCollapseProvider`. Its expander is a real focusable button named "Expand
+&lt;row&gt;", which is the capability without the pattern (§68.7).
 
 Worth knowing what this is not: it is measured against Avalonia's automation
 tree, not against a running screen reader. `docs/LunaP.md` §24 has the before

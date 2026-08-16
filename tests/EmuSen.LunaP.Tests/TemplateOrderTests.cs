@@ -44,6 +44,28 @@ namespace EmuSen.LunaP.Tests
 
         private static readonly string[] Facets = { "All", "Audio", "Video" };
 
+        // A tiny tree for the expansion case. Rebuilt per call so the two runs share no state -
+        // which is also what makes "expand by key, across a rebuild" a real assertion here.
+        private sealed class Node
+        {
+            public Node(string name, params Node[] kids)
+            {
+                Name = name;
+                Kids = kids;
+            }
+
+            public string Name { get; }
+            public Node[] Kids { get; }
+        }
+
+        private static Node[] Tree() => new[]
+        {
+            new Node("roms",
+                new Node("snes", new Node("smw.sfc"), new Node("zelda.sfc")),
+                new Node("nes", new Node("metroid.nes"))),
+            new Node("saves"),
+        };
+
         private static readonly Case[] Cases =
         {
             // §5.6's original: a banner printed from a constructor.
@@ -70,18 +92,85 @@ namespace EmuSen.LunaP.Tests
                 }),
 
             // §27.6's: the one a render found and twelve tests did not.
+            //
+            // The sortable column is here because a column declared before the template has to
+            // produce a heading BUTTON afterwards, not just a label - the heading is built in
+            // Rebuild, which runs from OnPartsAttached on that path, and a sort declared into a
+            // control with no template yet would otherwise arrive as an inert TextBlock with no way
+            // to notice. The read counts buttons for that reason.
             new("LunaTable.Column/Refresh/Select",
                 () => new LunaTable<string>(),
                 c =>
                 {
                     var table = (LunaTable<string>)c;
-                    table.Column("name", s => s).Column("length", s => s.Length.ToString(), "60");
+                    table.Column("name", s => s)
+                         .Column(new LunaColumn<string>("length", s => s.Length.ToString())
+                         {
+                             Width = "60",
+                             Sort = (a, b) => a.Length.CompareTo(b.Length),
+                         });
                     table.Refresh(new[] { "alpha", "beta", "gamma" });
                     table.Select("beta");
                 },
                 c => $"{c.FindNamed<Grid>("PART_Header").ColumnDefinitions.Count} columns, "
+                    + $"{c.FindNamed<Grid>("PART_Header").Children.OfType<Button>().Count()} sortable, "
                     + $"{c.FindNamed<ListBox>("PART_Rows").GetVisualDescendants().OfType<ListBoxItem>().Count(i => i.IsSelected)} row selected, "
                     + $"model {((LunaTable<string>)c).Selected}"),
+
+            // §67's, and it found something. A cell selection is held by KEY rather than by visual,
+            // so it survives having no template with no work at all - but the ROW under the current
+            // cell is put on the ListBox, and before the template there is no ListBox to put it on.
+            // Configured first, the table came up with a boxed cell and Selected reading null, which
+            // is exactly the disagreement this trap exists to catch. The read asks all three: the
+            // model the table thinks is selected, the coordinate, and whether a box was actually
+            // drawn - a selection nothing paints is §5.5's shape again.
+            new("LunaTable.SelectCell/ClearCellSelection",
+                () => new LunaTable<string> { SelectionUnit = LunaSelectionUnit.Cell },
+                c =>
+                {
+                    var table = (LunaTable<string>)c;
+                    table.Column("name", s => s).Column("length", s => s.Length.ToString(), "60");
+                    table.Refresh(new[] { "alpha", "beta", "gamma" });
+                    table.SelectCell("gamma", 1);
+                    table.SelectCell("beta", 1);
+                    table.ClearCellSelection();
+                    table.SelectCell("beta", 0);
+                },
+                c =>
+                {
+                    var table = (LunaTable<string>)c;
+                    return $"model {table.Selected}, "
+                        + $"cell {table.SelectedCell?.Row}:{table.SelectedCell?.Column}, "
+                        + $"selected {table.IsCellSelected("beta", 0)}/{table.IsCellSelected("beta", 1)}, "
+                        + $"boxes {c.GetVisualDescendants().OfType<Border>().Count(b => b.Classes.Contains("cell-selection"))}";
+                }),
+
+            // §70.3's. A sort set before the template has to be there when the table appears - the
+            // fields are the control's own and Show applies them, which is the §27.6 shape one
+            // property along. The read asks for the ROW ORDER as well as the reported state, because
+            // a table that remembered the sort and never applied it would answer both questions
+            // correctly and show the rows in arrival order.
+            new("LunaTable.SortBy/ClearSort",
+                () => new LunaTable<string>(),
+                c =>
+                {
+                    var table = (LunaTable<string>)c;
+                    table.Column("name", s => s)
+                         .Column(new LunaColumn<string>("length", s => s.Length.ToString())
+                         {
+                             Sort = (a, b) => a.Length.CompareTo(b.Length),
+                         });
+                    table.Refresh(new[] { "gamma", "be", "alpha4" });
+                    table.SortBy(0);
+                    table.ClearSort();
+                    table.SortBy(1, descending: true);
+                },
+                c =>
+                {
+                    var table = (LunaTable<string>)c;
+                    return $"column {table.SortedColumn}, descending {table.SortedDescending}, "
+                        + $"order {string.Join("/", table.Models)}";
+                }),
 
             new("LunaList.Refresh/Select",
                 () => new LunaList<string>(),
@@ -137,6 +226,30 @@ namespace EmuSen.LunaP.Tests
                         ActionButton button => $"{button.Content}",
                         _ => "|",
                     }))),
+
+            // COVERED RATHER THAN EXEMPTED, and the distinction is the point. Edit and the
+            // navigation three are exempt because they act on a realised row and there is nothing to
+            // queue. Expansion is not like that: it is state the user owns, it lives in a set keyed
+            // by model, and it is applied at the next flatten - so a tree expanded in a window's
+            // constructor MUST come up expanded. That is a claim this file can test directly.
+            new("LunaTable.Expand/Collapse/ExpandAll",
+                () => new LunaTable<Node>(),
+                c =>
+                {
+                    var table = (LunaTable<Node>)c;
+                    table.Key = n => n.Name;
+                    table.Column("name", n => n.Name);
+                    table.Children = n => n.Kids;
+                    table.Refresh(Tree());
+                    table.ExpandAll();
+                    table.Collapse(Tree()[0].Kids[0]);   // one branch shut again, by key
+                },
+                c =>
+                {
+                    var table = (LunaTable<Node>)c;
+                    return string.Join(" | ", table.Models.Select(n =>
+                        $"{n.Name}{(table.IsExpanded(n) ? "+" : "")}"));
+                }),
 
             new("RgbaImageView.SetFrame/Clear",
                 () => new RgbaImageView(),
@@ -233,6 +346,29 @@ namespace EmuSen.LunaP.Tests
             (typeof(LunaTable<>), "Column"),
             (typeof(LunaTable<>), "Refresh"),
             (typeof(LunaTable<>), "Select"),
+
+            // Expansion is state the user owns, kept in a set keyed by model and applied at the next
+            // flatten - so a tree expanded in a window's constructor comes up expanded, and the
+            // LunaTable.Expand/Collapse/ExpandAll case runs exactly that script in both orders.
+            // IsExpanded is here because that case's read is what asks it.
+            (typeof(LunaTable<>), "Expand"),
+            (typeof(LunaTable<>), "Collapse"),
+            (typeof(LunaTable<>), "ExpandAll"),
+            (typeof(LunaTable<>), "CollapseAll"),
+            (typeof(LunaTable<>), "IsExpanded"),
+
+            // A cell selection is held by key and applied at the next mark, so the same script runs
+            // in both orders - and the LunaTable.SelectCell/ClearCellSelection case runs it.
+            // IsCellSelected is here because that case's read is what asks it.
+            // A sort is two fields the control owns and Show applies, so it survives having no
+            // template - the LunaTable.SortBy/ClearSort case runs exactly that script in both orders.
+            (typeof(LunaTable<>), "SortBy"),
+            (typeof(LunaTable<>), "ClearSort"),
+
+            (typeof(LunaTable<>), "SelectCell"),
+            (typeof(LunaTable<>), "ClearCellSelection"),
+            (typeof(LunaTable<>), "IsCellSelected"),
+
             (typeof(LunaList<>), "Refresh"),
             (typeof(LunaList<>), "Select"),
             (typeof(Dropdown), nameof(Dropdown.Fill)),
@@ -257,6 +393,39 @@ namespace EmuSen.LunaP.Tests
                 "sets one private field the template never sees; history recall is keyboard state, not display.",
             [(typeof(SplitPane), nameof(SplitPane.SaveNow))] =
                 "writes the divider position to the settings store; nothing about the control's own appearance.",
+            [(typeof(LunaTable<>), "SaveNow")] =
+                "as SplitPane.SaveNow - writes column widths and the sort to the settings store. The other "
+                + "half, restoring, is reachable before the template and is covered: TableKey and Column both "
+                + "call Restore, and A_saved_layout_is_restored_whichever_order_it_is_set_in pins both orders.",
+
+            // THE ONE EXEMPTION THAT REFUSES TO QUEUE, and the reason is worth reading before
+            // somebody "fixes" it by giving it a pending field like Select's.
+            //
+            // Select before the template is a caller saying which row should be highlighted when the
+            // window opens, which is a sensible thing to have asked for early and is why it queues.
+            // Edit is not that. It puts a caret in a cell, and a caret belongs to a person who is
+            // looking at the table - queuing one would mean a window that opens with an editor
+            // already open on a row nobody has pointed at, triggered by a line that ran during
+            // construction. So it no-ops, deliberately, and the claim is pinned rather than
+            // asserted here: TableTests.Editing_before_there_is_a_row_does_nothing.
+            // THE NAVIGATION THREE, and they are one claim rather than three. Each asks about a row
+            // that is currently on screen, and before the template there is no screen - so "not
+            // found" is the honest answer rather than a dropped call, and it is the SAME answer they
+            // give afterwards for a row scrolled out of view. Nothing is queued and nothing is lost.
+            [(typeof(LunaTable<>), "BringRowIntoView")] =
+                "scrolls to a realised row; before the template there is nothing to scroll and nothing "
+                + "worth queueing, since a caller who wants a row visible at startup sets Select instead. "
+                + "Pinned by TableParityTests.Navigating_before_there_are_rows_is_answered_not_queued.",
+            [(typeof(LunaTable<>), "TryGetRow")] =
+                "returns false when the row is not realised, which is what it also does before the "
+                + "template - a query, not state. Same guard.",
+            [(typeof(LunaTable<>), "TryGetCell")] =
+                "as TryGetRow.",
+
+            [(typeof(LunaTable<>), "Edit")] =
+                "opens a caret on a realised cell, so there is nothing to queue - a table with no rows on "
+                + "screen has no cell to put one in, and a queued caret would open an editor nobody asked "
+                + "for when the window appeared. Pinned by TableTests.Editing_before_there_is_a_row_does_nothing.",
         };
 
         // The half that makes the registry above impossible to forget. Every public imperative

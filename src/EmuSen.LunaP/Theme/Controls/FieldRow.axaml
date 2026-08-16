@@ -13,6 +13,17 @@
                     <TextBlock Name="PART_Label" Text="{TemplateBinding Label}" FontWeight="Bold" />
                     <luna:HintText Text="{TemplateBinding Hint}" IsVisible="{TemplateBinding HasHint}" />
                     <ContentPresenter Content="{TemplateBinding Content}" />
+
+                    <!-- BELOW the content and not above it, which is the one
+                         layout decision here worth stating. An error added above
+                         would push the field down as it appears, so the control
+                         a user is typing in moves out from under the pointer at
+                         the moment they are told they got it wrong. Underneath,
+                         the field stays where it is and the message arrives in
+                         the space below. §49. -->
+                    <luna:ErrorText Name="PART_Error"
+                                    Text="{TemplateBinding Error}"
+                                    IsVisible="{TemplateBinding HasError}" />
                 </StackPanel>
             </ControlTemplate>
         </Setter>
