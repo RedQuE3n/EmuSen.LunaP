@@ -11,6 +11,34 @@ answer.
 
 ---
 
+## Unreleased
+
+**Two `///` summaries were wrong, and one of them is fixed by making the code
+match the sentence rather than the other way round.** Both were found within a
+day of a consumer adopting 0.8.0 (`§78`).
+
+- **`ActionGroup.Checked` now has a setter**, which its summary has been
+  promising since before the property existed: *"Setting it checks that one and
+  unchecks the rest without running any handler."* It was get-only, so a
+  consumer writing the obvious `group.Checked = member` met `CS0200` and had to
+  discover `member.IsChecked = true` instead. The mechanism was never missing —
+  only the spelling. Assigning `null` unchecks everything; assigning an action
+  that is not a member throws `ArgumentException`; **no handler runs**, so a
+  window showing the current selection cannot apply it by displaying it
+  (`§78.1`).
+- **`LunaList<T>.Chose` and `LunaTable<T>.Chose` say what they mean now.** Both
+  read *"Raised when the user picks a row"*, which is equally good English for
+  double-clicking, and a consumer wired a modal dialog's close to it — turning a
+  list that wanted a double-click into one that ended the dialog on a single
+  click. **No behaviour changed**; the summaries now say *"This is a selection,
+  NOT an activation"* and name `DoubleTapped`/`KeyDown` as the activation
+  gestures. `LunaList`'s also records that a direct write to `SelectedIndex`
+  raises it, which `Refresh` and `Select` do not (`§78.2`).
+
+Nothing here changes what an existing consumer's code does. The `Chose` change
+is documentation only, and `ActionGroup.Checked` gains a setter without altering
+the getter.
+
 ## 0.8.0
 
 **Any window can go full screen, and one that was already remembering its place

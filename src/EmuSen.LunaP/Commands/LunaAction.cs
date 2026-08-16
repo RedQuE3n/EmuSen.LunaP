@@ -236,7 +236,25 @@ namespace EmuSen.LunaP.Commands
         // The member currently checked, or null before anything has been chosen. Null is a real
         // state and not a gap: a group of themes with none of them applied yet is exactly what a
         // freshly created group is.
+        //
+        // THE SETTER EXISTED IN THE SUMMARY BEFORE IT EXISTED IN THE CODE, which is the reason it is
+        // here now. Through 0.8.0 this was get-only while its `///` promised "Setting it checks that
+        // one and unchecks the rest without running any handler" - a sentence a consumer reads in
+        // IntelliSense and writes code against, discovering only from the compiler that there is
+        // nothing to assign to. A consumer cannot patch this; the doc was the API as far as they
+        // could see. The described behaviour was already reachable as `member.IsChecked = true`, so
+        // this adds no mechanism - it adds the spelling that was advertised. §78.
+        //
+        // Assigning null unchecks everything, which is the only reading that makes the round trip
+        // work: `group.Checked = group.Checked` must be a no-op whatever the group's state, and a
+        // null that threw or did nothing would break that for a group with nothing chosen yet.
+        //
+        // NO HANDLER RUNS, matching IsChecked's own setter and standing opposite Invoke. That is the
+        // same line LunaAction draws between the application stating what is true and the user
+        // asking for a change, and a group is where getting it wrong is worst: a settings window
+        // showing the current theme would apply a theme merely by displaying it.
         /// <summary>The member currently checked, or null when none is. Setting it checks that one and unchecks the rest without running any handler.</summary>
+        /// <exception cref="System.ArgumentException">The action is not a member of this group.</exception>
         public LunaAction? Checked
         {
             get
@@ -247,6 +265,35 @@ namespace EmuSen.LunaP.Commands
                 }
 
                 return null;
+            }
+            set
+            {
+                // Refused rather than added, because adding it here would make the group's membership
+                // depend on assignment order and skip the checkable-and-exclusive setup Add does.
+                if (value is not null && !_members.Contains(value))
+                {
+                    throw new System.ArgumentException("The action is not a member of this group.", nameof(value));
+                }
+
+                if (value is null)
+                {
+                    // Directly rather than through the sweep: the sweep is driven by a member
+                    // becoming checked, and nothing is becoming checked here.
+                    _sweeping = true;
+                    try
+                    {
+                        foreach (LunaAction member in _members) member.IsChecked = false;
+                    }
+                    finally
+                    {
+                        _sweeping = false;
+                    }
+
+                    return;
+                }
+
+                // The sweep in Notify unchecks the others, so this is the whole of it.
+                value.IsChecked = true;
             }
         }
 

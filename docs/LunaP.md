@@ -7858,3 +7858,52 @@ code** — the compiler rejects it in as many words — and Avalonia's only conc
 `StorageProviderExtensions.TryGetFileFromPathAsync`, which always produces a `file://` item and
 therefore always has a local path. There is no way from here to construct the input the branch
 exists for. Recorded as a hazard per §5, with the cause, rather than left looking covered.
+
+---
+
+## 78. Two summaries that were wrong in different ways, found by a consumer using them
+
+*2026-08-16, from EmuSen's adoption of 0.8.0. Both are `///` summaries rather than code, which is the thing worth noticing: `DocumentationTests` (§33) checks that every public type **has** a summary and that it is not a placeholder. Nothing checks that it is **true**. A summary is the only documentation a consumer with the DLL ever sees, so an untrue one is not a documentation bug — it is an API bug with no compiler behind it.*
+
+### 78.1 `ActionGroup.Checked` documented a setter that did not exist
+
+The summary read *"The member currently checked, or null when none is. Setting it checks that one and unchecks the rest without running any handler."* The property was get-only.
+
+A consumer wiring a speed menu wrote `_speeds.Checked = _speeds.Members[index]` — the sentence describes exactly the operation a radio group needs — and found out from `CS0200` that there was nothing to assign to. They then wrote `member.IsChecked = true`, which does precisely what the summary promised, because the sweep in `Notify` unchecks the siblings and no handler runs.
+
+So the mechanism was never missing; only the spelling was. **The setter is added rather than the sentence deleted**, because between a documented API a consumer reached for and an undocumented one they had to discover, the documented one is the better API. Three details are decided rather than fallen into:
+
+- **Assigning `null` unchecks everything.** The alternative readings — throw, or do nothing — both break `group.Checked = group.Checked` for a group with nothing chosen yet, and a round trip that only works when something is selected is a trap.
+- **A non-member throws `ArgumentException`.** Adding it instead would make membership depend on assignment order and skip the checkable-and-exclusive setup `Add` performs.
+- **No handler runs**, matching `IsChecked`'s own setter and standing opposite `Invoke`. This is the same line §26.3 draws between the application stating what is true and the user asking for a change. A group is where getting it wrong is worst: a settings window showing the current theme would *apply* a theme merely by displaying it.
+
+### 78.2 `Chose` said "picks", which reads as both select and activate
+
+`LunaList<T>.Chose` and `LunaTable<T>.Chose` both read *"Raised when the user picks a row."* It is a selection change. "Picks" is equally good English for double-clicking, and a consumer read it that way.
+
+The consequence was a modal ROM browser wired as:
+
+```csharp
+RomList.Chose += entry => Close(entry.FullPath);
+```
+
+which reads correctly and closes the dialog on a **single click**, where that window had always required a double-click or its Open button. It was caught by a contract test written against the shipped 0.8.0 package before the window was trusted, not by review — three people could read that line and agree it was right.
+
+Both summaries now say *"This is a selection, NOT an activation"* and name the gesture to use instead. `LunaList`'s also records that `Refresh` and `Select` stay quiet **but a direct write to `SelectedIndex` does raise it**, which is true, is a consequence of `Chose` hanging off `SelectionChanged`, and is not obvious from a summary that only mentions `Refresh`.
+
+**No `Activated` event was added**, and that is a decision rather than an omission. `LunaList` is a `ListBox` and `LunaTable`'s rows are in one, so `DoubleTapped` is already there, is already the platform gesture, and is already what a consumer reaches for Enter through a `KeyDown` handler. A LunaP-named wrapper would be a third spelling of something Avalonia does correctly — the §21.5 refusal, applied to an event.
+
+### 78.3 The sabotages
+
+Two, against the setter, both confirmed red before being put back:
+
+- **The setter runs the handler** (`value.Invoke()` in place of `value.IsChecked = true`) → `Setting_Checked_moves_the_check_without_running_a_handler` fails. This is the one that matters: it is the difference between stating what is true and asking for a change, and it would have shipped as "opening the settings window applies whichever theme it displays".
+- **The membership guard is removed** (`if (false)`) → `Setting_Checked_to_a_stranger_is_refused` fails.
+
+`Setting_Checked_to_null_unchecks_everything` was not separately sabotaged; the null branch is the only code that can satisfy it.
+
+### 78.4 What this says about the guard
+
+The pattern in both is a summary that was *plausible*. Neither is a typo; both describe a design somebody could have built, and one of them describes a design that was later built because the sentence was more sensible than the code.
+
+There is no obvious test for "is this sentence true", and none is proposed here — asserting prose against behaviour is how documentation tests become a second, worse copy of the code. What is worth carrying instead is where these were found: **both surfaced within a day of a consumer adopting the version**, doing ordinary work against ordinary controls. The `ApiSurface` snapshot (§32) catches a shape change and would have caught neither of these, because neither changed shape. A consumer using the package is the only instrument that reads summaries the way a consumer does.
