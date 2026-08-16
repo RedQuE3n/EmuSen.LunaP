@@ -71,21 +71,42 @@
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <PackageId>EmuSen.LunaP</PackageId>
-    <!-- 0.7.0. The published version comes from the git tag, so this is only
+    <!-- 0.8.0. The published version comes from the git tag, so this is only
          the default for a local `dotnet pack` - kept in step so the two never
          tell different stories.
 
-         0.7.0 is the shell: actions, menus, a toolbar, context menus, keyboard
-         shortcuts, a splitter, docked side panels and an AppWindow to hold them
-         (§26). All of it is additive - no control changed shape, no palette key
-         moved, no template part was renamed - so following it is a version
-         number. The one thing it costs is a vocabulary check: one new palette
-         token and five new CSS element names (§26.13).
+         0.8.0 IS THE FIRST RELEASE SINCE 0.7.0 THAT IS NOT PURELY ADDITIVE, and
+         that is what makes it a minor bump rather than a patch. §48 hands
+         LunaP's colours to FluentTheme's own resource keys, so every stock
+         Avalonia control in a consumer's application - a TextBox, a CheckBox, a
+         Slider - changes colour on upgrade. Nothing about behaviour, layout or
+         API moves; only paint. But a consumer reading 0.7.2 would not expect
+         their text boxes repainted, and that is the whole argument (§51).
 
-         0.6.0 before it carried no code change at all; it was the relicence
-         from GPL-3.0-or-later to MIT (§25), which is the largest thing a
-         version can mean to a consumer who could not previously link this into
-         a closed application. CHANGELOG.md is the consumer's account of both. -->
+         It also carries a window-placement fix that reaches anybody with a
+         WindowKey: a window closed while maximized or full screen, with nothing
+         stored from a previous run, saved the SCREEN's bounds as its own
+         restored size and reopened the size of the display (§75.6). The
+         maximized half of that has been there since 0.2.0.
+
+         AND IT CARRIES 0.7.1, which was prepared and never released. Both
+         .csproj files said 0.7.1 and CHANGELOG.md has its entry, but no v0.7.1
+         tag was ever pushed - and since the published version comes from the
+         tag, the settings-root fix of §43 has never reached a consumer (§51.1).
+         That is the failure this comment exists to make visible: the number here
+         is not evidence that anything shipped.
+
+         0.7.0 before it was the shell: actions, menus, a toolbar, context menus,
+         keyboard shortcuts, a splitter, docked side panels and an AppWindow to
+         hold them (§26). All of it additive - no control changed shape, no
+         palette key moved, no template part was renamed - so following it was a
+         version number, costing only a vocabulary check: one new palette token
+         and five new CSS element names (§26.13).
+
+         0.6.0 carried no code change at all; it was the relicence from
+         GPL-3.0-or-later to MIT (§25), which is the largest thing a version can
+         mean to a consumer who could not previously link this into a closed
+         application. CHANGELOG.md is the consumer's account of all of them. -->
     <Version>0.8.0</Version>
     <Authors>Tristan Pelland</Authors>
     <Description>A small Avalonia toolkit: theme, controls, an application shell, window scaffolding and a fluent layout surface.</Description>
