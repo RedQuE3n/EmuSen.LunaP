@@ -13,6 +13,72 @@ answer.
 
 ## 0.8.0
 
+**Any window can go full screen, and one that was already remembering its place
+now remembers the right thing.**
+
+```csharp
+window.ToggleFullScreen();               // or: window.IsFullScreen = true
+window.FullScreenChanged += on => full.IsChecked = on;
+```
+
+- `IsFullScreen` is read from the window rather than stored beside it, so it stays
+  right when the platform's own affordance or a window-manager shortcut is what
+  moved it. `FullScreenChanged` exists for the same reason: a checkable "Full
+  Screen" menu item that kept its own tick would say the opposite of the window
+  the first time somebody used one (`§75.2`).
+- Leaving full screen returns the window to the state it came from, so a maximized
+  window is still maximized afterwards (`§75.3`).
+- **F11 is not bound by LunaP.** It is yours, as every other key is.
+- Full screen is deliberately **not** remembered by `WindowKey`, while maximized
+  still is: a window reopening maximized has its title bar and close button, and
+  one reopening full screen has neither (`§75.5`).
+
+**The pointer can get out of the way.** `IdleCursor` hides it once it has been
+still for a while and brings it back the moment it moves:
+
+```csharp
+_idle = new IdleCursor(this);                            // the whole window, three seconds
+_idle = new IdleCursor(screen, TimeSpan.FromSeconds(1)); // or just the framebuffer
+```
+
+- It attaches to **any control**, not just a window, because "hidden over the
+  video and visible over the toolbar beside it" is the common case and a
+  window-level flag cannot express it (`§76.1`).
+- **Dispose it** — the cursor is restored on disposal, and one left hidden is an
+  application whose pointer never comes back.
+- Only pointer *movement* counts as activity. Keystrokes deliberately do not, or
+  an application somebody is holding four keys down in would never hide it
+  (`§76.5`). `Show()` is the seam for your own idea of activity.
+- A child that sets its own cursor keeps it, so the pointer reappears over a
+  sortable table heading (`§76.2`).
+
+**Files can be dropped onto any control.** `FileDrop` hands you their local paths:
+
+```csharp
+_drop = new FileDrop(this, paths => Load(paths[0]));
+_drop.Accept = paths => paths.Count == 1;   // refuses while the drag is still moving
+```
+
+Avalonia already extracts the files; what this removes is four lines of wiring
+with two silent failures in them — forgetting `AllowDrop`, so no drag event is
+raised at all, and forgetting to set an effect in `DragOver`, so the platform
+refuses the drop before your handler runs. Neither produces an error or a mark on
+screen (`§77.2`). **Dispose it**, and your previous `AllowDrop` is restored.
+
+**Four things LunaP deliberately does not wrap**, now written down rather than
+left open: `Window.Topmost`, `Window.Icon`, `TopLevel.Clipboard` and
+`ExtendClientAreaToDecorationsHint` all already exist and work, so a LunaP name
+for them would only add a thing to keep in step (`§77.1`). Keeping the display
+awake, single-instance and a custom title bar are absent with reasons (`§77.3`).
+
+**A defect fixed, and it affects any window with a `WindowKey`.** A window closed
+while maximized *or* full screen saved the **screen's** bounds as its own restored
+size if it had nothing stored from a previous run — so a window maximized on its
+first run and closed reopened as a "normal" window the size of the display, with
+its title bar off the top. It now records the flag and no geometry, and reopens at
+its own default size (`§75.6`). The maximized half of this has been present since
+0.2.0.
+
 **Your form controls will look different. That is the release.**
 
 LunaP ships `<FluentTheme />` and always will, so every stock Avalonia control an

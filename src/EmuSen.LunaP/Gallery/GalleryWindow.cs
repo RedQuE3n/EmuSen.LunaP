@@ -374,6 +374,19 @@ namespace EmuSen.LunaP.Gallery
             LunaAction light = variants.Add("Light");
             dark.IsChecked = true;
 
+            // FOLLOWS THE WINDOW RATHER THAN KEEPING ITS OWN ANSWER (§26.3, §75.2). A checkable
+            // action flips its own tick when invoked, which would be right if this item were the
+            // only way in - it is not, so the window's own event is what drives the tick and the
+            // handler only asks the window to toggle.
+            var full = new LunaAction("Full Screen", ToggleFullScreen)
+            {
+                IsCheckable = true,
+                Shortcut = KeyGesture.Parse("F11"),
+                HelpText = "Fills the screen, and comes back to the state it left.",
+            };
+
+            FullScreenChanged += on => full.IsChecked = on;
+
             var explorer = new SidePanel
             {
                 Title = "Explorer",
@@ -388,7 +401,7 @@ namespace EmuSen.LunaP.Gallery
 
             SetMenus(
                 new LunaMenu("File", open, save, LunaAction.Separator(), strip),
-                new LunaMenu("View", grid, LunaAction.Separator(), explorer.ToggleAction,
+                new LunaMenu("View", grid, full, LunaAction.Separator(), explorer.ToggleAction,
                     new LunaAction("Theme") { Submenu = new LunaMenu("Theme", dark, light) }),
                 new LunaMenu("Help", new LunaAction("About LunaP", () => Status = "A small Avalonia toolkit.")));
 

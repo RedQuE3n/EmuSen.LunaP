@@ -689,6 +689,21 @@ public static class EmuSen.LunaP.Windowing.Dialogs
     public static System.Threading.Tasks.Task<string?> PickFolderAsync(Avalonia.Visual owner, string title, string? startIn = null)
     public static System.Threading.Tasks.Task<string?> SaveFileAsync(Avalonia.Visual owner, string title, string? suggestedName = null, System.Collections.Generic.IReadOnlyList<Avalonia.Platform.Storage.FilePickerFileType>? types = null, string? startIn = null, string? defaultExtension = null)
 
+public sealed class EmuSen.LunaP.Windowing.FileDrop : System.IDisposable
+    public FileDrop(Avalonia.Input.InputElement target, System.Action<System.Collections.Generic.IReadOnlyList<string>> dropped)
+    public System.Func<System.Collections.Generic.IReadOnlyList<string>, bool>? Accept { get; set; }
+    public void Dispose()
+
+public sealed class EmuSen.LunaP.Windowing.IdleCursor : System.IDisposable
+    public IdleCursor(Avalonia.Input.InputElement target)
+    public IdleCursor(Avalonia.Input.InputElement target, System.TimeSpan delay)
+    public bool IsHidden { get; }
+    public event System.Action<bool> HiddenChanged
+    public static readonly System.TimeSpan DefaultDelay
+    public void Dispose()
+    public void Hide()
+    public void Show()
+
 public sealed class EmuSen.LunaP.Windowing.PaneLayout
     public PaneLayout()
     public bool Collapsed { get; set; }
@@ -714,10 +729,14 @@ public class EmuSen.LunaP.Windowing.ToolWindow : Avalonia.Controls.Window
     protected override void OnClosing(Avalonia.Controls.WindowClosingEventArgs e)
     protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
     protected override void OnOpened(System.EventArgs e)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     public ToolWindow()
     public bool ClosesOnEscape { get; set; }
+    public bool IsFullScreen { get; set; }
+    public event System.Action<bool> FullScreenChanged
     public static readonly Avalonia.StyledProperty<bool> ClosesOnEscapeProperty
     public string? WindowKey { get; set; }
+    public void ToggleFullScreen()
 
 public sealed class EmuSen.LunaP.Windowing.WindowPlacement
     public WindowPlacement()
@@ -729,6 +748,7 @@ public sealed class EmuSen.LunaP.Windowing.WindowPlacement
 
 public static class EmuSen.LunaP.Windowing.WindowPlacementStore
     public const string FileName = "windows.json"
+    public static EmuSen.LunaP.Windowing.WindowPlacement PlacementToSave(Avalonia.Controls.WindowState state, Avalonia.PixelPoint position, double width, double height, EmuSen.LunaP.Windowing.WindowPlacement? previous)
     public static EmuSen.LunaP.Windowing.WindowPlacement? Load(string key)
     public static bool IsOnAScreen(Avalonia.Controls.Screens? screens, Avalonia.PixelRect bounds)
     public static bool IsOnAScreen(System.Collections.Generic.IReadOnlyList<Avalonia.PixelRect> screenBounds, Avalonia.PixelRect bounds)

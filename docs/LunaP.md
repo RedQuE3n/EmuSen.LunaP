@@ -7340,3 +7340,521 @@ It is three times the next largest style file — `ConsolePane.axaml` at 75 — 
 rather than hiding. **The trigger to revisit is the one §29 used: not length, but whether "where does
 this style go" stops being answerable.** While every selector in the file names the same control, it
 is answerable.
+
+## 75. Full screen, and the guard the plan asked for that could not have failed
+
+`PLAN-general-purpose.md` put fullscreen first in the window-services arc, on the grounds that it is
+small and is most of what a game needs from a window. Both halves are true. It also proposed the
+guard, in one sentence:
+
+> Test: save, fullscreen, save again, restore, assert the pre-fullscreen rect survived.
+
+**That test passes against code with no full-screen handling in it at all**, and finding out why is
+most of what this section is about.
+
+### 75.1 It was counted, and did not need §47.4
+
+§47.4 licensed this as a *completion* of the window layer, which is a scope argument. It turns out
+not to need one. §26.1's audit of the one real menu bar in the corpus lists `HotkeyBindingMap`'s
+seven hotkeys, and **Fullscreen (F11) is one of the six that also name a menu item** — hand-rolled,
+in the consumer, next to Save State and Pause. So this is `§21`'s ordinary method: a site that
+already exists, done badly, counted before it was built. The completion argument is not wrong, it is
+merely weaker than the evidence that was already in this document.
+
+### 75.2 `IsFullScreen` is computed, never stored
+
+```csharp
+public bool IsFullScreen
+{
+    get => WindowState == WindowState.FullScreen;
+    set { if (value != IsFullScreen) WindowState = value ? WindowState.FullScreen : _beforeFullScreen; }
+}
+```
+
+A `bool` field beside `WindowState` would be a second copy of a fact the window already holds, and
+**this window is not the only thing that writes it**: the platform's own full-screen affordance, a
+window-manager shortcut, and a caller setting `WindowState` directly all move it without passing
+through here. The copy would be wrong with nothing to notice — the same failure §26.3 records for a
+toolbar button that snapshots its action's label instead of following it.
+
+The public surface is three members: the property, `ToggleFullScreen()` for the gesture, and
+`FullScreenChanged`. **F11 is deliberately not bound here.** §26 built the vocabulary for an
+application to bind its own keys, and a toolkit that quietly claims a function key is a toolkit that
+collides with an application that had other plans for it.
+
+**The event is the part that was not in the plan, and it exists because the gallery could not be
+written without it.** A checkable `LunaAction` stores its own `IsChecked` and flips it when invoked,
+which is correct for a setting the action owns. Full screen is not one — the same three routes that
+made a stored `IsFullScreen` wrong make a stored tick wrong, and a *"Full Screen ✓"* menu item
+sitting over a window that is not full screen is §26.3's defect exactly. So the window announces and
+the surface follows:
+
+```csharp
+FullScreenChanged += on => full.IsChecked = on;
+```
+
+It fires only when the answer changes, so maximizing and restoring says nothing.
+
+### 75.3 Leaving full screen returns to where it came from
+
+The half that is easy to get wrong: a window that was **maximized**, then made full screen, must go
+back to maximized rather than to normal. So the state to return to is captured — and it is captured
+in `OnPropertyChanged`, not in the property setter above, precisely because the setter is not the
+only way in. A window that entered full screen by the platform's own affordance and then left it
+through `ToggleFullScreen` would otherwise be restored to whatever state it held the last time
+somebody used the property, which could be minutes and several states ago.
+
+`Minimized` is never the state returned to. Coming out of full screen into a minimized window reads
+as the application having closed.
+
+### 75.4 The placement trap is real, and the headless platform cannot show it
+
+The trap the plan named is genuine. A window that closes while covering the screen has the screen's
+bounds as its own, so saving them records the display as the window's *restored* size — reopen it,
+leave the covering state, and the "normal" window is the size of the monitor with its title bar off
+the top. §8.1 already records the maximized half of this rule; nothing had ever asked the question
+about full screen.
+
+**What the plan's guard misses is that `Avalonia.Headless` stores `WindowState` and never acts on
+it.** Measured, 12.1.0, on a window shown at 321×234 and moved to (120, 90):
+
+| state set | reported state | position | size |
+|---|---|---|---|
+| `Normal` | `Normal` | 120, 90 | 321×234 |
+| `FullScreen` | `FullScreen` | **120, 90** | **321×234** |
+| `Normal` | `Normal` | 120, 90 | 321×234 |
+| `Maximized` | `Maximized` | **120, 90** | **321×234** |
+
+The property round-trips faithfully and raises exactly one change notification per transition. The
+geometry never moves. So the end-to-end test — go full screen, close, read the file back — saved
+`x=120 y=90 w=321 h=234` **before any of this was written**, because there was never any screen-sized
+geometry for the bug to write down. It is the §22.5 category exactly: a test that measures a
+mechanism the platform under it does not implement, and it would have shipped green over a defect.
+
+**So the rule is split out and made pure**, the same move and for the same reason §8.1 made
+`IsOnAScreen` a function of plain rectangles so it could be tested without a display:
+
+```csharp
+public static WindowPlacement PlacementToSave(
+    WindowState state, PixelPoint position, double width, double height, WindowPlacement? previous)
+```
+
+Now the guard can hand it the geometry the headless platform will not produce — 1920×1080 at (0, 0),
+with a stored 321×234 at (120, 90) behind it — and assert that the small rectangle is what comes
+back. Delete the `FullScreen` arm and it fails with the screen's size in the message.
+
+The **wiring** is guarded separately and one step weaker, and that is worth stating plainly rather
+than leaving it to look total. A window cannot be shown the poisoned geometry here, so what its test
+discriminates is that `RememberPlacement` consults the stored placement *at all* when it closes full
+screen: with a stored rectangle deliberately different from the live one, code that ignores the
+stored value saves the live one and fails. That is the mechanism, not the outcome. **The outcome is
+unguarded on this platform and is recorded here as a hazard rather than claimed**, per §5 — with the
+cause known and measured above, which is what separates this from the shortfall `CLAUDE.md` warns
+about reaching for when a search gets tedious.
+
+### 75.5 Full screen is not remembered, and maximized is
+
+`Maximized` is written to `windows.json`; `FullScreen` is not, and a window that closes full screen
+reopens as an ordinary window at the geometry it had before.
+
+The asymmetry is the decision. **A window that reopens maximized still has its title bar, its close
+button and its restore button.** A window that reopens full screen has none of them, and the key
+that would let it out is F11 — which §75.2 just declined to bind, because it belongs to the
+application. Restoring a user into a state they may not remember choosing, with the exit bound to
+nothing in particular, is a worse default than losing one bit of state.
+
+It stays available to anyone who disagrees: `IsFullScreen = true` at startup is one line, and it is
+the consumer's call, which is the same shape as §65.4's rule about `FrozenColumns` — that file holds
+what the *user* did, and a mode the application chose belongs to the application.
+
+### 75.6 A hole in the maximized rule, found by writing the full-screen one
+
+The rule §8.1 records has a case it does not cover, and it has been there since §8: *"closing while
+maximised keeps the previously stored normal geometry"* — **when there is no previously stored
+geometry, it kept the screen's.** A window maximized on its very first run, then closed, wrote the
+display's bounds as its normal size.
+
+The old expression made the hole hard to see, because the fallback was spelled three times:
+
+```csharp
+X = maximized && previous is not null ? previous.X : Position.X,
+```
+
+`previous is not null` reads as a null guard and is in fact the whole of the bug: with nothing
+stored, every field falls through to the live geometry, which is the one thing the branch exists to
+distrust.
+
+**A covering window now defers to `previous` unconditionally, and writes zeroes when there is
+nothing there.** That is not a sentinel invented for the occasion — `RestorePlacement` already
+ignores a non-positive size, and `IsOnAScreen` already answers false for an empty rectangle. Such a
+window remembers the flag and no geometry, and reopens maximized at its own default size, which is
+the honest record of the fact that nobody has ever seen it as an ordinary window.
+
+### 75.7 The sabotages
+
+Per §22.5, each guard was made to fail before it was trusted.
+
+| Sabotage | What turned red |
+|---|---|
+| Drop `FullScreen` from the `covering` test in `PlacementToSave` | the rule guard, reporting a saved width of 1920 where 321 was expected |
+| Make `covering` defer to `previous` only `if (previous is not null)` — the §75.6 shape | the first-run guard, saving the screen's 1920×1080 as a normal size |
+| Write `Maximized = covering` rather than `state == WindowState.Maximized` | the guard that a window closed full screen does not reopen maximized |
+| Have `RememberPlacement` load `previous` only when maximized | the wiring guard, saving the live rectangle instead of the stored one |
+| Set `_beforeFullScreen` in the `IsFullScreen` setter instead of `OnPropertyChanged` | the guard that entering full screen by another route is still tracked |
+| Hard-code `_beforeFullScreen = WindowState.Normal` | the guard that a maximized window returns to maximized |
+| Drop the `FullScreenChanged` raise | the guard that the change is announced at all |
+| Drop the `wasFull == isFull` test that precedes it | the same guard, on its second half: maximize and restore then announce a full-screen change twice |
+
+The fourth is the one that matters most, because it is the one the plan's own proposed test would
+have let through.
+
+### 75.8 What this does not do
+
+- **No end-to-end geometry test.** §75.4 above; the platform does not implement the behaviour the
+  test would need. It becomes testable the day `Avalonia.Headless` applies window states, and the
+  canary for that is the probe table in §75.4 — the day those four rows stop reading 321×234, this
+  rule can be asserted whole.
+- **`Minimized` is not treated as a covering state**, and the question is open rather than answered.
+  A window that closes minimized saves whatever geometry the platform reports for a minimized
+  window, which on at least one platform has historically been an off-screen sentinel. There is no
+  measurement here either way, so it is left alone and named rather than guessed at.
+- **Nothing hides the cursor, keeps the display awake, or confines the pointer.** Those are the rest
+  of the window-services arc and are not in this section. Cursor confinement and raw relative mouse
+  motion stay hazards rather than features: Avalonia exposes no API for either, so they remain the
+  developer's problem, honestly labelled — the same shelf as gamepad input (§15) and audio.
+
+## 76. A cursor that gets out of the way, and a move that did not move
+
+The second piece of the window-services arc, and the one §75.8 named as still missing. It is smaller
+than full screen and has one idea in it worth the section.
+
+### 76.1 An object attached to a control, not a flag on the window
+
+`PLAN-general-purpose.md` listed this as *"cursor hide/idle"* next to `Topmost` and keep-awake, which
+reads as a window property. It is not built as one.
+
+§8.1 keeps `ToolWindow` deliberately thin, and a timer plus a pointer subscription is not thin —
+§75 already added three members to it and that is the limit of what belongs there. The stronger
+reason is that **"the whole window" is only one of the two things a caller wants.** An emulator
+frontend running in a window wants the pointer hidden over the *video surface* and perfectly visible
+over the toolbar an inch above it. A window-level flag cannot say that; an object attached to an
+`InputElement` says both, because a `Window` is one:
+
+```csharp
+_idle = new IdleCursor(this);                              // the whole window, three seconds
+_idle = new IdleCursor(screen, TimeSpan.FromSeconds(1));   // just the framebuffer
+```
+
+**It is `IDisposable` and that is load-bearing.** It holds a handler on the target, and a hidden
+cursor left behind by an object nobody unsubscribed is an application whose pointer is gone for good.
+Disposal restores the cursor before it stops watching.
+
+`Show()` and `Hide()` are both public, and `Hide()` earns its place rather than being a test hook:
+**a window entering full screen wants the pointer gone at once**, and waiting three seconds to lose a
+cursor nobody is using reads as the feature being broken. The idle path calls the same method, so
+there is one way for the cursor to go and one way for it to come back.
+
+### 76.2 The mechanism, measured rather than recalled
+
+Three facts about Avalonia 12.1.0 were measured before any of this was written, because all three
+decide the shape:
+
+| Question | Answer |
+|---|---|
+| Is there a "no cursor" cursor? | **Yes** — `StandardCursorType` has 24 members and `None` is one |
+| Does `Cursor` inherit down the visual tree? | **Yes** — `InputElement.CursorProperty.Inherits` is `true` |
+| Is `PointerMoved` reachable before a child consumes it? | **Yes** — it is registered `Tunnel, Bubble` |
+
+The second is what makes attaching to a `Window` work at all: with the window's cursor set to `None`,
+a child that has set no cursor of its own reads `None` too, with `IsSet` still `false` — inherited,
+not assigned. **A child that sets its own cursor keeps it**, which is a real limit and is guarded
+rather than described: a `LunaTable` heading sets `Cursor="Hand"` in the theme (§74.9's file), so the
+pointer reappears over a sortable heading while the rest of the window has none. That is arguably
+correct — the heading is claiming to be clickable — but it is behaviour a caller should not discover
+by accident.
+
+The third is why the handler is added with `RoutingStrategies.Tunnel` **and `handledEventsToo: true`**.
+A table in the middle of a column-resize drag handles `PointerMoved` itself, and a cursor that
+vanished mid-drag because the control underneath was doing its job would be the most confusing
+possible version of this feature.
+
+### 76.3 A move that did not move is not activity
+
+This is the one that makes the feature work rather than refine it, and it would have been missed
+without stating it.
+
+`PointerMoved` does not only arrive when somebody moves the mouse. A window activating under a
+stationary pointer raises one, and so do several other things that are not a person touching
+anything. An implementation that treats every `PointerMoved` as activity is one whose cursor can
+never quite reach its delay on some platforms, and the failure is invisible in testing because the
+mechanism is plainly correct — it is the *input* that is not what it looks like.
+
+So the position is compared against the last one and an identical position is ignored. It costs two
+lines and it is the difference between a feature and a feature that mysteriously does not work on
+somebody's machine.
+
+### 76.4 Restoring a cursor is not the same as putting the value back
+
+The obvious implementation saves `target.Cursor`, sets `None`, and assigns the saved value back. It
+is wrong in a way that does not show up until later, and `IsSet` is the reason.
+
+**Whether the value was LOCAL matters more than what it was.** A control whose cursor comes from a
+style or from its parent reads a perfectly good `Cursor` — and assigning that value back turns it
+into a *local* value, which then outranks the style that owns it for the rest of the control's life.
+The style stops working and nothing says so.
+
+So the local-ness is recorded along with the value, and the restore either assigns or calls
+`ClearValue`. Measured: `IsSet(CursorProperty)` is `false` on a fresh control, `true` after an
+assignment, and `false` again after `ClearValue`.
+
+**And a cursor somebody else changed while it was hidden is left alone.** If the current value is no
+longer the invisible one, another owner has taken it since, and putting the old value back would undo
+their change rather than this one.
+
+### 76.5 Only pointer movement counts, and keystrokes deliberately do not
+
+The application this exists for is one somebody is holding four keys down in. A cursor that came back
+on every keystroke would never be hidden at all — the feature inverted, arrived at by making it more
+thorough.
+
+A caller with its own idea of activity — a gamepad, a media player leaving playback — calls `Show()`,
+which reveals and restarts the clock. That is the seam, and it names no input library, which is §1
+holding in the same shape `ISettingsStore` holds it (§19.1).
+
+### 76.6 The delay is a judgement, not a measurement
+
+Three seconds, and it is worth saying plainly that no measurement produced that number. It is in the
+range the applications this imitates use, and the constructor takes a `TimeSpan` precisely because
+the right answer differs by application: a video player wants about one second, a settings window
+arguably wants never.
+
+### 76.7 The sabotages
+
+| Sabotage | What turned red |
+|---|---|
+| Never hide — make `Hide` return immediately | the guard that a still pointer is hidden after its delay |
+| Treat every `PointerMoved` as activity, dropping the position comparison | the guard that a move to the same point does not keep the cursor alive |
+| Restore by assignment always, never `ClearValue` | the guard that an inherited cursor is still inherited afterwards |
+| Drop the `ReferenceEquals` test in `Reveal` | the guard that a cursor changed by somebody else is not clobbered |
+| Do not restore on `Dispose` | the guard that disposing brings the pointer back |
+| Subscribe with `Bubble` and `handledEventsToo: false` | the guard that a child consuming the move still counts as activity |
+
+### 76.8 What this does not do
+
+- **Nothing confines the pointer, and nothing reads raw relative motion.** Avalonia exposes no API
+  for either, so both stay the developer's problem and are named here rather than approximated. Same
+  shelf as gamepad input (§15) and audio.
+- **The display is not kept awake.** A screensaver over a paused emulator is the same arc and is not
+  this section; it needs a platform call per operating system and has no Avalonia surface at all.
+- **A child with its own cursor keeps it** (§76.2). Guarded, not merely stated.
+
+### 76.9 The delay itself is not asserted, and the reason is measured
+
+Every guard in `IdleCursorTests` drives the transition with `Hide()` or `Show()` and sets the delay
+to **thirty seconds**, so the idle timer cannot fire during a test. That is deliberate, and it is not
+a gap that better test-writing would close.
+
+**A `DispatcherTimer` cannot advance inside `Session.Dispatch`.** The dispatch call owns the loop
+while the test body runs, so the timer never gets to raise. Measured rather than assumed: a 30ms
+timer, slept past by 80ms and then pumped with `RunJobs()`, fired **0** times — and five further
+40ms sleeps with a pump after each one left it at **0**.
+
+The first version of these tests did wait on the clock, and it is worth recording what that looked
+like, because it is the shape that gets committed. **Seven of eleven passed.** Not zero — seven, on
+timing luck, while asserting behaviour the platform was not producing. A suite where four tests fail
+is a suite somebody fixes; a suite where seven pass is one somebody trusts.
+
+`ThreadingTests` had already reached the same conclusion for `Debounce` itself and says so at the top
+of that file: *"a test that waits for a real timer inside a dispatcher it is itself blocking is
+measuring the machine, not the code."* The delay behaviour belongs to `Debounce`, which is tested
+there by the same method — a 30-second interval and an explicit `Flush()`. What `IdleCursor` adds on
+top is one line, `new Debounce(delay, Hide)`, and everything else it does is asserted here without a
+clock.
+
+**What that leaves unasserted, stated plainly:** that the debounce is wired to `Hide` with the delay
+the caller passed. It is one line over a tested primitive, and no test in this harness can watch it
+elapse. Recorded as a hazard per §5 rather than described as covered — the same shape as §75.4, and
+for the same kind of reason: a platform that does not implement the thing the assertion would need.
+
+## 77. The rest of the window-services list, and a plan sentence that was wrong about six of them
+
+`PLAN-general-purpose.md` closed the window-services arc with a list and a promise:
+
+> Then, in rough value order: cursor hide/idle, keep-awake, `Topmost`, clipboard, file drag-and-drop,
+> window icon, single-instance, custom title bar. **Ordinary work, no research problems.**
+
+Cursor hide/idle became §76. **Of the seven that remained, one was built and six were refused**, and
+the promise is false in both directions: four of them are not work at all because Avalonia already
+does them, and three are research problems wearing a list entry's clothes. This is the fifth claim
+these working documents have produced that did not survive being checked (§47.6 counts the others).
+
+The list was written from memory of what a toolkit ought to have. It was never checked against
+`Avalonia.Controls` 12.1.0, and checking it took about twenty minutes.
+
+### 77.1 Four that Avalonia already does, refused on §21.5
+
+Each of these was reflected over in 12.1.0 rather than recalled. A LunaP wrapper would add a name, a
+line of indirection and a thing to keep in step, and would remove nothing.
+
+| Asked for | What already exists | Verdict |
+|---|---|---|
+| `Topmost` | `Window.Topmost`, a plain settable property | **nothing to build** |
+| Window icon | `Window.Icon` and `Window.IconProperty` | **nothing to build** |
+| Clipboard | `TopLevel.Clipboard`, plus `TryGetText`/`TryGetFiles`/`TryGetBitmap` extensions on `IDataTransfer` | **nothing to build** |
+| Custom title bar, the platform half | `ExtendClientAreaToDecorationsHint`, `ExtendClientAreaTitleBarHeightHint`, `SystemDecorations` | **nothing to build** for the hint; the control is §77.3 |
+
+§21.5 is the rule being applied — *what none of this may do* — and the general form is worth stating
+because this list will be written again by somebody: **a toolkit may not charge a name for a property
+that already exists.** `LunaWindow.StayOnTop` is not better than `Topmost`; it is `Topmost` with a
+migration cost and a second place to look.
+
+### 77.2 One that was built: files dropped on a control
+
+`FileDrop` is the exception, and it earns its place on a margin narrow enough to be worth writing
+down, because the same argument refuses the four above.
+
+**Avalonia already extracts the files** — `TryGetFiles(IDataTransfer)` returns `IStorageItem[]` in one
+call, so the interesting part is genuinely done. What remains is four lines of wiring with **two
+silent failures** in them:
+
+- `DragDrop.SetAllowDrop(target, true)` was never set, so no drag event is raised at all.
+- `DragOver` never assigned `DragEffects`, so the platform refuses the drop before `Drop` is reached.
+
+Neither produces an error, a warning or a mark on screen, and the second is the worse one: the code
+that matters is present, correct, and never called. That is the same shape as §29.2's unindexed style
+file and §5.5's missing template — the failure mode this document keeps finding is *nothing happens
+and nothing says why*, and it is the one worth spending a type on.
+
+**It hands back paths, not `IStorageItem`s**, to match `Dialogs`, which has returned `string?` since
+§6. A file with no local path — out of a remote share, or a virtual file from an archive viewer — has
+no path to give, so it is not offered, and **a drop carrying nothing else is refused rather than
+delivered empty.** Handing a caller a shorter list than the user dropped, with no way to tell, is the
+kind of quiet lie this document exists to avoid.
+
+`Accept` is consulted on the way over as well as on the drop, so a refusal shows as the "no entry"
+pointer while the drag is still moving rather than as nothing happening after the user lets go. A
+refusal is left **unhandled**, so a `FileDrop` on an ancestor still gets to answer for itself.
+
+**There is no counted evidence for this one**, and that is stated rather than glossed. §47.3's test is
+what licenses it instead: it introduces no new noun — a consumer already knows what dropping a file
+is, and it carries no new state — so it is a completion of the window layer in the same sense
+fullscreen was, not a new kind.
+
+### 77.3 Three that are new kinds, and are not taken
+
+Each gets the §47.4 treatment: named, argued, and deliberately not built, with what taking it would
+require.
+
+**Keeping the display awake.** Avalonia has **nothing** — reflected over `Avalonia.Base` and
+`Avalonia.Controls` for any type mentioning power, idle, wake or screensaver, and there is no such
+API. It needs three platform implementations (`SetThreadExecutionState`, an `IOPMAssertion`, and a
+`org.freedesktop.ScreenSaver` inhibit over DBus), none of which any test in this harness can observe,
+in a package a consumer cannot patch. §1 survives literally, since a P/Invoke is not a
+`PackageReference` — but three untested platform paths whose failure mode is *the user's machine never
+sleeps* is precisely what "untested claims are recorded as hazards, not behaviours" exists to stop.
+**This is the one on the list with real value for this toolkit's actual consumers**, and it is the one
+that most needs a named first consumer and a §1 argument in writing before anybody starts.
+
+**Single instance.** Not a window service at all — it is process coordination, and the window is only
+where the answer becomes visible. The easy half is a named `Mutex` and is five lines; the half that
+matters is handing the file the user just double-clicked to the instance that is already running,
+which needs an IPC channel per platform and a protocol for it. **A single-instance feature that
+answers "you are not the first, goodbye" is worse than none**, because every application that wants
+this wants the argument passed along, and the half-answer looks like the whole one until the day
+somebody opens a second file.
+
+**A custom title bar.** The platform hints exist (§77.1); the control does not. It is a new noun in
+§47.3's sense — a caption, window buttons, a drag region, a double-click-to-maximize contract, and a
+per-platform argument about which side the buttons live on. It also collides with §26.12's *"no icons
+anywhere"*, since the first thing anybody wants in a title bar is the application's icon. No evidence
+asks for it across five repositories.
+
+### 77.4 What this section is really recording
+
+Not four refusals and a helper. **A list written from memory, checked against the platform for the
+first time, and found to be about two-thirds wrong** — and the checking was twenty minutes against
+work that would have been days.
+
+§21's method is usually described in this document as protecting against building things nobody
+needs. This is the other half of the same protection and it had not been written down: it also
+catches building things that **already exist**, which is a failure the evidence rule cannot see,
+because a count of hand-rolled sites says nothing about whether the framework underneath grew the
+feature in the meantime. `Topmost` would have been counted and built.
+
+The rule that follows, and it belongs beside §21's: **before building a window service, reflect over
+the platform's own surface for it.** Not the documentation, and not memory — the shipped assembly, in
+the version this toolkit references.
+
+### 77.5 An `async` lambda handed to `Dispatch` is a test that cannot fail
+
+The most valuable thing to come out of this section, and it was found the way §22.5 says these are
+found: by sabotaging a guard and watching it stay green.
+
+`FileDrop` has two defects it exists to prevent, and both got a guard. Then the guards were
+sabotaged. Four of six turned red. **The two that did not were the two that mattered** — the one
+asserting that `DragOver` says the drop will be taken, and the one asserting that `Accept` refuses
+before the user lets go. Removing the entire `DragEffects` assignment left them both green.
+
+The first suspicion was a hollow assertion in the §22.6 sense — that `DragEffects` already defaults
+to `Copy`, so asserting it proved nothing. **That was measured and it is false:** `DragEventArgs`
+defaults `DragEffects` to `None`, with or without `AllowDrop` set, and the setter works. The
+assertion was sound.
+
+The real cause is the test's *shape*:
+
+```csharp
+public Task Foo() => Session.Dispatch(async () => { ...; Assert.Equal(x, y); }, default);
+```
+
+`HeadlessUnitTestSession.Dispatch` has three overloads, one of them
+`Dispatch<TResult>(Func<TResult>, CancellationToken)`. An `async () => { … }` lambda binds to **that**
+one, with `TResult` inferred as `Task`. So the call returns `Task<Task>`, and handing it back as the
+`[Fact]`'s `Task` awaits only the **outer** one — which completes at the body's first `await`.
+Everything after that runs detached on a thread nobody is watching, and its failure is swallowed.
+
+The two hollow guards were the only two `async` bodies in the file. The four that turned red were all
+synchronous. Nothing about any of them looked different.
+
+`Unwrap()` is the whole fix, and it is spelled once per test class:
+
+```csharp
+private static Task Run(Func<Task> body) => Session.Dispatch(body, default).Unwrap();
+```
+
+Both sabotages turn red immediately afterwards.
+
+**It is an assertion now, not a paragraph.** `DispatchShapeTests` scans the test sources for
+`Dispatch(async` and fails with the file and line. §28's precedent is the reason: two traps in this
+repository were written up three and four times as prose asking the next author to remember before
+anybody made them fail the build. The scan is deliberately *textual* — the mistake is a compile-time
+overload choice that leaves no runtime trace, so there is nothing to reflect over; by the time a test
+runs, the evidence is a `Task` somebody already dropped. It excludes its own file, which necessarily
+spells the shape out, and it was made to fail on purpose by reintroducing the shape in
+`IdleCursorTests`.
+
+**No other test in the suite had it.** Every existing `Session.Dispatch` body is synchronous, so
+nothing already committed was asserting into the void — this was a trap dug and fallen into on the
+same afternoon.
+
+### 77.6 The sabotages
+
+| Sabotage | What turned red |
+|---|---|
+| `DragDrop.SetAllowDrop` never called | the guard that the target accepts drops at all — defect one |
+| `DragOver` never assigns `DragEffects` | the two drag-over guards — defect two, **and only after §77.5 was fixed** |
+| A refusal is marked `Handled` | the guard that an ancestor still gets to answer |
+| `Accept` ignored | the guard that a filter refuses before the drop, **also only after §77.5** |
+| `Dispose` sets `AllowDrop` to false rather than what it was | the guard that a target which already allowed drops keeps doing so |
+| An empty path list is delivered instead of refused | the guard that a drag carrying no files is refused |
+| The shape of §77.5 reintroduced in `IdleCursorTests` | `DispatchShapeTests`, naming the file and line |
+
+### 77.7 What is not guarded, and why
+
+**A file with no local path.** `FileDrop` skips an `IStorageItem` whose `TryGetLocalPath()` is null
+and refuses a drop carrying nothing else. That branch has no test, and the reason is a measured
+platform fact rather than an omission: **`IStorageItem` is explicitly not implementable by user
+code** — the compiler rejects it in as many words — and Avalonia's only concrete implementations,
+`BclStorageFile` and `BclStorageFolder`, are internal. The one route to a real instance is
+`StorageProviderExtensions.TryGetFileFromPathAsync`, which always produces a `file://` item and
+therefore always has a local path. There is no way from here to construct the input the branch
+exists for. Recorded as a hazard per §5, with the cause, rather than left looking covered.

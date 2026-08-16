@@ -444,6 +444,73 @@ pixels, under an opt-in `PaneKey`. What this deliberately does not do — floati
 docks, icons, MDI, a native macOS menu bar — is listed in `docs/LunaP.md` §26.12
 rather than left to be discovered.
 
+**Any window can go full screen**, and coming back out returns it to the state it
+came from rather than always to a normal window:
+
+```csharp
+window.ToggleFullScreen();               // or: window.IsFullScreen = true
+window.FullScreenChanged += on => full.IsChecked = on;
+```
+
+`IsFullScreen` is read from the window rather than stored beside it, so it stays
+right when the platform's own full-screen affordance is what moved it. That is
+also why `FullScreenChanged` exists: a checkable menu item that kept its own tick
+would say the opposite of the window the first time somebody used a window-manager
+shortcut. **F11 is yours to bind** — LunaP does not claim a function key.
+
+A window closed while full screen reopens as an ordinary window at the size it
+had before, and **full screen is deliberately not remembered** while maximized is:
+a window that reopens maximized still has its title bar and its close button, and
+one that reopens full screen has neither, with the key that would let it out bound
+to whatever you chose. Set `IsFullScreen` at startup if you want it back.
+
+**The pointer can get out of the way** when it has been still for a while, which
+is what a full-screen anything wants:
+
+```csharp
+_idle = new IdleCursor(this);                            // the whole window, three seconds
+_idle = new IdleCursor(screen, TimeSpan.FromSeconds(1)); // or just the framebuffer
+```
+
+It attaches to any control rather than being a flag on the window, because
+"hidden over the video and visible over the toolbar" is the common case and a
+window-level switch cannot say it. `Hide()` and `Show()` drive it directly — a
+window entering full screen wants the pointer gone at once rather than in three
+seconds — and `Show()` is also the seam for your own idea of activity, a gamepad
+or a media player leaving playback.
+
+**Dispose it.** The cursor comes back on disposal, and one left hidden by an
+object nobody unsubscribed is an application whose pointer is gone for good.
+
+Only pointer *movement* counts as activity: keystrokes deliberately do not, or an
+application somebody is holding four keys down in would never hide it at all. A
+child that sets its own cursor keeps it, so the pointer reappears over a sortable
+table heading.
+
+**Files can be dropped onto any control**, arriving as local paths:
+
+```csharp
+_drop = new FileDrop(this, paths => Load(paths[0]));
+_drop.Accept = paths => paths.Count == 1;      // refuses while the drag is still moving
+```
+
+Avalonia already extracts the files; what this removes is four lines of wiring
+with two silent failures in them — forgetting `AllowDrop`, so no drag event is
+raised at all, and forgetting to set an effect in `DragOver`, so the platform
+refuses the drop before your handler is reached. Neither produces an error or a
+mark on screen. **Dispose it**, and whatever `AllowDrop` you had is put back.
+
+Paths rather than storage items, to match `Dialogs`. A file with no local path —
+out of a remote share, or a virtual file from an archive viewer — is not offered,
+and a drop carrying nothing else is refused rather than delivered empty.
+
+**What LunaP deliberately does not wrap**, because Avalonia already does it well:
+`Window.Topmost`, `Window.Icon`, `TopLevel.Clipboard` (with `TryGetText` and
+`TryGetFiles`), and `ExtendClientAreaToDecorationsHint` for a borderless window.
+Keeping the display awake, single-instance and a custom title-bar control are
+absent for reasons written down in `docs/LunaP.md` §77.3 rather than left to be
+discovered.
+
 **The gallery** — `GalleryWindow` shows every control in the kit against the
 current theme, which is the fastest way to see what a theme you are writing
 actually does.
