@@ -16,7 +16,7 @@ public sealed class EmuSen.LunaP.Commands.ActionGroup
     public ActionGroup()
     public EmuSen.LunaP.Commands.LunaAction Add(EmuSen.LunaP.Commands.LunaAction action)
     public EmuSen.LunaP.Commands.LunaAction Add(string text, System.Action<EmuSen.LunaP.Commands.LunaAction>? triggered = null)
-    public EmuSen.LunaP.Commands.LunaAction? Checked { get; }
+    public EmuSen.LunaP.Commands.LunaAction? Checked { get; set; }
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Commands.LunaAction> Members { get; }
 
 public sealed class EmuSen.LunaP.Commands.LunaAction : System.Windows.Input.ICommand
