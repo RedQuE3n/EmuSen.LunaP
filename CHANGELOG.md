@@ -35,7 +35,16 @@ day of a consumer adopting 0.8.0 (`§78`).
   gestures. `LunaList`'s also records that a direct write to `SelectedIndex`
   raises it, which `Refresh` and `Select` do not (`§78.2`).
 
-Nothing here changes what an existing consumer's code does. The `Chose` change
+- **`LunaTable<T>` forwards its automation name to the list inside it.** A caller
+  names the table, because the table is the control they declared; the template
+  put an unnamed `ListBox` underneath, so a screen reader walking the tree found
+  an anonymous list inside a named table — and no consumer could fix it, because
+  that list lives in a template they do not own. Forwarded rather than hidden, so
+  the rows stay navigable; a name the caller set on the inner list themselves is
+  kept; and it is re-applied when the name changes, because a window built in a
+  constructor usually gets its name *after* the template (`§78.4`).
+
+Nothing else here changes what an existing consumer's code does. The `Chose` change
 is documentation only, and `ActionGroup.Checked` gains a setter without altering
 the getter.
 
