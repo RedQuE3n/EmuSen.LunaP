@@ -7893,7 +7893,7 @@ Both summaries now say *"This is a selection, NOT an activation"* and name the g
 
 **No `Activated` event was added**, and that is a decision rather than an omission. `LunaList` is a `ListBox` and `LunaTable`'s rows are in one, so `DoubleTapped` is already there, is already the platform gesture, and is already what a consumer reaches for Enter through a `KeyDown` handler. A LunaP-named wrapper would be a third spelling of something Avalonia does correctly — the §21.5 refusal, applied to an event.
 
-### 78.3 The sabotages
+### 78.3 The sabotages for the setter
 
 Two, against the setter, both confirmed red before being put back:
 
@@ -7902,7 +7902,23 @@ Two, against the setter, both confirmed red before being put back:
 
 `Setting_Checked_to_null_unchecks_everything` was not separately sabotaged; the null branch is the only code that can satisfy it.
 
-### 78.4 What this says about the guard
+### 78.4 A third one, and this one was behaviour: a named table containing an anonymous list
+
+Found the same day, by the same consumer, and by a test rather than by reading — EmuSen's `AccessibilityTests` walks every `ListBox` in a window and requires a name, and it went red the moment a `ListBox` was replaced with a `LunaTable`.
+
+The caller writes `AutomationProperties.Name="Cheats for this console"` on the table, because the table is the control they declared. The template then puts `PART_Rows` — a `ListBox` — underneath, with no name at all. A screen reader walking the tree reaches an anonymous list inside a named table.
+
+**This one is not a summary problem.** §24 spent a whole section putting this kit's controls into the automation tree; a control that *adds* an unnamed one is that work going backwards, and no consumer can fix it because the list is inside a template they do not own.
+
+`LunaTable` now forwards its own name to `PART_Rows`. Three decisions in it:
+
+- **Forwarded, not suppressed.** Hiding the inner list from the tree would take the row collection with it, and a table whose rows a reader cannot navigate is worse than one whose list repeats the table's name.
+- **Only when the inner list has none of its own**, so a caller who names `PART_Rows` through a style keeps what they set.
+- **Re-applied on change**, not once at attach. A window in this toolkit is built in its constructor and shown afterwards, so the name is very often assigned *after* the template — the same ordering trap §27.6 records for `Select`, met again. A one-shot forward passes the obvious test and fails the normal case, which is why there is a test for each.
+
+**The sabotages.** Removing the forward reddens `The_tables_name_reaches_the_list_inside_it`; the other two cover the caller's own name surviving, and a name set after the template still arriving. All three assert through `ControlAutomationPeer` rather than reading the attached property back, per `TableAutomationTests`' own rule about §50.5.
+
+### 78.5 What this says about the guard
 
 The pattern in both is a summary that was *plausible*. Neither is a typo; both describe a design somebody could have built, and one of them describes a design that was later built because the sentence was more sensible than the code.
 
