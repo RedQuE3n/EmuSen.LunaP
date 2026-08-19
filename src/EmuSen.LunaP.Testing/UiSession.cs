@@ -35,6 +35,7 @@ namespace EmuSen.LunaP.Testing
         // suite running under Avalonia.Headless must already carry [AvaloniaTestApplication], so
         // there is nothing to configure that is not configured already.
         /// <summary>The consumer's test assembly, found by looking for the one carrying <c>[AvaloniaTestApplication]</c>.</summary>
+        /// <exception cref="System.InvalidOperationException">No loaded assembly carries <c>[AvaloniaTestApplication]</c>, or more than one does. Call <see cref="Use"/> to name it in the second case.</exception>
         public static Assembly TestAssembly => _assembly ??= Find();
 
         /// <summary>The one headless session for this test assembly, started on first use.</summary>
@@ -53,6 +54,7 @@ namespace EmuSen.LunaP.Testing
         // For a suite whose layout defeats the search - several test assemblies in one process, say.
         /// <summary>Names the test assembly explicitly, for a layout where the search cannot pick one - several test assemblies loaded into one process, say.</summary>
         /// <param name="assembly">The assembly carrying <c>[AvaloniaTestApplication]</c>. Setting this discards any session already started.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="assembly"/> is null.</exception>
         public static void Use(Assembly assembly)
         {
             _assembly = assembly ?? throw new ArgumentNullException(nameof(assembly));

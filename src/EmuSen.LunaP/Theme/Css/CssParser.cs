@@ -100,6 +100,16 @@ namespace EmuSen.LunaP.Theme
                     }
 
                     string key = ResourceKey(name);
+
+                    // The prefix says it means to be a palette token; this says whether it is one.
+                    // Without it a typo invented a resource nobody reads and left the real key at its
+                    // default in silence - see docs/LunaP.md §79.4.
+                    if (!IsKnownToken(key))
+                    {
+                        Warn(line, $"'{name}' is not a palette token; see CssTheme.TokenNames for the ones there are");
+                        continue;
+                    }
+
                     if (key.EndsWith("Size", StringComparison.Ordinal))
                     {
                         if (TryNumber(value, out double number)) _result.Resources[key] = number;

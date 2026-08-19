@@ -142,8 +142,14 @@ namespace EmuSen.LunaP.Controls
         /// <param name="spoken">What this column contributes to the row's spoken sentence. Required, because nothing else can describe an arbitrary control.</param>
         /// <exception cref="System.ArgumentNullException">Any argument is null.</exception>
         public LunaColumn(string header, Func<T, Control> build, Func<T, string> spoken)
-            : this(LunaCellKind.Template, header, spoken) =>
+            : this(LunaCellKind.Template, header, Named(spoken)) =>
             Build = build ?? throw new ArgumentNullException(nameof(build));
+
+        // Says' reason, for the parameter that is not a projection: `spoken` becomes the private
+        // constructor's `text`, so an unchecked null was reported as a null "text" - a parameter
+        // this overload does not have. See docs/LunaP.md §80.2.
+        private static Func<T, string> Named(Func<T, string> spoken) =>
+            spoken ?? throw new ArgumentNullException(nameof(spoken));
 
         /// <summary>An Avalonia column width - "*", "2*", "Auto", or a number of pixels. Headers and cells share a size group, so they stay aligned.</summary>
         public string Width { get; init; } = "*";

@@ -4,8 +4,11 @@ namespace EmuSen.LunaP.Settings
     /// <summary>The seam between LunaP and whatever a host keeps its settings in.</summary>
     public interface ISettingsStore
     {
-        // A category is a subdirectory; null is the root.
-        /// <summary>The directory a category resolves to, created if it does not exist.</summary>
+        // A category is a subdirectory; null is the root. Resolving a path is all this does - an
+        // implementation creates the directory when it WRITES one, not when it is asked where a
+        // category lives, so a caller reading this must not assume the folder is there. It said
+        // "created if it does not exist" until §80.3, which no implementation has ever done.
+        /// <summary>The directory a category resolves to, whether or not it exists yet.</summary>
         /// <param name="category">The subdirectory, or null for the root.</param>
         /// <returns>The full path.</returns>
         string Directory(string? category);

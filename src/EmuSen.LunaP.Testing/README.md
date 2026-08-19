@@ -86,6 +86,12 @@ add. It runs after LunaP's own setup, so it can override what LunaP configured.
   `DistinctColours(stopAt)`, which ignores alpha and can stop counting early.
 - **`UiTest.Redraw(window)`** — forces a genuine second render pass and captures
   that, rather than the window's first draw.
+- **`UiTest.Settle(control)`** — runs layout to a standstill. Needed for a
+  control that builds children *during* a layout pass (a `LunaTable` with
+  `VirtualizeColumns` on, or anything driven from `LayoutUpdated`): the pass that
+  adds a child is not the pass that arranges it, so after a single `UpdateLayout`
+  the new children have no bounds and **every assertion about where they are
+  reads zero**. `Redraw` is not a substitute — it forces a render, not a layout.
 - **`UiTest.Dump(name, bitmap)`** — writes a PNG, if `EMUSEN_UI_DUMP` names a
   directory.
 

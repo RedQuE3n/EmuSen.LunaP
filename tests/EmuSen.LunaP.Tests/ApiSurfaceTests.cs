@@ -99,6 +99,41 @@ namespace EmuSen.LunaP.Tests
             Assert.DoesNotContain("??", surface, StringComparison.Ordinal);
         }
 
+        // The same argument as the test above, for the two things §82.1 found missing. Asserted
+        // against the description rather than the baseline, because regenerating the baseline after
+        // deleting either walk would make the file agree with itself while saying less.
+        [Fact]
+        public void The_snapshot_records_generic_constraints_and_extension_methods()
+        {
+            string toolkit = Describe(typeof(EmuSen.LunaP.Settings.ISettingsStore).Assembly);
+            string harness = Describe(typeof(EmuSen.LunaP.Testing.UiTest).Assembly);
+
+            // A constraint on a TYPE, which is what LunaColumn, LunaList, LunaTable and Latest carry.
+            Assert.Contains("class EmuSen.LunaP.Threading.Latest<T> where T : class", toolkit, StringComparison.Ordinal);
+
+            // A base-CLASS constraint rather than `class`, so a renderer that only reads
+            // GenericParameterAttributes and never asks for the constraint list gets this one wrong.
+            Assert.Contains("where TWindow : Avalonia.Controls.Window", toolkit, StringComparison.Ordinal);
+
+            // A constraint on a METHOD, which is a separate call site in the renderer.
+            Assert.Contains("Margin<T>(this T control, double uniform) where T : Avalonia.Controls.Control",
+                toolkit, StringComparison.Ordinal);
+
+            // `this` on the first parameter and nowhere else.
+            Assert.Contains("public static T? FindPart<T>(this Avalonia.Visual root) where T : Avalonia.Visual",
+                harness, StringComparison.Ordinal);
+            Assert.Contains("public static T FindNamed<T>(this Avalonia.Visual root, string name)",
+                harness, StringComparison.Ordinal);
+            Assert.DoesNotContain(", this ", harness, StringComparison.Ordinal);
+
+            // `struct` is spelled in metadata as a ValueType constraint, so a renderer that lists the
+            // constraint types verbatim writes `where T : struct, System.ValueType`. Neither package
+            // has a struct-constrained parameter today; this guards the first one that arrives.
+            // Scoped to the constraint clause on purpose - `System.ValueType` on its own is the base
+            // type every struct in the file already declares, and is not what this is about.
+            Assert.DoesNotContain("struct, System.ValueType", toolkit, StringComparison.Ordinal);
+        }
+
         private static string Normalise(string text) => text.Replace("\r\n", "\n").TrimEnd();
 
         // GROUPED BY TYPE, and counted rather than set-differenced. The first version of this method
@@ -291,7 +326,51 @@ namespace EmuSen.LunaP.Tests
                 bases.Add(FullName(b));
             bases.AddRange(DeclaredInterfaces(type).Select(FullName).OrderBy(n => n, StringComparer.Ordinal));
 
-            return bases.Count == 0 ? head : head + " : " + string.Join(", ", bases);
+            string line = bases.Count == 0 ? head : head + " : " + string.Join(", ", bases);
+            return line + Constraints(type.IsGenericTypeDefinition ? type.GetGenericArguments() : Array.Empty<Type>());
+        }
+
+        // A CONSTRAINT IS PART OF THE SIGNATURE AND THIS FILE COULD NOT SEE ONE - see §82.1.
+        //
+        // `where T : class` appeared in three public types and four public methods and in none of the
+        // baseline's 643 lines. Tightening one - `class` to `class, IEquatable<T>`, or `Control` to
+        // `TemplatedControl` - is source-breaking for every consumer who instantiated the loose form,
+        // and it is exactly the change this file exists to make visible. Loosening one is safe, which
+        // is the asymmetry a reviewer needs the line in front of them to judge.
+        //
+        // Same shape as §79.1 and §32.6: not a missing guard, a guard whose own output omitted the
+        // thing it was written to catch.
+        private static string Constraints(Type[] parameters)
+        {
+            var clauses = new List<string>();
+
+            foreach (Type p in parameters.Where(p => p.IsGenericParameter))
+            {
+                GenericParameterAttributes attributes = p.GenericParameterAttributes;
+                bool isStruct = attributes.HasFlag(GenericParameterAttributes.NotNullableValueTypeConstraint);
+                var parts = new List<string>();
+
+                if (attributes.HasFlag(GenericParameterAttributes.ReferenceTypeConstraint)) parts.Add("class");
+                if (isStruct) parts.Add("struct");
+
+                // ValueType is how `struct` is spelled in metadata, so listing it as well would
+                // render `where T : struct, System.ValueType`.
+                Type[] declared = p.GetGenericParameterConstraints()
+                    .Where(c => !(isStruct && c == typeof(ValueType)))
+                    .ToArray();
+
+                // Base class before interfaces, which is both C#'s own order and the order a reader
+                // scanning for "what may I pass" wants.
+                parts.AddRange(declared.Where(c => !c.IsInterface).Select(FullName).OrderBy(n => n, StringComparer.Ordinal));
+                parts.AddRange(declared.Where(c => c.IsInterface).Select(FullName).OrderBy(n => n, StringComparer.Ordinal));
+
+                // Implied by struct, so writing both is noise.
+                if (!isStruct && attributes.HasFlag(GenericParameterAttributes.DefaultConstructorConstraint)) parts.Add("new()");
+
+                if (parts.Count > 0) clauses.Add($"where {p.Name} : {string.Join(", ", parts)}");
+            }
+
+            return clauses.Count == 0 ? string.Empty : " " + string.Join(" ", clauses);
         }
 
         // ONLY WHAT THIS TYPE ADDS. GetInterfaces() is transitive, so every control would list the
@@ -338,7 +417,7 @@ namespace EmuSen.LunaP.Tests
                 MethodInfo? get = p.GetMethod, set = p.SetMethod;
                 var accessors = new List<string>();
                 if (get is not null && Exposed(get.IsPublic, get.IsFamily, get.IsFamilyOrAssembly)) accessors.Add("get");
-                if (set is not null && Exposed(set.IsPublic, set.IsFamily, set.IsFamilyOrAssembly)) accessors.Add("set");
+                if (set is not null && Exposed(set.IsPublic, set.IsFamily, set.IsFamilyOrAssembly)) accessors.Add(IsInitOnly(set) ? "init" : "set");
                 if (accessors.Count == 0) continue;
 
                 MethodInfo any = get ?? set!;
@@ -384,8 +463,15 @@ namespace EmuSen.LunaP.Tests
                     ? "<" + string.Join(", ", m.GetGenericArguments().Select(a => a.Name)) + ">"
                     : string.Empty;
 
+                // EXTENSION-NESS IS PART OF THE SIGNATURE TOO, and was the second thing this file
+                // could not see (§82.1). Dropping `this` from a parameter keeps the method callable
+                // as a static and breaks every call site that used extension syntax - which for
+                // LayoutExtensions and VisualQuery is every call site there is.
+                bool extension = m.IsDefined(typeof(System.Runtime.CompilerServices.ExtensionAttribute), inherit: false);
+
                 lines.Add($"{mods} {Render(m.ReturnType, nullability.Create(m.ReturnParameter), read: true)} "
-                    + $"{m.Name}{generics}({Parameters(m, nullability)})");
+                    + $"{m.Name}{generics}({Parameters(m, nullability, extension)})"
+                    + Constraints(m.IsGenericMethodDefinition ? m.GetGenericArguments() : Array.Empty<Type>()));
             }
 
             return lines.OrderBy(l => l, StringComparer.Ordinal);
@@ -393,16 +479,33 @@ namespace EmuSen.LunaP.Tests
 
         private static bool IsOverride(MethodInfo m) => m.GetBaseDefinition().DeclaringType != m.DeclaringType;
 
+        // INIT IS NOT SET, AND THE BASELINE SAID IT WAS - see docs/LunaP.md §79.1.
+        //
+        // An init-only setter is an ordinary setter carrying a required modifier, so reflection
+        // reports CanWrite and IsPublic for both and the two rendered identically. Nine of
+        // LunaColumn<T>'s properties are init-only and every one of them read `{ get; set; }` in the
+        // file this suite tells a consumer their compiler sees - while assigning any of them after
+        // construction is CS8852.
+        //
+        // The blind spot was the worse half: swapping init for set, or set for init, is a change a
+        // consumer's build can break on and this file would not have moved a line. That is the exact
+        // failure §32 exists to prevent, arriving through the renderer rather than through the code.
+        // Same shape as §32.6's nullability gap, and closed the same way.
+        private static bool IsInitOnly(MethodInfo set) =>
+            set.ReturnParameter.GetRequiredCustomModifiers()
+                .Any(m => m.FullName == "System.Runtime.CompilerServices.IsExternalInit");
+
         private static bool Exposed(bool isPublic, bool isFamily, bool isFamilyOrAssembly) =>
             isPublic || isFamily || isFamilyOrAssembly;
 
         private static string Access(bool isPublic, bool isFamily, bool isFamilyOrAssembly) =>
             isPublic ? "public" : isFamilyOrAssembly ? "protected internal" : "protected";
 
-        private static string Parameters(MethodBase method, NullabilityInfoContext nullability) =>
-            string.Join(", ", method.GetParameters().Select(p =>
+        private static string Parameters(MethodBase method, NullabilityInfoContext nullability, bool extension = false) =>
+            string.Join(", ", method.GetParameters().Select((p, index) =>
             {
-                string prefix = p.IsOut ? "out " : p.ParameterType.IsByRef ? "ref " : string.Empty;
+                string prefix = index == 0 && extension ? "this " : string.Empty;
+                prefix += p.IsOut ? "out " : p.ParameterType.IsByRef ? "ref " : string.Empty;
 
                 // An `out` hands something back, so it is read like a return; everything else is
                 // written by the caller. See the note above Describe.
