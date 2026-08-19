@@ -22,6 +22,7 @@ namespace EmuSen.LunaP.Commands
         /// <summary>Builds the menu items for one menu, each following its action.</summary>
         /// <param name="menu">The menu to build.</param>
         /// <returns>Controls to put in a MenuItem or ContextMenu, with separators rendered as lines.</returns>
+        /// <exception cref="System.ArgumentNullException"><paramref name="menu"/> is null.</exception>
         public static IReadOnlyList<Control> Items(LunaMenu menu)
         {
             if (menu is null) throw new ArgumentNullException(nameof(menu));
@@ -32,6 +33,7 @@ namespace EmuSen.LunaP.Commands
         /// <summary>Builds menu items for a sequence of actions, each following its action.</summary>
         /// <param name="actions">The actions, in order.</param>
         /// <returns>Controls to put in a MenuItem or ContextMenu.</returns>
+        /// <exception cref="System.ArgumentNullException"><paramref name="actions"/> is null.</exception>
         public static IReadOnlyList<Control> Items(IEnumerable<LunaAction> actions)
         {
             if (actions is null) throw new ArgumentNullException(nameof(actions));
@@ -76,6 +78,7 @@ namespace EmuSen.LunaP.Commands
         /// <param name="target">What the keys are bound on, usually the window.</param>
         /// <param name="menus">The menus whose actions carry shortcuts.</param>
         /// <returns>The bindings that were added, to hand to Unbind when the menus are replaced. A menu item shows a gesture without binding it, which is why this call exists at all.</returns>
+        /// <exception cref="System.ArgumentNullException"><paramref name="target"/> or <paramref name="menus"/> is null.</exception>
         public static IReadOnlyList<KeyBinding> BindShortcuts(InputElement target, IEnumerable<LunaMenu> menus)
         {
             if (menus is null) throw new ArgumentNullException(nameof(menus));
@@ -89,6 +92,7 @@ namespace EmuSen.LunaP.Commands
         /// <param name="target">What the keys are bound on, usually the window.</param>
         /// <param name="actions">The actions to bind. Those without a Shortcut are skipped.</param>
         /// <returns>The bindings that were added, to hand to Unbind later.</returns>
+        /// <exception cref="System.ArgumentNullException"><paramref name="target"/> or <paramref name="actions"/> is null.</exception>
         public static IReadOnlyList<KeyBinding> BindShortcuts(InputElement target, IEnumerable<LunaAction> actions)
         {
             if (target is null) throw new ArgumentNullException(nameof(target));
@@ -132,7 +136,8 @@ namespace EmuSen.LunaP.Commands
 
         /// <summary>Removes bindings previously added by BindShortcuts.</summary>
         /// <param name="target">The element they were bound on.</param>
-        /// <param name="bindings">The bindings to remove. Leaving these behind is how a key outlives the menu that advertised it.</param>
+        /// <param name="bindings">The bindings to remove, or null, which does nothing. Leaving these behind is how a key outlives the menu that advertised it.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="target"/> is null.</exception>
         public static void Unbind(InputElement target, IEnumerable<KeyBinding> bindings)
         {
             if (target is null) throw new ArgumentNullException(nameof(target));

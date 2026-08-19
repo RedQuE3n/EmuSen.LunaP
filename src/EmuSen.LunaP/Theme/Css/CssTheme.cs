@@ -40,10 +40,20 @@ namespace EmuSen.LunaP.Theme
         /// <summary>The prefix every palette token carries, so a theme cannot collide with a plain CSS property name.</summary>
         public const string TokenPrefix = "--luna-";
 
-        // A syntax error refuses the whole file, the way a malformed .axaml theme already does.
-        /// <summary>Parses a theme, collecting what it could not use rather than throwing.</summary>
+        // TWO KINDS OF REFUSAL, AND THEY ARE NOT THE SAME KIND. A declaration this version cannot
+        // USE - an unknown element, an unknown property, a misspelled token - is collected into
+        // Warnings and the rest of the file still loads, so a theme written against a newer LunaP
+        // degrades instead of failing. A file this version cannot PARSE - an unterminated comment,
+        // a selector with no brace, an at-rule - throws, because there is no partial reading of it
+        // to keep, and that is what a malformed .axaml theme already does.
+        //
+        // The summary said "rather than throwing" until §80.4, which described the first kind and
+        // omitted the second. LunaTheme.Read catches it, so a broken theme file has never taken an
+        // application down; a consumer calling Parse directly is the exposed case.
+        /// <summary>Parses a theme, collecting declarations it cannot use as warnings. A syntax error throws.</summary>
         /// <param name="css">The theme text. Null is treated as empty.</param>
-        /// <returns>The resources and styles it produced, and a warning for every declaration it refused. A syntax error refuses the whole file, the way a malformed .axaml theme already does.</returns>
+        /// <returns>The resources and styles it produced, and a warning for every declaration it refused.</returns>
+        /// <exception cref="System.FormatException">The theme is not well-formed CSS - an unterminated comment, a rule with no selector or no braces, a nested rule, an at-rule, or a declaration that is not <c>name: value</c>. The message carries the line number.</exception>
         public static CssThemeResult Parse(string css) => new Parser(css ?? string.Empty).Run();
 
         // The vocabulary, read out of the real allow-lists so `man theme` and its drift test cannot describe a format that does not exist.

@@ -44,8 +44,12 @@ namespace EmuSen.LunaP.Controls
         // default of "synchronous" into "one frame later" for every existing caller.
         private Debounce? _debounce;
 
-        // Raised whenever the search text or the facet changes, from any cause.
-        /// <summary>Raised when the search text or the facet changes. Deferred by SearchDelay, so typing raises it once the typing stops rather than per keystroke.</summary>
+        // Raised when the USER changes the search text or the facet, and not when an application
+        // sets SearchText itself. It said "from any cause" until §80.1, which was the behaviour and
+        // not the intent: the two sibling controls that raise a selection event both suppress the
+        // programmatic case (Dropdown.Chose is not raised by Fill, LunaList.Chose not by Refresh or
+        // Select), and SearchText's own summary has always promised the same thing here.
+        /// <summary>Raised when the user changes the search text or the facet. Deferred by SearchDelay, so typing raises it once the typing stops rather than per keystroke. Not raised by setting SearchText, so restoring a saved filter cannot look like a search.</summary>
         public event Action? Changed;
 
         // Raised for Enter in the search box, which the library uses to launch the first match.
@@ -137,7 +141,8 @@ namespace EmuSen.LunaP.Controls
 
             if (_search is not null)
             {
-                // The property, not the TextChanged event - only this reacts to a Text set that did not come from typing.
+                // The property, not the TextChanged event, so a Text set from anywhere keeps
+                // SearchText in step. Which cause it was is decided in the handler, not here.
                 _search.PropertyChanged += OnSearchPropertyChanged;
                 _search.KeyDown += OnSearchKeyDown;
             }
@@ -153,7 +158,17 @@ namespace EmuSen.LunaP.Controls
         {
             if (e.Property != TextBox.TextProperty) return;
 
+            // A box whose text ALREADY equals SearchText is the template binding echoing a
+            // programmatic set back, not somebody typing: typing changes the box first, so the two
+            // still differ when this runs. That distinction is the whole of the suppression, and it
+            // needs no flag - which is why this is not a Suppressor like Dropdown._filling, even
+            // though it enforces the same rule. Measured before the sync below, because the sync is
+            // what makes them equal. docs/LunaP.md §80.1.
+            bool echoed = string.Equals(_search?.Text ?? "", SearchText, StringComparison.Ordinal);
+
             SetCurrentValue(SearchTextProperty, _search?.Text ?? "");
+
+            if (echoed) return;
 
             if (SearchDelay <= TimeSpan.Zero)
             {

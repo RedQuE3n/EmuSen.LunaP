@@ -94,17 +94,10 @@ namespace EmuSen.LunaP.Tests
             Settle(table);
         }
 
-        // TWICE, DELIBERATELY. The fill adds children, which invalidates layout, so the pass that
-        // adds a cell is not the pass that arranges it - a single UpdateLayout leaves the new cells
-        // with no bounds and every assertion about where they are reads zero.
-        private static void Settle(LunaTable<Row> table)
-        {
-            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-            table.UpdateLayout();
-            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-            table.UpdateLayout();
-            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-        }
+        // The twice-deliberately loop moved into the harness at §79.6, because a consumer building a
+        // control that fills during layout needs it and could not reach it here. UiTest.Settle
+        // carries the argument now; this stays as the name the fixtures below already call.
+        private static void Settle(LunaTable<Row> table) => UiTest.Settle(table);
 
         // A FACTORY AND NOT A TABLE, because a control built on the test thread and shown on the UI
         // thread throws on the first child added to it - "the calling thread cannot access this

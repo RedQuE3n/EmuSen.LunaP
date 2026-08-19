@@ -7923,3 +7923,761 @@ The caller writes `AutomationProperties.Name="Cheats for this console"` on the t
 The pattern in both is a summary that was *plausible*. Neither is a typo; both describe a design somebody could have built, and one of them describes a design that was later built because the sentence was more sensible than the code.
 
 There is no obvious test for "is this sentence true", and none is proposed here — asserting prose against behaviour is how documentation tests become a second, worse copy of the code. What is worth carrying instead is where these were found: **both surfaced within a day of a consumer adopting the version**, doing ordinary work against ordinary controls. The `ApiSurface` snapshot (§32) catches a shape change and would have caught neither of these, because neither changed shape. A consumer using the package is the only instrument that reads summaries the way a consumer does.
+
+---
+
+## 79. A fine-comb pass before 0.8.1, and a guard that could not see nine properties
+
+§78 was found by a consumer using the package. This section is the opposite experiment: a deliberate
+pass over the whole repository, looking for what a version about to be published would carry, made
+before the publish rather than after it.
+
+**Six defects, and the shape they share is worth naming before any of them.** Not one is a mistake in
+an algorithm. Every one is a statement — a summary, a comment, a baseline, a guard's own premise —
+that was true when it was written and describes something the code does not do. §78.5 said there is
+no obvious test for "is this sentence true" and declined to propose one. That still holds. What this
+pass adds is that **four of the six were found by testing the sentence rather than the code**: take
+the claim literally, write the assertion it implies, and run it.
+
+### 79.1 `init` is not `set`, and the baseline said it was
+
+An init-only setter is an ordinary setter carrying a required modifier. `PropertyInfo.SetMethod` is
+non-null and public for both, so `ApiSurfaceTests` rendered them identically, and **all nine of
+`LunaColumn<T>`'s configuration properties** — `Width`, `Sort`, `Commit`, `Validate`, `MinWidth`,
+`MaxWidth`, `IsVisible`, `Alignment`, `VerticalAlignment` — read `{ get; set; }` in the file §32
+calls the one a consumer's compiler sees.
+
+The consumer-facing half: somebody writing a *Hide column* menu item reads the baseline, writes
+`column.IsVisible = false`, and gets CS8852. The `///` summary does not mention it either.
+
+**The guard-facing half is worse, and is the reason this is §79.1 rather than a footnote.** Swapping
+`init` for `set` — or `set` for `init`, which breaks every caller who assigned after construction —
+is exactly the change §32 exists to make visible, and **this file would not have moved a line**. The
+same shape as §32.6's nullability gap, closed the same way: the renderer now reads the
+`IsExternalInit` required modifier.
+
+Regenerating moved **twenty lines, not nine**: `LunaCell<T>`, `LunaRowDrop<T>`, `MeterEntry` and
+`RenderedFrame` are record structs whose positional properties are init-only too. That is a more
+honest surface than the one that shipped in 0.2.0 through 0.8.0.
+
+### 79.2 A stale layout applied to a table that outgrew it
+
+`Restore` refuses a saved layout whose column count differs from the table's, and its comment says
+why: *"applying half a layout to it would move widths onto the wrong columns."*
+
+`Restore` is called after **every** `Column()` call, because there is no moment that means "the
+caller has finished declaring columns" and `TableKey` may be set before or after them. So a table on
+its way from zero to five columns **is a two-column table for one call**, which is exactly when a
+stale two-column layout matches. It matched, `_restored` latched, and the remaining three columns
+were appended afterwards.
+
+Measured, on a table declaring five columns at `"100"` against a layout saved when it had two, both
+dragged to 500:
+
+    widths are now [500, 500, 100, 100, 100]
+
+Half a layout, on the wrong table — the outcome the count check was written to prevent, arriving
+through the call site rather than through the comparison.
+
+**Why no fixture caught it.** Every table in `TableLayoutTests` is built to the column count of the
+layout under test. The failure needs a table that is *transiently* the saved size, which only the
+incremental `Column()` path produces. A guard whose fixture cannot express the state cannot fail in
+it — §73.4's *"a fixture in which the effect cannot appear can only be testing that it does not"*,
+met again in a file that pass never touched.
+
+**The fix is re-entrancy rather than a better check.** `_restored` could not express "applied, and no
+longer applicable", so the decision is re-made from a new `ColumnSpec.Declared` every time: a match
+at two columns is undone by the call at three. `Declared` is what the caller wrote and is never
+written again — `Width` moves, because a saved layout writes it and a resize drag writes it, and
+reverting needs something that does not.
+
+The narrow reading is that a latch was wrong. **The general one is that a guard called at every
+intermediate state has to be correct in every intermediate state**, and this one was written as
+though it were called once.
+
+### 79.3 A failed save that reported nothing
+
+`JsonSettingsStore.Save` caught every exception with a bare `catch` and returned `false`, while the
+summary above it promised *"failures are reported through LunaSettings.Report rather than thrown."*
+`Load`, six lines up, had reported since it was written.
+
+That is a documentation defect on its own. What made it cost something is that **not one caller reads
+the bool**: `WindowPlacementStore`, `TableLayoutStore`, `PaneLayoutStore` and `LunaTheme` all discard
+it. So on a read-only configuration directory or a full disk, a window's geometry, a table's columns,
+a pane's divider and the chosen theme were all lost with no exception, no diagnostic and no return
+value anybody looked at. The user's report would be that their layout does not stick, and there would
+be nothing anywhere to explain it.
+
+Reproduced by rooting a store under a path blocked by a file: `Save` returned `false` and
+`Diagnostics` received **zero messages**.
+
+The asymmetry with `Load` was an oversight rather than a decision, which is why `Save` now matches it
+rather than the four callers being changed to check. A store cannot know which failures its caller
+considers fatal; reporting is the seam the host already has.
+
+### 79.4 A palette token nobody validated
+
+A rule's element name is checked against `ElementNames` and its property against `PropertyNames`, and
+an unknown one warns. A `:root` declaration was checked for the `--luna-` prefix **and nothing else**.
+
+So `--luna-surfce: #123456` parsed cleanly, invented a `LunaSurfce` resource that nothing reads, left
+the real `LunaSurface` at its default, and warned about none of it. A theme author sees a colour that
+did not change and has no way to find out why — §30.5's silent failure, in the one place §30 did not
+sweep.
+
+The vocabulary is **reflected over `LunaPalette` rather than listed**, because a list is a second
+place to forget: §2.1 already guards `Palette.axaml` against `LunaPalette` in both directions, so
+hanging the CSS half off the same fields means a new token is spelled once and reaches all three.
+Selected by *type* rather than by name, so `BusyPercent` and `HotPercent` are not mistaken for
+colours; the two font sizes are taken by their suffix, which is the rule the parser already uses to
+decide a token is a number. Twenty tokens, now enumerable through `CssTheme.TokenNames`.
+
+### 79.5 The layout file, read once per column
+
+The comment at the `Column()` call site said calling `Restore` after every column *"costs two
+comparisons"*. It costs two comparisons **once the latch is set**. Before that it reaches
+`TableLayoutStore.Load` — a file read and a full JSON parse of `tables.json`, the file every table in
+an application shares.
+
+Measured with a counting `ISettingsStore`: **a thirty-column table read and parsed `tables.json`
+thirty times** while being built, twenty-nine of them discarded. For the hundred-and-twenty-column
+tables §72 was measured on, a hundred and twenty.
+
+It does not recur — `Refresh` is not a call site — so this is a construction cost and not a
+steady-state one, which is why it is here rather than in §72's measurements. The layout is now read
+once per key and the cached copy dropped when `SaveNow` writes, so there is one path to a layout and
+it is the file.
+
+Worth separating from §79.2 even though one fix serves both: the stale layout is a defect, and this
+is a comment that was wrong about a cost. They were found together because re-entrancy made the
+re-read unaffordable, not because they are the same mistake.
+
+### 79.6 `Settle` was in the suite and the trap was in the package
+
+`TableVirtualizationTests` carried a private helper that runs layout twice, with its reason written
+above it: *"the fill adds children, which invalidates layout, so the pass that adds a cell is not the
+pass that arranges it — a single `UpdateLayout` leaves the new cells with no bounds and every
+assertion about where they are reads zero."*
+
+`EmuSen.LunaP.Testing` shipped `Redraw`, `Capture` and `AssertLaidOut`, and no `Settle`. So a
+consumer testing their own control that fills during layout reaches for `Redraw` — which forces a
+render, not a layout — and gets zeroes.
+
+**Recorded because it was walked into here, during this pass, by somebody who had read the helper.**
+A combination test over a gutter, a hidden column, a frozen band and column virtualization failed on
+four of five scroll offsets with entirely plausible output — *"at scroll 700 these visible columns
+had no cell: c10…c14"* — and the code was correct. The tell was that the columns which passed were
+exactly those realized at scroll 0, which is what a range that never recomputed looks like.
+
+That is a false positive an outside consumer would have no way to diagnose, and a false *negative* is
+the same mistake with the assertion pointing the other way. §28's rule is that a trap written up for
+the next author becomes an assertion or an API; there is nothing to assert here, so it is the API
+half. `UiTest.Settle` is public, and the suite's private copy now delegates to it.
+
+### 79.7 Corrections this pass makes
+
+**`CHANGELOG.md` named two enum members that do not exist.** The 0.8.0 entry describes `EditGestures`
+as *"a `[Flags]` set — `F2`, `DoubleTap`, `Tap`, `WhenSelected`"*. `LunaEditGestures` has `None`,
+`DoubleTap`, `F2` and `Default`. §56.1 has it right, and says in as many words that `Tap`,
+`TextInput` and `WhenSelected` are TreeDataGrid's and **absent here**; the changelog inverted "three
+that are absent" into members of the set. A consumer copying that line gets a compile error, which is
+the one failure mode a changelog should never produce.
+
+**`LunaTheme.axaml` counted sixteen omissions and there are seventeen.** `FormControls.axaml` arrived
+with §48 and the comment above the index was not moved with it. The coverage is real — the line was
+deleted and the suite turned red on `FormControlTests`, which names the file and §48 — so only the
+number had drifted. Recorded rather than quietly corrected because the file's whole subject is that a
+missing entry is silent, and a comment that miscounts the entries is the same class of thing it warns
+about.
+
+**`README.md`'s test count was stale within the hour.** It was written as 829, measured, and was 835
+by the time the pass reached it — §78's two commits landed six tests in between. The figure is
+correct again and that is not the interesting part: **a hand-written count of a thing the suite knows
+is a number that rots**, and it rotted here in under an hour under ideal conditions. It is the same
+failure the README's own history carries, where 207 survived from §24.6 until this pass.
+
+### 79.8 What was checked and found clean
+
+Recorded so it is not re-derived, and because a pass that only lists what it broke reads as though
+everything it touched was broken.
+
+- **`WindowPlacementStore`.** `previous` is threaded through only when the window is covering, which
+  is when `PlacementToSave` reads it; the zero-sentinel works because `PixelRect(0,0,0,0)` fails
+  `Intersects` on both axes, so no position is restored; the save is wired at `OnClosing`.
+- **The table's layout arithmetic.** A hidden column resolves to `GridLength(0)` with min and max
+  pinned, so `WantedRange`'s accumulator steps over it; `FrozenGridColumns` adds the gutter and
+  clamps with `Math.Min`, so `frozen` is in grid coordinates everywhere downstream; `GridColumn`
+  matches `WantedRange`'s starting offset. The combination — gutter, hidden column, frozen band and
+  virtualization at once, five scroll offsets including clamped maximum — holds.
+- **Row recycling.** Four hundred rows scrolled through four offsets: every realized container showed
+  its own model's values, so content is rebuilt per model rather than reused with a swapped
+  `DataContext`.
+- **Robustness of the public index-takers.** `ExpanderColumn` at −1, 2 and 99; `FrozenColumns` at −1,
+  3 and 99; a `Children` projection returning null; a `Key` returning null — none throws through
+  `Refresh`, `ExpandAll` and a redraw. `Edit` and `SortBy` bounds-check; `IsCellSelected` and
+  `TryGetCell` are safe by construction rather than by check, which is worth knowing before somebody
+  adds a check and believes it is load-bearing.
+- **`Latest<T>`.** Both interleavings of the clear-before-present protocol are correct, including the
+  trailing re-check §22 added.
+- **A malformed CSS theme.** `CssTheme.Parse` throws `FormatException`, and `LunaTheme.Read` catches
+  it — the CSS branch is inside the same `try` as the XAML one, so a bad theme is reported and falls
+  back rather than taking the application down.
+- **`LunaApp`'s platform branch.** `UseX11()` is Linux-only and honestly documented as a current
+  no-op on 12.1.0 (§35.1); Windows and macOS are unaffected by the `Avalonia.X11` reference.
+- **`TableSpeech`, `TableDrag`, `TableCellSelection`, `LunaTablePeer`.** The spoken sentence filters
+  to visible columns and `Says` supplies a fallback so a check column with no `spoken` cannot throw;
+  `MoveRow` is bounds-checked and emits the drop a pointer would; the cell rectangle clamps to
+  visible columns, and `ModelFor` and `IndexOf` both search `_view` by key, so the indexing cannot go
+  negative; every peer member answers for "no template yet" instead of throwing.
+
+### 79.9 What the pass says about the method
+
+**One false alarm, and it is the most useful result here.** §79.6's four failing offsets were
+convincing, numerically detailed, and wrong — the instrument, not the subject. The rule that caught
+it is the one §22.5 already states from the other direction: a failure has to be explained before it
+is believed, and *"the columns that passed are exactly the ones realized at scroll 0"* is an
+explanation of the test, not of the code. A failing assertion is evidence about the assertion until
+something says otherwise.
+
+**The `ApiSurface` snapshot found nothing and was itself the largest finding.** §78.5 observed that it
+catches a shape change and would not have caught either of that section's summaries. §79.1 is the
+sharper version: it did not catch a change **in itself** — nine properties whose accessor it had been
+rendering wrongly since the file was first generated. A guard's own output is not exempt from the
+scrutiny it applies, and nothing in this repository was checking it.
+
+**Four of six defects were found by taking a sentence literally.** The bare `catch` against "failures
+are reported"; the count check against "a caller who has added a column is describing a different
+table"; "costs two comparisons" against a file read; "all sixteen omissions" against seventeen
+includes. That is not a proposal to test prose — §78.5's refusal stands. It is a cheaper habit than a
+mechanism: when a comment states a fact, the fact is checkable, and the ones that state a *guarantee*
+are worth checking first.
+
+## 80. Four more passes, and a promise three sibling controls kept and one did not
+
+§79 audited the code. This pass audited what the code **says** — the 544 `///` summaries and 29
+`<exception>` tags the two packages publish, taken as literal claims and probed rather than read.
+Four axes, in the order they were run: summaries making a checkable claim, exception tags, promises
+of absence, and teardown. Two defects, one wrong sentence, fifteen silent contracts, and a large
+negative result.
+
+The method is §79.9's, sharpened by its own conclusion — *"when a comment states a fact, the fact is
+checkable, and the ones that state a guarantee are worth checking first"*. A **guarantee of absence**
+turns out to be the highest-yield form of that. It is also the one form a normal test never catches,
+because the assertion that would catch it is one nobody writes.
+
+### 80.1 `FilterBar` promised what its two siblings deliver
+
+`SearchText`'s summary has always read *"Setting it does not raise `Changed`."* It raised it, once,
+synchronously.
+
+`SearchDelay` defaults to `TimeSpan.Zero`; the template binds `Text="{TemplateBinding SearchText}"`;
+so an application assigning `SearchText` pushed the value into the `TextBox`, whose `PropertyChanged`
+handler could not tell that echo from a keystroke and — with a zero delay — invoked `Changed`
+immediately.
+
+**The reason this is a defect and not a debatable reading is that it is the only one of three.**
+`Dropdown.Chose` is *"NOT raised by `Fill`, so restoring a selection cannot be mistaken for a
+choice"*; `LunaList.Chose` is *"Not raised by `Refresh` or `Select`, so a poll loop cannot look like a
+click"*. Both hold, both by a `Suppressor` (§21.1). And `PathPickerRow.Path` makes the identical
+promise about `PathPicked` and keeps it for a third reason again: its box is `IsReadOnly="True"`, so
+the one-way binding has nothing to echo. Three controls, three mechanisms, one rule — and one control
+that stated the rule without implementing it.
+
+The cost is §21.1's own two consumers: a ROM-library filter and an on-disk cheat-database query, both
+hung off `Changed`. An application restoring a saved filter ran a query nobody asked for.
+
+**The fix needs no flag.** A box whose `Text` already equals `SearchText` is an echo, because typing
+changes the box *first* and leaves the two differing until the handler syncs them. So the guard is a
+comparison taken before that sync, and not a fourth copy of `Suppressor`:
+
+```csharp
+bool echoed = string.Equals(_search?.Text ?? "", SearchText, StringComparison.Ordinal);
+SetCurrentValue(SearchTextProperty, _search?.Text ?? "");
+if (echoed) return;
+```
+
+**Two comments in the same file asserted the opposite, and both were wrong rather than one being
+right.** `Changed` was annotated *"Raised whenever the search text or the facet changes, from any
+cause"*, and the template hook *"only this reacts to a `Text` set that did not come from typing"*.
+Read together they look like a design that intended the raise. Read against the three siblings they
+are a description of the bug written up as if it were the plan — which is the failure mode §79.9
+warns about from the other end, and the reason both were corrected here rather than the summary being
+quietly relaxed to match the code.
+
+This is a **behaviour change to a published control**, and it is the only one in this pass. A consumer
+relying on the raise loses it; the two `ThreadingTests` that simulate typing by setting the box's
+`Text` directly still pass unchanged, which is what distinguishes suppression from over-suppression.
+
+### 80.2 An exception that named an argument the caller never typed
+
+Of 29 `<exception>` tags, 28 are exactly right — including two that looked wrong and are not.
+`IdleCursor(target, delay)` documents `ArgumentOutOfRangeException` and contains no such throw: it
+delegates to the `Debounce` it builds, and reads correctly **only because that constructor's
+parameter is also called `delay`**. That is now pinned, because renaming it there would break a
+promise made in a file that does not mention it.
+
+The twenty-ninth:
+
+```csharp
+public LunaColumn(string header, Func<T, Control> build, Func<T, string> spoken)
+    : this(LunaCellKind.Template, header, spoken) =>          // spoken becomes `text`
+```
+
+A null `spoken` threw `ArgumentNullException` with `ParamName` **`"text"`** — a parameter this
+overload has not got. The type was right, so a tag-reading audit passes it; only calling it finds it.
+
+**The argument against it was already written down, one overload up.** `Says` exists solely so the
+check-column's `read` is validated before it is closed over, and its comment says why: *"a null one
+would surface as an `ArgumentNullException` naming 'text' … and send the caller looking at the wrong
+argument."* The template constructor is the one of the three that did not get the treatment. The fix
+is `Named`, beside `Says`, doing the same job for the parameter that is not a projection.
+
+**A tag is a promise about a type and a parameter name, and the name is the half that rots quietly.**
+A constructor that forwards an argument into a differently-named private one keeps throwing the right
+exception forever.
+
+### 80.3 A directory three summaries created and no code did
+
+`ISettingsStore.Directory`, `JsonSettingsStore.Directory` and `LunaTheme.Directory` all promised a
+folder *"created if it does not exist"* / *"created on demand"*. The implementation is
+`Path.Combine`. The only `CreateDirectory` in the toolkit is in `JsonSettingsStore.Save`, on the
+write path, where it belongs.
+
+Nothing throws — `LunaTheme.Available()` guards with `Directory.Exists`, which is itself evidence the
+author knew the folder might be absent. Two things still follow. The README tells a user to drop
+theme files in `LunaTheme.Directory`, which on a fresh install is not there. And `ISettingsStore` is a
+**contract**: an implementer reads "created if it does not exist" and dutifully creates directories
+inside a property getter, doing work the toolkit's own store does not.
+
+**Corrected in the sentences, not the code.** Creating a directory as a side effect of asking where
+one would be is worse behaviour than not having it, and `Save` already creates on demand at the
+moment that can fail usefully. `LunaTheme.Directory` now names the one line a consumer needs if it
+wants the folder to exist.
+
+### 80.4 Two kinds of refusal, described as one
+
+`CssTheme.Parse` summarised itself as *"collecting what it could not use rather than throwing."* It
+does that for one kind of refusal and throws for the other, and the distinction is real design rather
+than an oversight:
+
+- a declaration this version cannot **use** — unknown element, unknown property, misspelled token —
+  becomes a `Warnings` line and the rest of the file loads, so a theme written against a newer LunaP
+  degrades instead of failing (§12.2);
+- a file this version cannot **parse** — unterminated comment, selector with no brace, nested rule,
+  at-rule, a declaration that is not `name: value` — throws `FormatException`, because there is no
+  partial reading of it worth keeping.
+
+Seven throw sites, no `catch` anywhere in the parser. The `<returns>` tag had it right the whole time
+— *"a syntax error refuses the whole file"* — and the summary, which is the line a consumer's
+IntelliSense shows, described only the first half.
+
+**Negative result: no application has ever seen one.** `LunaTheme.Read` wraps the load in a broad
+`catch (Exception)` whose comment is *"A broken theme must never take the program down with it"*. The
+exposure is a consumer calling the public `Parse` directly, which the README's theming section
+invites. Summary corrected, `<exception>` tag added, both halves now pinned by a test that asserts a
+malformed file throws **and** an unknown property does not.
+
+### 80.5 Fifteen public members that threw in silence
+
+The converse half of the tag audit: 24 members document what they throw, 15 do not, and a consumer
+cannot read "no tag" as "does not throw" while both are true of this surface. Most are ordinary null
+guards — `Menus` (six sites across five members), `LunaMenu`, `LunaAction`'s constructor and `Text`
+setter, `Latest<T>`, `UiSession.Use`. Two are not:
+
+- **`ActionGroup.Add`** throws `InvalidOperationException` for an action already owned by another
+  group — a real membership rule, discoverable only by hitting it. Now documented, along with the
+  fact that adding to the *same* group twice is harmless, which `_members.Contains` was already
+  quietly guaranteeing.
+- **`UiSession.TestAssembly`** throws when no assembly carries `[AvaloniaTestApplication]`, or when
+  several do — the diagnostic that sends a consumer to `Use`, previously reachable only by failing.
+
+All fifteen are tagged. `Menus.Unbind` gained a sentence rather than a tag: a null `bindings` is
+ignored on purpose, which is worth saying for the same reason the throws were.
+
+### 80.6 What was checked and found clean
+
+Recorded because a pass that only lists defects invites the next one to redo the work.
+
+**Twenty-five promises of absence, twenty-four kept.** Every "does not raise", "does nothing",
+"cannot" and "without running any handler" in the published summaries, probed. `LunaTheme.Apply`
+leaves `Current` untouched on a theme it cannot read; `IdleCursor.Hide` and `Dispose` are both
+idempotent; `LunaSelectionMode.None` really refuses `Select`; `WindowSlot.RefreshIfOpen` on a
+never-opened slot does not run its callback — asserted with a callback that throws, so a silent pass
+was impossible; `Debounce.Cancel` followed by `Flush` runs nothing; a disabled `LunaAction` skips the
+state flip as well as the handler.
+
+**`LunaList.Chose`'s summary is right in both directions**, which is the harder thing to be: *not*
+raised by `Refresh` or `Select`, *and* raised by a direct write to `SelectedIndex`. Both halves are
+now pinned, because a suppression fix aimed at the first would plausibly break the second.
+
+**Teardown is clean.** `IdleCursor.Dispose` and `FileDrop.Dispose` both guard against double
+disposal, remove handlers by the same delegate they added, and restore prior state — the cursor, and
+`AllowDrop`. `Latest<T>.Offer`'s *"safe to call from any thread"* holds by construction. One note
+rather than a defect: `Debounce` holds a `DispatcherTimer` and has no `Dispose`; `Cancel` is the
+teardown call, and the timer stops itself after firing, so there is nothing unbounded — but a
+consumer has to know that.
+
+**The README's counts were correct and are now pinned.** Twenty-two element names, twenty `--luna-`
+tokens, six property names in the order printed. Pinned *because* they were right: a count in prose
+stays right until something is added, and nothing about adding an element name makes anybody open the
+README. It has already happened downstream — EmuSen's `man theme` shipped a vocabulary two versions
+old.
+
+### 80.7 What these four passes say about the method
+
+**Absence is the highest-yield claim to probe, and the cheapest to get wrong.** One defect in
+twenty-five, and it had survived every previous pass — including §79's, which read this control's
+file. A promise that something will *not* happen leaves no failing behaviour to notice: the feature
+works, the extra call is invisible, and it surfaces as a performance complaint or as nothing at all.
+
+**Siblings are evidence.** The FilterBar finding is only conclusive because three other controls make
+the same promise and keep it three different ways. A single control whose summary disagrees with its
+code is an argument about intent; the fourth of four is a defect. Where a toolkit repeats a rule, the
+repetitions are the specification.
+
+**A tag audit that reads tags finds nothing.** Both exception defects — the wrong `ParamName` and the
+undocumented `FormatException` — are invisible to inspection and obvious to a call. §79.1 made this
+point about a guard's own output; this is the same point about documentation, and the remedy is the
+same one: run it.
+
+**The comments nearest a defect are the ones most likely to describe it approvingly.** Two comments
+in `FilterBar` justified the behaviour the summary forbade. Neither was written as a note about a
+known compromise; both read as design. When a file disagrees with itself, the sibling files break the
+tie, not the local prose.
+
+**Still unfinished.** About a hundred of §80's 131 checkable summary claims are unread, at a measured
+rate of roughly two defects per thirty. The four axes closed here were chosen because each could be
+finished; the remainder is a longer pass, not a harder one.
+
+## 81. A mode that refused the user and not the caller, and an assertion that proved nothing
+
+The fourth axis of §80's pass: the 92 remaining summary claims that are neither promises of absence
+nor exception tags — defaults, "or null when", identity, and arithmetic. One defect, one lesson about
+the test that found it, and one correction to §80's own arithmetic.
+
+### 81.1 `LunaSelectionMode.None` was a hit-test, not a mode
+
+*"Rows cannot be selected at all."* They could, from code:
+
+```csharp
+var table = new LunaTable<Row> { SelectionMode = LunaSelectionMode.None };
+table.Select(row);
+table.Selected;   // the row
+```
+
+The mode is implemented as `Rows.IsHitTestVisible = false` — which stops the **user** and says nothing
+about the caller — plus a clear of whatever was selected at the moment the mode is set. Its own
+comment says so plainly: *"None is spelled as 'single, and nothing can be hit', because Avalonia's
+ListBox has no mode that refuses selection outright."*
+
+**Two things in the same control already applied the stricter rule.** `CanSelectCell` opens with `if
+(_selectionMode == LunaSelectionMode.None) return false;`, so a cell selection has always been
+refused programmatically. And `ApplySelectionMode` clears an existing selection when the mode is set,
+for a reason its comment states exactly: *"switching to None with a row already selected has to leave
+the table with nothing selected, or the mode reads as 'no NEW selections'."* That argument is the
+whole case. A mode that clears a selection to avoid meaning "no new selections", and then accepts a
+new one from code, means precisely that.
+
+So the row path was the third of three and the only one that had not been told. `Select` now refuses a
+non-null model under `None`; clearing still works, because `Select(null)` is how a caller says "no
+selection" and refusing that would leave no way to say it.
+
+**Consumer impact is small and worth stating.** A table declared unselectable that was being given a
+selection in code was showing one, so this is a visible change for anyone doing that — but the
+combination only arises by writing both `SelectionMode.None` and `Select(x)`, which is a
+contradiction the summary already refused in words.
+
+### 81.2 The assertion that could not have failed
+
+§80.6 recorded *"`LunaSelectionMode.None` really refuses `Select`"* among the twenty-four claims found
+clean. **It did not verify that**, and the test that appeared to was:
+
+```csharp
+var none = new LunaTable<Row> { SelectionMode = LunaSelectionMode.None };
+none.Column("n", r => r.N.ToString());
+none.Refresh(new[] { new Row(1) });
+none.Select(new Row(1));
+Assert.Null(none.Selected);      // green, and meaningless
+```
+
+An untemplated `LunaTable` has no `Rows`, so `Select` parks the model in `_pending` and `Selected`
+reads null **whatever the mode is**. The assertion passed against the defect, and would have passed
+against a table with no selection support at all.
+
+This is §5.5 arriving somewhere new. There, a control with no template renders as nothing and every
+assertion over it passes; here, a control with no template *behaves* as nothing and the same follows.
+The tell is identical in both cases and neither is a failing test: **an assertion whose subject was
+never constructed far enough to disagree.**
+
+The repaired version shows the table, and then does the thing that makes the negative meaningful — it
+switches the same table to `Single`, selects the same row, and asserts it took:
+
+```csharp
+none.SelectionMode = LunaSelectionMode.Single;
+none.Select(row);
+Assert.Equal(row, none.Selected);
+```
+
+**A negative assertion needs a positive control, and this pass shipped one without.** That is the
+finding, more than the mode is: §80.6's clean list was assembled by the same method as its defect
+list, and one entry on it was an artefact. The other twenty-four were re-read against this and hold —
+they act on objects that do work untemplated (`Debounce`, `WindowSlot`, `LunaAction`, `LunaTheme`) or
+on controls whose behaviour under test does not depend on a template.
+
+### 81.3 What was checked and found clean
+
+**Every documented default.** `RgbaImageView.Stretch` is `Stretch.None` and `IntegerScale` off;
+`LunaTable`'s `VirtualizeColumns` off, `SelectionMode` `Single`, `SelectionUnit` `Row`, `IndentSize`
+16, `CanDrop` and `Children` null, `EditGestures` `Default`, `GridLines` `None`; `LunaColumn.Width`
+`"*"`; `IdleCursor.DefaultDelay` three seconds.
+
+**The column-kind cross-product.** `Checked`, `Toggle` and `Build` are each null for every kind but
+their own, `Sort`/`Commit`/`Validate`/`MinWidth`/`MaxWidth`/`Alignment`/`VerticalAlignment` default
+null, and a check column with no write really is read-only. The `"yes"`/`"no"` default spoken text is
+there too.
+
+**`CanExecuteChanged` is raised only when `IsEnabled` moves.** Not for a label change — which is the
+point of the summary, since a live caption would otherwise re-query `CanExecute` per keystroke — and
+not for setting `IsEnabled` to the value it already had. *Moves* is the load-bearing word and it is
+accurate.
+
+**`Suppressor.IsSuppressing` counts.** Nested scopes hold it true until the last is disposed, so
+*"false once every scope taken has been disposed"* means what it says rather than "once one has".
+
+**`UiThread.Post` always defers, even from the UI thread**, where `Run` goes straight through — the
+distinction both summaries draw.
+
+**`SidePanel.ToggleAction` is the same object every time**, and tracks `IsOpen` in both directions, so
+the promise that *"every surface agrees about whether the panel is open"* holds for the menu item and
+the close button alike. `ConsolePane` drops from the top at `MaxLines`; `FieldRow.HasError` is
+exactly whether an error string was given; a group keeps at most one member checked and a lone action's
+`Group` is null.
+
+### 81.4 A correction to §80
+
+§80 says *"the 544 `///` summaries … the two packages publish"*. 544 is the number in the generated
+XML, which includes internal members: `ActionSync` is `internal static` and contributes two. **542 are
+published.** Corrected here rather than in place, because the figure was quoted as a measurement and
+the difference between "documented" and "published" is the distinction the audit is about — the
+compiler documents what it is told to, and a consumer sees what is public.
+
+The 29 exception tags are all on public members, so §80.2's count stands.
+
+## 82. Two blind spots in the guard, and a documentation sweep that outran the code
+
+Two more axes, closing the ones §81.4 left open: the API baseline's own fidelity, and the 105
+`<returns>` tags. One defect in the guard, one wrong tag, and the first finding in this whole audit
+where the **code was right and the prose was new**.
+
+### 82.1 The baseline could not see two kinds of breaking change
+
+§79.1 found this file rendering `init` as `set`. Asking the same question of the rest of its output
+found two more, both source-breaking and both invisible:
+
+**Generic constraints were dropped entirely.** `where T : class` appears on four public types and
+`where T : Control` on twenty-nine public methods, and none of it reached the baseline:
+
+| Source | Baseline, before |
+|---|---|
+| `class LunaColumn<T> where T : class` | `class …LunaColumn<T>` |
+| `class WindowSlot<TWindow> where TWindow : Window` | `class …WindowSlot<TWindow>` |
+| `Margin<T>(…) where T : Control` | `Margin<T>(T control, double uniform)` |
+
+Tightening a constraint — `class` to `class, IEquatable<T>`, `Control` to `TemplatedControl` — breaks
+every consumer who instantiated the loose form. Loosening one is safe. That asymmetry is precisely
+the judgement §32 exists to put in front of a reviewer, and the reviewer had no line to read.
+
+**Extension methods lost their `this`.** `public static T Margin<T>(this T control, …)` rendered as
+`Margin<T>(T control, …)`. Removing `this` keeps the method callable as a static and breaks every
+call site using extension syntax — which, for `LayoutExtensions`, `AccessibilityExtensions` and
+`VisualQuery`, is every call site there is. Twenty-nine methods sat in that blind spot.
+
+Both are now rendered, and both are pinned by a test asserting against the description rather than
+the baseline — the same reasoning the nullability guard already carries, since regenerating after
+deleting a walk makes the file agree with itself while saying less.
+
+**One thing was left alone deliberately.** Every struct renders as `: System.ValueType, …`, which
+carries no information — every struct does. It is pre-existing, stable, and removing it would churn
+three lines of a file whose diff is the review. A guard that cries wolf is a guard somebody approves
+without reading, and so is one that churns for cosmetics.
+
+### 82.2 A tag that described a walk it had never watched
+
+`LunaMenu.Commands()` is documented as returning the actions *"with separators and submenu owners
+left out, so a caller binding shortcuts sees each invocable command once."* It returns submenu
+owners.
+
+The first reading was that this is §80.1 again — a rule stated in three places and applied in two —
+and the supporting evidence looked strong. `ActionMenuItem`'s constructor gives a submenu owner an
+`ItemsSource` and pointedly does **not** subscribe to `Click`, with the comment *"A submenu's parent
+is not a command: clicking it opens the menu."* So an owner carrying a `Shortcut` would be bound by
+`BindShortcuts` and could invoke, from the keyboard, a handler the mouse deliberately cannot reach.
+
+**The history says otherwise, and the history is the evidence.** `Commands()` and the `ActionTests`
+case asserting `{ "Open", "Recent", "smw.sfc", "zelda.sfc", "Quit" }` — the owner explicitly present —
+arrive in the same commit, `15393f5`, on 2026-08-12. The `<returns>` phrase arrives in `f0e8359` on
+2026-08-13, a bulk pass titled *"Document every member"*. The behaviour is original and deliberately
+tested; the sentence is a day-later description written across a hundred members at once, and it
+described what the author expected rather than what the code did.
+
+So the tag was corrected and the walk left alone. Enumerating a menu returns what is *in* the menu,
+owners included, and the tag now says so and says where owners sit in the order.
+
+**This is the first finding in §§79–82 where the newer artefact was the wrong one**, and it is the
+counterexample to a habit the earlier sections were building. §80.1 and §81.1 both resolved as "the
+prose states the rule, the code is the outlier, fix the code", and three findings in a row is enough
+to start assuming. The tie-breaker is not which document sounds more principled; it is which one
+somebody wrote while looking at the thing it describes. `git log -S` answers that in one command and
+should be the first move, not the last.
+
+A residual question this does not settle, recorded rather than acted on: a `Shortcut` on a submenu
+owner is still bound, and still invokes a handler the mouse path refuses to run. Nothing in either
+frontend does it, so there is no defect to demonstrate — but if an owner should not be invocable,
+that belongs in `BindShortcuts` or in `LunaAction`, not in a walk whose job is enumeration.
+
+### 82.3 What was checked and found clean
+
+**All twenty-nine chaining promises.** *"The same control, so calls can be chained. Nothing is
+copied."* holds for every `LayoutExtensions` and `AccessibilityExtensions` helper, asserted by
+reference. This is the largest identical claim in the package and the one whose breach would be
+quietest: a helper returning a clone would leave the first call in every chain configuring an object
+nobody kept, and no test that does not check identity would see it. The three non-extension chaining
+promises — `ActionGroup.Add`, both `LunaTable.Column` overloads, `AppWindow.AddPanel` — hold too.
+
+**Empty rather than null.** `CssTheme.StatesOf` and `PartsOf` return an empty sequence for a name
+that is not an element at all, which is the half of that claim a caller is most likely to hit and
+least likely to guard.
+
+**Null rather than a throw or a default.** `TableLayoutStore.Load`, `PaneLayoutStore.Load` and
+`WindowPlacementStore.Load` all answer null for a key never saved; `JsonSettingsStore.Load` answers
+null for a file that is missing, empty **and** malformed — three separate paths, one sentence.
+
+**`AppWindow.PanelToggles`** returns the panels' own `ToggleAction` objects, by reference, in the
+order the panels were added.
+
+**One test of mine was wrong before the code was.** The first `PanelToggles` probe added two panels
+without setting `Side`, so the second replaced the first — which is documented behaviour
+(*"replacing whatever was already on that edge"*, §26.12's absent tabbed dock) and not a defect. The
+probe measured the replacement rule while claiming to measure the ordering one. Recorded because it
+is the second time in this audit that a probe failed for a reason that was not the subject's fault
+(§79.6 was the first, §81.2 the third), and the ratio is worth keeping honest: a failing assertion is
+evidence about the assertion until something says otherwise.
+
+## 83. What the audit costs a consumer, and a citation nothing could follow
+
+The release decisions §§79–82 forced, recorded here because both were settled by
+argument rather than by convention and the argument is the part worth keeping.
+
+### 83.1 0.9.0, and the paragraph that decided it
+
+The audit was run "before 0.8.1" — §79's heading still says so, and it is left saying so, because
+that is what the number was expected to be for three of the four passes. It became 0.9.0 by the
+argument below, and then 0.10.0 when 0.9.0 was published early without it (§83.3). The argument did
+not change; only the number it landed on did.
+
+**The deciding text was already in the repository**, in the version-history comment `EmuSen.LunaP.csproj`
+carries. §51 argued 0.8.0 up from a patch on these grounds:
+
+> 0.8.0 IS THE FIRST RELEASE SINCE 0.7.0 THAT IS NOT PURELY ADDITIVE […] Nothing about behaviour,
+> layout or API moves; **only paint**. But a consumer reading 0.7.2 would not expect their text boxes
+> repainted, and that is the whole argument.
+
+A repaint earned a minor bump. This release changes behaviour twice — `FilterBar.Changed` stops
+firing on a programmatic write (§80.1), `LunaSelectionMode.None` starts refusing `Select` (§81.1) —
+and a third change, §79.2's stale-layout refusal, alters what a table does on a consumer's screen.
+Nothing about that is smaller than paint. None of the three had shipped when 0.9.0 went out, so all
+three still arrive for the first time in 0.10.0 and the case for a minor bump survives intact.
+
+**"It was a bug" does not make it a patch.** Both changes are corrections toward what the summaries
+had always promised, which is the argument for making them at all and not an argument about the
+number. What the number answers is a different question: *can somebody take this without reading
+anything?* A consumer whose window restores a saved filter, or who calls `Select` on a table declared
+unselectable, gets different behaviour from code they did not touch. The version is the only place
+they will be told before it happens.
+
+This is worth stating as a rule rather than a decision: **the version answers what an upgrade does to
+a consumer, not how the maintainer classifies the change.** Fixing a defect and breaking a caller are
+routinely the same act, and it is the second half the number is for.
+
+### 83.2 Four comments pointing at a file no clone had
+
+`PLAN-table.md` is a working document. Its own header called it *"uncommitted and disposable"* and
+said it would be deleted once built. It was never deleted, and four comments in the repository came
+to cite it — two of them in **shipped source**:
+
+```
+src/EmuSen.LunaP/Controls/Table/TableEditing.cs   trap 2 in PLAN-table.md §6
+src/EmuSen.LunaP/Controls/Table/TableSpeech.cs    trap 3 in PLAN-table.md §6
+tests/…/TableEditingTests.cs                      §6's four traps, and §2.1
+```
+
+`TableEditingTests` is *built around* §6 — its opening comment is "the four traps PLAN-table.md §6
+named before any of it was built". So the suite's account of why those tests exist lived in a file no
+clone had, and the package's own SourceLink pointed a consumer at it.
+
+**The working copy is why nobody noticed.** The file was on disk the whole time, so every local run
+was green; only a fresh checkout — CI's, or a reader's — would find the hole. This is §44's failure
+arriving through its other half: not a citation into a section that does not exist, but one into a
+document that does not travel.
+
+The plans are committed, with headers rewritten to say why they now are and to keep their standing
+clear: the man page is still the record, and where a plan and the code disagree the code wins.
+Committing was chosen over migrating §6 into this document because the tests already reference it by
+name, and moving prose to satisfy a rule while breaking four working pointers is the more expensive
+half of the same job.
+
+**The guard asks git, not the disk.** A test that checked the filesystem would have agreed with the
+working copy and found nothing, which is the precise reason this one shells out to `git ls-files`.
+Written to fail first: it named `PLAN-table.md` in four files before either plan was staged.
+
+Two exclusions, and both are real rather than convenient. `CLAUDE.md` is gitignored on purpose —
+local working configuration, and this project must not carry documentation about how an assistant
+should behave — so requiring it would produce a suite that is red on CI and green nowhere else.
+`EmuSen_Project_Overview_v2.md` stayed behind when LunaP left EmuSen; `LunaApp.cs` names it while
+saying in the same sentence that the measurement behind it is unreachable, and spells it out rather
+than writing a `§` *precisely so it is not read as a live citation*. The guard's regex matched anyway.
+That is the guard being wrong about a comment that was already right, and the fix belongs in the
+guard.
+
+**A retired source, retired in the open, is not a broken citation.** The distinction the exclusion
+list encodes is between a pointer that fails silently and one that announces it cannot be followed —
+and only the first is a defect.
+
+### 83.3 0.9.0, published without the work it was numbered for
+
+The tag was pushed while thirty-seven files sat uncommitted. `v0.9.0` therefore points at `b3febae`,
+whose tree contains the two README rewrites and §78's three fixes — and no `UiTest.Settle`, no
+`CssTheme.TokenNames`, no `FilterBar` echo guard, none of §§79–83. The workflow ran, packed and
+pushed all four packages before a cancellation could land, roughly fifteen seconds too late.
+
+**What shipped is not broken.** It is a tested build of a real commit, and the package's bundled
+README is the one from that commit, describing the toolkit as it then was. Nothing installs wrong.
+The only thing wrong with 0.9.0 is its number, which was chosen for work it does not contain.
+
+It is left listed and deprecated on nuget.org pointing at 0.10.0, rather than unlisted. Unlisting is
+for a package that should not be used; this one is fine to use, and hiding a working release to tidy
+up a numbering mistake would make the history harder to read rather than easier.
+
+**The number does not move.** Retagging `v0.9.0` onto the audit commit was available and refused: the
+tag accurately labels what was published, and a tag that has been consumed is a fact rather than a
+label to correct. §32's whole argument is that a consumer cannot patch what they were given, and a
+version they already restored is the strongest case of that.
+
+**The failure was in the reporting, not the mechanism.** Every guard did its job — the suite was
+green, the packages packed, the workflow ran the tests before publishing. What failed was a summary
+that opened with "ready to publish" and put "nothing is committed" fourth in a list of remaining
+items. A checklist that leads with a verdict invites the verdict to be read and the list to be
+skimmed, and the one item that gated everything was the one furthest from the top.
+
+The general form is worth keeping, because it is not about this repository: **a status report should
+lead with what is blocking, not with what is finished.** §79.9 says a failing assertion is evidence
+about the assertion until something says otherwise; the same scepticism belongs on a green summary.
+Four passes of this audit were spent on documentation that stated something true of most cases and
+wrong in one, and the release note that caused this was exactly that shape.
+
+**And §51.1 gets its mirror.** That section records 0.7.1 as prepared, written into both csproj files,
+given a changelog entry, and never tagged — a version number that was not evidence anything shipped.
+This is the same sentence read backwards: a tag that shipped something nobody had prepared. Both
+belong in the record, because the pair is the actual lesson. The csproj version, the changelog entry
+and the git tag are three independent claims about a release, and any one of them can be true while
+the others are not.

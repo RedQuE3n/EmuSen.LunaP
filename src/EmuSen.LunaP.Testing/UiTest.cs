@@ -9,6 +9,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Xunit;
 
@@ -119,6 +120,43 @@ namespace EmuSen.LunaP.Testing
             return Capture(bitmap);
         }
 
+        // TWICE, DELIBERATELY, AND THIS IS WHY IT IS PUBLIC - see docs/LunaP.md §79.6.
+        //
+        // A control that builds children during layout - a virtualized table filling in the columns
+        // that came into view, and anything else driven from LayoutUpdated - invalidates layout by
+        // doing so. The pass that ADDS a child is therefore not the pass that ARRANGES it, and after
+        // one UpdateLayout the new children have no bounds at all. Every assertion about where they
+        // are reads zero, which is a test that fails convincingly for the wrong reason, or passes.
+        //
+        // Redraw is NOT this. It forces a render pass, which is what you want for a capture and is
+        // no help here: it does not run the layout the fill is waiting on. Reaching for Redraw and
+        // getting zeroes is the mistake this method exists to remove, and it was made in this
+        // repository while auditing the control the method was written for (§79.6).
+        //
+        // It lived as a private helper in TableVirtualizationTests, where a consumer could not reach
+        // it - so the knowledge was in the suite and the trap was in the package. §28's rule is that
+        // a trap written up for the next author becomes an assertion or an API; this is the API half.
+        /// <summary>Runs layout to a standstill, for a control that builds its children during a layout pass.</summary>
+        /// <param name="control">The control to settle. Its whole layout root is run, so passing any control in the window works.</param>
+        /// <remarks>
+        /// Needed for anything that adds children from <c>LayoutUpdated</c> - a table with
+        /// <c>VirtualizeColumns</c> on, for instance. The pass that adds a child is not the pass that
+        /// arranges it, so a single <c>UpdateLayout</c> leaves the new children with no bounds and every
+        /// assertion about their position reads zero. <see cref="Redraw"/> does not do this: it forces a
+        /// render, not a layout.
+        /// </remarks>
+        /// <exception cref="System.ArgumentNullException"><paramref name="control"/> is null.</exception>
+        public static void Settle(Control control)
+        {
+            if (control is null) throw new ArgumentNullException(nameof(control));
+
+            Dispatcher.UIThread.RunJobs();
+            control.UpdateLayout();
+            Dispatcher.UIThread.RunJobs();
+            control.UpdateLayout();
+            Dispatcher.UIThread.RunJobs();
+        }
+
         private static WriteableBitmap Rasterise(Window window)
         {
             // Disposed rather than discarded: GetLastRenderedFrame allocates a fresh bitmap on every
@@ -191,6 +229,7 @@ namespace EmuSen.LunaP.Testing
         /// <summary>Asserts the window renders identically twice, which is what a baseline comparison requires of it.</summary>
         /// <param name="name">A name for the capture, used in the failure message and in dumped file names.</param>
         /// <param name="build">Builds a fresh, unshown window. Called several times, so it must return a new instance each time rather than the same one.</param>
+        /// <exception cref="System.InvalidOperationException">A window this built captured no frame, despite having been shown. A <paramref name="build"/> that returns an already-shown window is the usual cause.</exception>
         public static void AssertStable(string name, Func<Window> build)
         {
             // THE FIRST FRAME IS THROWN AWAY, and §37 is the measurement that put it there. On

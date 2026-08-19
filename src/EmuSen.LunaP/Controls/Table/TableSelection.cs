@@ -149,6 +149,14 @@ namespace EmuSen.LunaP.Controls
         /// <param name="item">The model to select, matched by Key. Null clears the selection.</param>
         public void Select(T? item)
         {
+            // None REFUSES, and clearing still works. The mode is spelled as "single, and nothing
+            // can be hit" (ApplySelectionMode), which stopped the user and not the caller - so a
+            // table declared unselectable could still be given a selection in code, and would show
+            // one. The cell path has always refused it here (CanSelectCell), and switching to None
+            // already clears what is selected for the stated reason that the mode must not read as
+            // "no NEW selections". This is the third place that rule is applied. §81.1.
+            if (item is not null && _selectionMode == LunaSelectionMode.None) return;
+
             if (Rows is null)
             {
                 _pending = item;

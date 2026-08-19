@@ -32,8 +32,15 @@
          now reachable by forgetting a line here rather than by mistyping a
          selector.
 
-         ALL SIXTEEN OMISSIONS TURN THE SUITE RED, by three different guards and
-         for three different reasons. Dropping a templated control's file is
+         ALL SEVENTEEN OMISSIONS TURN THE SUITE RED, by four different guards
+         and for four different reasons. It said SIXTEEN until §79.7, which is
+         the count from before §48 added FormControls.axaml - the comment was
+         not moved with the line. Corrected rather than quietly renumbered
+         because this file's whole subject is that a missing entry is silent,
+         and a note that miscounts the entries is the same class of thing it
+         warns about. Dropping FormControls.axaml is caught by FormControlTests,
+         which names the file and §48; verified by deleting the line and
+         watching it turn red. Dropping a templated control's file is
          caught by TemplateReachTests, which requires a visual tree (§28.1);
          dropping TextControls.axaml is caught by LunaPControlTests, which reads
          the palette back off a SectionHeader, because a TextBlock has no

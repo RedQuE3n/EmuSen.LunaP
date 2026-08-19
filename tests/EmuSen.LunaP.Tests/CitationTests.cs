@@ -137,5 +137,90 @@ namespace EmuSen.LunaP.Tests
             Assert.True(sections >= 150, $"The man page parse found {sections} sections, which cannot be right.");
             Assert.True(citations >= 100, $"The citation scan found {citations} citations, which cannot be right.");
         }
+
+        private static readonly Regex FileCitation = new(@"\b([A-Za-z0-9_][A-Za-z0-9_.-]*\.md)\b");
+
+        // Named on purpose and deliberately absent, for two different reasons.
+        //
+        // CLAUDE.md is gitignored - local working configuration, and this project must not carry
+        // documentation about how an assistant should behave - so requiring it would turn a
+        // deliberate absence into a suite that is red on CI and green nowhere else.
+        //
+        // EmuSen_Project_Overview_v2.md stayed behind when LunaP left EmuSen (§19, §20). LunaApp.cs
+        // names it while saying in the same breath that the measurement behind it is unreachable,
+        // and spells it out rather than writing a § precisely so it is not read as a live citation.
+        // That is the §44 register working as intended - a retired source, retired in the open - and
+        // an exclusion here rather than a rewritten comment is what keeps it that way.
+        private static readonly HashSet<string> AbsentByDesign =
+            new(StringComparer.OrdinalIgnoreCase) { "CLAUDE.md", "EmuSen_Project_Overview_v2.md" };
+
+        // TRACKED, NOT MERELY PRESENT - and that distinction is the whole of this guard.
+        //
+        // Four comments in shipped source pointed at PLAN-table.md while it was untracked. It sat in
+        // the working copy the whole time, so every local run was green and a fresh clone - CI's,
+        // and a consumer reading the package's SourceLink - had nothing to open. A guard that asked
+        // the filesystem would have agreed with the working copy and missed it completely, which is
+        // §44's point arriving through the other half of the sentence: a citation that reads as
+        // authority and delivers nothing. See docs/LunaP.md §83.2.
+        [Fact]
+        public void Every_file_cited_from_code_is_in_the_repository()
+        {
+            string root = RepoRoot();
+            HashSet<string> tracked = Tracked(root);
+
+            var broken = new SortedDictionary<string, SortedSet<string>>(StringComparer.Ordinal);
+            foreach (string file in SourceFiles(root))
+            {
+                foreach (Match m in FileCitation.Matches(File.ReadAllText(file)))
+                {
+                    string cited = m.Groups[1].Value;
+                    if (tracked.Contains(cited) || AbsentByDesign.Contains(cited)) continue;
+
+                    if (!broken.TryGetValue(cited, out SortedSet<string>? where))
+                    {
+                        broken[cited] = where = new SortedSet<string>(StringComparer.Ordinal);
+                    }
+
+                    where.Add(Path.GetRelativePath(root, file));
+                }
+            }
+
+            Assert.True(broken.Count == 0,
+                "These files are cited from the repository but are not in it:\n\n"
+                + string.Join("\n", broken.Select(b => $"  {b.Key}\n      {string.Join("\n      ", b.Value)}"))
+                + "\n\nA file that exists only in your working copy is a file a clone cannot open, so the "
+                + "citation reads as authority and delivers nothing. Commit it, or move what it says into "
+                + "docs/LunaP.md and repoint the comment.");
+        }
+
+        // Asks git rather than the disk, for the reason above. A checkout without a .git directory
+        // would make this vacuous, so the count is floored the same way the scan above is.
+        private static HashSet<string> Tracked(string root)
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo("git", "ls-files")
+            {
+                WorkingDirectory = root,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+            };
+
+            using System.Diagnostics.Process? git = System.Diagnostics.Process.Start(psi);
+            Assert.True(git is not null, "git could not be started, so tracked files cannot be listed.");
+
+            string output = git!.StandardOutput.ReadToEnd();
+            git.WaitForExit();
+
+            HashSet<string> names = output
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(p => Path.GetFileName(p.Trim()))
+                .Where(n => n.Length > 0)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            Assert.True(names.Count >= 100,
+                $"git ls-files reported {names.Count} files, which cannot be right - this guard would "
+                + "pass vacuously. Is the suite running outside a checkout?");
+
+            return names;
+        }
     }
 }

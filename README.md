@@ -164,6 +164,24 @@ peers.Refresh(await roster.All());   // selection survives the rebuild
 wrong for rows rebuilt on every poll. Give it a key when your models are
 replaced rather than mutated.
 
+### Setting a value is not the user doing something
+
+Every control in the kit that raises a "the user chose this" event holds to one
+rule: **writing the value from code does not raise it.** `Dropdown.Chose` is not
+raised by `Fill`, `LunaList.Chose` and `LunaTable.Chose` are not raised by
+`Refresh` or `Select`, `PathPickerRow.PathPicked` is not raised by setting
+`Path`, and `FilterBar.Changed` is not raised by setting `SearchText`.
+
+This is what lets you restore saved state without it looking like input — a
+window that reopens with the last filter, sort and selection in place does not
+re-run the query that produced them. The one deliberate exception is documented
+where it lives: writing `LunaList.SelectedIndex` directly *does* raise `Chose`,
+because a direct index write is not a restore.
+
+`FilterBar.Changed` only started honouring this in 0.10.0; before that, assigning
+`SearchText` raised it synchronously. If you have code that leant on the raise,
+call your handler yourself after setting the value. `docs/LunaP.md` §80.1.
+
 ## Tables
 
 `LunaTable<T>` is the same idea with columns — each one a header and a
@@ -476,15 +494,21 @@ Claim one key twice and LunaP says so through `LunaSettings.Diagnostics` rather
 than letting the second command quietly never fire.
 
 **A group of actions can be exclusive.** `ActionGroup` is Qt's `QActionGroup`:
-adding an action makes it checkable and ticking one unticks the rest, with
-`Checked` reading back the current one. An action already in another group is
-refused rather than silently moved.
+adding an action makes it checkable and ticking one unticks the rest. An action
+already in another group is refused rather than silently moved.
 
 ```csharp
 var speed = new ActionGroup();
 var half  = speed.Add("50%",  _ => SetSpeed(0.5));
 var full  = speed.Add("100%", _ => SetSpeed(1.0));
+
+speed.Checked = full;    // checks that one, unchecks the rest, runs no handler
+speed.Checked = null;    // unchecks everything
 ```
+
+`Checked` both reads and writes, and **writing it runs no handler** — so a window
+that shows the current selection cannot apply it just by displaying it. Assigning
+an action that is not a member throws rather than joining it silently.
 
 **A menu can nest.** `LunaAction.Submenu` takes a `LunaMenu`, so a "Recent
 Files" entry is an action carrying its own menu rather than a second kind of
@@ -701,12 +725,16 @@ section-header { color: var(--luna-section-header); font-size: 15px; }
 console-pane .output { font-family: "JetBrains Mono"; }
 ```
 
-`CssTheme.ElementNames` enumerates the **22** element names a rule may target,
-`PartsOf` and `StatesOf` their parts and states, and `PropertyNames` the six
-property names (`color`, `background`, `background-color`, `font-family`,
-`font-size`, `font-weight`). Anything outside that vocabulary is reported
-through `CssThemeResult.Warnings` rather than silently ignored.
-`docs/LunaP.md` §12.2 is the format.
+The whole vocabulary is enumerable rather than something to guess at:
+`CssTheme.ElementNames` gives the **22** element names a rule may target,
+`PartsOf` and `StatesOf` their parts and states, `PropertyNames` the six property
+names (`color`, `background`, `background-color`, `font-family`, `font-size`,
+`font-weight`), and `CssTheme.TokenNames` the **20** `--luna-` tokens a `:root`
+block may set. Anything outside it — an unknown element, an unknown property, or
+a misspelled token — is reported through `CssThemeResult.Warnings` rather than
+silently ignored. **Token names were not checked before 0.10.0**, so
+`--luna-surfce` used to parse, do nothing, and say nothing. `docs/LunaP.md` §12.2
+is the format and §79.4 is that fix.
 
 One behaviour worth knowing if you write a theme switcher: **mutating
 `Application.Styles` at runtime strips every already-realized control of its
@@ -855,9 +883,11 @@ not. First place to look if an image comes out sheared (§53.2).
     dotnet build
     dotnet test
 
-**829 tests, all headless** — no window is ever put on a screen, including for
+**880 tests, all headless** — no window is ever put on a screen, including for
 the render tests, which drive a real Avalonia control tree through a real Skia
-pass. Measured on Linux at 0.8.0: 829 passed, 0 failed, 12 seconds. The suite
+pass. That figure is checked by the suite itself, because a hand-written count
+of a thing the runner knows is a number that rots: this one said 207 for four
+releases, and its replacement went stale within the hour (`§79.7`). The suite
 runs serially on purpose; `docs/LunaP.md` §20.2 is the race that taught us why.
 CI runs the same suite on Linux, Windows and macOS, and packs both packages on
 every push so a missing README is found before a tag rather than after.
