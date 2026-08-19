@@ -199,9 +199,45 @@ namespace EmuSen.LunaP.Controls
             DropCellsThatLeft();
         }
 
+        // Split out so the initial call and the property-changed call cannot drift apart.
+        private void ForwardAutomationName()
+        {
+            if (Rows is null) return;
+
+            string? mine = Avalonia.Automation.AutomationProperties.GetName(this);
+            if (string.IsNullOrWhiteSpace(mine)) return;
+
+            string? theirs = Avalonia.Automation.AutomationProperties.GetName(Rows);
+            if (!string.IsNullOrWhiteSpace(theirs)) return;
+
+            Avalonia.Automation.AutomationProperties.SetName(Rows, mine);
+        }
+
         protected override void OnPartsAttached()
         {
             if (Rows is null) return;
+
+            // THE NAME THE CALLER SET IS ON THIS CONTROL, AND THE LIST IS INSIDE IT - see §78.5.
+            //
+            // A caller writes AutomationProperties.Name="Cheats for this console" on the table,
+            // because that is the control they declared. The template then puts a ListBox under it
+            // that has no name at all, and a screen reader walking the tree reaches an anonymous
+            // list inside a named table. §24 spent a whole section putting this kit's controls into
+            // the automation tree; a control that ADDS an unnamed one is that work going backwards.
+            //
+            // Forwarded rather than suppressed. Hiding the inner list would take the row collection
+            // out of the tree with it, and a table whose rows cannot be navigated by a reader is a
+            // worse answer than one whose list repeats the table's name.
+            //
+            // Only when the inner list has nothing of its own, so a caller who names PART_Rows
+            // through a style keeps what they set. Re-applied on change, or a name assigned after
+            // the template - which is the normal case for a window built in a constructor - would
+            // never reach it.
+            ForwardAutomationName();
+            PropertyChanged += (_, e) =>
+            {
+                if (e.Property == Avalonia.Automation.AutomationProperties.NameProperty) ForwardAutomationName();
+            };
 
             Rows.SelectionChanged += (_, _) =>
             {

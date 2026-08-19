@@ -59,7 +59,20 @@ namespace EmuSen.LunaP.Controls
 
         // Raised only for a real user choice, never for the selection restored during a refresh -
         // the same distinction Dropdown.Chose draws, and for the same reason.
-        /// <summary>Raised when the user picks a row, with the model rather than the row. Not raised for a selection restored by Refresh, so a poll loop cannot look like a click.</summary>
+        //
+        // THIS IS A SELECTION CHANGE, NOT AN ACTIVATION, and the old summary - "raised when the user
+        // picks a row" - was ambiguous enough to be read the other way. A consumer did read it the
+        // other way: a modal ROM browser wired `Chose` to close-and-return-the-path, which turned a
+        // list that had always wanted a double-click into one that ended the dialog on a single
+        // click. It reads correctly and is wrong, which is the worst kind of ambiguity in a summary
+        // somebody sees in IntelliSense and nowhere else. §78.
+        //
+        // There is deliberately no Activated event to pair with it. A list is a ListBox, so
+        // DoubleTapped is already there, already the platform's gesture, and already what Enter
+        // reaches through a KeyDown handler - a LunaP-named wrapper would be a third spelling of
+        // something Avalonia does correctly, against §1's rule about not reinventing what the
+        // framework already has. What was missing was the sentence, not the event.
+        /// <summary>Raised when the selection changes to a different row, with the model rather than the row. This is a selection, NOT an activation - for double-click or Enter, handle DoubleTapped or KeyDown. Not raised by Refresh or Select, so a poll loop cannot look like a click, but a direct write to SelectedIndex does raise it.</summary>
         public event Action<T?>? Chose;
 
         public LunaList()

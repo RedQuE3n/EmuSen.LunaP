@@ -45,6 +45,55 @@ namespace EmuSen.LunaP.Theme
 
         private static readonly IReadOnlyDictionary<string, ElementSpec> Elements = BuildElements();
 
+        // THE PALETTE HALF OF THE VOCABULARY, WHICH DID NOT EXIST UNTIL §79.4.
+        //
+        // A rule's element name and property name were both checked against the lists above, and a
+        // ':root' declaration was checked for the '--luna-' prefix and nothing else. So
+        // `--luna-surfce: #123456` parsed, invented a LunaSurfce resource nobody reads, left the real
+        // LunaSurface at its default, and warned about none of it - a theme author looking at an
+        // unchanged colour with no way to find out why. That is §30.5's silent failure in the one
+        // place §30 did not sweep.
+        //
+        // REFLECTED OVER LunaPalette RATHER THAN LISTED HERE, because a list is a second place to
+        // forget: adding a colour to Palette.axaml and LunaPalette is already guarded in both
+        // directions by LunaPaletteTests (§2.1), and hanging the CSS vocabulary off the same fields
+        // means a new token is spelled once and reaches all three. Selected by TYPE rather than by
+        // name so LunaPalette's threshold constants - BusyPercent, HotPercent - are not mistaken for
+        // colours; the two font sizes are taken by their suffix, which is the same rule the parser
+        // itself uses to decide a token is a number.
+        private static readonly IReadOnlySet<string> PaletteKeys = BuildPaletteKeys();
+
+        private static IReadOnlySet<string> BuildPaletteKeys()
+        {
+            var keys = new HashSet<string>(StringComparer.Ordinal);
+
+            foreach (System.Reflection.FieldInfo field in typeof(LunaPalette).GetFields(
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
+            {
+                bool paints = typeof(Avalonia.Media.ISolidColorBrush).IsAssignableFrom(field.FieldType)
+                    || field.FieldType == typeof(Avalonia.Media.FontFamily);
+
+                bool sizes = field.FieldType == typeof(double)
+                    && field.Name.EndsWith("FontSize", StringComparison.Ordinal);
+
+                if (paints || sizes) keys.Add("Luna" + field.Name);
+            }
+
+            return keys;
+        }
+
+        // A token names a palette key, or the Color beside it: Palette.axaml spells every colour
+        // twice and a theme may override either spelling, which the parser already handles by
+        // writing both. See docs/LunaP.md §79.4.
+        private static bool IsKnownToken(string resourceKey) =>
+            PaletteKeys.Contains(resourceKey)
+            || (resourceKey.EndsWith("Color", StringComparison.Ordinal)
+                && PaletteKeys.Contains(resourceKey[..^"Color".Length]));
+
+        /// <summary>Every palette token a theme's <c>:root</c> block may set, as written in CSS.</summary>
+        public static IReadOnlyList<string> TokenNames =>
+            PaletteKeys.Select(TokenFor).OrderBy(n => n, StringComparer.Ordinal).ToList();
+
         // Named after the control, so a rename moves the CSS name with it rather than leaving a selector that matches nothing.
         private static IReadOnlyDictionary<string, ElementSpec> BuildElements()
         {

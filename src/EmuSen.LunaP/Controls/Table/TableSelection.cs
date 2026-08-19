@@ -128,7 +128,12 @@ namespace EmuSen.LunaP.Controls
         public T? Selected => Rows?.SelectedItem as T;
 
         // Raised only for a real user choice, never for the selection restored during a refresh.
-        /// <summary>Raised when the user picks a row, with the model rather than the row. Not raised for a selection restored by Refresh.</summary>
+        //
+        // A SELECTION CHANGE, NOT AN ACTIVATION - the same correction LunaList's Chose carries, and
+        // for the same reason: the old summary said "when the user picks a row", which a consumer
+        // read as double-click and wired an irreversible action to. §78. A table row's activation
+        // gesture is DoubleTapped on the table, as it is for a list.
+        /// <summary>Raised when the selection changes to a different row, with the model rather than the row. This is a selection, NOT an activation - for double-click or Enter, handle DoubleTapped or KeyDown. Not raised by Refresh or Select.</summary>
         public event Action<T?>? Chose;
 
         // Selects by model. Does not raise Chose - a caller setting the selection knows what it set.
@@ -144,6 +149,14 @@ namespace EmuSen.LunaP.Controls
         /// <param name="item">The model to select, matched by Key. Null clears the selection.</param>
         public void Select(T? item)
         {
+            // None REFUSES, and clearing still works. The mode is spelled as "single, and nothing
+            // can be hit" (ApplySelectionMode), which stopped the user and not the caller - so a
+            // table declared unselectable could still be given a selection in code, and would show
+            // one. The cell path has always refused it here (CanSelectCell), and switching to None
+            // already clears what is selected for the stated reason that the mode must not read as
+            // "no NEW selections". This is the third place that rule is applied. §81.1.
+            if (item is not null && _selectionMode == LunaSelectionMode.None) return;
+
             if (Rows is null)
             {
                 _pending = item;

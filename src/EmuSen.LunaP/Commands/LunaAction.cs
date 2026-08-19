@@ -43,6 +43,7 @@ namespace EmuSen.LunaP.Commands
         /// <summary>An action whose handler is given the action itself, which is what a checkable one needs in order to read its own state.</summary>
         /// <param name="text">The label every surface shows.</param>
         /// <param name="triggered">Runs on the UI thread when the action is invoked, after a checkable action has already flipped. Null for an action that only exists to be followed.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="text"/> is null. Use the empty string for an action with no label.</exception>
         public LunaAction(string text, Action<LunaAction>? triggered = null)
         {
             _text = text ?? throw new ArgumentNullException(nameof(text));
@@ -81,6 +82,7 @@ namespace EmuSen.LunaP.Commands
         // What the menu item and the toolbar button say. Settable, because half the actions worth
         // having are "Pause"/"Resume" on one command rather than two.
         /// <summary>The label shown by the menu item, the toolbar button and everything else built from this action. Settable, so one command can read Pause and then Resume.</summary>
+        /// <exception cref="System.ArgumentNullException">The value is null. Use the empty string to clear the label.</exception>
         public string Text
         {
             get => _text;
@@ -236,7 +238,25 @@ namespace EmuSen.LunaP.Commands
         // The member currently checked, or null before anything has been chosen. Null is a real
         // state and not a gap: a group of themes with none of them applied yet is exactly what a
         // freshly created group is.
+        //
+        // THE SETTER EXISTED IN THE SUMMARY BEFORE IT EXISTED IN THE CODE, which is the reason it is
+        // here now. Through 0.8.0 this was get-only while its `///` promised "Setting it checks that
+        // one and unchecks the rest without running any handler" - a sentence a consumer reads in
+        // IntelliSense and writes code against, discovering only from the compiler that there is
+        // nothing to assign to. A consumer cannot patch this; the doc was the API as far as they
+        // could see. The described behaviour was already reachable as `member.IsChecked = true`, so
+        // this adds no mechanism - it adds the spelling that was advertised. §78.
+        //
+        // Assigning null unchecks everything, which is the only reading that makes the round trip
+        // work: `group.Checked = group.Checked` must be a no-op whatever the group's state, and a
+        // null that threw or did nothing would break that for a group with nothing chosen yet.
+        //
+        // NO HANDLER RUNS, matching IsChecked's own setter and standing opposite Invoke. That is the
+        // same line LunaAction draws between the application stating what is true and the user
+        // asking for a change, and a group is where getting it wrong is worst: a settings window
+        // showing the current theme would apply a theme merely by displaying it.
         /// <summary>The member currently checked, or null when none is. Setting it checks that one and unchecks the rest without running any handler.</summary>
+        /// <exception cref="System.ArgumentException">The action is not a member of this group.</exception>
         public LunaAction? Checked
         {
             get
@@ -248,6 +268,35 @@ namespace EmuSen.LunaP.Commands
 
                 return null;
             }
+            set
+            {
+                // Refused rather than added, because adding it here would make the group's membership
+                // depend on assignment order and skip the checkable-and-exclusive setup Add does.
+                if (value is not null && !_members.Contains(value))
+                {
+                    throw new System.ArgumentException("The action is not a member of this group.", nameof(value));
+                }
+
+                if (value is null)
+                {
+                    // Directly rather than through the sweep: the sweep is driven by a member
+                    // becoming checked, and nothing is becoming checked here.
+                    _sweeping = true;
+                    try
+                    {
+                        foreach (LunaAction member in _members) member.IsChecked = false;
+                    }
+                    finally
+                    {
+                        _sweeping = false;
+                    }
+
+                    return;
+                }
+
+                // The sweep in Notify unchecks the others, so this is the whole of it.
+                value.IsChecked = true;
+            }
         }
 
         // Joining a group makes an action checkable, because there is no such thing as an
@@ -256,6 +305,8 @@ namespace EmuSen.LunaP.Commands
         /// <summary>Adds an action to the group, making it checkable and exclusive with the others.</summary>
         /// <param name="action">The action to add. It becomes checkable, and invoking it can only check it - clicking the checked member again cannot turn it off, which is what makes a group a set of radio buttons.</param>
         /// <returns>The same action, so it can be put straight into a menu.</returns>
+        /// <exception cref="System.ArgumentNullException"><paramref name="action"/> is null.</exception>
+        /// <exception cref="System.InvalidOperationException">The action already belongs to a different group. An action is in one group or none, since being exclusive with two sets of members at once has no meaning; adding it to the same group twice is harmless.</exception>
         public LunaAction Add(LunaAction action)
         {
             if (action is null) throw new ArgumentNullException(nameof(action));
@@ -276,6 +327,7 @@ namespace EmuSen.LunaP.Commands
         /// <param name="text">The label this member shows.</param>
         /// <param name="triggered">Runs when this member becomes the checked one.</param>
         /// <returns>The new action, already in the group.</returns>
+        /// <exception cref="System.ArgumentNullException"><paramref name="text"/> is null.</exception>
         public LunaAction Add(string text, Action<LunaAction>? triggered = null) => Add(new LunaAction(text, triggered));
 
         // Called by a member whose IsChecked moved. Only a member becoming CHECKED sweeps: a

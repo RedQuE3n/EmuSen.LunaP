@@ -11,6 +11,192 @@ answer.
 
 ---
 
+## 0.10.0
+
+**Five audit passes over the whole repository, and eighteen findings.** 0.9.0's
+two came from a consumer using the package; every one below came from taking the
+toolkit's own documentation literally and asserting what it claimed — 542 `///`
+summaries, 29 `<exception>` tags, 105 `<returns>` tags, and the guard that is
+supposed to make a breaking change visible. `§§79–83`.
+
+**Two things behave differently and one guard sees more**, which is what makes
+this a minor bump rather than a patch; the rest is documentation. The full cost of
+upgrading is at the end of this entry.
+
+**The first pass took the documentation literally and found six defects, before
+publishing rather than after** (`§79`).
+
+- **A saved table layout could be applied to a table that had outgrown it.** If
+  you added a column to a table with a `TableKey` between releases, your users'
+  remembered widths landed on the first columns of the new table: a five-column
+  table declared entirely at `100` came back `[500, 500, 100, 100, 100]` against
+  a layout saved when it had two. `Restore` refuses a layout whose column count
+  differs — but it runs after every `Column()` call, and a five-column table *is*
+  a two-column table for one call while it is being built. **If you ship a table
+  with a `TableKey`, this is the entry to care about** (`§79.2`).
+- **A settings write that failed said nothing at all.** `JsonSettingsStore.Save`
+  caught everything and returned `false`, while its own summary promised the
+  failure was reported — and none of the four callers inside this toolkit reads
+  that bool. On a read-only configuration directory or a full disk, window
+  geometry, table columns, pane sizes and the chosen theme were lost in silence.
+  Failures now reach `LunaSettings.Diagnostics`, which is where you were already
+  told to look (`§79.3`).
+- **A misspelled palette token in a CSS theme is no longer accepted.**
+  `--luna-surfce` parsed, invented a resource nothing reads, left the real
+  `LunaSurface` at its default and warned about nothing. `:root` was checked for
+  the `--luna-` prefix and never against the tokens that exist. New:
+  **`CssTheme.TokenNames`** lists all twenty (`§79.4`).
+- **`EmuSen.LunaP.Testing` gains `UiTest.Settle`.** For a control that builds its
+  children during a layout pass — a table with `VirtualizeColumns` on, or
+  anything driven from `LayoutUpdated` — the pass that adds a child is not the
+  pass that arranges it, so one `UpdateLayout` leaves the new children with no
+  bounds and assertions about their position read **zero**. `Redraw` forces a
+  render, not a layout, and does not help. This lived as a private helper in this
+  repository's own suite, where no consumer could reach it (`§79.6`).
+- **Building a table read `tables.json` once per column.** Thirty columns, thirty
+  reads and thirty full JSON parses of the file every table in the application
+  shares. Now once per key. Construction only; nothing recurred per refresh
+  (`§79.5`).
+- **The API baseline could not tell `init` from `set`**, so all nine of
+  `LunaColumn<T>`'s configuration properties were published as `{ get; set; }`
+  when assigning them after construction is `CS8852`. Nothing about the type
+  changed — the file describing it did. It now reads `init`, which also means a
+  future `init`↔`set` swap is a visible change rather than an invisible one
+  (`§79.1`).
+
+Two corrections to this file and one to a comment: the 0.8.0 entry above named
+`Tap` and `WhenSelected` as `EditGestures` members and they have never existed
+(`§79.7`); `LunaTheme.axaml` counted sixteen style includes where there are
+seventeen.
+
+**A second pass audited what the code *says* rather than what it does** — the 544
+published `///` summaries and all 29 `<exception>` tags, taken as literal claims
+and probed by calling them (`§80`).
+
+- **`FilterBar.Changed` is no longer raised by setting `SearchText`**, which its
+  summary has always promised and which its three sibling controls all deliver.
+  `SearchDelay` defaults to zero and the template binding pushed the value into
+  the box, so an application restoring a saved filter fired a re-query nobody
+  asked for — a ROM library and an on-disk cheat database, for the two consumers
+  in `§21.1`. **One of the two behaviour changes in this release**, and half the
+  reason it is a minor bump: if you leant on the raise, call your handler yourself
+  after setting the value (`§80.1`).
+- **`LunaColumn<T>`'s template constructor names the right argument.** A null
+  `spoken` threw `ArgumentNullException` naming `"text"` — the private
+  constructor's parameter, which that overload has not got — sending a caller to
+  look at an argument they never passed. The check-column form had a helper
+  guarding against exactly this and the template form did not (`§80.2`).
+- **`CssTheme.Parse` documents that a syntax error throws.** It summarised itself
+  as collecting rather than throwing, which is true of a declaration it cannot
+  *use* and false of a file it cannot *parse*. No application was affected —
+  `LunaTheme.Read` catches it — but a consumer calling `Parse` directly had no
+  warning. `FormatException` is now a documented tag (`§80.4`).
+- **Fifteen public members now document the exceptions they throw**, against 24
+  that already did; while both were true of the surface, "no tag" could not be
+  read as "does not throw". Two were more than null guards: `ActionGroup.Add`
+  refuses an action owned by another group, and `UiSession.TestAssembly` throws
+  when no assembly carries `[AvaloniaTestApplication]` or several do (`§80.5`).
+- **Three summaries stopped promising a directory that is never created.**
+  `ISettingsStore.Directory`, `JsonSettingsStore.Directory` and
+  `LunaTheme.Directory` said "created if it does not exist"; they resolve a path.
+  Corrected in the sentences rather than the code, because creating a folder as a
+  side effect of asking where one would be is worse than not doing it — `Save`
+  already creates on demand (`§80.3`).
+
+- **`LunaSelectionMode.None` now refuses a programmatic `Select` too.** Its
+  summary reads *"Rows cannot be selected at all"*, and it was implemented as a
+  hit-test — which stops the user and not the caller, so a table declared
+  unselectable could be given a selection in code and would show one. The cell
+  path had always refused it, and setting the mode already cleared any existing
+  selection for the stated reason that it must not read as "no *new* selections";
+  the row path was the third of three and the only one not told. `Select(null)`
+  still clears, since that is how a caller says "no selection" (`§81.1`).
+
+- **The API surface baseline now records generic constraints and extension
+  methods.** `where T : class` on four public types, `where T : Control` on
+  twenty-nine public methods, and the `this` on every fluent helper were all
+  absent from the file this project treats as its review artefact — so tightening
+  a constraint, or dropping `this` from a parameter, could have been approved
+  without a line moving. Both are source-breaking for consumers. The baseline
+  gains 42 constraint clauses and 29 `this` markers; no API changed (`§82.1`).
+- **`LunaMenu.Commands()` documents what it actually returns.** Its `<returns>`
+  claimed submenu owners were left out; they are returned, before the actions they
+  contain, and have been since the walk was written. **The code was right and the
+  tag was wrong** — the walk and its test date from 2026-08-12, the tag from a
+  bulk "document every member" pass the day after (`§82.2`).
+
+Sixteen new tests pin the audit's negative results as well as its defects: every
+`<exception>` tag with the parameter name it promises, twenty-five "does not
+raise" claims, and the README's vocabulary counts, which were correct and are now
+guarded because a count in prose rots silently (`§80.6`).
+
+### What upgrading costs
+
+**Three things behave differently, and all three were defects rather than
+behaviour worth preserving.** They are why this is a minor bump: no signature
+moved, but a consumer could have been leaning on any of them.
+
+- `FilterBar.Changed` is not raised by setting `SearchText` (`§80.1`).
+- `LunaSelectionMode.None` refuses a programmatic `Select` (`§81.1`).
+- A stale saved layout is no longer applied to a table you have since widened
+  (`§79.2`).
+
+Everything else is additive or documentation. The `Chose` change is wording only,
+`ActionGroup.Checked` gains a setter without altering the getter, and the API
+baseline's new constraint and `this` markers describe API that did not change.
+
+**If you are on 0.7.x**, note that 0.7.1 was prepared and never tagged, so its
+settings-root fix reaches you here for the first time (`§51.1`).
+
+
+## 0.9.0
+
+**Published by accident, and it is a real release rather than a mistake to hide.**
+The tag was pushed while the work below it was still uncommitted, so 0.9.0 carries
+only what was in the repository at that moment: the two README rewrites and §78's
+three fixes. Everything the version number was chosen *for* — the audit passes of
+`§§79–83` and the two behaviour changes that argued it up from a patch — is in
+0.10.0 above and reached no consumer here.
+
+It is deprecated on nuget.org pointing at 0.10.0, and left listed and installable,
+because it is tested working code and nothing in it is wrong except its number.
+
+`§51.1` records 0.7.1 as prepared and never released. This is the mirror of that —
+released and never prepared — and it is written down for the same reason: the
+version history is only worth keeping if it says what actually happened. `§83.3`.
+
+
+**Two `///` summaries were wrong, and one of them is fixed by making the code
+match the sentence rather than the other way round.** Both were found within a
+day of a consumer adopting 0.8.0 (`§78`).
+
+- **`ActionGroup.Checked` now has a setter**, which its summary has been
+  promising since before the property existed: *"Setting it checks that one and
+  unchecks the rest without running any handler."* It was get-only, so a
+  consumer writing the obvious `group.Checked = member` met `CS0200` and had to
+  discover `member.IsChecked = true` instead. The mechanism was never missing —
+  only the spelling. Assigning `null` unchecks everything; assigning an action
+  that is not a member throws `ArgumentException`; **no handler runs**, so a
+  window showing the current selection cannot apply it by displaying it
+  (`§78.1`).
+- **`LunaList<T>.Chose` and `LunaTable<T>.Chose` say what they mean now.** Both
+  read *"Raised when the user picks a row"*, which is equally good English for
+  double-clicking, and a consumer wired a modal dialog's close to it — turning a
+  list that wanted a double-click into one that ended the dialog on a single
+  click. **No behaviour changed**; the summaries now say *"This is a selection,
+  NOT an activation"* and name `DoubleTapped`/`KeyDown` as the activation
+  gestures. `LunaList`'s also records that a direct write to `SelectedIndex`
+  raises it, which `Refresh` and `Select` do not (`§78.2`).
+
+- **`LunaTable<T>` forwards its automation name to the list inside it.** A caller
+  names the table, because the table is the control they declared; the template
+  put an unnamed `ListBox` underneath, so a screen reader walking the tree found
+  an anonymous list inside a named table — and no consumer could fix it, because
+  that list lives in a template they do not own. Forwarded rather than hidden, so
+  the rows stay navigable; a name the caller set on the inner list themselves is
+  kept; and it is re-applied when the name changes, because a window built in a
+  constructor usually gets its name *after* the template (`§78.4`).
+
 ## 0.8.0
 
 **Any window can go full screen, and one that was already remembering its place
@@ -227,9 +413,15 @@ omission — a table nobody can select a row in is a reasonable thing to want.
 - `GridLines` is `None` (the default), `Horizontal`, `Vertical` or `All`. None is
   what every table drew before, and is the better default for an instrument panel
   where a meter list should read as a block rather than a spreadsheet (`§56.2`).
-- `EditGestures` is a `[Flags]` set — `F2`, `DoubleTap`, `Tap`, `WhenSelected` —
-  rather than a mode, because they compose: an enum of named combinations grows a
-  member per pair (`§56.1`).
+- `EditGestures` is a `[Flags]` set — `None`, `DoubleTap`, `F2`, and `Default`
+  being both — rather than a mode, because they compose: an enum of named
+  combinations grows a member per pair (`§56.1`). **This entry named `Tap` and
+  `WhenSelected` as members until the release above.** They are not; they are two of the
+  three values `§56.1` names as TreeDataGrid's and deliberately absent here, and
+  the sentence turned "absent" into "included". Corrected in place rather than
+  below, because a released entry that hands a consumer a member their compiler
+  will reject is the one kind of error this file must not preserve for the
+  record (`§79.7`).
 - `RowPrepared` and `RowClearing` fire as rows are realised and recycled, and
   `CellValueChanged` fires when a commit or a toggle writes. **`CellPrepared` and
   `CellClearing` are deliberately absent** — refused with an argument rather than

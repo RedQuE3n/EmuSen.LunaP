@@ -8,10 +8,10 @@ public static class EmuSen.LunaP.Testing.LunaHeadless
 public struct EmuSen.LunaP.Testing.RenderedFrame : System.ValueType, System.IEquatable<EmuSen.LunaP.Testing.RenderedFrame>
     public RenderedFrame(byte[] Rgba, int Width, int Height)
     public bool Equals(EmuSen.LunaP.Testing.RenderedFrame other)
-    public byte[] Rgba { get; set; }
+    public byte[] Rgba { get; init; }
     public int DistinctColours(int stopAt = 2147483647)
-    public int Height { get; set; }
-    public int Width { get; set; }
+    public int Height { get; init; }
+    public int Width { get; init; }
     public override bool Equals(object obj)
     public override int GetHashCode()
     public override string ToString()
@@ -38,9 +38,10 @@ public static class EmuSen.LunaP.Testing.UiTest
     public static void AssertMatchesBaseline(string name, EmuSen.LunaP.Testing.RenderedFrame frame)
     public static void AssertStable(string name, System.Func<Avalonia.Controls.Window> build)
     public static void Dump(string name, Avalonia.Media.Imaging.WriteableBitmap bitmap)
+    public static void Settle(Avalonia.Controls.Control control)
 
 public static class EmuSen.LunaP.Testing.VisualQuery
-    public static System.Collections.Generic.IEnumerable<T> FindParts<T>(Avalonia.Visual root)
-    public static T FindNamed<T>(Avalonia.Visual root, string name)
-    public static T? FindPart<T>(Avalonia.Visual root)
-    public static int CountParts<T>(Avalonia.Visual root)
+    public static System.Collections.Generic.IEnumerable<T> FindParts<T>(this Avalonia.Visual root) where T : Avalonia.Visual
+    public static T FindNamed<T>(this Avalonia.Visual root, string name) where T : Avalonia.Controls.Control
+    public static T? FindPart<T>(this Avalonia.Visual root) where T : Avalonia.Visual
+    public static int CountParts<T>(this Avalonia.Visual root) where T : Avalonia.Visual

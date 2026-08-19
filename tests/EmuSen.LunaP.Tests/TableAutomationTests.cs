@@ -121,6 +121,54 @@ namespace EmuSen.LunaP.Tests
             return cell!;
         }
 
+        // ---- the name the caller set, and where it has to reach ----
+
+        // §78.5. A caller names the control they declared; the template puts a ListBox under it, and
+        // a reader walking the tree used to find that list anonymous inside a named table. Asserted
+        // through the peer rather than off the attached property, per this file's own rule.
+        [Fact]
+        public Task The_tables_name_reaches_the_list_inside_it() => Realised(
+            () =>
+            {
+                LunaTable<Row> table = Table();
+                AutomationProperties.SetName(table, "Cheats for this console");
+                return table;
+            },
+            table =>
+            {
+                var list = table.GetVisualDescendants().OfType<ListBox>().First();
+                Assert.Equal("Cheats for this console", Peer(list).GetName());
+            });
+
+        // A caller who named the inner list themselves keeps what they set.
+        [Fact]
+        public Task A_list_that_already_has_a_name_keeps_it() => Realised(
+            () =>
+            {
+                LunaTable<Row> table = Table();
+                AutomationProperties.SetName(table, "outer");
+                return table;
+            },
+            table =>
+            {
+                var list = table.GetVisualDescendants().OfType<ListBox>().First();
+                AutomationProperties.SetName(list, "inner");
+                Assert.Equal("inner", Peer(list).GetName());
+            });
+
+        // The normal case for a window built in a constructor: the name is assigned after the
+        // template has already been applied, so a one-shot forward at attach time would miss it.
+        [Fact]
+        public Task A_name_set_after_the_template_still_reaches_the_list() => Realised(
+            () => Table(),
+            table =>
+            {
+                AutomationProperties.SetName(table, "named later");
+
+                var list = table.GetVisualDescendants().OfType<ListBox>().First();
+                Assert.Equal("named later", Peer(list).GetName());
+            });
+
         // ---- what the table says it is ----
 
         [Fact]

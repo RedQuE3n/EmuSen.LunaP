@@ -71,9 +71,38 @@
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <PackageId>EmuSen.LunaP</PackageId>
-    <!-- 0.8.0. The published version comes from the git tag, so this is only
+    <!-- 0.10.0. The published version comes from the git tag, so this is only
          the default for a local `dotnet pack` - kept in step so the two never
          tell different stories.
+
+         0.9.0 WAS PUBLISHED BY ACCIDENT AND IS NOT WHAT THIS COMMENT ONCE SAID
+         IT WOULD BE. The tag was pushed while the audit was still uncommitted,
+         so 0.9.0 carries the two README rewrites and §78's three fixes and
+         nothing else - a real release, tested and installable, wearing a number
+         chosen for work it does not contain. It is deprecated on nuget.org
+         pointing here. §51.1 records 0.7.1 as prepared and never released; this
+         is the mirror, and §83.3 records it for the same reason: the number is
+         not evidence of what shipped, in either direction.
+
+         0.10.0 IS A MINOR BUMP FOR TWO BEHAVIOUR CHANGES, AND THAT IS THE SAME
+         ARGUMENT 0.8.0 MADE FOR PAINT. FilterBar.Changed is no longer raised by
+         setting SearchText, and LunaSelectionMode.None now refuses a programmatic
+         Select - both corrections toward what the summaries had always promised
+         (§80.1, §81.1), and both things a consumer could have been relying on as
+         they were. If repainting a text box earned a minor bump because "a
+         consumer reading 0.7.2 would not expect their text boxes repainted", then
+         a filter that stops re-querying and a table that stops accepting a
+         selection earn one at least as clearly. It was going to be 0.8.1 until
+         §83.1 weighed it against the paragraph below, which is the whole reason
+         that paragraph is written the way it is - and the argument survived 0.9.0
+         going out early, because those two changes still reach a consumer for the
+         first time here.
+
+         The rest of 0.10.0 is documentation and guards: six wrong summaries or
+         tags corrected, fifteen members that threw undocumented exceptions now
+         documenting them, and the API baseline taught to see generic constraints
+         and extension methods, which it had never recorded (§82.1). No API
+         changed shape.
 
          0.8.0 IS THE FIRST RELEASE SINCE 0.7.0 THAT IS NOT PURELY ADDITIVE, and
          that is what makes it a minor bump rather than a patch. §48 hands
@@ -107,7 +136,7 @@
          GPL-3.0-or-later to MIT (§25), which is the largest thing a version can
          mean to a consumer who could not previously link this into a closed
          application. CHANGELOG.md is the consumer's account of all of them. -->
-    <Version>0.8.0</Version>
+    <Version>0.10.0</Version>
     <Authors>Tristan Pelland</Authors>
     <Description>A small Avalonia toolkit: theme, controls, an application shell, window scaffolding and a fluent layout surface.</Description>
     <!-- MIT as of 0.6.0; 0.2.0-0.5.0 shipped GPL-3.0-or-later and stay that way

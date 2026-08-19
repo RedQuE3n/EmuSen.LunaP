@@ -96,7 +96,8 @@ namespace EmuSen.LunaP.Settings
                 name.Equals(r, StringComparison.OrdinalIgnoreCase)
                 || name.StartsWith(r + ".", StringComparison.OrdinalIgnoreCase));
 
-        /// <summary>The directory a category resolves to, created if it does not exist.</summary>
+        // Path arithmetic only; Save is what creates a directory. §80.3.
+        /// <summary>The directory a category resolves to, whether or not it exists yet.</summary>
         /// <param name="category">The subdirectory, or null for the root.</param>
         /// <returns>The full path.</returns>
         public string Directory(string? category) =>
@@ -109,15 +110,18 @@ namespace EmuSen.LunaP.Settings
         /// <returns>The value, or null when the file is missing, empty or malformed. Failures are reported through LunaSettings.Report rather than thrown.</returns>
         public T? Load<T>(string? category, string fileName) where T : class
         {
+            // Resolved before the try and reused in the catch, so a handler cannot throw a second
+            // time working out what to name in its own message.
+            string path = fileName;
             try
             {
-                string path = PathFor(category, fileName);
+                path = PathFor(category, fileName);
                 if (!File.Exists(path)) return null;
                 return JsonSerializer.Deserialize<T>(File.ReadAllText(path), Options);
             }
             catch (Exception ex)
             {
-                LunaSettings.Report($"{PathFor(category, fileName)}: {ex.Message} Falling back to defaults.");
+                LunaSettings.Report($"{path}: {ex.Message} Falling back to defaults.");
                 return null;
             }
         }
@@ -128,17 +132,33 @@ namespace EmuSen.LunaP.Settings
         /// <param name="fileName">The file name, including its extension.</param>
         /// <param name="value">What to write.</param>
         /// <returns>True if it was written. Failures are reported through LunaSettings.Report rather than thrown.</returns>
+        // A FAILED WRITE USED TO BE COMPLETELY SILENT - see docs/LunaP.md §79.3.
+        //
+        // This catch was bare and returned false, while the summary above it promised the failure was
+        // reported. That would be a documentation defect on its own; what made it cost something is
+        // that NOT ONE CALLER READS THE BOOL. WindowPlacementStore, TableLayoutStore, PaneLayoutStore
+        // and LunaTheme all call this and discard the result, so a read-only configuration directory
+        // or a full disk lost a window's geometry, a table's columns and the chosen theme with no
+        // exception, no diagnostic and no return value anybody looked at - the user simply found that
+        // their layout never stuck.
+        //
+        // Load has reported since it was written; the asymmetry was an oversight rather than a
+        // decision, which is why this now matches it rather than the callers being changed to check.
+        // Reporting is the seam a host already has, and a store cannot know which failures its caller
+        // considers fatal.
         public bool Save<T>(string? category, string fileName, T value) where T : class
         {
+            string path = fileName;
             try
             {
-                string path = PathFor(category, fileName);
+                path = PathFor(category, fileName);
                 System.IO.Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 WriteAtomic(path, JsonSerializer.Serialize(value, Options));
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                LunaSettings.Report($"{path}: {ex.Message} Nothing was written.");
                 return false;
             }
         }

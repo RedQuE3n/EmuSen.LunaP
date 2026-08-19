@@ -97,7 +97,11 @@ namespace EmuSen.LunaP.Theme
             root.Content = content;
         }
 
-        /// <summary>The folder theme files are read from, created on demand.</summary>
+        // NOT created by asking - Available guards with Exists below for exactly that reason, and a
+        // fresh install has no themes folder until something writes one. It said "created on
+        // demand" until §80.3. A consumer telling a user where to drop a theme file should create
+        // it: System.IO.Directory.CreateDirectory(LunaTheme.Directory).
+        /// <summary>The folder theme files are read from, whether or not it exists yet.</summary>
         public static string Directory => LunaSettings.Store.Directory(ThemeCategory);
 
         // Built-in first, then whatever is on disk, alphabetically. A name is listed once however many formats spell it.
