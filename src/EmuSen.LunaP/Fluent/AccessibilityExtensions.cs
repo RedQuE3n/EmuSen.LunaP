@@ -40,7 +40,7 @@ namespace EmuSen.LunaP.Fluent
         }
 
         // AutomationProperties.HelpText: the sentence after the name. For what a control does when
-        // the name says only what it is - "Browse..." and "chooses where save states are written".
+        // the name says only what it is - "Browse..." and "chooses where exported files are written".
         /// <summary>Gives the control the sentence a reader offers after the name.</summary>
         /// <typeparam name="T">The control type, preserved so chaining keeps the concrete type.</typeparam>
         /// <param name="control">The control to describe.</param>

@@ -174,10 +174,14 @@ namespace EmuSen.LunaP.Tests
         public void Available_lists_builtin_first_and_a_name_once()
         {
             string root = Path.Combine(Path.GetTempPath(), "luna-themes-" + Guid.NewGuid().ToString("N"));
-            ISettingsStore previous = LunaSettings.Store;
+            IThemeSource previous = LunaTheme.Source;
             try
             {
-                LunaSettings.Store = new JsonSettingsStore(root);
+                // Points the THEME SOURCE rather than the settings store, since §86.11. The two
+                // stopped being the same thing when ISettingsStore gave up its Directory method,
+                // and this test never needed a settings store at all - it needed somewhere to put
+                // three theme files.
+                LunaTheme.Source = new FolderThemeSource(Path.Combine(root, LunaTheme.ThemeCategory));
                 Directory.CreateDirectory(LunaTheme.Directory);
                 File.WriteAllText(Path.Combine(LunaTheme.Directory, "dusk.axaml"), "<ResourceDictionary/>");
                 File.WriteAllText(Path.Combine(LunaTheme.Directory, "dusk.css"), ":root { }");
@@ -191,7 +195,7 @@ namespace EmuSen.LunaP.Tests
             }
             finally
             {
-                LunaSettings.Store = previous;
+                LunaTheme.Source = previous;
                 if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
             }
         }

@@ -30,23 +30,30 @@ namespace EmuSen.LunaP.Windowing
         public const string FileName = "windows.json";
 
         // Read through LunaSettings.Store rather than a captured file object: a host may replace the store after this type is first touched.
-        private static Dictionary<string, WindowPlacement> All() =>
-            LunaSettings.Store.Load<Dictionary<string, WindowPlacement>>(null, FileName) ?? new Dictionary<string, WindowPlacement>();
+        private static Dictionary<string, WindowPlacement> All(ISettingsStore? store) =>
+            (store ?? LunaSettings.Store).Load<Dictionary<string, WindowPlacement>>(null, FileName) ?? new Dictionary<string, WindowPlacement>();
 
+        // THE STORE IS A PARAMETER SINCE §86.12, and null still means the process-wide one, so
+        // every existing caller is unchanged. What it buys is that this type no longer decides
+        // WHERE it writes - the control that owns the key does, by resolving LunaSettings.For(this)
+        // down its own tree. Two windows can now keep two sets of placements, which nothing could
+        // express while this reached for a global.
         /// <summary>Reads back the placement saved under a key.</summary>
         /// <param name="key">The WindowKey the placement was saved under.</param>
+        /// <param name="store">Where to read from, or null for the process-wide LunaSettings.Store. A control passes LunaSettings.For(this), which resolves down its own tree.</param>
         /// <returns>The saved placement, or null if nothing was saved for that key.</returns>
-        public static WindowPlacement? Load(string key) =>
-            All().TryGetValue(key, out WindowPlacement? p) ? p : null;
+        public static WindowPlacement? Load(string key, ISettingsStore? store = null) =>
+            All(store).TryGetValue(key, out WindowPlacement? p) ? p : null;
 
         /// <summary>Saves one placement, leaving every other key in the file alone.</summary>
         /// <param name="key">The WindowKey to save under.</param>
         /// <param name="placement">Where the window was.</param>
-        public static void Save(string key, WindowPlacement placement)
+        /// <param name="store">Where to write to, or null for the process-wide LunaSettings.Store. A control passes LunaSettings.For(this), which resolves down its own tree.</param>
+        public static void Save(string key, WindowPlacement placement, ISettingsStore? store = null)
         {
-            Dictionary<string, WindowPlacement> all = All();
+            Dictionary<string, WindowPlacement> all = All(store);
             all[key] = placement;
-            LunaSettings.Store.Save(null, FileName, all);
+            (store ?? LunaSettings.Store).Save(null, FileName, all);
         }
 
         // WHAT A CLOSING WINDOW SHOULD WRITE DOWN, as a pure function of what it can see - see docs/LunaP.md §75.4.

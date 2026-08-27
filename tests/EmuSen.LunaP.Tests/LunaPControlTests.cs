@@ -57,13 +57,13 @@ namespace EmuSen.LunaP.Tests
         [InlineData(95, "#FF4500")]
         // Asserted on the rendered bar rather than a computed property: the ramp is a pseudo-class and a style now, so a theme can reach it.
         public Task A_meter_row_colours_its_bar_from_the_ramp(double percent, string expected) =>
-            Realised(() => new MeterRow { Label = "S-CPU", Percent = percent, ValueText = $"{percent}%" },
+            Realised(() => new MeterRow { Label = "Import", Percent = percent, ValueText = $"{percent}%" },
                 row => Assert.Equal(Color.Parse(expected),
                     Assert.IsAssignableFrom<ISolidColorBrush>(row.FindPart<ProgressBar>()!.Foreground).Color));
 
         [Fact]
         public Task A_meter_row_builds_its_template() =>
-            Realised(() => new MeterRow { Label = "S-CPU", Percent = 40, ValueText = "40.0%" }, row =>
+            Realised(() => new MeterRow { Label = "Import", Percent = 40, ValueText = "40.0%" }, row =>
             {
                 ProgressBar? bar = row.FindPart<ProgressBar>();
                 Assert.NotNull(bar);
@@ -167,7 +167,7 @@ namespace EmuSen.LunaP.Tests
 
         [Fact]
         public Task A_console_pane_appends_output_and_raises_what_was_typed() =>
-            Realised(() => new ConsolePane { Prompt = "DianaOS #: " }, pane =>
+            Realised(() => new ConsolePane { Prompt = "photos> " }, pane =>
             {
                 string? submitted = null;
                 pane.Submitted += line => submitted = line;
@@ -193,13 +193,13 @@ namespace EmuSen.LunaP.Tests
         {
             var pane = new ConsolePane();
             pane.AppendLine("welcome");
-            pane.AppendLine("no ROM loaded yet");
+            pane.AppendLine("nothing loaded yet");
 
             var window = new Window { Width = 400, Height = 300, Content = pane };
             window.Show();
 
-            Assert.Equal("welcome\nno ROM loaded yet", pane.OutputText);
-            Assert.Equal("welcome\nno ROM loaded yet", pane.FindPart<SelectableTextBlock>()!.Text);
+            Assert.Equal("welcome\nnothing loaded yet", pane.OutputText);
+            Assert.Equal("welcome\nnothing loaded yet", pane.FindPart<SelectableTextBlock>()!.Text);
         }, default);
 
         // The recall algorithm both console windows hand-wrote, including the "back to the half-typed line" case.

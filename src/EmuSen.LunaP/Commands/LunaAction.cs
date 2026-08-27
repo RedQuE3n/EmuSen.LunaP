@@ -43,6 +43,7 @@ namespace EmuSen.LunaP.Commands
         /// <summary>An action whose handler is given the action itself, which is what a checkable one needs in order to read its own state.</summary>
         /// <param name="text">The label every surface shows.</param>
         /// <param name="triggered">Runs on the UI thread when the action is invoked, after a checkable action has already flipped. Null for an action that only exists to be followed.</param>
+        /// <remarks>Passing a METHOD GROUP for the handler is ambiguous with the other constructor whenever that method is overloaded - <c>new LunaAction("Quit", Close)</c> inside a Window is CS0121, because Window has both Close() and Close(object). Wrap it in a lambda: <c>() =&gt; Close()</c>.</remarks>
         /// <exception cref="System.ArgumentNullException"><paramref name="text"/> is null. Use the empty string for an action with no label.</exception>
         public LunaAction(string text, Action<LunaAction>? triggered = null)
         {
@@ -53,9 +54,21 @@ namespace EmuSen.LunaP.Commands
         // The zero-argument form, which is what most callers want. The one above exists because a
         // CHECKABLE action cannot use this one: reading `IsChecked` from inside the handler needs
         // the action, and the action is what is being constructed on that line.
+        //
+        // THE PAIR HAS ONE SHARP EDGE AND IT IS THE FIRST THING A CONSUMER WRITES. A method group
+        // matches both `Action` and `Action<LunaAction>` whenever the method itself is overloaded,
+        // so `new LunaAction("Quit", Close)` in a Window subclass is CS0121 - Window has `Close()`
+        // and `Close(object?)`, and neither constructor wins. It is a File menu's first line, so
+        // the first five minutes with this type can be spent on it; §84.5 is the report.
+        //
+        // Neither constructor can go. The `Action` form is what almost every call site wants and
+        // the `Action<LunaAction>` form is the only way a checkable action reads its own state, so
+        // this is documented rather than removed - the `<remarks>` on both spells the lambda out,
+        // and uses `Close` as the example precisely because it is the case everybody meets.
         /// <summary>An action with a plain handler, which is what most callers want.</summary>
         /// <param name="text">The label every surface shows.</param>
         /// <param name="triggered">Runs on the UI thread when the action is invoked. Use the other constructor if the handler needs to read IsChecked.</param>
+        /// <remarks>Passing a METHOD GROUP for the handler is ambiguous with the other constructor whenever that method is overloaded - <c>new LunaAction("Quit", Close)</c> inside a Window is CS0121, because Window has both Close() and Close(object). Wrap it in a lambda: <c>() =&gt; Close()</c>.</remarks>
         public LunaAction(string text, Action triggered)
             : this(text, triggered is null ? null : new Action<LunaAction>(_ => triggered()))
         {
@@ -173,6 +186,28 @@ namespace EmuSen.LunaP.Commands
         /// <summary>A divider for a menu or toolbar, written inline with the actions around it.</summary>
         /// <returns>An action that renders as a line and does nothing when invoked.</returns>
         public static LunaAction Separator() => new("-") { IsSeparator = true };
+
+        // WHETHER INVOKING THIS WOULD REACH ANYTHING, which a consumer cannot otherwise find out.
+        //
+        // `Invoked` is an event, and a C# event exposes no invocation list outside the type that
+        // declares it - so from outside this class there is no expression at all that distinguishes
+        // a working action from `new LunaAction("Export")`. Both invoke silently and both return.
+        //
+        // The guard that wants it is the one a SHELL invites. AppWindow (§26.8) is worth taking
+        // before the features it will hold, which means a menu bar exists while items are still
+        // being added to it, which means a placeholder item is the predictable mistake. The cheap
+        // guard is one sweep - `foreach (action in menu.Commands()) Assert.True(action.HasHandler)`
+        // - and until now the only alternative was an assertion per action, which is stronger for
+        // three and nobody writes for thirty. BIMA-C hit exactly this; §84.1 is the report.
+        //
+        // IT IS ABOUT WIRING, NOT ABOUT STATE, and the distinction is the whole of the design. A
+        // DISABLED action still has its handler and still answers true, because disabled is a
+        // passing condition and a disabled placeholder is exactly what the sweep must still catch.
+        // A SEPARATOR and a SUBMENU OWNER answer false and are right to: neither has anything to
+        // run, and a caller sweeping a menu skips both before asking.
+        /// <summary>Whether invoking this action would reach a handler - either the constructor's, or anything subscribed to Invoked.</summary>
+        /// <remarks>This is about wiring and not about state: a disabled action still answers true, because disabled is temporary and a disabled placeholder is still a placeholder. A separator and a submenu owner answer false, having nothing to run; a caller sweeping a menu for items that do nothing skips both first.</remarks>
+        public bool HasHandler => _triggered is not null || Invoked is not null;
 
         // The user asking for it. A disabled action does nothing at all - not the handler, not the
         // state flip - so a stale toolbar button or a key binding that outlived its window cannot

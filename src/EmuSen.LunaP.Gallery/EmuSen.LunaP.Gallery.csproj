@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The gallery: every control in the kit, once, with sample data.
+
+       IT LEFT THE TOOLKIT AT docs/LunaP.md §86.13, and the reason is that it was
+       being shipped. `GalleryWindow` was a public class inside EmuSen.LunaP, so
+       every consumer's application carried 458 lines of demo window it would
+       never show - a package doing two jobs, which is the "do one thing well"
+       half of §86's Unix audit.
+
+       AND IT COULD NOT BE RUN, which is what measuring found and is why this is
+       an EXE rather than another library. There was no OutputType anywhere in
+       this repository: §7 has claimed since it was written that the gallery is
+       how the kit is discovered, and nobody, consumer or maintainer, could
+       open it without writing a host application first. Now:
+
+           cd src/EmuSen.LunaP.Gallery && dotnet run
+
+       NOT PACKABLE, deliberately. A demo window is something you RUN, not
+       something you reference, and a third published package would be a third
+       thing to version in step (CLAUDE.md) for nobody's benefit. The test
+       project references this one by path, which is what keeps
+       GalleryRenderTests - the render fixture for the whole control kit -
+       working exactly as it did. -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- Off, matching the toolkit, so every file spells its own imports - §74.7. -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Desktop and the font, because this one actually starts a windowed
+         application; the toolkit references them for LunaApp.Configure's
+         builder chain and never runs one. -->
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EmuSen.LunaP\EmuSen.LunaP.csproj" />
+  </ItemGroup>
+
+</Project>

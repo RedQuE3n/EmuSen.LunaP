@@ -12,7 +12,7 @@ namespace EmuSen.LunaP.Windowing
     // A NORMAL OBJECT ATTACHED TO A CONTROL, NOT A PROPERTY ON ToolWindow, and that is the design
     // rather than a convenience. §8.1 keeps ToolWindow deliberately thin, and a timer plus a pointer
     // subscription is not thin. More to the point, "the whole window" is only one of the two things
-    // callers want: an emulator frontend in a window wants the cursor hidden over the VIDEO SURFACE
+    // callers want: an application showing a video surface wants the cursor hidden OVER THAT SURFACE
     // and perfectly visible over the toolbar beside it, which a window-level flag cannot express.
     // Attaching to an InputElement covers both, because a Window is one.
     //

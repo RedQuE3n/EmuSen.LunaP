@@ -24,7 +24,7 @@
         <!-- Polite, so a changed status is announced when the reader next
              pauses rather than interrupting them. Assertive would cut across
              whatever they were listening to, and a status line carries
-             "Applied 12 cheats" far more often than it carries anything that
+             "Applied 12 changes" far more often than it carries anything that
              cannot wait a moment. A caller whose status updates continuously
              should set this to Off - it is an attached property precisely so
              that stays their decision. §24.2. -->

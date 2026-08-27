@@ -37,14 +37,20 @@ namespace EmuSen.LunaP.Windowing
         // Read through LunaSettings.Store on every call rather than through a captured file
         // object: a host may replace the store after this type is first touched, and three test
         // fixtures in this repository do exactly that.
-        private static Dictionary<string, PaneLayout> All() =>
-            LunaSettings.Store.Load<Dictionary<string, PaneLayout>>(null, FileName) ?? new Dictionary<string, PaneLayout>();
+        private static Dictionary<string, PaneLayout> All(ISettingsStore? store) =>
+            (store ?? LunaSettings.Store).Load<Dictionary<string, PaneLayout>>(null, FileName) ?? new Dictionary<string, PaneLayout>();
 
+        // THE STORE IS A PARAMETER SINCE §86.12, and null still means the process-wide one, so
+        // every existing caller is unchanged. What it buys is that this type no longer decides
+        // WHERE it writes - the control that owns the key does, by resolving LunaSettings.For(this)
+        // down its own tree. Two windows can now keep two sets of pane layouts, which nothing could
+        // express while this reached for a global.
         /// <summary>Reads back the layout saved under a key.</summary>
         /// <param name="key">The PaneKey or PanelKey the layout was saved under.</param>
+        /// <param name="store">Where to read from, or null for the process-wide LunaSettings.Store. A control passes LunaSettings.For(this), which resolves down its own tree.</param>
         /// <returns>The saved layout, or null if nothing was ever saved for that key.</returns>
-        public static PaneLayout? Load(string key) =>
-            All().TryGetValue(key, out PaneLayout? layout) ? layout : null;
+        public static PaneLayout? Load(string key, ISettingsStore? store = null) =>
+            All(store).TryGetValue(key, out PaneLayout? layout) ? layout : null;
 
         // READ, EDIT, WRITE, rather than a Save that takes a whole record - because one key has two
         // writers. A side panel's size belongs to the SplitPane around it and its openness belongs
@@ -55,13 +61,14 @@ namespace EmuSen.LunaP.Windowing
         /// <summary>Reads, edits and writes back the layout for one key, leaving every other key alone.</summary>
         /// <param name="key">The key to update. A layout is created for it if none exists.</param>
         /// <param name="edit">Mutates the layout in place. Runs before the file is written.</param>
+        /// <param name="store">Where to write to, or null for the process-wide LunaSettings.Store. A control passes LunaSettings.For(this), which resolves down its own tree.</param>
         /// <exception cref="System.ArgumentNullException"><paramref name="key"/> or <paramref name="edit"/> is null.</exception>
-        public static void Update(string key, Action<PaneLayout> edit)
+        public static void Update(string key, Action<PaneLayout> edit, ISettingsStore? store = null)
         {
             if (key is null) throw new ArgumentNullException(nameof(key));
             if (edit is null) throw new ArgumentNullException(nameof(edit));
 
-            Dictionary<string, PaneLayout> all = All();
+            Dictionary<string, PaneLayout> all = All(store);
             if (!all.TryGetValue(key, out PaneLayout? layout))
             {
                 layout = new PaneLayout();
@@ -69,7 +76,7 @@ namespace EmuSen.LunaP.Windowing
             }
 
             edit(layout);
-            LunaSettings.Store.Save(null, FileName, all);
+            (store ?? LunaSettings.Store).Save(null, FileName, all);
         }
     }
 }

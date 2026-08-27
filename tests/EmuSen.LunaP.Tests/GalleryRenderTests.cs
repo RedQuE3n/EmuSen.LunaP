@@ -161,5 +161,37 @@ namespace EmuSen.LunaP.Tests
                 + string.Join(", ", missing)
                 + ". Add them to the \"Form controls\" section of GalleryWindow. See docs/LunaP.md §48.6.");
         });
+
+        // THE ONE THING PASS 6 SHIPPED THAT REACHES A PERSON, and it turned out to be deletable
+        // without a single test noticing - which is how this guard came to exist. §86.15 fixed 46
+        // lines of one consumer's vocabulary that had made the gallery read as that consumer's own
+        // application, and then declined to add a word-list guard, because a grep for domain words
+        // finds only the words somebody thought of and its silence proves nothing.
+        //
+        // THIS IS NOT THAT GUARD, and the difference is why it is allowed to exist. It does not ask
+        // whether the samples are agnostic - nothing can. It asks whether the sentence that tells a
+        // reader they are NOT the toolkit's subject is still on the page. That is a presence check
+        // on one known string, so it fails honestly, and the thing it protects is the only defence
+        // against the misreading that a coherent demo domain buys in exchange for being legible.
+        //
+        // A reader who runs the gallery is exactly who found the leak §86.15 fixed. This keeps the
+        // one line addressed to them.
+        [Fact]
+        public Task The_gallery_says_its_samples_are_invented() => UiTest.Run(() =>
+        {
+            var window = new GalleryWindow();
+            window.Show();
+
+            string[] text = window.GetSelfAndVisualDescendants().OfType<TextBlock>()
+                .Select(t => t.Text ?? string.Empty).ToArray();
+
+            Assert.True(
+                text.Any(t => t.Contains("invented", StringComparison.Ordinal)
+                              && t.Contains("knows nothing about", StringComparison.Ordinal)),
+                "The gallery no longer states that its samples are invented. A coherent demo domain "
+                + "reads as what the toolkit is FOR unless the page says otherwise, which is the "
+                + "mistake §86.15 was written to undo - and the one it left the gallery able to make "
+                + "again silently. Restore the Ui.Hint at the top of Central in GalleryWindow.");
+        });
     }
 }

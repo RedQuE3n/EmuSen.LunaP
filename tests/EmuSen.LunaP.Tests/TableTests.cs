@@ -27,19 +27,19 @@ namespace EmuSen.LunaP.Tests
         private static readonly HeadlessUnitTestSession Session =
             HeadlessUnitTestSession.GetOrStartForAssembly(typeof(TableTests).GetTypeInfo().Assembly);
 
-        private sealed record Field(string Name, string Type, int Page);
+        private sealed record Ingredient(string Name, string Kind, int Step);
 
-        private static readonly Field[] Fields =
+        private static readonly Ingredient[] Ingredients =
         {
-            new("Site", "text", 1),
-            new("Technician", "text", 1),
-            new("Approved", "checkbox", 2),
+            new("Plain flour", "dry", 1),
+            new("Unsalted butter", "wet", 1),
+            new("Sea salt flakes", "dry", 2),
         };
 
-        private static Task Realised(Action<LunaTable<Field>> assert, Func<LunaTable<Field>>? make = null) =>
+        private static Task Realised(Action<LunaTable<Ingredient>> assert, Func<LunaTable<Ingredient>>? make = null) =>
             Session.Dispatch(() =>
             {
-                LunaTable<Field> table = make?.Invoke() ?? Build();
+                LunaTable<Ingredient> table = make?.Invoke() ?? Build();
                 var window = new ToolWindow { Width = 500, Height = 300, Content = table };
                 window.Show();
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
@@ -47,13 +47,13 @@ namespace EmuSen.LunaP.Tests
                 window.Close();
             }, default);
 
-        private static LunaTable<Field> Build()
+        private static LunaTable<Ingredient> Build()
         {
-            var table = new LunaTable<Field> { Key = f => f.Name };
+            var table = new LunaTable<Ingredient> { Key = f => f.Name };
             table.Column("name", f => f.Name, "2*")
-                 .Column("type", f => f.Type)
-                 .Column("pg", f => f.Page.ToString(), "40");
-            table.Refresh(Fields);
+                 .Column("kind", f => f.Kind)
+                 .Column("step", f => f.Step.ToString(), "40");
+            table.Refresh(Ingredients);
             return table;
         }
 
@@ -63,7 +63,7 @@ namespace EmuSen.LunaP.Tests
             Grid header = table.FindNamed<Grid>("PART_Header");
 
             Assert.Equal(3, header.ColumnDefinitions.Count);
-            Assert.Equal(new[] { "name", "type", "pg" },
+            Assert.Equal(new[] { "name", "kind", "step" },
                 header.Children.OfType<TextBlock>().Select(t => t.Text));
         });
 
@@ -90,7 +90,7 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(3, containers.Length);
 
             string[] first = containers[0].GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text!).ToArray();
-            Assert.Equal(new[] { "Site", "text", "1" }, first);
+            Assert.Equal(new[] { "Plain flour", "dry", "1" }, first);
         });
 
         // THE TEST THIS REPLACES COULD NOT FAIL, AND DID NOT, FOR THE WHOLE LIFE OF THE CONTROL.
@@ -114,14 +114,14 @@ namespace EmuSen.LunaP.Tests
         public Task An_auto_column_lines_up_with_its_own_heading() => Realised(
             make: () =>
             {
-                var table = new LunaTable<Field>();
+                var table = new LunaTable<Ingredient>();
 
                 // "classification" is far wider than any of its cells, so an Auto column that is
                 // not sharing sizes to 13 characters in the header and 8 in the rows.
                 table.Column("name", f => f.Name, "2*")
-                     .Column("classification", f => f.Type, "Auto")
-                     .Column("pg", f => f.Page.ToString(), "40");
-                table.Refresh(Fields);
+                     .Column("classification", f => f.Kind, "Auto")
+                     .Column("step", f => f.Step.ToString(), "40");
+                table.Refresh(Ingredients);
                 return table;
             },
             assert: table =>
@@ -169,11 +169,11 @@ namespace EmuSen.LunaP.Tests
         public Task The_columns_fill_the_width_they_are_given() => Realised(
             make: () =>
             {
-                var table = new LunaTable<Field>();
+                var table = new LunaTable<Ingredient>();
                 table.Column("name", f => f.Name, "2*")
-                     .Column("type", f => f.Type, "Auto")
-                     .Column("pg", f => f.Page.ToString(), "40");
-                table.Refresh(Fields);
+                     .Column("kind", f => f.Kind, "Auto")
+                     .Column("step", f => f.Step.ToString(), "40");
+                table.Refresh(Ingredients);
                 return table;
             },
             assert: table =>
@@ -197,31 +197,31 @@ namespace EmuSen.LunaP.Tests
         // returning to arrival order would also pass against a two-state implementation if the rows
         // happened to arrive sorted, because a two-state cycle's third click lands on ascending. The
         // fixture is part of the guard.
-        private static readonly Field[] Unordered =
+        private static readonly Ingredient[] Unordered =
         {
-            new("Beta", "text", 20),
-            new("Alpha", "text", 30),
-            new("Gamma", "text", 10),
+            new("Beta", "dry", 20),
+            new("Alpha", "dry", 30),
+            new("Gamma", "dry", 10),
         };
 
-        private static LunaTable<Field> Sortable()
+        private static LunaTable<Ingredient> Sortable()
         {
-            var table = new LunaTable<Field> { Key = f => f.Name };
+            var table = new LunaTable<Ingredient> { Key = f => f.Name };
             table.Column("name", f => f.Name, "2*")
-                 .Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
+                 .Column(new LunaColumn<Ingredient>("step", f => f.Step.ToString())
                  {
                      Width = "60",
-                     Sort = (a, b) => a.Page.CompareTo(b.Page),
+                     Sort = (a, b) => a.Step.CompareTo(b.Step),
                  });
             table.Refresh(Unordered);
             return table;
         }
 
-        private static Button Heading(LunaTable<Field> table, string text) =>
+        private static Button Heading(LunaTable<Ingredient> table, string text) =>
             table.FindNamed<Grid>("PART_Header").Children.OfType<Button>()
                 .First(b => b.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == text));
 
-        private static string[] Shown(LunaTable<Field> table) =>
+        private static string[] Shown(LunaTable<Ingredient> table) =>
             table.Models.Select(f => f.Name).ToArray();
 
         // Raises the Click event rather than synthesising a pointer press, which keeps these tests
@@ -242,20 +242,20 @@ namespace EmuSen.LunaP.Tests
             {
                 Assert.Equal(new[] { "Beta", "Alpha", "Gamma" }, Shown(table));
 
-                Button pg = Heading(table, "pg");
+                Button step = Heading(table, "step");
 
-                Click(pg);
+                Click(step);
                 Assert.Equal(new[] { "Gamma", "Beta", "Alpha" }, Shown(table));
 
-                Click(pg);
+                Click(step);
                 Assert.Equal(new[] { "Alpha", "Beta", "Gamma" }, Shown(table));
 
                 // The third state, and the one a two-state cycle cannot produce: 20, 30, 10 is
                 // neither sorted direction, so nothing but a return to arrival order gives it.
-                Click(pg);
+                Click(step);
                 Assert.Equal(new[] { "Beta", "Alpha", "Gamma" }, Shown(table));
 
-                Click(pg);
+                Click(step);
                 Assert.Equal(new[] { "Gamma", "Beta", "Alpha" }, Shown(table));
             });
 
@@ -268,7 +268,7 @@ namespace EmuSen.LunaP.Tests
                 table.Select(Unordered[1]);
                 Assert.Equal("Alpha", table.Selected!.Name);
 
-                Click(Heading(table, "pg"));
+                Click(Heading(table, "step"));
 
                 Assert.Equal("Alpha", table.Selected!.Name);
                 Assert.Single(table.FindNamed<ListBox>("PART_Rows")
@@ -282,13 +282,13 @@ namespace EmuSen.LunaP.Tests
             make: Sortable,
             assert: table =>
             {
-                Click(Heading(table, "pg"));
+                Click(Heading(table, "step"));
                 Assert.Equal(new[] { "Gamma", "Beta", "Alpha" }, Shown(table));
 
                 table.Refresh(new[]
                 {
-                    new Field("Delta", "text", 40),
-                    new Field("Epsilon", "text", 5),
+                    new Ingredient("Delta", "dry", 40),
+                    new Ingredient("Epsilon", "dry", 5),
                 });
 
                 Assert.Equal(new[] { "Epsilon", "Delta" }, Shown(table));
@@ -300,23 +300,23 @@ namespace EmuSen.LunaP.Tests
         public Task Rows_that_compare_equal_keep_the_order_they_arrived_in() => Realised(
             make: () =>
             {
-                var table = new LunaTable<Field>();
+                var table = new LunaTable<Ingredient>();
                 table.Column("name", f => f.Name)
-                     .Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
+                     .Column(new LunaColumn<Ingredient>("step", f => f.Step.ToString())
                      {
-                         Sort = (a, b) => a.Page.CompareTo(b.Page),
+                         Sort = (a, b) => a.Step.CompareTo(b.Step),
                      });
                 table.Refresh(new[]
                 {
-                    new Field("first", "text", 1),
-                    new Field("second", "text", 1),
-                    new Field("third", "text", 1),
+                    new Ingredient("first", "dry", 1),
+                    new Ingredient("second", "dry", 1),
+                    new Ingredient("third", "dry", 1),
                 });
                 return table;
             },
             assert: table =>
             {
-                Click(Heading(table, "pg"));
+                Click(Heading(table, "step"));
                 Assert.Equal(new[] { "first", "second", "third" }, Shown(table));
             });
 
@@ -341,17 +341,17 @@ namespace EmuSen.LunaP.Tests
             make: Sortable,
             assert: table =>
             {
-                Button pg = Heading(table, "pg");
-                Assert.Equal("pg, not sorted", AutomationProperties.GetName(pg));
+                Button step = Heading(table, "step");
+                Assert.Equal("step, not sorted", AutomationProperties.GetName(step));
 
-                Click(pg);
-                Assert.Equal("pg, sorted ascending", AutomationProperties.GetName(pg));
+                Click(step);
+                Assert.Equal("step, sorted ascending", AutomationProperties.GetName(step));
 
-                Click(pg);
-                Assert.Equal("pg, sorted descending", AutomationProperties.GetName(pg));
+                Click(step);
+                Assert.Equal("step, sorted descending", AutomationProperties.GetName(step));
 
-                Click(pg);
-                Assert.Equal("pg, not sorted", AutomationProperties.GetName(pg));
+                Click(step);
+                Assert.Equal("step, not sorted", AutomationProperties.GetName(step));
             });
 
         // The glyph is absent in the third state rather than neutral, so the cycle reads as two
@@ -361,19 +361,19 @@ namespace EmuSen.LunaP.Tests
             make: Sortable,
             assert: table =>
             {
-                Button pg = Heading(table, "pg");
-                TextBlock Glyph() => pg.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("sort"));
+                Button step = Heading(table, "step");
+                TextBlock Glyph() => step.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("sort"));
 
                 Assert.False(Glyph().IsVisible);
 
-                Click(pg);
+                Click(step);
                 Assert.True(Glyph().IsVisible);
                 Assert.Equal("▲", Glyph().Text);
 
-                Click(pg);
+                Click(step);
                 Assert.Equal("▼", Glyph().Text);
 
-                Click(pg);
+                Click(step);
                 Assert.False(Glyph().IsVisible);
             });
 
@@ -384,16 +384,16 @@ namespace EmuSen.LunaP.Tests
             make: Sortable,
             assert: table =>
             {
-                Button pg = Heading(table, "pg");
+                Button step = Heading(table, "step");
 
-                Assert.True(pg.Focusable, "A sortable heading that is not focusable cannot be reached by Tab.");
-                Assert.True(pg.Focus(), "The heading refused focus.");
+                Assert.True(step.Focusable, "A sortable heading that is not focusable cannot be reached by Tab.");
+                Assert.True(step.Focus(), "The heading refused focus.");
 
                 // Both halves of the press, because Button's default ClickMode is Release: Space on
                 // key DOWN only sets IsPressed, and the click happens on key UP. Sending the down
                 // alone passes for a control that never clicks at all.
-                pg.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Space });
-                pg.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyUpEvent, Key = Key.Space });
+                step.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Space });
+                step.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyUpEvent, Key = Key.Space });
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
                 Assert.Equal(new[] { "Gamma", "Beta", "Alpha" }, Shown(table));
@@ -410,15 +410,15 @@ namespace EmuSen.LunaP.Tests
             make: Sortable,
             assert: table =>
             {
-                Button pg = Heading(table, "pg");
-                Assert.True(pg.Focus(), "The heading refused focus.");
+                Button step = Heading(table, "step");
+                Assert.True(step.Focus(), "The heading refused focus.");
 
-                Click(pg);
+                Click(step);
 
-                Assert.True(pg.IsFocused,
+                Assert.True(step.IsFocused,
                     "Focus left the heading when it was sorted. The headings are being rebuilt rather "
                     + "than updated - see LunaTable.ShowSortState.");
-                Assert.Same(pg, Heading(table, "pg"));
+                Assert.Same(step, Heading(table, "step"));
             });
 
         // Two tables on one page must not sort each other, the same way they already must not size
@@ -426,8 +426,8 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task Two_tables_do_not_sort_each_other() => Session.Dispatch(() =>
         {
-            LunaTable<Field> left = Sortable();
-            LunaTable<Field> right = Sortable();
+            LunaTable<Ingredient> left = Sortable();
+            LunaTable<Ingredient> right = Sortable();
 
             var window = new ToolWindow
             {
@@ -438,7 +438,7 @@ namespace EmuSen.LunaP.Tests
             window.Show();
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
-            Click(Heading(left, "pg"));
+            Click(Heading(left, "step"));
 
             Assert.Equal(new[] { "Gamma", "Beta", "Alpha" }, Shown(left));
             Assert.Equal(new[] { "Beta", "Alpha", "Gamma" }, Shown(right));
@@ -452,24 +452,24 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task The_terse_column_form_and_the_descriptor_build_the_same_column() => Session.Dispatch(() =>
         {
-            static LunaTable<Field> Terse()
+            static LunaTable<Ingredient> Terse()
             {
-                var table = new LunaTable<Field>();
-                table.Column("name", f => f.Name, "2*").Column("pg", f => f.Page.ToString(), "60");
+                var table = new LunaTable<Ingredient>();
+                table.Column("name", f => f.Name, "2*").Column("step", f => f.Step.ToString(), "60");
                 table.Refresh(Unordered);
                 return table;
             }
 
-            static LunaTable<Field> Descriptor()
+            static LunaTable<Ingredient> Descriptor()
             {
-                var table = new LunaTable<Field>();
-                table.Column(new LunaColumn<Field>("name", f => f.Name) { Width = "2*" })
-                     .Column(new LunaColumn<Field>("pg", f => f.Page.ToString()) { Width = "60" });
+                var table = new LunaTable<Ingredient>();
+                table.Column(new LunaColumn<Ingredient>("name", f => f.Name) { Width = "2*" })
+                     .Column(new LunaColumn<Ingredient>("step", f => f.Step.ToString()) { Width = "60" });
                 table.Refresh(Unordered);
                 return table;
             }
 
-            static string Describe(LunaTable<Field> table)
+            static string Describe(LunaTable<Ingredient> table)
             {
                 Grid header = table.FindNamed<Grid>("PART_Header");
                 Grid row = table.FindNamed<ListBox>("PART_Rows")
@@ -485,7 +485,7 @@ namespace EmuSen.LunaP.Tests
 
             string terse = "", descriptor = "";
 
-            foreach ((LunaTable<Field> table, bool isTerse) in new[] { (Terse(), true), (Descriptor(), false) })
+            foreach ((LunaTable<Ingredient> table, bool isTerse) in new[] { (Terse(), true), (Descriptor(), false) })
             {
                 var window = new ToolWindow { Width = 500, Height = 300, Content = table };
                 window.Show();
@@ -511,11 +511,11 @@ namespace EmuSen.LunaP.Tests
         public Task Only_auto_columns_share_a_size_group_name_with_their_header() => Realised(
             make: () =>
             {
-                var table = new LunaTable<Field>();
+                var table = new LunaTable<Ingredient>();
                 table.Column("name", f => f.Name, "2*")
-                     .Column("type", f => f.Type, "Auto")
-                     .Column("pg", f => f.Page.ToString(), "40");
-                table.Refresh(Fields);
+                     .Column("kind", f => f.Kind, "Auto")
+                     .Column("step", f => f.Step.ToString(), "40");
+                table.Refresh(Ingredients);
                 return table;
             },
             assert: table =>
@@ -548,11 +548,11 @@ namespace EmuSen.LunaP.Tests
         public Task A_long_table_realizes_only_the_rows_that_are_visible() => Realised(
             make: () =>
             {
-                var table = new LunaTable<Field>();
+                var table = new LunaTable<Ingredient>();
                 table.Column("name", f => f.Name, "2*")
-                     .Column("type", f => f.Type)
-                     .Column("pg", f => f.Page.ToString(), "40");
-                table.Refresh(Enumerable.Range(0, 10_000).Select(i => new Field("row " + i, "text", i)).ToArray());
+                     .Column("kind", f => f.Kind)
+                     .Column("step", f => f.Step.ToString(), "40");
+                table.Refresh(Enumerable.Range(0, 10_000).Select(i => new Ingredient("row " + i, "dry", i)).ToArray());
                 return table;
             },
             assert: table =>
@@ -632,10 +632,10 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task A_table_hands_back_the_model_not_the_row() => Realised(table =>
         {
-            table.Select(Fields[1]);
+            table.Select(Ingredients[1]);
 
-            Assert.Equal("Technician", table.Selected!.Name);
-            Assert.Equal(1, table.Selected.Page);
+            Assert.Equal("Unsalted butter", table.Selected!.Name);
+            Assert.Equal(1, table.Selected.Step);
         });
 
         // The same dance LunaList does, for the same reason: rows rebuilt from disk are new
@@ -643,25 +643,25 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task A_table_keeps_the_selection_across_a_refresh() => Realised(table =>
         {
-            table.Select(Fields[1]);
+            table.Select(Ingredients[1]);
 
             table.Refresh(new[]
             {
-                new Field("Site", "text", 1),
-                new Field("Technician", "checkbox", 3),
-                new Field("Approved", "checkbox", 2),
+                new Ingredient("Plain flour", "dry", 1),
+                new Ingredient("Unsalted butter", "wet", 3),
+                new Ingredient("Sea salt flakes", "dry", 2),
             });
 
-            Assert.Equal("Technician", table.Selected!.Name);
-            Assert.Equal(3, table.Selected.Page);
+            Assert.Equal("Unsalted butter", table.Selected!.Name);
+            Assert.Equal(3, table.Selected.Step);
         });
 
         [Fact]
         public Task A_table_clears_the_selection_when_the_row_disappears() => Realised(table =>
         {
-            table.Select(Fields[1]);
+            table.Select(Ingredients[1]);
 
-            table.Refresh(new[] { new Field("Site", "text", 1) });
+            table.Refresh(new[] { new Ingredient("Plain flour", "dry", 1) });
 
             Assert.Null(table.Selected);
         });
@@ -669,14 +669,14 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task A_table_does_not_raise_chose_for_a_restored_selection() => Realised(table =>
         {
-            table.Select(Fields[1]);
+            table.Select(Ingredients[1]);
 
             int chose = 0;
             table.Chose += _ => chose++;
-            table.Refresh(Fields);
+            table.Refresh(Ingredients);
 
             Assert.Equal(0, chose);
-            Assert.Equal("Technician", table.Selected!.Name);
+            Assert.Equal("Unsalted butter", table.Selected!.Name);
         });
 
         // A caller that filled the table before it had a template - which is how every window in
@@ -685,9 +685,9 @@ namespace EmuSen.LunaP.Tests
         public Task Rows_given_before_the_template_existed_still_appear() => Realised(
             make: () =>
             {
-                var table = new LunaTable<Field>();
+                var table = new LunaTable<Ingredient>();
                 table.Column("name", f => f.Name);
-                table.Refresh(Fields);
+                table.Refresh(Ingredients);
                 return table;
             },
             assert: table => Assert.Equal(3,
@@ -700,15 +700,15 @@ namespace EmuSen.LunaP.Tests
         public Task A_row_selected_before_the_template_existed_is_still_selected() => Realised(
             make: () =>
             {
-                var table = new LunaTable<Field> { Key = f => f.Name };
+                var table = new LunaTable<Ingredient> { Key = f => f.Name };
                 table.Column("name", f => f.Name);
-                table.Refresh(Fields);
-                table.Select(Fields[2]);
+                table.Refresh(Ingredients);
+                table.Select(Ingredients[2]);
                 return table;
             },
             assert: table =>
             {
-                Assert.Equal("Approved", table.Selected!.Name);
+                Assert.Equal("Sea salt flakes", table.Selected!.Name);
                 Assert.Single(table.FindNamed<ListBox>("PART_Rows")
                     .GetVisualDescendants().OfType<ListBoxItem>(), i => i.IsSelected);
             });
@@ -723,7 +723,7 @@ namespace EmuSen.LunaP.Tests
                 .GetVisualDescendants().OfType<ListBoxItem>().First()
                 .GetVisualDescendants().OfType<Grid>().First();
 
-            Assert.Equal("name: Site, type: text, pg: 1", AutomationProperties.GetName(row));
+            Assert.Equal("name: Plain flour, kind: dry, step: 1", AutomationProperties.GetName(row));
         });
 
         // A DATA GRID SINCE §68, AND THIS TEST USED TO ASSERT THE OPPOSITE.

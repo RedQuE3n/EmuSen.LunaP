@@ -298,10 +298,10 @@ namespace EmuSen.LunaP.Tests
 
         private static Node[] Tree() => new[]
         {
-            new Node("roms",
-                new Node("snes", new Node("smw.sfc"), new Node("zelda.sfc")),
-                new Node("nes", new Node("metroid.nes"))),
-            new Node("saves"),
+            new Node("photos",
+                new Node("nikon", new Node("IMG_4021.CR2"), new Node("IMG_4022.JPG")),
+                new Node("kodak", new Node("IMG_4023.CR2"))),
+            new Node("scans"),
         };
 
         private static LunaTable<Node> TreeTable(Node[] roots, bool hierarchical = true)
@@ -333,7 +333,7 @@ namespace EmuSen.LunaP.Tests
         public Task A_table_with_no_children_projection_is_exactly_a_flat_table() =>
             Tree(() => TreeTable(Tree(), hierarchical: false), table =>
             {
-                Assert.Equal(new[] { "roms", "saves" }, Visible(table));
+                Assert.Equal(new[] { "photos", "scans" }, Visible(table));
                 Assert.DoesNotContain(
                     table.GetVisualDescendants().OfType<Button>(),
                     b => b.Classes.Contains("expander"));
@@ -343,7 +343,7 @@ namespace EmuSen.LunaP.Tests
         public Task A_tree_starts_collapsed_and_shows_only_its_roots() =>
             Tree(() => TreeTable(Tree()), table =>
             {
-                Assert.Equal(new[] { "roms", "saves" }, Visible(table));
+                Assert.Equal(new[] { "photos", "scans" }, Visible(table));
                 Assert.False(table.IsExpanded(table.Models[0]));
             });
 
@@ -353,7 +353,7 @@ namespace EmuSen.LunaP.Tests
             {
                 table.Expand(table.Models[0]);
 
-                Assert.Equal(new[] { "roms", "snes", "nes", "saves" }, Visible(table));
+                Assert.Equal(new[] { "photos", "nikon", "kodak", "scans" }, Visible(table));
                 Assert.True(table.IsExpanded(table.Models[0]));
             });
 
@@ -363,7 +363,7 @@ namespace EmuSen.LunaP.Tests
             table.ExpandAll();
 
             Assert.Equal(
-                new[] { "roms", "snes", "smw.sfc", "zelda.sfc", "nes", "metroid.nes", "saves" },
+                new[] { "photos", "nikon", "IMG_4021.CR2", "IMG_4022.JPG", "kodak", "IMG_4023.CR2", "scans" },
                 Visible(table));
         });
 
@@ -371,9 +371,9 @@ namespace EmuSen.LunaP.Tests
         public Task Collapsing_hides_the_whole_subtree() => Tree(() => TreeTable(Tree()), table =>
         {
             table.ExpandAll();
-            table.Collapse(table.Models.First(n => n.Name == "roms"));
+            table.Collapse(table.Models.First(n => n.Name == "photos"));
 
-            Assert.Equal(new[] { "roms", "saves" }, Visible(table));
+            Assert.Equal(new[] { "photos", "scans" }, Visible(table));
         });
 
         [Fact]
@@ -382,7 +382,7 @@ namespace EmuSen.LunaP.Tests
             table.ExpandAll();
             table.CollapseAll();
 
-            Assert.Equal(new[] { "roms", "saves" }, Visible(table));
+            Assert.Equal(new[] { "photos", "scans" }, Visible(table));
         });
 
         // DEPTH IS DRAWN, not merely recorded. The indent is what tells a reader which parent a row
@@ -404,9 +404,9 @@ namespace EmuSen.LunaP.Tests
                     // that is right and one that happens to work.
                     .First(b => !double.IsNaN(b.Width)).Width;
 
-                Assert.Equal(0, Indent("roms"));
-                Assert.Equal(table.IndentSize, Indent("snes"));
-                Assert.Equal(table.IndentSize * 2, Indent("smw.sfc"));
+                Assert.Equal(0, Indent("photos"));
+                Assert.Equal(table.IndentSize, Indent("nikon"));
+                Assert.Equal(table.IndentSize * 2, Indent("IMG_4021.CR2"));
             });
 
         // SORTED WITHIN EACH LEVEL, which is the only reading that keeps a tree a tree. Sorting the
@@ -434,7 +434,7 @@ namespace EmuSen.LunaP.Tests
             // Roots sorted among themselves, children sorted among their own siblings, and every
             // child still directly under its parent.
             Assert.Equal(
-                new[] { "roms", "nes", "metroid.nes", "snes", "smw.sfc", "zelda.sfc", "saves" },
+                new[] { "photos", "kodak", "IMG_4023.CR2", "nikon", "IMG_4021.CR2", "IMG_4022.JPG", "scans" },
                 Visible(table));
 
             window.Close();
@@ -447,11 +447,11 @@ namespace EmuSen.LunaP.Tests
             Tree(() => TreeTable(Tree()), table =>
             {
                 table.Expand(table.Models[0]);
-                Assert.Equal(new[] { "roms", "snes", "nes", "saves" }, Visible(table));
+                Assert.Equal(new[] { "photos", "nikon", "kodak", "scans" }, Visible(table));
 
                 table.Refresh(Tree());   // brand new Node objects, same names
 
-                Assert.Equal(new[] { "roms", "snes", "nes", "saves" }, Visible(table));
+                Assert.Equal(new[] { "photos", "nikon", "kodak", "scans" }, Visible(table));
             });
 
         // A CYCLE IS A STACK OVERFLOW WITHOUT THE GUARD, and a StackOverflowException cannot be
@@ -535,9 +535,9 @@ namespace EmuSen.LunaP.Tests
                 .First(c => (c.DataContext as Node)?.Name == name)
                 .GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("expander"));
 
-            Assert.True(Toggle("snes").IsVisible);
-            Assert.False(Toggle("smw.sfc").IsVisible);
-            Assert.Equal(Toggle("snes").Width, Toggle("smw.sfc").Width);
+            Assert.True(Toggle("nikon").IsVisible);
+            Assert.False(Toggle("IMG_4021.CR2").IsVisible);
+            Assert.Equal(Toggle("nikon").Width, Toggle("IMG_4021.CR2").Width);
         });
 
         // Clicking the toggle is the gesture a mouse user has; it must do what Expand does.
@@ -546,13 +546,13 @@ namespace EmuSen.LunaP.Tests
         {
             Button toggle = table.FindNamed<ListBox>("PART_Rows")
                 .GetVisualDescendants().OfType<ListBoxItem>()
-                .First(c => (c.DataContext as Node)?.Name == "roms")
+                .First(c => (c.DataContext as Node)?.Name == "photos")
                 .GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("expander"));
 
             toggle.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
-            Assert.Equal(new[] { "roms", "snes", "nes", "saves" }, Visible(table));
+            Assert.Equal(new[] { "photos", "nikon", "kodak", "scans" }, Visible(table));
         });
 
         // WHAT A READER HEARS OF A TREE. "does this have more under it" is part of what the row IS,
@@ -565,13 +565,13 @@ namespace EmuSen.LunaP.Tests
                     .GetVisualDescendants().OfType<ListBoxItem>()
                     .First(c => (c.DataContext as Node)?.Name == name)).GetName() ?? "";
 
-            Assert.Equal("name: roms, collapsed", Heard("roms"));
-            Assert.Equal("name: saves", Heard("saves"));   // a leaf says neither
+            Assert.Equal("name: photos, collapsed", Heard("photos"));
+            Assert.Equal("name: scans", Heard("scans"));   // a leaf says neither
 
             table.Expand(table.Models[0]);
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
-            Assert.Equal("name: roms, expanded", Heard("roms"));
+            Assert.Equal("name: photos, expanded", Heard("photos"));
         });
 
         // ---- pass 2: gestures, rules, lifecycle (§56) ----
@@ -669,7 +669,7 @@ namespace EmuSen.LunaP.Tests
             table.Column("name", n => n.Name)
                  .Column("kind", _ => "folder")
                  .Column("size", _ => "0");
-            table.Refresh(new[] { new Node("roms") });
+            table.Refresh(new[] { new Node("photos") });
 
             var window = new ToolWindow { Width = 500, Height = 300, Content = table };
             window.Show();
@@ -689,7 +689,7 @@ namespace EmuSen.LunaP.Tests
             var table = new LunaTable<Node> { Key = n => n.Name, GridLines = LunaGridLines.All };
             table.Column(new LunaColumn<Node>("name", n => n.Name) { Commit = (_, _) => { } })
                  .Column("kind", _ => "folder");
-            table.Refresh(new[] { new Node("roms") });
+            table.Refresh(new[] { new Node("photos") });
 
             var window = new ToolWindow { Width = 500, Height = 300, Content = table };
             window.Show();
@@ -716,7 +716,7 @@ namespace EmuSen.LunaP.Tests
             window.Show();
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
-            Assert.Equal(new[] { "roms", "saves" }, prepared);
+            Assert.Equal(new[] { "photos", "scans" }, prepared);
 
             window.Close();
         }, default);
@@ -725,7 +725,7 @@ namespace EmuSen.LunaP.Tests
         public Task A_committed_edit_reports_the_model_and_the_column() => Session.Dispatch(() =>
         {
             var changed = new List<string>();
-            var node = new Node("roms");
+            var node = new Node("photos");
             var table = new LunaTable<Node> { Key = n => n.Name };
             table.Column("kind", _ => "folder")
                  .Column(new LunaColumn<Node>("name", n => n.Name) { Commit = (_, _) => { } });
@@ -744,7 +744,7 @@ namespace EmuSen.LunaP.Tests
                     Key = Avalonia.Input.Key.Enter,
                 });
 
-            Assert.Equal(new[] { "roms:1" }, changed);
+            Assert.Equal(new[] { "photos:1" }, changed);
 
             window.Close();
         }, default);
@@ -754,7 +754,7 @@ namespace EmuSen.LunaP.Tests
         public Task A_cancelled_edit_reports_nothing() => Session.Dispatch(() =>
         {
             var changed = new List<string>();
-            var node = new Node("roms");
+            var node = new Node("photos");
             var table = new LunaTable<Node> { Key = n => n.Name };
             table.Column(new LunaColumn<Node>("name", n => n.Name) { Commit = (_, _) => { } });
             table.Refresh(new[] { node });

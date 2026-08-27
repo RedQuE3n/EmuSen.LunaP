@@ -1,3 +1,4 @@
+using Avalonia;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -88,7 +89,19 @@ namespace EmuSen.LunaP.Tests
 
             // A non-null return and a nullable parameter ON ONE MEMBER. A renderer that reads the
             // wrong state, or hard-codes either answer, gets exactly one half of this line wrong.
-            Assert.Contains("public abstract string Directory(string? category)", surface, StringComparison.Ordinal);
+            //
+            // THIS WITNESS MOVED AT §86.11 and the move is worth a sentence. It was
+            // `ISettingsStore.Directory`, which no longer exists: that pass took the method off the
+            // interface, because a path is a filesystem and the seam should not demand one. The
+            // CONCRETE file-backed store still has it, unchanged and with the same signature - so
+            // the line this test needs is one word shorter and still in the surface, and the
+            // difference is exactly the point of that pass.
+            Assert.Contains("public string Directory(string? category)", surface, StringComparison.Ordinal);
+
+            // And the other way round on one member: a NULLABLE return with a NON-NULL parameter.
+            // Added here because the witness above only ever exercised one arrangement, and a
+            // renderer that swapped the two states would have passed it.
+            Assert.Contains("public EmuSen.LunaP.Theme.ThemeDocument? Open(string name)", surface, StringComparison.Ordinal);
 
             // Nullability INSIDE a generic argument - the part that is not a one-liner, since
             // Func<T, object?> and Func<T, object>? are different contracts and neither is Func<T, object>.
@@ -409,7 +422,7 @@ namespace EmuSen.LunaP.Tests
                 }
 
                 lines.Add($"{mods} {Render(f.FieldType, nullability.Create(f), read: true)} {f.Name}"
-                    + (f.IsLiteral ? $" = {Literal(f.GetRawConstantValue())}" : string.Empty));
+                    + (f.IsLiteral ? $" = {Literal(f.GetRawConstantValue())}" : StyledDefault(f)));
             }
 
             foreach (PropertyInfo p in type.GetProperties(Flags))
@@ -512,6 +525,37 @@ namespace EmuSen.LunaP.Tests
                 string text = $"{prefix}{Render(p.ParameterType, nullability.Create(p), read: p.IsOut)} {p.Name}";
                 return p.HasDefaultValue ? $"{text} = {Literal(p.RawDefaultValue)}" : text;
             }));
+
+        // THE DEFAULT VALUE OF A StyledProperty IS PART OF THE CONTRACT AND WAS INVISIBLE HERE.
+        //
+        // §84.4 is the finding that argued this in: ToolWindow.ClosesOnEscape was registered with no
+        // defaultValue - so `false` - while its own `///` said "True by default", and the audit of
+        // all 544 summaries walked straight past it. The reason it did is worth stating, because it
+        // says which defects that audit CANNOT find: §80 probed claims by CALLING things, and a
+        // default value is observable without calling anything at all. Nothing in the suite read
+        // one back, because the only test touching that property assigns it first.
+        //
+        // A changed default is a breaking change of the quietest kind available. Nothing moves in
+        // this file, nothing moves in a consumer's build, and every window that had not set the
+        // property explicitly behaves differently on upgrade. That is precisely what §32 built this
+        // baseline to make visible, and it is the same argument §82.1 made for constraints and
+        // `this` - API that did not change, described by a file that could not see it.
+        //
+        // DIRECT PROPERTIES ARE SKIPPED, and not for convenience: a DirectProperty has no stored
+        // default at all - it reads a field on the object through the getter it was registered with
+        // - so there is nothing to record and an "unset" value here would be an invention.
+        private static string StyledDefault(FieldInfo f)
+        {
+            if (!f.IsStatic || !f.IsInitOnly) return string.Empty;
+            if (!typeof(AvaloniaProperty).IsAssignableFrom(f.FieldType)) return string.Empty;
+            if (f.GetValue(null) is not AvaloniaProperty property || property.IsDirect) return string.Empty;
+
+            // The default lives on the styled metadata interface rather than the base class, because
+            // a direct property's metadata genuinely has no such member.
+            if (property.GetMetadata(f.DeclaringType!) is not IStyledPropertyMetadata styled) return string.Empty;
+
+            return $" = {Literal(styled.DefaultValue)}";
+        }
 
         private static string Literal(object? value) => value switch
         {

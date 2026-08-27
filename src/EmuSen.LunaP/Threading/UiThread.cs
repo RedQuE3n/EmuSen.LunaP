@@ -31,8 +31,8 @@ namespace EmuSen.LunaP.Threading
         // until after it returns, so `slot.Show(...); slot.Current` would read null. A seam whose
         // observable behaviour depends on which thread called it is worse than no seam.
         //
-        // NOT EVERYTHING SHOULD GO THROUGH HERE, and §11.2 is the recorded case: EmuSen's
-        // DrainPendingFromEmulationThread must run on the thread that owns the emulator core, and
+        // NOT EVERYTHING SHOULD GO THROUGH HERE, and §11.2 is the recorded case: a consumer's drain
+        // had to run on the thread that owns the producer rather than on the UI thread, and
         // marshalling it was exactly wrong while being right for every other caller of the same
         // class. If the work belongs to another thread, do not call this - there is no flag to
         // pass, because a flag would only move the same decision somewhere less visible.

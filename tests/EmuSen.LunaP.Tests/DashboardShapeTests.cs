@@ -19,7 +19,7 @@ namespace EmuSen.LunaP.Tests
         private sealed class ExampleDashboard : PollingWindow
         {
             private readonly MonoText _header = Ui.Mono();
-            private readonly HintText _noTarget = Ui.Hint("No ROM loaded.");
+            private readonly HintText _noTarget = Ui.Hint("Nothing loaded.");
             private readonly MeterList _load = new();
             private readonly RgbaImageView _palette = new();
             private readonly Func<int?> _frame;
@@ -56,7 +56,7 @@ namespace EmuSen.LunaP.Tests
 
                 _header.Text = $"frame {frame}";
                 _noTarget.IsVisible = false;
-                _load.Meters = new List<MeterEntry> { new("S-CPU", 24, "24.0%"), new("S-PPU", 91, "91.0%") };
+                _load.Meters = new List<MeterEntry> { new("Import", 24, "24.0%"), new("Thumbnails", 91, "91.0%") };
                 _palette.SetFrame(new byte[8 * 8 * 4], 8, 8);
             }
         }

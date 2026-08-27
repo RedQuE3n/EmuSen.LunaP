@@ -5,6 +5,8 @@ using Avalonia.Input;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using EmuSen.LunaP.Theme;
 
+using EmuSen.LunaP.Settings;
+
 namespace EmuSen.LunaP.Windowing
 {
     // The base every LunaP window shares. Deliberately thin, and both of its features are opt-in - see docs/LunaP.md §8.
@@ -32,7 +34,15 @@ namespace EmuSen.LunaP.Windowing
         private void Restyle() => LunaTheme.Restyle(this);
 
         // Off by default: Escape inside a console pane means "stop what I am typing", not "close the window".
-        /// <summary>Whether Escape closes the window. True by default, which suits a tool window and not a main one.</summary>
+        //
+        // THE SUMMARY BELOW SAID "True by default" UNTIL §84.4, TWO LINES UNDER THE COMMENT SAYING
+        // THE OPPOSITE. Register is passed no defaultValue, so the property is false, and the `//`
+        // was right the whole time. Nothing in the suite observed it: the only test touching this
+        // property assigns it explicitly, so the default was never read back by anything. A
+        // consumer reading the summary would have written `ClosesOnEscape = false` on a main window
+        // believing it changed something, or - worse - relied on Escape working on a tool window
+        // and found it did not.
+        /// <summary>Whether Escape closes the window. False by default, which suits a main window; a tool window or a dialog usually wants it on.</summary>
         public bool ClosesOnEscape
         {
             get => GetValue(ClosesOnEscapeProperty);
@@ -126,9 +136,25 @@ namespace EmuSen.LunaP.Windowing
             base.OnKeyDown(e);
         }
 
+        // THE ERGONOMIC HALF OF §86.12'S ATTACHED PROPERTY, and it is a convenience rather than a
+        // second mechanism: this reads and writes `LunaSettings.StoreProperty` on this window and
+        // nothing else. It is here because `window.Settings = store` is what a consumer reaches for
+        // and `LunaSettings.SetStore(window, store)` is what they would have had to find.
+        //
+        // Setting it covers everything INSIDE the window too - panes, panels, tables - because the
+        // property inherits down the logical tree. Set it before Show(): placement is restored in
+        // OnOpened and saved in OnClosing, so a store assigned after the window is up is read for
+        // the save and missed for the restore.
+        /// <summary>The settings store this window and everything in it should use. Null - the default - means the process-wide LunaSettings.Store. Set it before Show().</summary>
+        public ISettingsStore? Settings
+        {
+            get => LunaSettings.GetStore(this);
+            set => LunaSettings.SetStore(this, value);
+        }
+
         private void RestorePlacement()
         {
-            if (WindowKey is null || WindowPlacementStore.Load(WindowKey) is not { } saved) return;
+            if (WindowKey is null || WindowPlacementStore.Load(WindowKey, LunaSettings.For(this)) is not { } saved) return;
 
             if (saved.Width > 0 && saved.Height > 0)
             {
@@ -153,11 +179,12 @@ namespace EmuSen.LunaP.Windowing
             // stored last time; the rule itself, and why full screen belongs beside maximized here,
             // is in WindowPlacementStore.PlacementToSave - see docs/LunaP.md §75.4.
             WindowPlacement? previous = WindowState is WindowState.Maximized or WindowState.FullScreen
-                ? WindowPlacementStore.Load(WindowKey)
+                ? WindowPlacementStore.Load(WindowKey, LunaSettings.For(this))
                 : null;
 
             WindowPlacementStore.Save(WindowKey,
-                WindowPlacementStore.PlacementToSave(WindowState, Position, Width, Height, previous));
+                WindowPlacementStore.PlacementToSave(WindowState, Position, Width, Height, previous),
+                LunaSettings.For(this));
         }
     }
 }

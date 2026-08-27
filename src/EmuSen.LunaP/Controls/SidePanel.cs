@@ -8,6 +8,8 @@ using EmuSen.LunaP.Automation;
 using EmuSen.LunaP.Commands;
 using EmuSen.LunaP.Windowing;
 
+using EmuSen.LunaP.Settings;
+
 namespace EmuSen.LunaP.Controls
 {
     // Which edge of the shell a panel lives on.
@@ -142,7 +144,7 @@ namespace EmuSen.LunaP.Controls
 
             // A panel the user shut last time stays shut. Done on attach rather than in the
             // constructor so the store a host installs at startup is the one that gets read.
-            if (PanelKey is { } key && PaneLayoutStore.Load(key) is { } saved)
+            if (PanelKey is { } key && PaneLayoutStore.Load(key, LunaSettings.For(this)) is { } saved)
             {
                 IsOpen = !saved.Collapsed;
             }
@@ -169,7 +171,7 @@ namespace EmuSen.LunaP.Controls
 
             if (_toggle is not null) _toggle.IsChecked = IsOpen;
 
-            if (PanelKey is { } key) PaneLayoutStore.Update(key, layout => layout.Collapsed = !IsOpen);
+            if (PanelKey is { } key) PaneLayoutStore.Update(key, layout => layout.Collapsed = !IsOpen, LunaSettings.For(this));
 
             OpenChanged?.Invoke(this);
         }

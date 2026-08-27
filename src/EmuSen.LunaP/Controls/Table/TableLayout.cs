@@ -4,6 +4,8 @@ using Avalonia;
 using Avalonia.Controls;
 using EmuSen.LunaP.Threading;
 
+using EmuSen.LunaP.Settings;
+
 namespace EmuSen.LunaP.Controls
 {
     // WHERE THE USER LEFT IT - see docs/LunaP.md §27.11, and §70.4 for the half that was missing.
@@ -74,7 +76,7 @@ namespace EmuSen.LunaP.Controls
                 layout.Widths = _columns.Select(c => c.Width.ToString()).ToList();
                 layout.SortedBy = _sortColumn >= 0 && _sortColumn < _columns.Count ? _columns[_sortColumn].Header : null;
                 layout.Descending = _sortDescending;
-            });
+            }, LunaSettings.For(this));
 
             // The cached copy Restore reads is now the stale one. Dropped rather than updated, so
             // there is one path to a layout and it is the file (§79.5).
@@ -114,7 +116,7 @@ namespace EmuSen.LunaP.Controls
 
             if (!string.Equals(_loadedKey, key, StringComparison.Ordinal))
             {
-                _loaded = TableLayoutStore.Load(key);
+                _loaded = TableLayoutStore.Load(key, LunaSettings.For(this));
                 _loadedKey = key;
             }
 

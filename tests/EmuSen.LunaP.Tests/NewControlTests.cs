@@ -35,11 +35,11 @@ namespace EmuSen.LunaP.Tests
 
         [Fact]
         public Task An_empty_state_renders_its_message_through_a_real_part() =>
-            Realised(() => new EmptyState { Message = "No ROM loaded." }, empty =>
+            Realised(() => new EmptyState { Message = "Nothing loaded." }, empty =>
             {
                 TextBlock message = empty.FindNamed<TextBlock>("PART_Message");
 
-                Assert.Equal("No ROM loaded.", message.Text);
+                Assert.Equal("Nothing loaded.", message.Text);
                 Assert.Equal(LunaPalette.Muted.Color, ((ISolidColorBrush)message.Foreground!).Color);
             });
 
@@ -63,7 +63,7 @@ namespace EmuSen.LunaP.Tests
 
         [Fact]
         public Task An_empty_state_shows_a_detail_line_when_given_one() =>
-            Realised(() => new EmptyState { Message = "No ROMs", Detail = "Add a folder in Preferences." }, empty =>
+            Realised(() => new EmptyState { Message = "No photos", Detail = "Add a folder in Preferences." }, empty =>
             {
                 TextBlock detail = empty.FindNamed<TextBlock>("PART_Detail");
 

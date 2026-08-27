@@ -3,7 +3,9 @@
 
 public static class EmuSen.LunaP.LunaApp
     public static Avalonia.AppBuilder Configure<TApp>() where TApp : Avalonia.Application, new()
+    public static Avalonia.AppBuilder Configure<TApp>(EmuSen.LunaP.Platform.IWindowingBackend windowing) where TApp : Avalonia.Application, new()
     public static Avalonia.AppBuilder Configure<TApp>(System.Func<TApp> factory) where TApp : Avalonia.Application
+    public static Avalonia.AppBuilder Configure<TApp>(System.Func<TApp> factory, EmuSen.LunaP.Platform.IWindowingBackend windowing) where TApp : Avalonia.Application
 
 public class EmuSen.LunaP.Automation.LunaAutomationPeer : Avalonia.Automation.Peers.ControlAutomationPeer
     protected override Avalonia.Automation.Peers.AutomationControlType GetAutomationControlTypeCore()
@@ -25,6 +27,7 @@ public sealed class EmuSen.LunaP.Commands.LunaAction : System.Windows.Input.ICom
     public EmuSen.LunaP.Commands.LunaMenu? Submenu { get; set; }
     public LunaAction(string text, System.Action triggered)
     public LunaAction(string text, System.Action<EmuSen.LunaP.Commands.LunaAction>? triggered = null)
+    public bool HasHandler { get; }
     public bool IsCheckable { get; set; }
     public bool IsChecked { get; set; }
     public bool IsEnabled { get; set; }
@@ -94,8 +97,8 @@ public class EmuSen.LunaP.Controls.ConsolePane : Avalonia.Controls.Primitives.Te
     public event System.Action<string> Submitted
     public int MaxLines { get; set; }
     public static bool Follows(double offsetY, double extentHeight, double viewportHeight)
-    public static readonly Avalonia.StyledProperty<int> MaxLinesProperty
-    public static readonly Avalonia.StyledProperty<string> PromptProperty
+    public static readonly Avalonia.StyledProperty<int> MaxLinesProperty = 5000
+    public static readonly Avalonia.StyledProperty<string> PromptProperty = ""
     public string OutputText { get; }
     public string Prompt { get; set; }
     public void AppendLine(string text)
@@ -116,8 +119,8 @@ public class EmuSen.LunaP.Controls.EmptyState : Avalonia.Controls.Primitives.Tem
     public EmptyState()
     public bool HasDetail { get; }
     public static readonly Avalonia.DirectProperty<EmuSen.LunaP.Controls.EmptyState, bool> HasDetailProperty
-    public static readonly Avalonia.StyledProperty<string> DetailProperty
-    public static readonly Avalonia.StyledProperty<string> MessageProperty
+    public static readonly Avalonia.StyledProperty<string> DetailProperty = ""
+    public static readonly Avalonia.StyledProperty<string> MessageProperty = ""
     public string Detail { get; set; }
     public string Message { get; set; }
 
@@ -133,9 +136,9 @@ public class EmuSen.LunaP.Controls.FieldRow : Avalonia.Controls.ContentControl
     public bool HasHint { get; }
     public static readonly Avalonia.DirectProperty<EmuSen.LunaP.Controls.FieldRow, bool> HasErrorProperty
     public static readonly Avalonia.DirectProperty<EmuSen.LunaP.Controls.FieldRow, bool> HasHintProperty
-    public static readonly Avalonia.StyledProperty<string> ErrorProperty
-    public static readonly Avalonia.StyledProperty<string> HintProperty
-    public static readonly Avalonia.StyledProperty<string> LabelProperty
+    public static readonly Avalonia.StyledProperty<string> ErrorProperty = ""
+    public static readonly Avalonia.StyledProperty<string> HintProperty = ""
+    public static readonly Avalonia.StyledProperty<string> LabelProperty = ""
     public string Error { get; set; }
     public string Hint { get; set; }
     public string Label { get; set; }
@@ -151,11 +154,11 @@ public class EmuSen.LunaP.Controls.FilterBar : Avalonia.Controls.Primitives.Temp
     public event System.Action Submitted
     public object? Facet { get; }
     public static bool Matches(string? search, string? candidate)
-    public static readonly Avalonia.StyledProperty<System.TimeSpan> SearchDelayProperty
-    public static readonly Avalonia.StyledProperty<bool> ShowFacetProperty
-    public static readonly Avalonia.StyledProperty<string> FacetLabelProperty
-    public static readonly Avalonia.StyledProperty<string> PlaceholderProperty
-    public static readonly Avalonia.StyledProperty<string> SearchTextProperty
+    public static readonly Avalonia.StyledProperty<System.TimeSpan> SearchDelayProperty = 00:00:00
+    public static readonly Avalonia.StyledProperty<bool> ShowFacetProperty = false
+    public static readonly Avalonia.StyledProperty<string> FacetLabelProperty = ""
+    public static readonly Avalonia.StyledProperty<string> PlaceholderProperty = "Search"
+    public static readonly Avalonia.StyledProperty<string> SearchTextProperty = ""
     public string FacetLabel { get; set; }
     public string Placeholder { get; set; }
     public string SearchText { get; set; }
@@ -267,7 +270,7 @@ public class EmuSen.LunaP.Controls.LunaSwitch : Avalonia.Controls.ToggleSwitch
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     public LunaSwitch()
     public const string StyleClass = "luna-switch"
-    public static readonly Avalonia.StyledProperty<string> LabelProperty
+    public static readonly Avalonia.StyledProperty<string> LabelProperty = ""
     public string Label { get; set; }
 
 public abstract class EmuSen.LunaP.Controls.LunaTable : Avalonia.Controls.Primitives.TemplatedControl
@@ -362,16 +365,16 @@ public class EmuSen.LunaP.Controls.MeterList : Avalonia.Controls.Primitives.Temp
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     public MeterList()
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.MeterEntry> Meters { get; set; }
-    public static readonly Avalonia.StyledProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.MeterEntry>> MetersProperty
+    public static readonly Avalonia.StyledProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.MeterEntry>> MetersProperty = System.Collections.Generic.List`1[EmuSen.LunaP.Controls.MeterEntry]
 
 public class EmuSen.LunaP.Controls.MeterRow : Avalonia.Controls.Primitives.TemplatedControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     public MeterRow()
     public double Percent { get; set; }
-    public static readonly Avalonia.StyledProperty<double> PercentProperty
-    public static readonly Avalonia.StyledProperty<string> LabelProperty
-    public static readonly Avalonia.StyledProperty<string> ValueTextProperty
+    public static readonly Avalonia.StyledProperty<double> PercentProperty = 0
+    public static readonly Avalonia.StyledProperty<string> LabelProperty = ""
+    public static readonly Avalonia.StyledProperty<string> ValueTextProperty = ""
     public string Label { get; set; }
     public string ValueText { get; set; }
 
@@ -395,10 +398,10 @@ public class EmuSen.LunaP.Controls.PathPickerRow : Avalonia.Controls.Primitives.
     public EmuSen.LunaP.Controls.PathPickerMode Mode { get; set; }
     public PathPickerRow()
     public event System.Action<string> PathPicked
-    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PathPickerMode> ModeProperty
-    public static readonly Avalonia.StyledProperty<string> BrowseTitleProperty
-    public static readonly Avalonia.StyledProperty<string> PathProperty
-    public static readonly Avalonia.StyledProperty<string> PlaceholderProperty
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PathPickerMode> ModeProperty = Folder
+    public static readonly Avalonia.StyledProperty<string> BrowseTitleProperty = "Choose"
+    public static readonly Avalonia.StyledProperty<string> PathProperty = ""
+    public static readonly Avalonia.StyledProperty<string> PlaceholderProperty = ""
     public string BrowseTitle { get; set; }
     public string Path { get; set; }
     public string Placeholder { get; set; }
@@ -412,8 +415,8 @@ public class EmuSen.LunaP.Controls.RgbaImageView : Avalonia.Controls.Primitives.
     public RgbaImageView()
     public bool IntegerScale { get; set; }
     public static readonly Avalonia.DirectProperty<EmuSen.LunaP.Controls.RgbaImageView, Avalonia.Media.IImage?> SourceProperty
-    public static readonly Avalonia.StyledProperty<Avalonia.Media.Stretch> StretchProperty
-    public static readonly Avalonia.StyledProperty<bool> IntegerScaleProperty
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Stretch> StretchProperty = None
+    public static readonly Avalonia.StyledProperty<bool> IntegerScaleProperty = false
     public void Clear()
     public void SetFrame(System.IntPtr rgba, int width, int height)
     public void SetFrame(System.ReadOnlySpan<byte> rgba, int width, int height)
@@ -435,11 +438,11 @@ public class EmuSen.LunaP.Controls.SidePanel : Avalonia.Controls.ContentControl
     public bool IsOpen { get; set; }
     public double PanelSize { get; set; }
     public event System.Action<EmuSen.LunaP.Controls.SidePanel> OpenChanged
-    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PanelSide> SideProperty
-    public static readonly Avalonia.StyledProperty<bool> CanCloseProperty
-    public static readonly Avalonia.StyledProperty<bool> IsOpenProperty
-    public static readonly Avalonia.StyledProperty<double> PanelSizeProperty
-    public static readonly Avalonia.StyledProperty<string> TitleProperty
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PanelSide> SideProperty = Left
+    public static readonly Avalonia.StyledProperty<bool> CanCloseProperty = true
+    public static readonly Avalonia.StyledProperty<bool> IsOpenProperty = true
+    public static readonly Avalonia.StyledProperty<double> PanelSizeProperty = 240
+    public static readonly Avalonia.StyledProperty<string> TitleProperty = ""
     public string Title { get; set; }
     public string? PanelKey { get; set; }
 
@@ -458,15 +461,15 @@ public class EmuSen.LunaP.Controls.SplitPane : Avalonia.Controls.Primitives.Temp
     public double SplitterThickness { get; set; }
     public object? First { get; set; }
     public object? Second { get; set; }
-    public static readonly Avalonia.StyledProperty<Avalonia.Layout.Orientation> OrientationProperty
-    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.SplitSide> FixedProperty
-    public static readonly Avalonia.StyledProperty<double> FixedSizeProperty
-    public static readonly Avalonia.StyledProperty<double> MinFirstProperty
-    public static readonly Avalonia.StyledProperty<double> MinSecondProperty
-    public static readonly Avalonia.StyledProperty<double> SplitterThicknessProperty
-    public static readonly Avalonia.StyledProperty<object?> FirstProperty
-    public static readonly Avalonia.StyledProperty<object?> SecondProperty
-    public static readonly Avalonia.StyledProperty<string> DividerLabelProperty
+    public static readonly Avalonia.StyledProperty<Avalonia.Layout.Orientation> OrientationProperty = Horizontal
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.SplitSide> FixedProperty = First
+    public static readonly Avalonia.StyledProperty<double> FixedSizeProperty = 240
+    public static readonly Avalonia.StyledProperty<double> MinFirstProperty = 80
+    public static readonly Avalonia.StyledProperty<double> MinSecondProperty = 80
+    public static readonly Avalonia.StyledProperty<double> SplitterThicknessProperty = 4
+    public static readonly Avalonia.StyledProperty<object?> FirstProperty = null
+    public static readonly Avalonia.StyledProperty<object?> SecondProperty = null
+    public static readonly Avalonia.StyledProperty<string> DividerLabelProperty = "Resize panes"
     public string DividerLabel { get; set; }
     public string? PaneKey { get; set; }
     public void SaveNow()
@@ -479,7 +482,7 @@ public enum EmuSen.LunaP.Controls.SplitSide
 public class EmuSen.LunaP.Controls.StatusBar : Avalonia.Controls.ContentControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     public StatusBar()
-    public static readonly Avalonia.StyledProperty<string> StatusProperty
+    public static readonly Avalonia.StyledProperty<string> StatusProperty = ""
     public string Status { get; set; }
 
 public sealed class EmuSen.LunaP.Controls.TableLayout
@@ -490,8 +493,8 @@ public sealed class EmuSen.LunaP.Controls.TableLayout
 
 public static class EmuSen.LunaP.Controls.TableLayoutStore
     public const string FileName = "tables.json"
-    public static EmuSen.LunaP.Controls.TableLayout? Load(string key)
-    public static void Update(string key, System.Action<EmuSen.LunaP.Controls.TableLayout> edit)
+    public static EmuSen.LunaP.Controls.TableLayout? Load(string key, EmuSen.LunaP.Settings.ISettingsStore? store = null)
+    public static void Update(string key, System.Action<EmuSen.LunaP.Controls.TableLayout> edit, EmuSen.LunaP.Settings.ISettingsStore? store = null)
 
 public class EmuSen.LunaP.Controls.Tabs : Avalonia.Controls.TabControl
     protected override System.Type StyleKeyOverride { get; }
@@ -554,13 +557,12 @@ public static class EmuSen.LunaP.Fluent.Ui
     public static EmuSen.LunaP.Controls.MonoText Mono(string text = "")
     public static EmuSen.LunaP.Controls.SectionHeader Header(string text)
 
-public class EmuSen.LunaP.Gallery.GalleryWindow : EmuSen.LunaP.Windowing.AppWindow
-    public GalleryWindow()
+public interface EmuSen.LunaP.Platform.IWindowingBackend
+    public abstract Avalonia.AppBuilder Install(Avalonia.AppBuilder builder)
 
 public interface EmuSen.LunaP.Settings.ISettingsStore
     public abstract T? Load<T>(string? category, string fileName) where T : class
     public abstract bool Save<T>(string? category, string fileName, T value) where T : class
-    public abstract string Directory(string? category)
 
 public sealed class EmuSen.LunaP.Settings.JsonSettingsStore : EmuSen.LunaP.Settings.ISettingsStore
     public JsonSettingsStore(string root)
@@ -571,9 +573,13 @@ public sealed class EmuSen.LunaP.Settings.JsonSettingsStore : EmuSen.LunaP.Setti
     public string Directory(string? category)
 
 public static class EmuSen.LunaP.Settings.LunaSettings
+    public static EmuSen.LunaP.Settings.ISettingsStore For(Avalonia.Controls.Control element)
     public static EmuSen.LunaP.Settings.ISettingsStore Store { get; set; }
+    public static EmuSen.LunaP.Settings.ISettingsStore? GetStore(Avalonia.Controls.Control element)
     public static System.Action<string>? Diagnostics { get; set; }
+    public static readonly Avalonia.AttachedProperty<EmuSen.LunaP.Settings.ISettingsStore?> StoreProperty = null
     public static void Report(string message)
+    public static void SetStore(Avalonia.Controls.Control element, EmuSen.LunaP.Settings.ISettingsStore? value)
 
 public static class EmuSen.LunaP.Theme.CssTheme
     public const string RootSelector = ":root"
@@ -591,6 +597,19 @@ public sealed class EmuSen.LunaP.Theme.CssThemeResult
     public Avalonia.Styling.Styles Styles { get; }
     public CssThemeResult()
     public System.Collections.Generic.List<string> Warnings { get; }
+
+public sealed class EmuSen.LunaP.Theme.FolderThemeSource : EmuSen.LunaP.Theme.IThemeSource
+    public EmuSen.LunaP.Theme.ThemeDocument? Open(string name)
+    public FolderThemeSource(string folder)
+    public System.Collections.Generic.IReadOnlyList<string> Names()
+    public string Folder { get; }
+    public string Origin { get; }
+    public void EnsureExists()
+
+public interface EmuSen.LunaP.Theme.IThemeSource
+    public abstract EmuSen.LunaP.Theme.ThemeDocument? Open(string name)
+    public abstract System.Collections.Generic.IReadOnlyList<string> Names()
+    public abstract string Origin { get; }
 
 public enum EmuSen.LunaP.Theme.LoadLevel
     public const EmuSen.LunaP.Theme.LoadLevel Busy = 1
@@ -631,6 +650,7 @@ public static class EmuSen.LunaP.Theme.LunaTheme
     public const string Extension = ".axaml"
     public const string ThemeCategory = "themes"
     public static Avalonia.Styling.ThemeVariant Variant { get; set; }
+    public static EmuSen.LunaP.Theme.IThemeSource Source { get; set; }
     public static System.Collections.Generic.IReadOnlyList<string> Available()
     public static bool Apply(string name)
     public static event System.Action StylesChanged
@@ -645,6 +665,20 @@ public static class EmuSen.LunaP.Theme.LunaTheme
 public sealed class EmuSen.LunaP.Theme.ThemeChoice
     public ThemeChoice()
     public string Name { get; set; }
+
+public sealed class EmuSen.LunaP.Theme.ThemeDocument : System.IEquatable<EmuSen.LunaP.Theme.ThemeDocument>
+    public ThemeDocument(string Name, string Format, string Text, string Origin)
+    public bool Equals(EmuSen.LunaP.Theme.ThemeDocument? other)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Theme.ThemeDocument? left, EmuSen.LunaP.Theme.ThemeDocument? right)
+    public static bool op_Inequality(EmuSen.LunaP.Theme.ThemeDocument? left, EmuSen.LunaP.Theme.ThemeDocument? right)
+    public string Format { get; init; }
+    public string Name { get; init; }
+    public string Origin { get; init; }
+    public string Text { get; init; }
+    public void Deconstruct(out string Name, out string Format, out string Text, out string Origin)
 
 public sealed class EmuSen.LunaP.Threading.Debounce
     public Debounce(System.TimeSpan delay, System.Action action)
@@ -685,6 +719,7 @@ public class EmuSen.LunaP.Windowing.AppWindow : EmuSen.LunaP.Windowing.ToolWindo
 
 public static class EmuSen.LunaP.Windowing.Dialogs
     public static System.Threading.Tasks.Task ErrorAsync(Avalonia.Controls.Window owner, string title, string message)
+    public static System.Threading.Tasks.Task MessageAsync(Avalonia.Controls.Window owner, string title, string message, string acceptText = "OK")
     public static System.Threading.Tasks.Task<System.ValueTuple<string, string>?> PickFileAsync(Avalonia.Visual owner, string title, System.Collections.Generic.IReadOnlyList<Avalonia.Platform.Storage.FilePickerFileType>? types = null, string? startIn = null)
     public static System.Threading.Tasks.Task<bool> ConfirmAsync(Avalonia.Controls.Window owner, string title, string message, string acceptText = "OK", string cancelText = "Cancel")
     public static System.Threading.Tasks.Task<string?> PickFolderAsync(Avalonia.Visual owner, string title, string? startIn = null)
@@ -705,6 +740,11 @@ public sealed class EmuSen.LunaP.Windowing.IdleCursor : System.IDisposable
     public void Hide()
     public void Show()
 
+public class EmuSen.LunaP.Windowing.MessageWindow : EmuSen.LunaP.Windowing.ToolWindow
+    public MessageWindow(string title = "", string body = "", bool monospace = true)
+    public string Body { get; set; }
+    public void AppendLine(string line)
+
 public sealed class EmuSen.LunaP.Windowing.PaneLayout
     public PaneLayout()
     public bool Collapsed { get; set; }
@@ -712,8 +752,8 @@ public sealed class EmuSen.LunaP.Windowing.PaneLayout
 
 public static class EmuSen.LunaP.Windowing.PaneLayoutStore
     public const string FileName = "panes.json"
-    public static EmuSen.LunaP.Windowing.PaneLayout? Load(string key)
-    public static void Update(string key, System.Action<EmuSen.LunaP.Windowing.PaneLayout> edit)
+    public static EmuSen.LunaP.Windowing.PaneLayout? Load(string key, EmuSen.LunaP.Settings.ISettingsStore? store = null)
+    public static void Update(string key, System.Action<EmuSen.LunaP.Windowing.PaneLayout> edit, EmuSen.LunaP.Settings.ISettingsStore? store = null)
 
 public abstract class EmuSen.LunaP.Windowing.PollingWindow : EmuSen.LunaP.Windowing.ToolWindow
     protected PollingWindow()
@@ -731,11 +771,12 @@ public class EmuSen.LunaP.Windowing.ToolWindow : Avalonia.Controls.Window
     protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
     protected override void OnOpened(System.EventArgs e)
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public EmuSen.LunaP.Settings.ISettingsStore? Settings { get; set; }
     public ToolWindow()
     public bool ClosesOnEscape { get; set; }
     public bool IsFullScreen { get; set; }
     public event System.Action<bool> FullScreenChanged
-    public static readonly Avalonia.StyledProperty<bool> ClosesOnEscapeProperty
+    public static readonly Avalonia.StyledProperty<bool> ClosesOnEscapeProperty = false
     public string? WindowKey { get; set; }
     public void ToggleFullScreen()
 
@@ -750,10 +791,10 @@ public sealed class EmuSen.LunaP.Windowing.WindowPlacement
 public static class EmuSen.LunaP.Windowing.WindowPlacementStore
     public const string FileName = "windows.json"
     public static EmuSen.LunaP.Windowing.WindowPlacement PlacementToSave(Avalonia.Controls.WindowState state, Avalonia.PixelPoint position, double width, double height, EmuSen.LunaP.Windowing.WindowPlacement? previous)
-    public static EmuSen.LunaP.Windowing.WindowPlacement? Load(string key)
+    public static EmuSen.LunaP.Windowing.WindowPlacement? Load(string key, EmuSen.LunaP.Settings.ISettingsStore? store = null)
     public static bool IsOnAScreen(Avalonia.Controls.Screens? screens, Avalonia.PixelRect bounds)
     public static bool IsOnAScreen(System.Collections.Generic.IReadOnlyList<Avalonia.PixelRect> screenBounds, Avalonia.PixelRect bounds)
-    public static void Save(string key, EmuSen.LunaP.Windowing.WindowPlacement placement)
+    public static void Save(string key, EmuSen.LunaP.Windowing.WindowPlacement placement, EmuSen.LunaP.Settings.ISettingsStore? store = null)
 
 public sealed class EmuSen.LunaP.Windowing.WindowSlot<TWindow> where TWindow : Avalonia.Controls.Window
     public TWindow? Current { get; }

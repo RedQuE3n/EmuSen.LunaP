@@ -61,7 +61,7 @@ namespace EmuSen.LunaP.Controls
         // this, the one control whose entire job is to explain why a window is empty was the one
         // thing a screen reader could not see. Both its lines are template parts, so Avalonia hid
         // them expecting the control to speak for them, and the control had no peer to speak with.
-        // A sighted user got "No cores loaded - open a ROM to begin"; a screen reader got silence
+        // A sighted user got "Nothing loaded - open a file to begin"; a screen reader got silence
         // and an apparently empty window. Measured in docs/LunaP.md §24.1.
         //
         // Text rather than Group: this IS the content, which is the same distinction §22.9 drew

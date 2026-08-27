@@ -62,7 +62,8 @@ namespace EmuSen.LunaP.Controls
         //
         // THIS IS A SELECTION CHANGE, NOT AN ACTIVATION, and the old summary - "raised when the user
         // picks a row" - was ambiguous enough to be read the other way. A consumer did read it the
-        // other way: a modal ROM browser wired `Chose` to close-and-return-the-path, which turned a
+        // other way: a consumer's modal file browser wired `Chose` to close-and-return-the-path,
+        // which turned a
         // list that had always wanted a double-click into one that ended the dialog on a single
         // click. It reads correctly and is wrong, which is the worst kind of ambiguity in a summary
         // somebody sees in IntelliSense and nowhere else. §78.

@@ -53,8 +53,8 @@ namespace EmuSen.LunaP.Tests
         {
             _dir = Path.Combine(Path.GetTempPath(), "lunap-drop-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_dir);
-            _a = Path.Combine(_dir, "smw.sfc");
-            _b = Path.Combine(_dir, "zelda.sfc");
+            _a = Path.Combine(_dir, "IMG_4021.CR2");
+            _b = Path.Combine(_dir, "IMG_4022.JPG");
             File.WriteAllText(_a, "a");
             File.WriteAllText(_b, "b");
         }

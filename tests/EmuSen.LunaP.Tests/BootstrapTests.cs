@@ -1,6 +1,7 @@
 using System;
 using Avalonia;
 using EmuSen.LunaP;
+using EmuSen.LunaP.Platform;
 using Xunit;
 
 namespace EmuSen.LunaP.Tests
@@ -42,13 +43,96 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal("HarfBuzz", builder.TextShapingSubsystemName);
         }
 
+        // The §87 seam, and what it records at the moment it is handed the builder.
+        //
+        // The interesting assertion is not that Install ran - it is WHAT THE BUILDER ALREADY HAD
+        // when it ran. UsePlatformDetect does three jobs, and the seam path replaces exactly one of
+        // them; if LunaP ever installed Skia after handing over instead of before, a host would
+        // receive a half-built builder and the failure would appear at Setup in somebody else's
+        // application. So the backend records the two subsystem names it was given.
+        private sealed class RecordingBackend : IWindowingBackend
+        {
+            public bool Installed { get; private set; }
+
+            public string? RenderingWhenCalled { get; private set; }
+
+            public string? TextShapingWhenCalled { get; private set; }
+
+            public AppBuilder Install(AppBuilder builder)
+            {
+                Installed = true;
+                RenderingWhenCalled = builder.RenderingSubsystemName;
+                TextShapingWhenCalled = builder.TextShapingSubsystemName;
+
+                // A real windowing subsystem, because a builder without one is not a fair sample of
+                // what a host hands back. Never reaches Setup, so X11 is never contacted.
+                return builder.UseX11();
+            }
+        }
+
+        [Fact]
+        public void The_seam_overload_installs_the_hosts_backend()
+        {
+            var backend = new RecordingBackend();
+
+            LunaApp.Configure<SampleApp>(backend);
+
+            Assert.True(backend.Installed);
+        }
+
+        // The contract the seam's own documentation states, pinned rather than trusted: the renderer
+        // and the text shaper are LunaP's job on this path, and they are already there before the
+        // host is asked for anything. Move either call after Install and this turns red.
+        [Fact]
+        public void The_seam_receives_a_builder_that_already_has_the_renderer_and_text_shaper()
+        {
+            var backend = new RecordingBackend();
+
+            LunaApp.Configure<SampleApp>(backend);
+
+            Assert.Equal("Skia", backend.RenderingWhenCalled);
+            Assert.Equal("HarfBuzz", backend.TextShapingWhenCalled);
+        }
+
+        [Fact]
+        public void The_seam_overload_keeps_the_application_type_and_subsystems()
+        {
+            AppBuilder builder = LunaApp.Configure<SampleApp>(new RecordingBackend());
+
+            Assert.Equal(typeof(SampleApp), builder.ApplicationType);
+            Assert.Equal("Skia", builder.RenderingSubsystemName);
+            Assert.Equal("HarfBuzz", builder.TextShapingSubsystemName);
+        }
+
+        // A null backend is a programming error at startup, and startup is where it should be heard.
+        // Falling through to platform detection would silently give a Wayland host an X11 session.
+        [Fact]
+        public void A_null_backend_is_refused_rather_than_ignored()
+        {
+            Assert.Throws<ArgumentNullException>(() => LunaApp.Configure<SampleApp>((IWindowingBackend)null!));
+            Assert.Throws<ArgumentNullException>(() => LunaApp.Configure(() => new SampleApp(), null!));
+        }
+
+        [Fact]
+        public void The_factory_seam_overload_configures_the_same_way()
+        {
+            var backend = new RecordingBackend();
+            var made = new SampleApp();
+
+            AppBuilder builder = LunaApp.Configure(() => made, backend);
+
+            Assert.True(backend.Installed);
+            Assert.Equal(typeof(SampleApp), builder.ApplicationType);
+            Assert.Equal("Skia", backend.RenderingWhenCalled);
+        }
+
         [Fact]
         public void The_bootstrap_keeps_the_application_type()
         {
             Assert.Equal(typeof(SampleApp), LunaApp.Configure<SampleApp>().ApplicationType);
         }
 
-        // The overload EmuSen.Hotaru needs, because its Main resolves a ROM and builds a core before
+        // The overload a consumer needed, because its Main fully resolves its subject and builds before
         // any Avalonia type is touched. It is a separate code path into the same Finish(), and an
         // overload that silently skipped the shared setup would give that application a window with
         // no theme and nothing would say so.

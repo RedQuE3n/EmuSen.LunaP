@@ -30,8 +30,8 @@ namespace EmuSen.LunaP.Gallery
             Width = 720;
             Height = 1120;
 
-            var console = new ConsolePane { Prompt = "DianaOS #: ", HistorySource = () => new[] { "help", "coretop" } };
-            console.Submitted += line => console.AppendLine("DianaOS #: " + line);
+            var console = new ConsolePane { Prompt = "photos> ", HistorySource = () => new[] { "help", "scan" } };
+            console.Submitted += line => console.AppendLine("photos> " + line);
 
             var swatch = new RgbaImageView { Stretch = Stretch.None };
             swatch.SetFrame(Ramp(256, 32), 256, 32);
@@ -40,31 +40,45 @@ namespace EmuSen.LunaP.Gallery
             {
                 Meters = new List<MeterEntry>
                 {
-                    new("S-CPU", 24, "24.0%"),
-                    new("S-PPU", 68, "68.0%"),
-                    new("SuperFX", 91, "91.0%"),
+                    new("Import", 24, "24.0%"),
+                    new("Thumbnails", 68, "68.0%"),
+                    new("Index", 91, "91.0%"),
                     new("A name long enough to be trimmed by the label column", 5, "5.0%"),
                 },
             };
 
-            var filter = new FilterBar { ShowFacet = true, FacetLabel = "Console:", Placeholder = "Search titles" };
-            filter.SetFacets(new[] { "All consoles", "NES", "SNES" }, "All consoles");
+            var filter = new FilterBar { ShowFacet = true, FacetLabel = "Camera:", Placeholder = "Search photos" };
+            filter.SetFacets(new[] { "All cameras", "Kodak", "Nikon" }, "All cameras");
 
             // A real typed list, so the gallery shows the thing it actually is: rows built from a
             // model through a projection, with the model coming back on selection.
-            var peers = new LunaList<string> { Height = 90 };
-            peers.Refresh(new[] { "ami", "usagi", "rei", "makoto" });
-            peers.SelectedIndex = 1;
+            var albums = new LunaList<string> { Height = 90 };
+            albums.Refresh(new[] { "Iceland", "Studio", "Family", "Scans" });
+            albums.SelectedIndex = 1;
 
             var tabs = new Tabs();
             tabs.Add("General", Ui.Hint("A tab's content is any control."));
-            tabs.Add("NES", Ui.Hint("Appended by Tabs.Add, not declared in XAML."));
-            tabs.Add("SNES", Ui.Hint("RemoveFrom(1) drops these again."));
+            tabs.Add("RAW", Ui.Hint("Appended by Tabs.Add, not declared in XAML."));
+            tabs.Add("JPEG", Ui.Hint("RemoveFrom(1) drops these again."));
 
             // Columns over a model, which is the shape the one piece of evidence for this control
-            // actually has - a field list with a name, a type and a page number (§27). The other
-            // three columns are here to show a feature rather than because the evidence has them,
-            // and each says which below.
+            // actually has - a name, a type and a number (§27). The other three columns are here to
+            // show a feature rather than because the evidence has them, and each says which below.
+            //
+            // THE SHAPE IS THAT EVIDENCE'S AND THE CONTENT DELIBERATELY IS NOT. §27 found the one
+            // columnar view in any repository, in a form editor, and until §86.14 this demo WAS
+            // that view - a `Field` of name, type, page, required and default, carrying that
+            // application's own sample rows. Naming the evidence in the RECORD is how a reader
+            // learns why this control exists; reproducing it here taught a reader that the toolkit
+            // is for editing forms, which is one consumer's business and not this kit's. The rows
+            // are not quoted in this comment either, for the same reason the model no longer holds
+            // them; §86.14 has them, because that is the record.
+            //
+            // A PHOTO AND NOT AN INGREDIENT, WHICH §86.15 IS THE SECOND HALF OF. §86.14 replaced
+            // the form editor with a recipe and left the rest of this file describing an emulator,
+            // which is the leak that pass actually declined to fix. Everything on this page is one
+            // invented photo library now, so a reader is not asked to believe that a toolkit is for
+            // forms, or for emulators, or for baking.
             //
             // TWO SORTABLE AND ONE NOT, on purpose. A gallery that made every column sortable would
             // show the feature and hide the choice; a heading with no comparison stays a plain
@@ -90,12 +104,12 @@ namespace EmuSen.LunaP.Gallery
             // because it is not the only selectable thing on the page. A unit is exclusive - a table
             // cannot demonstrate both - so this would normally be the same trade as the star widths
             // above, giving up the default to show the new thing. It is not, because the LunaList of
-            // peers further up is a row selection, is selected in the static render, and is the
+            // albums further up is a row selection, is selected in the static render, and is the
             // shape almost every list in an application has. §67.6.
             //
             // Multiple, so Shift and Ctrl do something: single-cell selection is the half of this a
             // reader would assume, and a rectangle drawn with Shift+arrow is the half they would not.
-            var fields = new LunaTable<Field>
+            var photos = new LunaTable<Photo>
             {
                 Key = f => f.Name,
                 RowHeader = (_, i) => (i + 1).ToString(),
@@ -117,35 +131,35 @@ namespace EmuSen.LunaP.Gallery
             // column's width IS the band, so a caller who freezes one is declaring how much of the
             // viewport stops scrolling - and a star column in a table that overflows resolves to its
             // content anyway, which would make the band whatever the longest name happened to be.
-            fields.Column(new LunaColumn<Field>("name", f => f.Name)
+            photos.Column(new LunaColumn<Photo>("name", f => f.Name)
                   {
                       Width = "200",
                       Sort = (a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCulture),
                       Commit = (f, text) => f.Name = text.Trim(),
-                      Validate = (_, text) => string.IsNullOrWhiteSpace(text) ? "A field needs a name." : null,
+                      Validate = (_, text) => string.IsNullOrWhiteSpace(text) ? "A photo needs a name." : null,
                   })
-                  .Column("type", f => f.Type, "120")
+                  .Column("kind", f => f.Kind, "120")
 
                   // The column that pushes the table past its own width, and it is a real one rather
-                  // than filler: a field list that says what a field IS and not what it starts as is
-                  // half a schema.
-                  .Column("default", f => f.Default, "150")
+                  // than filler: a list of photographs that says what each file IS and not what is
+                  // wrong with it is half a cull.
+                  .Column("note", f => f.Note, "150")
                   // RIGHT-ALIGNED, which is the case per-column alignment exists for and the same
                   // argument the gutter already carries (§58.5): numbers read down a column by their
                   // last digit, and a left-aligned run of 9, 10, 11 puts the units under the tens.
                   // Beside four left-aligned columns it also shows that alignment is a per-column
                   // decision rather than something the table does.
-                  .Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
+                  .Column(new LunaColumn<Photo>("rate", f => f.Rating.ToString())
                   {
                       Width = "40",
                       Alignment = HorizontalAlignment.Right,
-                      Sort = (a, b) => a.Page.CompareTo(b.Page),
+                      Sort = (a, b) => a.Rating.CompareTo(b.Rating),
                   })
 
                   // THE OTHER TWO CELL KINDS, because a table that can only be shown drawing text is
                   // a table whose §57 is a paragraph nobody can see. A check column is the commonest
                   // non-text column there is, and this one is live: tick it and the model changes.
-                  .Column(new LunaColumn<Field>("req", f => f.Required, (f, on) => f.Required = on)
+                  .Column(new LunaColumn<Photo>("keep", f => f.Keep, (f, on) => f.Keep = on)
                   {
                       Width = "40",
                   })
@@ -155,8 +169,8 @@ namespace EmuSen.LunaP.Gallery
                   // form REQUIRES its third argument - the sentence a reader hears in place of the
                   // shape. Seeing the dot beside "kind: text" in the row's spoken name is the whole
                   // argument for that being required rather than optional (§24, §57.2).
-                  .Column(new LunaColumn<Field>(
-                      "kind",
+                  .Column(new LunaColumn<Photo>(
+                      "fmt",
                       // NO HorizontalAlignment SINCE §69.2, and its absence is the point. A template
                       // cell now starts at its column's left edge like every other kind of cell
                       // unless the caller says otherwise, so the line that used to be here is the
@@ -165,41 +179,42 @@ namespace EmuSen.LunaP.Gallery
                       {
                           Width = 8,
                           Height = 8,
-                          Fill = f.Type == "checkbox" ? LunaPalette.Info : LunaPalette.Nominal,
+                          Fill = f.Kind == "raw" ? LunaPalette.Info : LunaPalette.Nominal,
                           VerticalAlignment = VerticalAlignment.Center,
                       },
-                      f => f.Type)
+                      f => f.Kind)
                   {
                       Width = "30",
                   });
 
-            var schema = new List<Field>
+            var album = new List<Photo>
             {
-                new Field("Site", "text", 1, required: true, @default: "(from job)"),
-                new Field("Technician", "text", 1, required: true, @default: "(current user)"),
-                new Field("Approved", "checkbox", 2, required: false, @default: "no"),
-                new Field("Total aid retained", "text", 2, required: false, @default: "0.00"),
+                new Photo("IMG_4021.CR2", "raw", 4, keep: true, note: "underexposed, recoverable"),
+                new Photo("IMG_4022.JPG", "jpeg", 2, keep: false, note: "out of focus"),
+                new Photo("IMG_4023.CR2", "raw", 5, keep: true, note: "cover candidate"),
+                new Photo("IMG_4024.JPG", "jpeg", 3, keep: false, note: "dust on the sensor"),
             };
 
-            fields.Refresh(schema);
+            photos.Refresh(album);
 
             // ROWS THE USER CAN REORDER, AND THE HANDLER A CONSUMER ACTUALLY WRITES. The table
             // reports where the drop landed and changes nothing itself (§71.1), so this is not
             // ceremony the gallery is adding on top - it is the whole of what the feature asks of a
             // caller, and showing it with the collection missing would show half an idea.
             //
-            // A field list is the right sample for it: the order of fields on a form is a decision
-            // somebody makes by looking at it, which is exactly when dragging beats retyping.
-            fields.CanReorderRows = true;
-            fields.RowDropped += drop =>
+            // An album is the right sample for it: the order photographs sit in one is a decision
+            // somebody makes by LOOKING at them rather than by knowing anything, which is exactly
+            // the case where dragging beats retyping a number in a column.
+            photos.CanReorderRows = true;
+            photos.RowDropped += drop =>
             {
-                foreach (Field moved in drop.Rows) schema.Remove(moved);
+                foreach (Photo moved in drop.Rows) album.Remove(moved);
 
-                int at = drop.Target is null ? schema.Count : schema.IndexOf(drop.Target);
+                int at = drop.Target is null ? album.Count : album.IndexOf(drop.Target);
                 if (drop.Position == LunaDropPosition.After) at++;
 
-                schema.InsertRange(Math.Clamp(at, 0, schema.Count), drop.Rows);
-                fields.Refresh(schema);
+                album.InsertRange(Math.Clamp(at, 0, album.Count), drop.Rows);
+                photos.Refresh(album);
             };
 
             // THE ONLY SAMPLES HERE THIS TOOLKIT DID NOT WRITE, and that is the reason they are
@@ -217,15 +232,15 @@ namespace EmuSen.LunaP.Gallery
             // the same reason: LunaAccent and LunaOnAccent are a pairing (§48.3), and a sample that
             // only ever shows the checked half never shows the pairing failing.
             var forms = Ui.Stack(10,
-                new TextBox { Text = "smw.sfc", Width = 220, HorizontalAlignment = HorizontalAlignment.Left },
+                new TextBox { Text = "IMG_4021.CR2", Width = 220, HorizontalAlignment = HorizontalAlignment.Left },
                 // PlaceholderText and not Watermark: the latter is [Obsolete] in Avalonia 12.1.0 and
                 // the build says so. The placeholder is here because it is the one piece of a
                 // TextBox that reads through its own key - TextControlPlaceholderForeground, which
                 // the bridge maps to LunaMuted - so an unstyled placeholder is a visible seam.
-                new TextBox { PlaceholderText = "Search titles", Width = 220, HorizontalAlignment = HorizontalAlignment.Left },
+                new TextBox { PlaceholderText = "Search photos", Width = 220, HorizontalAlignment = HorizontalAlignment.Left },
                 Ui.Row(16,
-                    new CheckBox { Content = "Pause when unfocused", IsChecked = true },
-                    new CheckBox { Content = "Confirm on exit" }),
+                    new CheckBox { Content = "Auto-rotate on import", IsChecked = true },
+                    new CheckBox { Content = "Confirm on delete" }),
                 Ui.Row(16,
                     new RadioButton { Content = "Nearest", GroupName = "scale", IsChecked = true },
                     new RadioButton { Content = "Linear", GroupName = "scale" }),
@@ -251,9 +266,19 @@ namespace EmuSen.LunaP.Gallery
                 Second = Ui.Hint("Elastic: takes whatever is left."),
             };
 
+            // SAID ON THE PAGE AND NOT ONLY IN A COMMENT, because the reader this line is for is
+            // looking at the window rather than at this file. Until §86.15 every sample here was an
+            // emulator's, and the leak was found by somebody RUNNING the gallery and recognising a
+            // consumer's own config tabs in it - not by reading the source, and not by any of the
+            // 1,043 tests. A demo that reads like one application teaches that the kit is for that
+            // application; saying otherwise out loud is the cheapest guard available, and it is the
+            // only one that reaches the person the gallery exists for.
             Central = Ui.Scroll(Ui.Stack(10,
+                Ui.Hint("Every sample on this page is invented. This toolkit knows nothing about "
+                        + "photographs, and nothing about whatever you are building either - §86.15."),
+
                 Ui.Section("Text", Ui.Stack(6,
-                    Ui.Mono("PC=0x008123  A=0x0000  X=0x01FF"),
+                    Ui.Mono("f/2.8   1/250s   ISO 400   35mm"),
                     Ui.Hint("Grey, 11pt, wrapping - the explanatory line under a label or a checkbox."))),
 
                 Ui.Section("Meters", meters),
@@ -263,14 +288,14 @@ namespace EmuSen.LunaP.Gallery
                 Ui.Section("Settings fields", Ui.Stack(10,
                     new FieldRow
                     {
-                        Label = "ROM Directory",
-                        Hint = "Default folder for Open ROM... and the ROM list.",
-                        Content = new PathPickerRow { Placeholder = "(not set)", BrowseTitle = "Choose ROM Directory" },
+                        Label = "Library Folder",
+                        Hint = "Default folder for Import... and the photo list.",
+                        Content = new PathPickerRow { Placeholder = "(not set)", BrowseTitle = "Choose Library Folder" },
                     },
                     new FieldRow
                     {
-                        Label = "Emulator Core",
-                        Content = new ComboBox { ItemsSource = new[] { "SNES", "NES" }, SelectedIndex = 0 }.Grow(),
+                        Label = "Raw Decoder",
+                        Content = new ComboBox { ItemsSource = new[] { "LibRaw", "dcraw" }, SelectedIndex = 0 }.Grow(),
                     },
 
                     // AN INVALID FIELD, SHOWN INVALID, because §49's error state is the one thing in
@@ -283,10 +308,10 @@ namespace EmuSen.LunaP.Gallery
                     // advice survives the failure.
                     new FieldRow
                     {
-                        Label = "Save State Folder",
-                        Hint = "Where save states are written.",
+                        Label = "Export Folder",
+                        Hint = "Where exported files are written.",
                         Error = "That folder does not exist.",
-                        Content = new TextBox { Text = "/mnt/roms/states" },
+                        Content = new TextBox { Text = "/mnt/photos/export" },
                     })),
 
                 Ui.Section("Form controls", forms),
@@ -299,10 +324,10 @@ namespace EmuSen.LunaP.Gallery
                     tabs.Height(90))),
 
                 Ui.Section("Lists and empty states", Ui.Stack(8,
-                    peers,
+                    albums,
                     new EmptyState
                     {
-                        Message = "No ROMs in the library.",
+                        Message = "No photos in the library.",
                         Detail = "Add a folder in Preferences to see them here.",
                     })),
 
@@ -310,13 +335,13 @@ namespace EmuSen.LunaP.Gallery
 
                 Ui.Section("Cards", new Card
                 {
-                    Header = "Emulation",
+                    Header = "Library",
                     Content = Ui.Stack(6,
                         Ui.Hint("A titled surface, on LunaP's own key rather than FluentTheme's."),
-                        new LunaSwitch { Label = "Pause when unfocused", IsChecked = true }),
+                        new LunaSwitch { Label = "Watch the folder for new files", IsChecked = true }),
                 }),
 
-                Ui.Section("Table", fields.Height(150)),
+                Ui.Section("Table", photos.Height(150)),
 
                 Ui.Section("Split pane", split)).Margin(12));
 
@@ -331,8 +356,8 @@ namespace EmuSen.LunaP.Gallery
 
             BuildShell();
 
-            console.AppendLine("DianaOS #: help");
-            console.AppendLine("Type a command. This pane knows nothing about DianaOS.");
+            console.AppendLine("photos> help");
+            console.AppendLine("Type a command. This pane knows nothing about what the command means.");
         }
 
         // The menu bar, the toolbar and a docked panel, all built from the same actions - which is
@@ -342,23 +367,23 @@ namespace EmuSen.LunaP.Gallery
             // One action, three surfaces: the File menu, the toolbar, and Ctrl+O. Changing its
             // enabled state changes all three, which is the thing four hand-written declarations
             // could never quite manage.
-            var open = new LunaAction("Open ROM...", () => Status = "Open chosen.")
+            var open = new LunaAction("Import...", () => Status = "Import chosen.")
             {
                 Shortcut = KeyGesture.Parse("Ctrl+O"),
-                HelpText = "Chooses a ROM to load.",
+                HelpText = "Chooses a folder to import from.",
             };
 
-            var save = new LunaAction("Save State", () => Status = "State saved.")
+            var save = new LunaAction("Export", () => Status = "Exported.")
             {
                 Shortcut = KeyGesture.Parse("Ctrl+S"),
             };
 
             // Disabled from the start, to show that a greyed menu entry, a greyed toolbar button
             // and a shortcut that does nothing are one fact rather than three.
-            var strip = new LunaAction("Remove Fields", () => Status = "Fields removed.")
+            var revert = new LunaAction("Revert", () => Status = "Reverted.")
             {
                 IsEnabled = false,
-                HelpText = "Nothing is loaded, so there is nothing to remove.",
+                HelpText = "Nothing has changed, so there is nothing to revert.",
             };
 
             var grid = new LunaAction("Grid", self => Status = self.IsChecked ? "Grid on." : "Grid off.")
@@ -394,18 +419,18 @@ namespace EmuSen.LunaP.Gallery
                 PanelSize = 180,
                 Content = Ui.Stack(6,
                     Ui.Hint("Docked to an edge, closable, and remembered when it has a key."),
-                    Ui.Mono("smw.sfc\nzelda.sfc\nmetroid.sfc")),
+                    Ui.Mono("IMG_4021.CR2\nIMG_4022.JPG\nIMG_4023.CR2")),
             };
 
             AddPanel(explorer);
 
             SetMenus(
-                new LunaMenu("File", open, save, LunaAction.Separator(), strip),
+                new LunaMenu("File", open, save, LunaAction.Separator(), revert),
                 new LunaMenu("View", grid, full, LunaAction.Separator(), explorer.ToggleAction,
                     new LunaAction("Theme") { Submenu = new LunaMenu("Theme", dark, light) }),
                 new LunaMenu("Help", new LunaAction("About LunaP", () => Status = "A small Avalonia toolkit.")));
 
-            SetToolBar(open, save, LunaAction.Separator(), grid, strip);
+            SetToolBar(open, save, LunaAction.Separator(), grid, revert);
         }
 
         // A model for the table to project, so the gallery shows the control doing the thing it is
@@ -415,25 +440,25 @@ namespace EmuSen.LunaP.Gallery
         // into the model. A positional record's properties are init-only, so there is nothing for a
         // Commit to assign - which is a fact about editing worth meeting here, in the gallery, rather
         // than in a consumer's own code.
-        private sealed class Field
+        private sealed class Photo
         {
-            public Field(string name, string type, int page, bool required, string @default)
+            public Photo(string name, string kind, int rating, bool keep, string note)
             {
                 Name = name;
-                Type = type;
-                Page = page;
-                Required = required;
-                Default = @default;
+                Kind = kind;
+                Rating = rating;
+                Keep = keep;
+                Note = note;
             }
 
             public string Name { get; set; }
-            public string Type { get; set; }
-            public int Page { get; set; }
-            public string Default { get; set; }
+            public string Kind { get; set; }
+            public int Rating { get; set; }
+            public string Note { get; set; }
 
             // Written by the check column's toggle, which is the point of it being here: the gallery
             // table is live, and a tick changes a model rather than a picture.
-            public bool Required { get; set; }
+            public bool Keep { get; set; }
         }
 
         // Real pixels, so the image view is not just showing a flat rectangle.

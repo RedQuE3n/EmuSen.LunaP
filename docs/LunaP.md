@@ -8681,3 +8681,1631 @@ This is the same sentence read backwards: a tag that shipped something nobody ha
 belong in the record, because the pair is the actual lesson. The csproj version, the changelog entry
 and the git tag are three independent claims about a release, and any one of them can be true while
 the others are not.
+
+## 84. Five things one consumer hit in a week, and the one that says what an audit cannot see
+
+BIMA-C took 0.10.0 and built an application shell on it — `AppWindow`, a menu bar, a settings store
+behind `ISettingsStore`. Five findings came back in the first week. Four are small and are fixed
+below. The fifth is small too and is the reason this section is long, because it is a defect §§79–83
+looked directly at and could not have found.
+
+**None of them came from reading this document**, which is the pattern §78 recorded and this repeats
+at five times the volume: a consumer writing ordinary code against the published surface finds
+things that four passes of self-audit did not. §80.7 said the method's weakness was that it takes
+the toolkit's own vocabulary as the list of what to check. This is that weakness measured again.
+
+### 84.1 `LunaAction` could not be asked whether it does anything
+
+`LunaAction` exposes `Invoked` as an event, and a C# event exposes no invocation list outside the
+type that declares it. So from outside the class there was **no expression at all** that
+distinguished a working action from `new LunaAction("Open PDF")` — both invoke silently, both
+return, and nothing observable differs.
+
+**The guard that wants it is one this toolkit's own design invites.** §26.8 argues for taking
+`AppWindow` early, and the consumer did: the shell went up at their pass 1, with menus in place and
+most of the features they will hold still unwritten. That is the right order to build in, and it
+makes a placeholder menu item the predictable mistake rather than an unlikely one. The cheap guard
+against it is a sweep:
+
+```csharp
+foreach (LunaAction action in menu.Commands())
+    Assert.True(action.HasHandler, $"'{action.Text}' does nothing.");
+```
+
+Without it, the alternative is an assertion per action. That is *stronger* for three actions and
+nobody writes it for thirty, so what actually happens is the guard is not written at all.
+
+`HasHandler` is true when either the constructor's handler or an `Invoked` subscriber is present.
+**It is about wiring and not about state**, and the distinction is the whole of the design: a
+*disabled* action still answers true, because disabled is a passing condition and a disabled
+placeholder is exactly what a sweep must still catch. A separator and a submenu owner answer false,
+having nothing to run; a caller skips both before asking, which is why the test that demonstrates
+the idiom does so too.
+
+Reflecting over the event's backing field was available and refused. It works, and it depends on
+compiler-generated layout — a guard that breaks on a Roslyn change for reasons unrelated to what it
+guards is a guard somebody deletes.
+
+### 84.2 There was no informational dialog, only a question and a fault
+
+`Dialogs` offered `ConfirmAsync` and `ErrorAsync`. LunaPY has had `message` beside `confirm` and
+`error` since it was written, and the missing third is not a rounding error in the vocabulary:
+"Open a PDF first", "Nothing to export", "Six fields were renamed" are none of them faults.
+
+**Dressing a normal state as an error is not cosmetic.** A user shown an error dialog for an
+ordinary condition learns that this application's errors are not worth reading, and the next one is
+the one that mattered. The consumer's two call sites were both "Open a PDF first".
+
+`MessageAsync` adds no mechanism whatever. `DialogWindow.Notice` already takes a null cancel caption
+and renders exactly this shape, and `ErrorAsync` *is* this call with an error's title. It is a
+spelling that was missing, which is the same shape as §78.1 — where the summary had promised a
+setter for a mechanism that already worked.
+
+### 84.3 One name meant two unrelated controls across the two halves of the toolkit
+
+LunaPY has a **public** `MessageWindow`: non-modal, scrollable, selectable, read-only, for output
+too long to be a dialog. LunaP had an **internal** `MessageWindow`: the 420-wide modal behind
+`ConfirmAsync` and `ErrorAsync`.
+
+**The trap is a grep.** A consumer porting from the Python side searches a LunaP clone for
+`MessageWindow`, finds `src/EmuSen.LunaP/Windowing/MessageWindow.cs`, concludes the capability is
+there, writes `new MessageWindow(...)` and meets CS0122. The file exists and the type is
+unreachable, which is a worse answer than nothing being there at all.
+
+Both halves are fixed, and the direction was decided by which meaning has a public API behind it.
+The Python meaning keeps the name; the modal became `DialogWindow`. **Being internal is what made
+that free** — no consumer could have been holding the old spelling, so the rename is invisible in
+the API baseline, which is where it was checked rather than assumed.
+
+The new `MessageWindow` is the Python control ported rather than a new idea, argument included: a
+modal is the wrong shape past a few lines because build output, a validation report and an exception
+trace are all read *while* looking at what produced them, and a dialog has to be dismissed before
+the thing it describes can be touched. It is selectable because the first thing anybody does with an
+error is copy it somewhere, and monospaced by default because everything named above is output from
+a program and written to line up in columns.
+
+A read-only `TextBox` would also have been selectable and was refused: it draws a focusable input
+with a caret, which invites typing into output and takes the theme's input styling with it.
+`SelectableTextBlock` is Avalonia's own answer and is what the kit uses.
+
+**And the front door was already advertising it.** `README.md`'s Windows section read
+"`MessageWindow` and `Dialogs` cover the rest", written when the only type of that name was the
+internal modal — so the README named a type no consumer could construct, and had done since it was
+written. That is worse than the grep in the paragraph above, because a reader of the README has no
+file to look at and no CS0122 to correct them; they simply believe it. It went unnoticed for the
+same reason §84.4's summary did: `ReadmeClaimTests` guards the README's *counts*, which were
+correct, and nothing checks that a name in the prose resolves to something public. Recorded rather
+than guarded, because the guard is a real piece of work — matching identifiers in prose against the
+public surface, with an exemption list for every deliberate mention of an Avalonia type — and it is
+not obviously worth it for one finding. **A hazard, in this document's sense, not a behaviour.**
+
+### 84.4 A summary named the wrong default, and this is the class of defect §80 cannot reach
+
+`ToolWindow.ClosesOnEscape` is registered with no `defaultValue`, so it is **false**. Its `///`
+summary said **"True by default"**. The `//` comment two lines above the summary said "Off by
+default" and was right the whole time.
+
+**The behaviour was never unguarded**, and the first draft of this section said it was. The
+correction matters more than the original claim:
+`WindowingTests.Escape_closes_only_when_a_window_opts_in` shows a `ToolWindow` with the property
+untouched and asserts Escape does not close it, and has done since it was written. So the code was
+right, its test was right, and only the sentence describing them was wrong.
+
+**That is why nothing failed, and it generalises.** A test that agrees with the code cannot notice
+that the documentation does not. Every summary-claim suite in this repository — §79, §80, §81, §82 —
+asserts the code against itself and reads the prose only through a human. Where the prose and the
+code disagree and the code is correct, the suite is green and stays green.
+
+**And it says which claims §80's method structurally cannot reach.** That pass took 544 summaries as
+literal claims and probed them **by calling things**. A default value is not reached by calling
+anything: it is what is already true before any call is made. §81 added the claims a test could
+settle and caught fourteen of the fifteen summaries below; the fifteenth is the one that was wrong,
+and it was missed because its property sits on a window nobody was constructing to check a default.
+
+Two guards close it, and they are deliberately different in kind.
+
+**`DocumentedDefaultTests` is two-sided.** Each of the fifteen summaries that names a default gets a
+row carrying *the words the summary uses* and *the value they mean*, asserted separately: the phrase
+against the published XML, the value against a live instance. Editing a summary without editing the
+table fails; changing a default without editing the table fails. A table holding only values would
+drift from the prose it is about, which is this defect reintroduced as its own guard. A third test
+sweeps every published summary for "by default" or "defaults to" and fails on any that is neither
+checked nor excused — the same shape as §28.2's registry, for the same reason.
+
+One exemption: `LunaSettings.Diagnostics` is a process-global static the suite itself assigns, so
+reading it back at any point in a run measures whichever test ran last rather than the default.
+
+**The API baseline now records `StyledProperty` defaults too**, which is the other half and a
+different argument. A changed default is a breaking change of the quietest kind available: nothing
+moves in the baseline, nothing moves in a consumer's build, and every window that had not set the
+property explicitly behaves differently after an upgrade. That is exactly what §32 built the
+baseline to make visible, and it is §82.1's argument again — API that did not change, described by a
+file that could not see it. Thirty-nine defaults are now in the file. Direct properties are skipped
+and not for convenience: a `DirectProperty` has no stored default at all, so recording one would be
+an invention.
+
+### 84.5 `new LunaAction("Quit", Close)` does not compile
+
+A method group matches both `Action` and `Action<LunaAction>` whenever the method itself is
+overloaded. `Window` has `Close()` and `Close(object?)`, so neither constructor wins and the line is
+CS0121.
+
+It is one compile error and a lambda — `() => Close()` — and it is recorded because of *where* it
+falls: a File menu's first line, so it is the first five minutes with the toolkit's most obvious
+type.
+
+**Neither constructor can go.** The `Action` form is what almost every call site wants; the
+`Action<LunaAction>` form is the only way a checkable action reads its own state. So this is
+documented rather than fixed, in a `<remarks>` on both, using `Close` as the example precisely
+because it is the case everybody meets.
+
+### 84.6 The version: 0.11.0
+
+Additive throughout. `LunaAction.HasHandler`, `Dialogs.MessageAsync`, and `MessageWindow` with
+`Body` and `AppendLine` are new; nothing was removed, renamed or changed in behaviour, and the
+internal rename in §84.3 is invisible from outside.
+
+A minor bump rather than a patch, on §83.1's rule: **the version answers what an upgrade does to a
+consumer.** New API is a thing a consumer can now do that they could not before, and the summary
+correction in §84.4 changes what a consumer *believes* about a property they may already be using —
+which is the more consequential of the two, and is not a patch-shaped statement.
+
+---
+
+## 85. The palette reaches sixty-seven controls out of a hundred, and the guard could only see nine
+
+§48 handed LunaP's colours to 51 of FluentTheme's resource keys so that a stock `TextBox` or
+`CheckBox` paints in this toolkit's palette rather than Fluent's. `FormControlTests` pinned the
+result and has been green ever since. It sweeps **nine** controls.
+
+The nine are named in the file, deliberately, with the reason written beside them: *"the subject is
+'what a consumer reaches for', which is not a property of any assembly."* That argument is sound
+about which controls **matter most** and silently wrong about which controls **exist**. A guard
+whose subject list is nine remembered names can only ever find defects among those nine, and its
+silence about the other ninety-one means nothing at all — which is the failure mode this document
+has now recorded four times (§79.7, §80.7, §82, §84).
+
+This section asks the question the other way round: not *are the nine still right*, but *how many
+controls are there, and how many of them does the palette actually reach*.
+
+### 85.1 The subject, and why it is not FluentTheme's list
+
+The first attempt enumerated the types `FluentTheme` keys a `ControlTheme` for, by walking its
+resource dictionaries: **83 types**. That is a defensible list and it is the wrong one, for a reason
+worth keeping — it is *Fluent's* answer to "what is a control", and a control Fluent does not theme
+is exactly the kind of thing that would then go unswept.
+
+The list used instead is every public, concrete, parameterless-constructible `Control` in
+`Avalonia.Controls`, minus windows and minus the `Primitives`, `Presenters`, `Chrome`, `Embedding`
+and `Dialogs` namespaces, whose types are parts a template puts *inside* a control and are swept
+anyway as descendants of whatever owns them. That is **100 controls**, and it caught one — 
+`ToggleSplitButton` — that walking Fluent's own dictionaries did not.
+
+It is reflected rather than listed, so an Avalonia upgrade that adds a control adds a subject
+without anybody remembering to. That closes the half of §48's claim nothing was checking: the README
+says *"a control added to Avalonia next year inherits it"*, and until now no test could have noticed
+if it did not.
+
+### 85.2 The measurement
+
+Every subject is constructed, filled with content, shown in a real headless window under
+`LunaTheme`, and every `Background`, `Foreground` and `BorderBrush` in its realised visual tree is
+read back. §48's standard is unchanged: the colour must be in `LunaPalette`, or fully transparent —
+a control that paints nothing is not painting Fluent's grey.
+
+| | |
+|---|---|
+| Controls Avalonia ships that a consumer can construct | **100** |
+| Paint only in `LunaPalette` | **71** |
+| Paint at least one of FluentTheme's colours | **29** |
+| Of which the old guard covered | **0** — its nine are all in the 71 |
+| Controls of this kit's own, swept the same way | **27** |
+| Of those, painting FluentTheme's colours | **4** |
+
+**Filling a container before sweeping it is load-bearing, and `Tabs` is why.** Empty, a `TabControl`
+paints nothing and passes. Populated, its items paint Fluent's secondary text `#99ffffff` and its
+selected indicator Fluent blue `#ff0078d7`. The first run of this sweep called both `TabControl` and
+`Tabs` clean, and they are not; two of the 29 arrived only after the sweep started putting items in
+things.
+
+**The strays are a handful of Fluent constants, over and over.** `#ff2b2b2b` is the surface a
+`ContextMenu`, a `ToolTip`, a `FlyoutPresenter`, a `ListBox` and a `TableView` all share;
+`#99ffffff` is its secondary text; `#ff0078d7` its blue accent; `#33ffffff` its subtle fill;
+`#66000000` its input background. That is a good sign for the fix — most of them are resource keys,
+which is the mechanism §48 already chose, rather than templates that would have to be owned.
+
+### 85.3 Four of them are this toolkit's own
+
+`LunaList<T>` paints `#ff2b2b2b`. `ActionToggle` paints `#33ffffff` when checked. `ActionMenuItem`
+paints `#99ffffff`. `Tabs` paints all three of `TabItem`'s.
+
+All four are the `StyleKeyOverride` family, which `LunaTheme.axaml` describes as *"deliberately
+absent — they borrow FluentTheme's templates wholesale, so they have no styles of their own to
+list"* (§29.1). That sentence is true and its consequence was never written down: **borrowing a
+template means borrowing its colours.** Nothing said so, and nothing checked.
+
+These are the four that should sting. Each is a control this toolkit ships, names in its README's
+control-kit table and shows in its gallery, painting the colours of the theme it claims to replace.
+
+### 85.4 The exemption table is the worklist
+
+`PaletteReachTests` holds 33 exemptions — 29 stock controls and 4 of this kit's — each naming what
+shows through and how many distinct colours it is. An exemption is a claim about a control and has
+to be as checkable as an assertion, which is why every entry carries a number that was measured.
+
+`No_exemption_has_been_outgrown` re-sweeps every exempted control and **fails if one of them has
+started passing**. That is what makes the table a worklist rather than an apology: a fix is not
+finished until its entry is deleted, and an entry cannot quietly outlive the problem it describes.
+
+### 85.5 The sabotages
+
+Three, per §22.5, because a guard nobody has seen fail is a guard nobody should trust.
+
+| Sabotage | Result |
+|---|---|
+| Delete `HyperlinkButton`'s exemption, leaving the defect | **1 red** — `A_stock_control_paints_only_in_the_palette(HyperlinkButton)`, reporting `#ff0078d7` |
+| Add `Button`, which is clean, to the exemption table | **1 red** — `No_exemption_has_been_outgrown`: *"Button now paint(s) only in LunaPalette… delete the entry"* |
+| Empty the stock subject list | **3 red** — the theory, the staleness check, and `The_sweep_has_subjects`: *"Only 0 stock controls are swept; there were 100 when §85 was written"* |
+
+The third is the one worth having. §26.11 and §48 both caught a guard that had quietly lost its
+subjects and was reporting a pass for nothing at all; this is the same shape, asserted rather than
+assumed.
+
+### 85.6 What §48 got right, and the sentence it should not have written
+
+The mechanism is not in question. Overriding the resource keys Fluent's own templates resolve —
+rather than restyling controls one at a time — is why 71 of 100 controls are already right, why the
+templates keep Avalonia's keyboard handling and accessibility, and why this was ever tractable. §48
+chose correctly.
+
+What it should not have written is the generalisation. The README says stock controls "paint in
+LunaP's palette", names the nine, and then adds that **"a control added to Avalonia next year
+inherits it."** Twenty-nine controls that shipped in Avalonia 12.1.0 did not inherit it, so as a
+claim about the mechanism's reach that sentence was untrue when written. Corrected in §85.7 rather
+than edited away, and the corrected claim is the one this section can defend: *the keys the bridge
+names are inherited by every control that resolves them, including ones added later — and 51 keys do
+not name everything a theme paints.*
+
+### 85.7 Correction: what the README claimed about the bridge's reach
+
+**What it said**, in the control-kit section since §48 wrote it:
+
+> This is done by handing LunaP's colours to 51 of FluentTheme's own resource keys, so the
+> templates, keyboard handling and accessibility behaviour are Avalonia's untouched, **and a control
+> added to Avalonia next year inherits it.**
+
+**What is true.** A control inherits it if and only if it resolves one of the 51 keys. Twenty-nine
+controls already in Avalonia 12.1.0 do not, so the sentence overstated the mechanism's reach in the
+direction a reader would most want to rely on — it reads as a guarantee about controls nobody has
+seen yet, offered by a bridge that did not cover the ones already there.
+
+The claim is now split in two: the inheritance property, which is real and worth stating, and the
+coverage, which is 71 of 100 and is a number rather than a promise. Stated rather than quietly
+rewritten, because §84.3 recorded the same class of defect three sections ago — a README sentence
+nothing could check, believed by a reader who has no file to open and no compiler to correct them —
+and two instances of one failure mode is the point at which it stops being bad luck.
+
+`ReadmeClaimTests` still does not check this. It pins the CSS vocabulary's counts and the test
+total, which are numbers; "29 controls" is now a number too and could join them, but the sentence
+around it is prose, and §84.3 already recorded why matching identifiers in prose against the public
+surface is a real piece of work rather than a quick guard. **A hazard, in this document's sense.**
+
+### 85.8 Pass one of the fix: popups, and the method for finding a key
+
+The mechanism §48 chose is to override the resource keys Fluent's own templates resolve. Applying
+it needs one thing that turns out to be harder than it sounds: **which key does this control
+actually read?**
+
+The obvious method is to search the resource tree for the colour and override whatever key holds
+it. **That method does not work here, and the reason is worth keeping.** Fluent aliases many key
+names onto a single brush *instance* — `#99ffffff` is one `SolidColorBrush` that nine different key
+names hand back, and `NavigationPage`'s stray is reachable by **twenty-six** of them. Overriding any
+of the twenty-five wrong ones compiles, merges, resolves, and repaints nothing at all. It is the
+§5.5 symptom again: a change that looks applied and matches nothing.
+
+Three methods were used instead, in ascending order of cost:
+
+1. **Read the `ControlTheme`'s own `Setter`s.** `Application.TryFindResource(typeof(ContextMenu))`
+   returns the live theme object; its setters name the key each property binds. This answered most
+   of them outright — `ContextMenu.Background <- MenuFlyoutPresenterBackground`.
+2. **Differential probing**, where the colour is set inside a template and no setter names it.
+   Enumerate the keys that resolve to the stray colour — a real enumerated set, not a remembered one
+   — then override each with a sentinel and re-render, and see which one moves. This is what found
+   `NavigationControlNavBarBackground`, `NavigationBarForeground`,
+   `PipsPagerNavigationButtonForeground` and `SystemControlErrorTextForegroundBrush`.
+3. **Walk the realised visual tree and ask which control is wrong**, then read the theme that owns
+   *that* type. Needed exactly once, in §85.10, where the first two both came up empty.
+
+The popups themselves were method 1 throughout: `MenuFlyoutPresenterBackground` (shared by
+`ContextMenu` and `MenuFlyoutPresenter`), `FlyoutPresenterBackground`, `ToolTipBackground`,
+`NotificationCardBackgroundBrush`, plus foregrounds and borders. They take `LunaSurfaceColor` rather
+than `LunaVoidColor` because a popup sits *above* the window, which is the same reading `Card` and
+`SidePanel` already have.
+
+**The four kit controls went first, and one of them fixed a fifth for free.** `LunaList<T>` reads
+`SystemControlBackgroundChromeMediumLowBrush`, which is `ListBox`'s background key — and overriding
+it turned `TableView` green too, which `No_exemption_has_been_outgrown` reported immediately as a
+stale entry. That is the staleness check doing the job it was built for on its second day.
+
+### 85.9 Pass two: structure, buttons, and a swap that had to be measured
+
+Sixteen controls, and one general question underneath them: **several of Fluent's keys hold a
+`Color` and not a `Brush`.** `GridSplitter.Background` binds `SystemAltMediumLowColor`;
+`ExpanderContentBorderBrush` is a `Color` despite its name.
+
+Overriding those with a `SolidColorBrush` is what this file wanted to do, because a brush is what
+lets one declaration point at a variant-keyed Luna colour and serve both the light and dark columns
+(§2.1). Whether that substitution is *legal* depends on what reads the key: a setter assigning to
+`Background` or `BorderBrush` takes an `IBrush` and is happy either way, but a template that needs
+an actual `Color` is not.
+
+It worked for all of them here, and it was checked by running the sweep afterwards rather than by
+reasoning about it — which turned out to matter three subsections later.
+
+The choices worth stating: a link takes the accent, because being the accent colour is a
+`HyperlinkButton`'s whole job rather than something it inherited. `RepeatButton`, `SplitButton` and
+`ToggleButton` take the same input surface a `Button` does, because they are buttons and giving them
+a different resting colour makes them read as a different kind of control. And Fluent's validation
+text is **yellow** (`#fffff000`); this palette has an error colour and it is not that, so a form
+that failed validation had been reporting it in a colour the rest of the application never uses.
+
+### 85.10 Pass three: date and time, and the one that threw
+
+`DatePicker` is three surfaces rather than one — a button that says a date, a flyout, and a calendar
+grid — and all three were Fluent's. Method 1 named eleven of the thirteen keys directly, and
+`Calendar` fell from 11 stray colours to 2.
+
+The last two are the interesting ones.
+
+`CalendarViewOutOfScopeBackground` — the days either side of the month on show — came out of
+differential probing normally.
+
+**Today's cell did not.** Its `#ff0078d7` has forty keys resolving to it, and the probe moved none
+of them. Method 3 was needed: walk the realised tree and ask which visual is blue, which answered
+`Border#Root` inside a `CalendarDayButton`, and then read *that* type's theme — where the setter is
+not on the theme at all but in a style **nested inside `^:today`**, reading `SystemAccentColor`.
+
+*(This subsection first said the probe missed it because `SystemAccentColor` is a `Color` the
+override could not reach. That was wrong, and §85.12 has the measured reason: the key is not in
+FluentTheme at all, so the candidate list — built by walking FluentTheme — never contained it. The
+type is a separate problem, described next.)*
+
+**And `SystemAccentColor` cannot be a brush.** The first attempt overrode it as a `SolidColorBrush`
+like every other entry in the file, and the suite turned red in five places that had been green:
+`MeterRow`, `ProgressBar`, `RadioButton`, `DatePickerPresenter` and `TimePickerPresenter`, each with
+
+    System.InvalidCastException : Unable to cast object of type
+    'Avalonia.Media.SolidColorBrush' to type 'Avalonia.Media.Color'.
+
+So the §85.9 substitution has a limit, and this is where it is: Fluent reads `SystemAccentColor`
+where a `Color` is genuinely required, and the wrong type does not degrade quietly — it throws and
+takes the control's whole render down. **Recorded because the failure is loud in a test suite and
+silent in a consumer's application**, where the same cast happens inside a control's own render and
+what a user sees is a control that did not draw.
+
+The fix is a per-variant alias, which is the same idiom Fluent uses internally and the reason so
+many of its key names hand back one shared brush instance:
+
+```xml
+<ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Dark">
+        <StaticResource x:Key="SystemAccentColor" ResourceKey="LunaAccentColor" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Light">
+        <StaticResource x:Key="SystemAccentColor" ResourceKey="LunaAccentColor" />
+    </ResourceDictionary>
+</ResourceDictionary.ThemeDictionaries>
+```
+
+Both columns were then read back out of the live application rather than assumed: `Dark` resolves
+`#ff007acc` and `Light` `#ff005fb8`, each equal to that variant's `LunaAccentColor`. A single
+declaration outside the theme dictionaries would have pinned one variant's accent into both, which
+is the §2.1 failure wearing a different hat and is not something the palette tests would have
+caught, since they check `LunaPalette` against `Palette.axaml` and know nothing about Fluent's keys.
+
+### 85.11 Where it ended, and what is still not measured
+
+| | Before | After |
+|---|---|---|
+| Stock controls painting only in `LunaPalette` | 71 of 100 | **100 of 100** |
+| This kit's controls painting only in `LunaPalette` | 23 of 27 | **27 of 27** |
+| Overrides in `FluentBridge.axaml` | 51 | **102** |
+| Exemptions in `PaletteReachTests` | 33 | **0** |
+
+The bridge exactly doubled. The exemption table is kept, empty, with the note saying what would put
+an entry back — an Avalonia upgrade adding a control, or renaming a key one of the 102 overrides
+names, which is a silent no-op and is why this sweep asserts the colours a control *paints* rather
+than asserting the overrides exist.
+
+**A consumer's own override still wins, and this was measured rather than assumed.** The README has
+claimed since §48 that "if you had restyled these controls yourself, your own styles still win",
+which is a promise about resource precedence that nothing checked and that the CHANGELOG now repeats
+for 51 more keys. Read back out of the live application: a `ToolTip` resolves `#ff1e1e1e` with only
+LunaP's bridge in place, and resolves fuchsia once `Application.Resources["ToolTipBackground"]` is
+set — so an application's own resources are found before the theme's, and the bridge is a default
+rather than an imposition. Worth pinning as a test rather than a paragraph, which is the §28 move
+and is not done here.
+
+**Three things this does not measure, stated as hazards rather than implied to be done:**
+
+- **States.** Every subject is swept at rest. Pointer-over, pressed, focused, checked, disabled and
+  selected are not exercised, and Fluent keys them separately — `SystemAccentColorDark1` and
+  `Dark2` still hold Fluent's blue and are read by hover and pressed styles on the calendar
+  buttons. A control that is correct at rest and Fluent-blue under the pointer would pass this
+  suite today. This is the largest known gap and it is a real piece of work: driving six states
+  across 127 controls needs the states enumerated per control, which is not a property of any
+  assembly.
+- **Light.** The sweep runs in the default variant, which is Dark (`LunaTheme.Variant`). Every
+  override points at a variant-keyed Luna colour so both columns should follow, and
+  `SystemAccentColor` was checked in both by hand — but "should" is doing work in that sentence and
+  no test sweeps the light column.
+- **Three properties.** `Background`, `Foreground` and `BorderBrush` are what a theme moves, but a
+  `Path.Fill`, a `Shape.Stroke` or a gradient stop is not any of them and would not be seen.
+
+None of the three is a reason to distrust the number in the table. They are the reasons it is *100
+of 100 at rest, in dark, on three properties* rather than "the palette reaches everything".
+
+### 85.12 Three findings turned into three guards, and a correction to §85.10
+
+§85.8 to §85.11 closed the colours. They left three findings written down as prose, which is where
+this repository has learned not to leave things (§28). Each is now an assertion.
+
+#### An override that names a key nothing reads
+
+The bridge works by redefining keys Fluent's templates resolve, so the whole mechanism rests on the
+key name being right — and a wrong name fails in the worst available way. The file compiles, the
+dictionary merges, the key resolves (to the entry just added, which nothing reads), and the control
+keeps painting Fluent's colour. Nothing errors. That is §5.5 from the styles side and §29.2 from the
+include side, arriving a third time through resources.
+
+`PaletteReachTests` catches the common case already, because it asserts the outcome: a misspelled
+key shows up as a control staying Fluent. **What it cannot see** is a key that is dead while some
+*other* override still covers the same control — which is exactly what an Avalonia rename would
+produce — or any key that only applies in a state nothing drives (§85.11).
+
+`BridgeKeyTests` asserts the invariant underneath: **we only override things that already exist.**
+Every one of the 102 keys must be declared by FluentTheme, or carry an entry saying who else
+supplies it. A second test asserts the other half — that our value is the one that *wins*, resolving
+to a palette colour in both variants — because a correctly-spelled key can still be shadowed.
+
+#### `SystemAccentColor`, and what §85.10 got wrong about it
+
+§85.10 said the differential probe could not find this key because it is a `Color` and the probe's
+override could not reach it. **That is not the reason, and the real one is worth more.**
+
+Measured by deleting the bridge's entry and asking the live application for the key anyway: it
+resolves, to `#ff0078d7`, as a `Color` — **and it appears in no dictionary FluentTheme declares.**
+Walking `new FluentTheme()` yields 1,054 string keys and this is not among them; Avalonia supplies
+it through the platform. The probe built its candidate list by walking FluentTheme, so
+`SystemAccentColor` was never in the list to be tried. The probe did not fail to move it. It never
+looked at it.
+
+**The correction matters because the two explanations recommend different things.** "A `Color` the
+override could not reach" says the probe needs a better override. "Not in the set the probe
+enumerates" says the probe's *subject list* was incomplete — the same defect as §85's opening
+paragraph, one level down, and the same one §84 found in the audit method. A tool that enumerates
+honestly can still enumerate the wrong universe.
+
+It is recorded in `BridgeKeyTests.PlatformProvided`, with that measurement as its reason, because
+the key-exists guard would otherwise flag it as invented.
+
+The type problem is real and separate, and is now self-diagnosing. `PaletteReachTests` catches a
+render throw and rethrows it naming the cause: *"A resource override of the wrong TYPE does this…
+if one of them is Color-typed, it needs a per-variant StaticResource alias instead."* Verified by
+putting the defect back — five controls fail, each naming `FluentBridge.axaml` and §85.10, instead
+of five stack traces pointing into Avalonia's property store and nothing this repository owns.
+
+#### The paragraph that said a template was borrowed and not that its colours were
+
+`LunaTheme.axaml` explained for four versions that `ActionControls`, `LunaList` and `Widgets` are
+"deliberately absent… they borrow FluentTheme's templates wholesale, so they have no styles of their
+own to list". True, and the sentence stops one step short of its own consequence: **borrowing a
+template means borrowing its colours.** Four controls this toolkit ships were painting the palette
+it claims to replace, and the file that would have told anybody looked like it was explaining why
+that was fine.
+
+The comment now says both, with the four values and the note that the fix belongs in the bridge
+rather than in a new style file — having no style file was never the defect. Amended in place rather
+than corrected in a new section, because it is a comment beside code rather than a claim in this
+record, and the rule for those is that a comment which has drifted from the code beside it is worse
+than no comment.
+
+#### The sabotages
+
+| Sabotage | Result |
+|---|---|
+| `ToolTipBackground` → `TooltipBackground`, a plausible typo | **1 red** — *"declares 1 key(s) that FluentTheme does not: TooltipBackground"* |
+| A correctly-named key given `#FF00FF` instead of a palette colour | **1 red** — 2 entries, one per variant |
+| Empty the bridge key list | **1 red** — *"Only 0 bridge keys found; there were 102"* |
+| Put `SystemAccentColor` back as a brush | **5 red**, each naming the file and §85.10 rather than a cast in Avalonia's internals |
+| Pin one override to `#1E1E1E` — the dark surface colour, valid in one column and not the other | **1 red**, and only in `Light`: *"resolves to #ff1e1e1e, which is not in that variant's palette"* |
+
+#### The new guard was wrong twice before it was right, and both are worth keeping
+
+**First run: it failed on a correct override.** `Every_override_resolves_to_a_palette_colour`
+reported `SystemAccentColor (Light)` resolving to `#ff005fb8` as "not in LunaPalette". The override
+was right and the **test** was wrong — `LunaPalette` is the dark column and only the dark column,
+which it says about itself in its own header, so checking the light variant against it reports the
+correct light accent as a stray. Fixed by resolving the palette per variant out of `Palette.axaml`,
+which avoids adding a third spelling of it (§2.1).
+
+**Second version: it passed, and it was measuring nothing.** This is the one worth reading. §29's
+`PaletteVariantTests` had already measured the trap and written it down: the palette's brushes are
+declared once, outside the theme dictionaries, with their `Color` bound by `DynamicResource — so one
+brush instance serves both variants and reports whichever is **currently active**. Asking a brush
+for the light column while the application is in dark mode hands back the dark colour.
+
+Every override in the bridge is such a brush. So the check was reading dark values and calling them
+light — *and* building its expected set the same way, from brushes as well as Colors, which put both
+columns into one set. **Both sides were wrong in the same direction and cancelled out.** It passed
+102 keys × 2 variants and would have accepted a dark colour as a valid light one.
+
+Two changes: `PaletteFor` reads only the per-variant `Color` keys, which are the honest ones; and
+the test **switches the active variant** rather than passing it as an argument, restoring it in a
+`finally` because the harness pins Dark (§3.1). Sabotage E is what demonstrates the difference — an
+override pinned to the dark surface colour now fails in `Light` and passes in `Dark`, which the
+previous version could not have reported.
+
+**And a correction to this subsection's own first draft**, which said the guard "checks both
+columns, which makes it the only thing in this suite that does". That is false and was false when
+written: `PaletteVariantTests` has asserted both columns since §23 — the resource resolution, the
+contrast ratios, and the live repaint on a variant switch. It is where the trap above was measured
+in the first place. What is new here is narrower and worth stating accurately: **the bridge's own
+102 overrides** are now checked in both columns. §85.11's "no test sweeps the light column" remains
+true of the *rendered* control sweep, which is what it was about.
+
+## 86. The Unix audit: agnostic by reference, ambient by wiring
+
+This section measures the toolkit against a standard it has never been checked
+against, and finds the headline claim true in the dimension that was guarded and
+untrue in one that was not.
+
+Every number below came from reading this tree — `grep`, the `.csproj` files, the
+test run — not from memory. The suite was green at 1,024 tests when it was taken.
+
+### 86.1 The rule this is measured against
+
+The claim under audit is CLAUDE.md's, and it is two claims wearing one sentence:
+
+> **`EmuSen.LunaP` references Avalonia and nothing else.** [...] Every control
+> takes plain data or a delegate [...] Anything that would otherwise need a
+> dependency arrives through a seam the host fills in.
+
+The first half is about **references** — what the assembly names. The second is
+about **composition** — how a piece of this toolkit is handed the thing it needs.
+`LayeringTests` proves the first. Nothing proves the second, and §86.3 is what
+happens in the gap.
+
+### 86.2 What is already right, and is not changing
+
+An audit that lists only faults misrepresents the thing it audits.
+
+- **`LayeringTests` enforces the reference claim in both directions** (§22.7),
+  against the live assembly, in the repository that makes the claim. The
+  toolkit's referenced-assembly list is Avalonia and the base library. That is
+  the property that let LunaP leave EmuSen at all, and it holds.
+- **Controls do take plain data or a delegate.** `MeterRow` takes
+  `(string, double, string)`; `ConsolePane` takes `Func<string, string>`;
+  `RgbaImageView` takes bytes and two integers. The rule is followed everywhere
+  it is about a *control's arguments*.
+- **The suite is headless and finds its own subjects.** `TemplateReachTests`
+  reflects over every templated control; `TemplateOrderTests` fails the build on
+  a new public method until somebody answers for it (§28).
+- **The harness is a separate package**, so a consumer's shipped application
+  never gains xunit (§22.8).
+
+### 86.3 The seam is filled by a global rather than passed
+
+`Settings/LunaSettings.cs` holds two mutable statics:
+
+    public static ISettingsStore Store
+    {
+        get => _store ??= JsonSettingsStore.ForApplication();
+        set => _store = value;
+    }
+
+    public static Action<string>? Diagnostics { get; set; }
+
+**Five components reach for that global. None of them takes a store.**
+
+| File | reaches for |
+|---|---|
+| `Theme/LunaTheme.cs` | `Store.Directory`, `Store.Save`, `Store.Load` |
+| `Windowing/WindowPlacementStore.cs` | `Store.Load`, `Store.Save` |
+| `Windowing/PaneLayoutStore.cs` | `Store.Load`, `Store.Save` |
+| `Controls/Table/TableLayoutStore.cs` | `Store.Load`, `Store.Save` |
+| `Settings/JsonSettingsStore.cs` | `Store` (in its own guidance) |
+
+So the seam exists as an interface and is wired as ambient process state. A
+window does not receive a store; it reaches out of itself and finds one. That is
+the compose-versus-configure line, and this is on the configure side of it: the
+host configures one global, and every consumer of it is coupled to that decision
+rather than to an argument.
+
+**Three things follow, and one of them has already cost a consumer.**
+
+- **Two windows cannot use two stores**, and nothing in the toolkit could offer
+  that without changing this.
+- **A test cannot isolate without mutating process state**, which is also why no
+  test in this suite runs two stores at once.
+- **The default is silent and wrong rather than absent.** `Store` latches on
+  first *read*, not on assignment, and falls back to a JSON tree named after the
+  entry assembly. A host that reads a setting before installing its own store
+  gets a working program that writes to the wrong place, with nothing said.
+
+That last one is not hypothetical. BIMA-CSharp carries a standing warning in its
+own CLAUDE.md — *"Install the store before anything reads a setting [...] Reaching
+for a setting first leaves two stores half-populated, and under a test runner it
+writes into a directory named after the runner"* — and its `Program.cs` spends a
+paragraph on the ordering. **A consumer documenting a footgun is the toolkit
+exporting one.**
+
+**Where the shape came from is worth stating, because it exonerates the decision
+and not the result.** §19.1 replaced `Galaxia.ConfigStore` and
+`ConfigDiagnostics` — which were themselves process-global — with an interface, so
+that the toolkit would stop naming its provider. That was the right move and it
+achieved what it set out to achieve. It changed *who* the global points at and
+left *that it is a global* untouched, because reference agnosticism was the
+question being asked.
+
+### 86.4 Diagnostics default to discarding
+
+`Report` is `Diagnostics?.Invoke(message)` over a property that starts null. So
+until a host assigns a sink, every recoverable failure this toolkit carefully
+reports — a theme file that would not parse, a settings write that failed, two
+menu commands claiming one shortcut (§26.5) — goes nowhere.
+
+"Make the common path silent and failures loud" is inverted here: the common path
+is as loud as the host allows, and the failures are silent by default.
+
+Measured in a consumer: deleting the sink installation from BIMA's `Program.cs`
+**left all twenty of its tests green**, because nothing in that suite executes
+`Main`. The gap was invisible to the suite while being load-bearing in the
+application.
+
+The Unix answer is that the default is stderr and silence is a decision a host
+makes explicitly, rather than the reverse.
+
+### 86.5 `ISettingsStore` does two jobs
+
+The interface is three methods, and one of them is not like the others:
+
+    string Directory(string? category);
+    T? Load<T>(string? category, string fileName) where T : class;
+    bool Save<T>(string? category, string fileName, T value) where T : class;
+
+`Load` and `Save` are a keyed store and say nothing about how it is kept.
+`Directory` returns **a filesystem path**, which forces every implementation to be
+file-backed or to lie. BIMA implements this seam over SQLite and has to hand back
+a real directory anyway; its CLAUDE.md records that the seam *"leaks a file model
+on purpose"*.
+
+The two jobs are genuinely different things: a place to keep settings, and a
+folder of human-authored theme files that a person edits by hand. Conflating them
+means the second requirement dictates the first's interface.
+
+It has already produced one documentation defect on its own: §80.3 corrected this
+method's summary, which promised the directory was "created if it does not exist"
+— something no implementation has ever done.
+
+### 86.6 The gallery ships inside the toolkit
+
+`Gallery/GalleryWindow.cs` is a `public class` of 458 lines, and
+`EmuSen.LunaP.csproj` carries no `Compile Remove` for it. Every consumer's
+application therefore contains a demo window it will never show.
+
+**The counter-argument is real and is why this is a decision rather than a
+defect.** CLAUDE.md requires every new control to go in the gallery, and the
+gallery being in-package is what makes that habit cheap and what lets a consumer
+open it and look. Splitting it into `EmuSen.LunaP.Gallery` keeps the habit and
+sheds the weight, at the cost of a third package to version in step.
+
+### 86.7 The layering guard checks references, not vocabulary
+
+`LayeringTests` asks what the assembly *names*. It cannot see what the assembly
+*knows*, because a same-assembly type is not a reference. Three places in shipped
+source name this toolkit's first consumer's domain:
+
+- `Gallery/GalleryWindow.cs` — the demo model is
+  `Field { Name, Type, Page, Required, Default }`, which is BIMA's `FieldSpec`.
+- `Windowing/Dialogs.cs:37` — the examples are "Open a PDF first", "Nothing to
+  export", "Six fields were renamed". The first is a string BIMA literally uses.
+- `Commands/LunaAction.cs:194` — `new LunaAction("Open PDF")`.
+
+All three are a comment or a private demo type, so none reaches the public API and
+none costs a consumer anything at runtime. **The finding is the blind spot, not
+the three instances.**
+
+And the blind spot may not be closable. A guard that greps for a list of
+domain words can only find the words somebody thought of, and its silence would
+mean nothing — which is this project's own rule about probing a guessed list
+(CLAUDE.md, "No guessing"). So the honest outcome is to fix the three by hand and
+record vocabulary agnosticism as a **hazard** rather than to add a guard that
+cannot fail honestly.
+
+### 86.8 The passes
+
+Staged, each with a gate, and ordered so that the interface settles before
+anything is threaded through it.
+
+**Pass 1 — diagnostics default to stderr.** `Report` writes to `Console.Error`
+when no sink is installed. A host wanting silence assigns one that discards, which
+makes silence a decision. *Gate:* a test asserting that an uninstalled sink still
+produces output, and that an installed one still takes precedence. **Behaviour
+change for every consumer; needs a `CHANGELOG.md` entry.**
+
+**Pass 2 — split `Directory` out of `ISettingsStore`.** The store becomes
+`Load`/`Save` only; the theme directory arrives by its own seam. *Gate:* an
+in-memory `ISettingsStore` that touches no filesystem at all passes the whole
+suite. **That test is impossible to write today**, which is the proof the change
+is real rather than tidy. Breaking for implementors.
+
+**Pass 3 — the store is passed, not latched.** Every component in §86.3's table
+takes an `ISettingsStore`, defaulting to the global so nothing breaks. *Gate:* a
+test running two windows against two different stores in one process, asserting
+no cross-talk — also impossible today.
+
+**Pass 4 — the gallery leaves the package.** §86.6's decision, if taken. *Gate:*
+the toolkit assembly no longer contains `GalleryWindow`; the gallery still shows
+every control; the reach guard still finds new ones.
+
+**Pass 5 — the three vocabulary instances, by hand.** §86.7. No guard, and the
+hazard recorded instead of one.
+
+Passes 2 and 4 are breaking and belong in one version bump. Pass 1 is a behaviour
+change and could ride with them or go first on its own.
+
+### 86.9 What this audit deliberately does not do
+
+- **It does not touch `LunaTable<T>`.** Fourteen files and 3,801 lines is the
+  obvious "do one thing well" target, and §74 already argued the decomposition
+  and refused it, for reasons that are about collaborators reaching through
+  seams rather than about file size. That argument stands and is not reopened
+  here.
+- **It does not change a namespace or a public name.** Those are things a
+  consumer has written a `using` for, and §74 already settled that tidiness does
+  not buy a breaking change.
+- **It does not add a guard for §86.7**, and says why above rather than adding
+  one that cannot fail honestly.
+
+### 86.10 Pass 1, and a measurement that was measuring the runner
+
+`LunaSettings.Report` now falls back to `Console.Error` when no sink is
+installed. Five tests in a new `DiagnosticsTests`, one rewritten in
+`DocumentedContractTests`, and the suite went from 1,024 to 1,029.
+
+**The property did not change shape, and that is deliberate.** `Diagnostics`
+is still `Action<string>?` and still starts null, so no consumer's code stops
+compiling and the API baseline does not move. What changed is what null *means*:
+it was "discard" and it is now "standard error". Silence is still available and
+is now a decision — `LunaSettings.Diagnostics = _ => { }` — which is the only
+arrangement in which a quiet channel means somebody chose one.
+
+Three smaller decisions inside it:
+
+- **Standard error, never standard output.** A diagnostic is not the program's
+  output; on stdout it lands in whatever pipe the caller arranged and corrupts
+  it. There is a test asserting the negative, because the test asserting the
+  positive cannot tell the two streams apart.
+- **The fallback is prefixed `LunaP: ` and the installed sink is not.** It
+  arrives in a stream this toolkit does not own, interleaved with whatever else
+  the host writes, and an unattributed "theme 'x' not found" sends somebody
+  looking in their own code first. A host with its own log has its own
+  formatting, so the prefix would appear inside whatever that wraps around it.
+- **An installed sink means standard error gets nothing.** A host that has taken
+  responsibility for diagnostics has taken it, and a duplicate into a stream it
+  cannot see is noise it cannot turn off.
+
+#### A promise of absence that changed rather than disappeared
+
+`DocumentedContractTests` pins published summaries that promise something will
+*not* happen (§80.1), and it held `Reporting_with_no_diagnostics_hook_does_nothing`
+against the summary "Null by default, which discards them". That promise is gone.
+
+It was rewritten rather than deleted, because a promise of absence remains and it
+is the one worth pinning: an installed sink gets the message and standard error
+gets nothing. The count of claims that file guards is therefore unchanged, which
+is the honest outcome — one claim was replaced, not removed.
+
+Worth noting what the old test actually was: it set the hook to null, called
+`Report`, and asserted **nothing at all**. It could only have failed by throwing.
+That is the weakness §80.1 exists to find, sitting inside the file that exists to
+find it.
+
+#### The sabotages
+
+Five, each reverted immediately after. One had to be rewritten before it would
+build, because replacing the guard clause left a local dangling — the same
+`TreatWarningsAsErrors`-shaped obstacle `Port.md §6.10` hit in a consumer.
+
+| Sabotage | Result |
+|---|---|
+| 1. Restore `Diagnostics?.Invoke(message)` | **2 red** — both no-sink tests |
+| 2. Drop the `LunaP: ` prefix | **1 red** |
+| 3. Fall back to standard output instead of standard error | **3 red** |
+| 4. Echo to standard error even when a sink is installed | **2 red**, including the rewritten contract test |
+| 5. Prefix the message handed to the installed sink | **1 red** |
+
+Sabotage 1 is the one to read. It turned red **only** the two tests about the new
+behaviour, and left the contract test and the silence test green — correct, because
+those pin behaviour this pass did not change. A sabotage that reddens everything
+is a sabotage that has not localised anything.
+
+#### The measurement that was measuring the wrong thing
+
+The obvious question after this change is how much noise it adds to a suite, and
+the obvious way to answer it is to count `LunaP: ` lines in a full run. That count
+was **zero**, which looks like "no noise" and is not.
+
+Running a single test that definitely reports with no sink installed —
+`A_theme_that_cannot_be_read_leaves_the_current_one_alone`, which reaches
+`LunaTheme.Apply` and its "theme not found" report — also produced zero lines. So
+the zero is explained by **`dotnet test` not surfacing the test host's standard
+error at default verbosity**, not by an absence of reports. The first number was
+measuring the runner.
+
+**This is a real limitation of pass 1 and is recorded rather than smoothed over.**
+The new default helps an application that is *run*; it does not help a *suite*.
+A consumer whose tests exercise a failure path still sees nothing unless they
+install a sink that writes somewhere they look. Making the harness install one —
+`EmuSen.LunaP.Testing` already owns the process-global lifecycle and already
+warns about it (§20.2) — is the obvious next move and is deliberately not made
+here, because it is a decision about the harness rather than about the toolkit.
+
+**Hazard, unchanged from before this pass:** a desktop application on Windows may
+have no console attached, in which case standard error goes nowhere. That is no
+worse than discarding, which is what it replaced, and it is why the fallback is a
+default rather than a design.
+
+### 86.11 Pass 2, and an interface that had to name a filesystem
+
+`ISettingsStore` is two methods now. The third was
+`string Directory(string? category)`, and removing it is the whole of this pass.
+
+**What the method was doing there.** Exactly one caller wanted it: `LunaTheme`,
+looking for the folder of hand-written theme files. Nothing else in the toolkit
+called it, and the settings store's own `Load` and `Save` reached the filesystem
+through a private `PathFor` that never needed to be public.
+
+**What it cost to keep.** A path is a filesystem, so every implementation of the
+seam had to be file-backed or hand back something it did not mean. A consumer
+keeping settings in SQLite implemented it anyway, and wrote in its own working
+agreement that the seam *"leaks a file model on purpose"* — which is a consumer
+documenting a defect in somebody else's interface, and §86.5 is where that was
+found.
+
+The two jobs turn out to be genuinely different once they are apart. A settings
+store keeps **values the program wrote**. A theme source keeps **documents a
+person wrote**, by hand, in a text editor, which the program only ever reads.
+Fusing them let the second requirement dictate the first's interface.
+
+#### The shape
+
+`IThemeSource` is `Names()`, `Open(name)` and `Origin`. `ThemeDocument` is a
+name, a format, the text, and where it came from.
+
+- **Text, not a parsed `ResourceDictionary`.** Parsing is `LunaTheme`'s job and
+  there are two formats; a source that returned a parsed theme would have to know
+  the difference between `.axaml` and restricted CSS, which is all of §12.2 and
+  is not something a place-to-get-files should carry.
+- **`Origin` is for a message to a person, not a path to open**, and that
+  distinction is the entire reason this interface can exist where
+  `ISettingsStore.Directory` could not. "theme 'dusk' not found in ⟨origin⟩" has
+  to say *something*; a source that is not a folder answers "(in memory)" rather
+  than inventing a path.
+- **`Open` may throw, and does not have to be careful.** `LunaTheme` catches,
+  reports through `LunaSettings.Report` and keeps the theme already in force —
+  the same contract a broken file on disk has always had. Two ways of getting
+  nothing are reported differently on purpose: "no theme by that name" is a name
+  to correct, "the source threw" is something broken.
+
+`FolderThemeSource` is the default and holds the behaviour that used to be inside
+`LunaTheme` — enumerate, resolve by extension order, read. Nothing about it is
+new; what is new is that it is *one implementation of a seam* rather than the
+only thing `LunaTheme` could do.
+
+#### Two decisions worth arguing with
+
+**`LunaTheme.Directory` was narrowed rather than removed.** It answers the folder
+when the source is a `FolderThemeSource` and empty when it is not. Removing it
+outright would break every consumer that tells a user where to drop a theme file,
+for no gain; keeping it as a lie about non-folder sources would be worse. The
+summary says which it is.
+
+**This pass adds a third process-global**, `LunaTheme.Source`, of exactly the
+family §86.3 complains about. That is knowing rather than careless. Pass 2's job
+is separating two responsibilities fused into one interface; where a seam is
+installed *from* is pass 3's question, and pass 3 threads all of them together.
+Doing both at once produces one change nobody can review. It is stated here so
+that it is a decision on the record rather than something a reader discovers.
+
+#### What broke, which is the measurement
+
+Removing a method from a published interface breaks implementors, and the suite
+is the first consumer. **Ten tests failed**, in four groups, and every group was
+informative:
+
+| What failed | Why it is the point |
+|---|---|
+| `SettingsRootTests`, 2 call sites | Wanted the root path; now holds the **concrete** `JsonSettingsStore`, which still has `Directory`. The seam gave it up, the file-backed implementation did not. |
+| `ThemeTests`, `CssThemeTests`, `ReturnsClaimTests` | Pointed the **store** at a temp folder and got a private themes folder for free. That free ride *was* the coupling. Each now points `LunaTheme.Source`, which is the migration a consumer makes. |
+| `MemberDocumentationTests` | `<inheritdoc/>` does not put `<returns>` or `<param>` in the published XML, so two new members were undocumented to a consumer's IntelliSense while looking documented in the source. |
+| `DocumentedDefaultTests`, `CitationTests`, `ApiSurfaceTests` | A new summary claiming a default, a `§` cited before it was written, and a changed public surface. All three found their own subject. |
+
+**The theme-test group is the finding.** Those classes never asked for a themes
+folder — they asked for a settings store and received a themes folder as a side
+effect. That is what an over-broad interface does: it hands out capabilities
+nobody requested, and the code that uses them looks like it is using the seam
+correctly. Isolation was not cosmetic either: without a per-class source, every
+test class shares one default folder and a catalog assertion sees themes another
+class wrote.
+
+#### The gate
+
+The one this pass was defined by: **an `ISettingsStore` that touches no
+filesystem at all**. `InMemorySettingsStore` in `SettingsSeamTests` is a
+dictionary; `DictionaryThemeSource` is a dictionary of strings. Between them the
+theme catalog, applying a theme, the remembered choice, window placement and
+table layout all work with nothing on disk.
+
+That test could not have been written before this pass — not "would have been
+awkward", could not: the interface required a method whose return type is a path.
+
+#### The sabotages
+
+Six, each reverted immediately after.
+
+| Sabotage | Result |
+|---|---|
+| 1. Put `Directory` back on `ISettingsStore` | **CS0535 — the suite does not compile** |
+| 2. `FolderThemeSource.Names` stops de-duplicating | **2 red** |
+| 3. `Open` tries `.css` before `.axaml` | **1 red** |
+| 4. `Available` stops filtering `BuiltIn` out of the source's names | **nothing red** |
+| 5. A missing theme is not reported | **2 red** |
+| 6. `LunaTheme.Directory` answers `Source.Origin` for a non-folder source | **1 red** |
+
+**Number 1 is the gate, and it fails in the only way that proves anything.** It
+does not turn a test red — it stops the suite compiling, because
+`InMemorySettingsStore` cannot implement a method whose return type is a path.
+That is the difference between claiming the interface no longer demands a
+filesystem and demonstrating it.
+
+**Number 4 turned nothing red, which is the useful one.** `Available` filters the
+`BuiltIn` name out of whatever a source offers, because `BuiltIn` is prepended
+unconditionally and a source offering the same name would put it in the list
+twice. Deleting that filter broke nothing, because every source in the suite
+happened to offer names that were not "Built-in".
+
+It is guarded now rather than recorded as a hazard, because the guard was three
+lines: a `DictionaryThemeSource` that offers `Built-in`, asserting the name
+appears once. The sabotage reddens it. **A folder source could only reach this
+with a file called `Built-in.css`; a source that is not a folder has no such
+spelling constraint**, which is a new way to reach an old behaviour and is the
+kind of thing widening a seam does.
+
+The suite is 1,035.
+
+
+### 86.12 Pass 3, and a global that became a scope
+
+Five components reached for `LunaSettings.Store` (§86.3). None of them takes one
+now: the three per-key stores take an `ISettingsStore`, and the five controls
+resolve one from their own tree.
+
+**The mechanism is an inherited attached property**, `LunaSettings.StoreProperty`,
+with `LunaSettings.For(control)` as the one call every control in the toolkit
+makes. Set a store on a window and every descendant sees it — the split panes,
+the side panels, the tables, including the ones `AppWindow` builds internally and
+the ones a consumer nests three levels down inside their own layout.
+`ToolWindow.Settings` is a convenience over the same property and not a second
+mechanism.
+
+**The alternative was a `Settings` property on each control plus manual
+propagation, and it was rejected for one reason.** It works right up until
+somebody puts a `LunaTable` somewhere nobody thought to plumb — and then it does
+not fail, it silently writes to the wrong store. An inherited property has no
+such gap, because there is nothing to remember to do.
+
+**This does not make resolution explicit, and claiming otherwise would be a
+claim the change does not earn.** What it changes is the *scope*: one value per
+tree rather than one per process, with the process-global as the last resort. A
+control in no tree, or in a tree nobody set this on, behaves exactly as before —
+which is what keeps every existing consumer working without an edit.
+
+#### What stayed global, on purpose
+
+**`LunaTheme` still reads `LunaSettings.Store` for the remembered theme choice,
+and that is correct rather than an omission.** The applied theme is
+`Application.Current.Resources` — one dictionary for the process — so a per-window
+theme choice would be a setting that cannot be honoured. A window-scoped store for
+a process-scoped fact would be an API that reads as if it worked.
+
+`LunaSettings.Diagnostics` is the same shape and stays for the same reason: one
+process, one place recoverable failures are reported.
+
+#### What this does NOT recover
+
+The suite's `AssemblyInfo` disables xunit parallelisation, and names three
+process-globals as the reason: `LunaSettings.Store`, `LunaSettings.Diagnostics`
+and the applied theme's resource dictionary (§20.2, after a real CI failure).
+
+Two of those three are addressable now. **The third is not, and it is the one
+that decides.** Every test dispatches onto one headless Avalonia application, so
+the applied theme is shared whatever happens to the settings seam. Parallelism
+stays off, and a reader who expected this pass to restore it should stop
+expecting that.
+
+#### The gate
+
+`Two_windows_with_two_stores_do_not_see_each_others_placement`, and **the key is
+deliberately the same for both windows**. That is what makes it a test of the
+store rather than of the key: with one process-global store the second close
+overwrites the first's entry, and no arrangement of keys separates them. Before
+this pass the test could not be expressed — every control reached for the global,
+so "which store" was not a question a caller was allowed to answer.
+
+Two more beside it, because the gate alone would pass on a broken mechanism:
+
+- **`A_control_nested_in_a_window_inherits_the_windows_store`** asserts
+  `GetStore` and not only `For`. `For` falls back to the process-wide store, which
+  that test class has already assigned — so it would answer correctly even if
+  inheritance were entirely broken. Asking what was *inherited* is the only
+  version that can fail.
+- **`A_control_with_no_store_set_anywhere_falls_back_to_the_process_wide_one`** is
+  the other direction, and it is why the first cannot simply be "always inherits".
+  An implementation returning some private default would pass everything else and
+  break every existing consumer.
+
+#### The sabotages
+
+Six, each reverted immediately after.
+
+| Sabotage | Result |
+|---|---|
+| 1. `For` ignores the tree and always answers the global | **2 red** |
+| 2. The attached property stops inheriting | **1 red — the nested test only** |
+| 3. `ToolWindow.Settings` setter does nothing | **2 red** |
+| 4. `RememberPlacement` writes to the global | **1 red** |
+| 5. `RestorePlacement` reads from the global | **nothing red** |
+| 6. `WindowPlacementStore.Save` ignores the store it was given | **1 red** |
+
+**Number 2 is the one that shows the two tests are not the same test.** Turning
+inheritance off reddens the nested-control test and leaves the gate green,
+because the gate's windows have the property set *directly* on them and never
+needed inheritance to find it. A pair of tests that both went red would have been
+one test written twice.
+
+**Number 5 turned nothing red, and it was the more dangerous half of the pair.**
+Pointing `RestorePlacement` back at the process-wide store broke nothing, because
+the gate starts with two *empty* stores — the restore reads nothing from either
+and only the save is observable.
+
+A wrong save loses a preference. A wrong restore silently applies somebody
+else's, and the symptom is a window that opens at a size the user never chose and
+cannot account for. It is guarded now:
+`A_window_restores_from_its_own_store_and_not_the_process_wide_one` seeds two
+different answers under one key — one in the process-wide store, one in the
+window's own — and asserts which arrives. Sabotage 5 reddens it.
+
+The suite is 1,039.
+
+
+### 86.13 Pass 4, and a gallery nobody could open
+
+`GalleryWindow` is out of the toolkit and into `src/EmuSen.LunaP.Gallery`, a
+project that is **not packable** and that the test suite references by path.
+
+Measured, on this machine:
+
+| | before | after |
+|---|---|---|
+| `EmuSen.LunaP.dll` | **305,152 bytes** | **293,376 bytes** |
+| public API entries removed | | **2** — the class and its constructor |
+
+**The two numbers disagree about how big this is, and both are true.** A
+consumer's IntelliSense loses exactly one type; their shipped binary loses 11,776
+bytes and 458 lines of demo window it was never going to show. The public surface
+is the wrong instrument for "is this package doing two jobs".
+
+#### Correction to §86.6
+
+That section presented the in-package gallery as a decision with a real
+counter-argument, and said the arrangement *"lets a consumer open it and look"*.
+
+**That was false when it was written.** There is no `OutputType` anywhere in this
+repository — measured with a grep over every `.csproj`, not recalled — so no
+executable existed. `GalleryWindow` was a class in a class library. **Nobody could
+open it**: not a consumer evaluating the toolkit, not a maintainer checking a new
+control, not the author of §7.
+
+So §7 has claimed since it was written that the gallery is how the kit is
+discovered, and for its entire life the only way to discover anything through it
+was to write a host application first. The half of §86.6's counter-argument that
+survives is the other half: the gallery being cheap to add to is what keeps
+CLAUDE.md's "every new control goes in the gallery" habit alive, and that is
+untouched here.
+
+#### Which is why it became an executable rather than a second library
+
+The obvious move was a third package, and it was refused. A demo window is
+something you **run**, not something you reference, and CLAUDE.md already carries
+the cost of keeping `EmuSen.LunaP.Testing` versioned in step with the toolkit — a
+third would be a third of those for nobody's benefit.
+
+    cd src/EmuSen.LunaP.Gallery && dotnet run
+
+Run for the first time as part of this pass: twelve seconds, no output, still up
+when it was killed. That is the whole of the claim being made — it starts and
+stays started; nothing here has been visually inspected.
+
+**A second reason for it to be a real application**, which was not the motivation
+and is the better argument: `GalleryApp.cs` is now the smallest honest example of
+what a consumer must write, including the theme include that §11 and §17 record
+shipping without once. The bootstrap is part of what a reader of the gallery is
+trying to discover, and a class with no `Program.cs` hid it.
+
+#### The gallery is a test fixture, and that decided where it could go
+
+`GalleryRenderTests` is not a test *of* the gallery. It is the render fixture for
+the whole control kit: every control realised in a visual tree, a real Skia pass
+asserting the result is not a flat image, `AssertStable`'s frame baseline, and
+`Every_control_the_form_sweep_covers_is_in_the_gallery`, which fails until a new
+form control is added to it.
+
+So the gallery had to stay reachable from the suite while ceasing to reach a
+consumer, and those are different requirements that a `ProjectReference` from the
+test project satisfies at once. **Every one of those tests passed unchanged**,
+which is the useful part: the fixture moved without the thing it fixes noticing.
+
+#### The guard, and the sabotages
+
+Pass 4's claim is about what the package **is**, which is the same shape as §22.7's
+reference rule and was equally unchecked. `LayeringTests` grew two, and they are
+two-sided on purpose:
+
+- **`The_toolkit_ships_no_gallery`** asserts the toolkit assembly holds no type in
+  the `EmuSen.LunaP.Gallery` namespace. The *namespace* and not the type name,
+  because asserting `GalleryWindow` is absent would pass the moment somebody added
+  `GalleryPage` beside it — and demo code drifting back one class at a time is the
+  thing actually being prevented.
+- **`The_gallery_still_exists_somewhere_else`** stops the first from passing by the
+  gallery having ceased to exist.
+
+Four sabotages, each reverted.
+
+| Sabotage | Result |
+|---|---|
+| 1. A demo class appears in the toolkit's `Gallery` namespace | **3 red**, including the new guard |
+| 2. Every `ToggleSwitch` dropped from the gallery | **1 red** — the form sweep, unchanged by the move |
+| 3. The gallery project becomes packable | **nothing red** |
+| 4. The runnable app's theme include points at nothing | **nothing red** |
+
+**Number 3 turned nothing red and needs no guard, which is a different finding
+from number 4.** `publish.yml` packs two projects *by name*, so a packable gallery
+would never be published whatever its csproj said. `IsPackable=false` is defence
+in depth rather than the mechanism, and a test asserting it would be guarding
+something that is not load-bearing.
+
+**Number 4 turned nothing red and did need one.** Pointing the theme include at a
+file that does not exist broke nothing across 1,041 tests, because every UI test
+here runs under `LunaHeadless.BuildApp`, which supplies the theme itself and never
+constructs `GalleryApp`. That is exactly the structural gap CLAUDE.md warns
+consumers about — *anything the application must do at startup is invisible to
+every window test* — reproduced inside this repository, in the file this pass had
+just finished calling "the smallest honest example of what a consumer must write".
+
+`GalleryBootstrapTests` closes it, in two parts, because one is not enough:
+`The_gallery_app_adds_the_toolkits_base_theme` would pass on a `Source` of
+`NoSuchFile.axaml`, since that string still contains what the assertion looks for.
+`The_theme_it_names_actually_resolves` reads `StyleInclude.Loaded`, which forces
+Avalonia to resolve the `avares://` URI and throws when nothing is there. Sabotage
+4 reddens both.
+
+**A note on number 2.** Its first attempt removed one of the gallery's two
+`ToggleSwitch` instances and turned nothing red — which was the sabotage being
+wrong, not the guard being weak. Removing both reddens the form sweep. Worth
+writing down because "nothing went red" is only interesting once the sabotage has
+been shown to be the thing it claims to be.
+
+The suite is 1,043.
+
+
+### 86.14 Pass 5, and an audit that counted its own blind spot wrong
+
+§86.7 named three places in shipped source where this toolkit writes its first
+consumer's vocabulary, said the finding was the blind spot rather than the three
+instances, and set pass 5 to fix them by hand with **no guard** — because a grep
+for a list of domain words can only find the words somebody thought of, and its
+silence would mean nothing.
+
+The three are fixed. So are three more that the audit did not find, and the
+reason it did not find them is worth more than the fix.
+
+#### What was changed
+
+| Where | Was | Is |
+|---|---|---|
+| `Gallery/GalleryWindow.cs` | `Field { Name, Type, Page, Required, Default }`, rows "Site", "Technician", "Approved", "Total aid retained" | `Ingredient { Name, Kind, Step, Optional, Prep }`, rows "Plain flour", "Unsalted butter", "Vanilla extract", "Sea salt flakes" |
+| `Gallery/GalleryWindow.cs` | `new LunaAction("Remove Fields", … "Fields removed.")` | `new LunaAction("Revert", … "Reverted.")` |
+| `Windowing/Dialogs.cs` | "Open a PDF first", "Nothing to export", "Six fields were renamed" | "Choose a folder first", "Nothing to copy", "Six items were renamed" |
+| `Commands/LunaAction.cs` | `new LunaAction("Open PDF")` | `new LunaAction("Export")` |
+| `tests/…/TableTests.cs` | `record Field(string Name, string Type, int Page)`, rows "Site", "Technician", "Approved" | `record Ingredient(string Name, string Kind, int Step)` |
+| `tests/…/TableLayoutTests.cs` | the same record | the same rename |
+| `tests/…/ActionTests.cs` | `new LunaAction("Open PDF")` twice | `new LunaAction("Export")` |
+
+**The audit said three and the repository had six.** §86.7 scoped itself to
+"shipped source", which is a defensible line for the *cost* — a private demo type
+reaches no consumer at runtime — and the wrong line for the *finding*. The finding
+was about what a reader learns this toolkit is for, and a reader opening
+`TableTests.cs` learns it from a `Field` with a `Page` on it exactly as fast as
+from the gallery. Scoping by what ships measured the wrong thing.
+
+Pass 4 then moved the gallery out of the package, so by the time pass 5 ran, the
+first instance was not shipped source either. The audit's own category had stopped
+containing its own headline example.
+
+#### The rule this settles: the record may name a consumer, the code may not
+
+`CHANGELOG.md` 0.11.0 and §84.1 both still read *"there was no way to tell a
+working action from `new LunaAction("Open PDF")`"*, and both stay exactly as they
+are. Two lines above, the changelog entry names BIMA-C as the consumer who
+reported it. Once the source of a report is named, quoting what they actually
+wrote is **evidence**, and blurring it into "a consumer's placeholder" would make
+the record weaker for no gain.
+
+The code is the other way round. `Dialogs.cs`'s comment was not citing anybody; it
+was reaching for three example sentences and reaching into BIMA's window for them,
+which is the toolkit knowing something it has no business knowing.
+
+Same for §27.2, which found the one columnar view in any repository in
+`bima/viewer.py:460` — `["name", "type", "pg"]` — and is why `LunaTable<T>` exists
+at all. That citation is untouched and the gallery still points at it. What
+changed is that the gallery no longer *reproduces* it: the comment now says the
+shape is the evidence's and the content deliberately is not, which is a stronger
+comment than the one it replaces, because it explains a decision instead of
+restating a sample.
+
+#### No guard, as §86.8 promised, and the hazard instead
+
+**Vocabulary agnosticism is a hazard in this toolkit, not a behaviour.** Nothing
+in the suite can fail when a domain word arrives. The three arguments for leaving
+it that way, in order of weight:
+
+1. A word-list guard finds the words somebody thought of. Its silence is not
+   evidence, which is CLAUDE.md's "no guessing" rule applied to the guard rather
+   than to the code.
+2. This pass is the proof. An audit written specifically to find this leak found
+   half of it. A guard written by the same process would have covered the same
+   half.
+3. The one mechanical signal that would work — "does this identifier appear in a
+   consumer's repository" — needs a consumer's repository, and LunaP deliberately
+   cannot see one.
+
+What can be said instead, and is worth saying: **the leak arrived through
+evidence, not through carelessness.** Every one of the six came from a real report
+or a real survey — §27.2's column headers, §84.1's placeholder, §84.2's three
+sentences. This toolkit is built by asking consumers what they hit, and the
+vocabulary rides in on the answer. That is the mechanism, and knowing it is more
+use than a grep, because it says *when* to look: whenever a section is written
+from a consumer's report, the example in the code is the thing to re-word.
+
+#### Two sabotages, and one of them qualifies the claim above
+
+"No guard" is a claim about what the suite can see, so it was measured rather than
+asserted. Both reverted.
+
+| Sabotage | Result |
+|---|---|
+| 1. Every one of pass 5's own edits put back — the two comments, and a gallery row renamed to the worst of the four | **nothing red**, 1,043 pass |
+| 2. A **public**, fully documented `LunaAction.OpenPdf()` added to the toolkit | **1 red** — `ApiSurfaceTests` |
+
+**Number 1 is the hazard, measured.** Domain vocabulary can enter shipped source,
+a shipped comment and the discovery surface without a single test noticing. That
+is what "recorded as a hazard rather than a behaviour" means here, and it is now
+a result rather than an expectation.
+
+**Number 2 is a real qualification and not a guard.** `ApiSurfaceTests` reddens,
+because the committed baseline in `ApiSurface/EmuSen.LunaP.txt` changed — and it
+would redden identically for `LunaAction.Divider()`. It sees a *new public
+member*, never a domain word. What it actually buys is a human: the baseline
+cannot be regenerated without `EMUSEN_API_APPROVE=1`, so somebody reads the diff
+line, and a line reading `OpenPdf` is the kind of thing a reader catches at a
+glance. **That is a review trigger on one surface, not coverage.** Everything
+sabotage 1 touched is below it and always will be.
+
+Which sharpens what the hazard actually is: **the public surface is watched by a
+person, and nothing else is watched at all.**
+
+#### Even the correction comment could not quote the strings
+
+The gallery comment explaining this change was first written quoting the four row
+names it removed, on the reasoning that a correction is more useful with its
+before and after — which is this project's habit and is right about the man page.
+
+It is wrong about the code, and by exactly the rule two headings up. A comment is
+code; the record is `docs/LunaP.md`. The comment now says the model was a form
+editor's, which is the whole of what a reader of that file needs, and §86.14's
+table above carries the strings. Written down because the mistake was made while
+writing the fix for it, in the file being fixed, and that is how ordinary this
+particular leak is.
+
+#### What this pass deliberately did not do, and it is bigger than what it did
+
+Reading the gallery's strings to fix the four BIMA instances turned up the other
+domain in it. **23 of `GalleryWindow.cs`'s 467 lines carry emulator vocabulary**:
+`DianaOS`, `coretop`, `S-CPU`, `S-PPU`, `SuperFX`, `NES`, `SNES`, "All consoles",
+"smw.sfc", "ROM Directory", "Open ROM...", "Emulator Core", "Save State Folder",
+"No ROMs in the library.", "Emulation". Counted by reading the file's own strings,
+not by grepping a guessed word list — the count is exact for those terms and
+claims nothing about terms not listed.
+
+That is six times the BIMA leak this pass was called to fix, in the one file §7
+calls the toolkit's discovery surface, and pass 4 has just made it the thing a
+consumer can actually run.
+
+**It is left alone, and not because it is fine.** It is a different question with
+a real argument on the other side, and §86.9's precedent is that an audit pass
+does not reopen one of those on its own authority. LunaP was a folder in EmuSen
+(§19, §20); a gallery that shows the application it was cut out of is at least
+arguably a demo being honest about where it came from, in a way that borrowing a
+*second* consumer's domain never was. The counter-argument is §86.1's rule as
+written, which does not have an exception for the parent project, and the fact
+that "EmuSen" is in the package name does not make an emulator front-end what this
+toolkit is for.
+
+**Recorded as an open decision, with the measurement attached**, so that whoever
+takes it takes it deliberately. The consequence of the split is visible in the
+gallery today: its table demo is a recipe and everything around it is an emulator,
+which reads as an accident and is not one.
+
+#### The suite
+
+1,043, unchanged — no test was added, because the decision was to add none. Seven
+files changed and no `CHANGELOG.md` entry, which is correct rather than an
+oversight: two of the changes are comments, four are in tests, and the gallery has
+not been in the package since pass 4. **Nothing a consumer links against moved.**
+
+### 86.15 Pass 6, and the leak the audit measured and then walked past
+
+§86.14 measured 23 lines of emulator vocabulary in the gallery, called it "bigger
+than what this pass did", and left it as an open decision on §86.9's precedent
+that an audit pass does not reopen a settled question on its own authority.
+
+**It was not a settled question, and leaving it was wrong.** It was found the same
+day, by the only method that was ever going to find it: somebody ran the gallery
+and recognised, in the tabs, one of this toolkit's own consumer's config menus.
+
+#### What the measurement had missed by measuring source
+
+The count in §86.14 was of lines in a file. The thing that mattered was **what
+the window looks like when it is on a screen**, and those are not the same
+quantity. A reader of `GalleryWindow.cs` sees `tabs.Add("SNES", …)` as one string
+among 467 lines. A person who runs it sees a tab strip reading **General | NES |
+SNES**, laid out exactly as one consumer's preferences window lays it out, and
+reads the whole page as that application.
+
+That is a general lesson about this repository's instruments and worth stating as
+one: **grep counts instances, and a rendered window is what a reader actually
+receives.** Pass 4 made the gallery runnable for the first time (§86.13) and pass
+5 measured it by reading it. One pass later the running version answered a
+question the reading version could not.
+
+#### The scope, measured before and after
+
+| Where | Before | After |
+|---|---|---|
+| `ApiSurface/EmuSen.LunaP.txt` | **0** | 0 — nothing public ever leaked, which is why none of this breaks a consumer |
+| `GalleryWindow.cs` | 23 lines | 0 |
+| `src/EmuSen.LunaP/` shipped source | 23 lines, all comments plus one `<summary>` | 0 |
+| `tests/` | **96 lines across 18 files** | 0 |
+
+**The test suite was four times the leak the shipped toolkit was**, which is the
+§86.14 lesson arriving a second time: scoping an audit by what ships measures the
+wrong thing. `MeterRow` was tested with a label of `S-CPU` in four files, `Tabs`
+and `FilterBar` with `NES`/`SNES`, `EmptyState` with "No ROM loaded.", the tree
+tables with a directory of `.sfc` files. None of it reaches a consumer and all of
+it teaches the next reader of those files what this toolkit is presumed to be for.
+
+Counted with a grep over named terms — `DianaOS`, `coretop`, `S-CPU`, `S-PPU`,
+`SuperFX`, `NES`, `SNES`, `ROM`, "Save State", `Emulat*`, `smw.sfc`, `Hotaru`,
+`cheat`, `framebuffer`. **The zeros are zeros for those terms and claim nothing
+about terms not in the list**, which is the same limit §86.7 put on itself and the
+reason pass 5 added no guard.
+
+**The first row is the one that decides the cost.** Not one public name, parameter
+or type ever carried emulator vocabulary, so this whole pass is comments, a demo
+window and one `<summary>` sentence. No consumer recompiles. No version bump.
+
+#### The gallery is one invented photo library now
+
+Meters became import/thumbnail/index workers, the facet became a camera, the tabs
+became RAW and JPEG, the settings fields became library/decoder/export, the empty
+state became "No photos in the library.", the monospace sample became an exposure
+line, and the table §86.14 had just made a recipe became the album it sits in.
+
+A photo library was chosen over the alternatives for one control's sake:
+`RgbaImageView` takes a raw RGBA buffer and scales it at integer factors, and a
+photograph is the only stand-in in which that is a natural thing to want rather
+than a sample bent to fit. **A gallery whose samples are visibly strained is a
+gallery that teaches the wrong thing about the control.**
+
+The reorder demo got better rather than merely different. "The order photographs
+sit in an album is a decision somebody makes by looking at them" is the exact case
+drag-to-reorder exists for, and it is truer of an album than it was of either a
+form's fields or a recipe's ingredients.
+
+#### And it says so on the page
+
+    Every sample on this page is invented. This toolkit knows nothing about
+    photographs, and nothing about whatever you are building either - §86.15.
+
+One `Ui.Hint` at the top of the gallery. It is there because **the reader this
+line is for is looking at the window, not at the source** — which is the entire
+finding of this pass restated as a control. A coherent demo domain is more legible
+than a deliberately scattered one and carries exactly one risk in exchange, that a
+reader takes the domain for the purpose. Saying otherwise out loud costs two lines
+and removes it.
+
+This is the closest thing to a guard that pass 5's argument permits. It cannot
+fail, and it is not claimed as a test. It reaches a person.
+
+#### The 23 toolkit comments, and the rule that sorted them
+
+Pass 5 settled that **the record may name a consumer and the code may not**. The
+toolkit's 23 lines split cleanly along it.
+
+**Evidence, which is load-bearing and stayed.** `LunaApp.cs`'s factory overload
+exists because a consumer's `Main` must fully resolve its subject before any
+Avalonia type is touched; `Debounce`'s two keystroke sites; `LunaList.Chose`'s
+ambiguous summary being read the wrong way by a real modal browser; `EmptyState`'s
+screen-reader defect. Every one of these is a measurement, and they are the best
+comments in the kit. Each keeps its argument and its `§`, and names a *shape*
+instead of an application — "a consumer's modal file browser", "a caller whose
+`Main` must resolve something first". The specific instance is in the section each
+already cited, which is where a specific instance belongs.
+
+**Decoration, which was careless and went.** `PathPickerRow` reaching for "Choose
+a ROM folder" as its example of a distinguishing title; `Bars` for "Applied 12
+cheats"; `AccessibilityExtensions` for "chooses where save states are written".
+None of these was citing anything. They needed an example and took the nearest
+one.
+
+**One got materially stronger.** `MeterList`'s comment said grouping stays with
+the caller because group headers are "core/DianaOS vocabulary" — an agnosticism
+argument that could only be understood by someone who knew what DianaOS was. It
+now says a group header names whatever the meters are *of*, so the control cannot
+emit one without knowing what it is being used for. Same decision, and the reason
+is now legible to the reader it was written for.
+
+#### Three sabotages, and the one guard this pass allows itself
+
+| Sabotage | Result |
+|---|---|
+| 1. `S-CPU` and the `NES`/`SNES` tabs put back into the gallery | **nothing red**, 1,043 pass |
+| 2. Both `ToggleSwitch`es dropped from the rewritten gallery | **1 red** — `Every_control_the_form_sweep_covers_is_in_the_gallery` |
+| 3. The on-page "samples are invented" line deleted | **nothing red** |
+
+**Number 1 re-measures §86.14's hazard on the surface that actually changed**, and
+it still holds: the vocabulary can walk straight back into the gallery and no test
+notices. Nothing in this pass alters that and nothing was meant to.
+
+**Number 2 is the positive control, and it is the reason to trust the rest.** The
+gallery was rewritten heavily — every sample, the whole table model, a new hint at
+the top — and `GalleryRenderTests` is the render fixture for the entire control kit
+(§86.13). A sweep that had quietly stopped covering the gallery would have made
+every other green in this pass meaningless. It still covers it.
+
+**Number 3 turned nothing red and got a guard**, which needs justifying against
+§86.8's "no guard" and clears it. `The_gallery_says_its_samples_are_invented` does
+**not** ask whether the samples are agnostic — nothing can, and that argument is
+unchanged. It asks whether the sentence telling a reader they are not the toolkit's
+subject is still on the page. That is a presence check on one known string, so it
+fails honestly, and what it protects is the only mitigation this pass shipped for
+the one risk a coherent demo domain buys: that a reader takes the domain for the
+purpose. Sabotage 3 reddens it. The suite is **1,044**.
+
+#### Two things that look like the leak and are staying
+
+Written down so the next sweep does not "fix" them.
+
+- **`EmuSen.LunaP.csproj`'s opening comment** says the toolkit was written inside
+  the EmuSen emulator project, where three frontends consume it, and moved out once
+  it depended on nothing of EmuSen's. That is provenance, it cites §19 and §20, and
+  the sentence immediately after it is the strongest statement of the reference rule
+  anywhere in the repository. Removing it would delete the reason the rule exists.
+- **`ILockedFramebuffer`**, in the same file's note about `RgbaImageView.Blit`.
+  "Framebuffer" there is Avalonia's own type name, not an emulator's word.
+
+#### What is still open, and it is only the name
+
+`EmuSen.LunaP` — the namespace, the package id, the `xmlns` in every consumer's
+XAML. That is the deepest form of this leak and the only one that is breaking:
+every consumer edits usings and csproj, and the published package changes identity
+on NuGet. **Deliberately not taken here**, and §86.9's refusal to change a
+namespace for tidiness still holds. Recorded so that it is an open decision rather
+than an oversight, which is what §86.14 failed to be about the gallery.
+
+---
+
+## 87. The windowing seam, and the measurement that forced it
+
+`LunaApp.Configure` gained two overloads taking an `IWindowingBackend`. A host
+that supplies one takes over the choice of display server; everything else about
+the bootstrap stays where it was.
+
+### 87.1 Why platform detection could not be left to sort it out
+
+§3 has always described the sequence as `UsePlatformDetect()` plus `UseX11()` on
+Linux, and §35.1 measured that the second call changes nothing: both produce
+`<UseX11>b__0_0`. That section left the matter as a hazard, because it could not
+explain *why* detection lands on X11 without a measurement it had no way to take.
+
+The explanation turns out to be structural, and it was taken from the package
+metadata rather than inferred. **`Avalonia.Desktop` — the package
+`UsePlatformDetect` ships in — depends on Avalonia.Native, Avalonia,
+Avalonia.X11, Avalonia.HarfBuzz, Avalonia.Skia and Avalonia.Win32, and not on
+Avalonia.Wayland.** The Wayland backend exists, is official, is MIT, and ships a
+`net10.0` build with `UseWayland()` and `WaylandPlatformOptions`; it is simply
+**opt-in rather than absent**. Platform detection cannot select an assembly that
+is not in the graph.
+
+So the correction §35.1 records is real and the guard it defends stays. What
+changes is that "Linux means X11" is now known to be a packaging consequence
+rather than a property of Avalonia, and a host that wants otherwise has
+somewhere to say so.
+
+### 87.2 Why the toolkit does not simply reference Avalonia.Wayland
+
+§1. A `PackageReference` to `Avalonia.Wayland` would be a second dependency, and
+one that means nothing on Windows or macOS, imposed on every consumer of a
+cross-platform toolkit for the benefit of one. The same argument that kept
+`EmuSen.Galaxia` out (§19, §20) applies unchanged.
+
+The seam is therefore shaped like `ISettingsStore` (§19.1): the toolkit names an
+interface, the host brings the thing the toolkit may not name.
+
+### 87.3 The trap the seam is shaped around
+
+**`UsePlatformDetect` does three jobs, not one.** It selects a windowing
+subsystem *and* installs the renderer *and* installs the text shaper. §35.2
+already relied on this from the other direction — `BootstrapTests` proves the
+call is in the chain through `RenderingSubsystemName` and
+`TextShapingSubsystemName` rather than through its own name — but the
+consequence was never written down.
+
+It was measured the expensive way, in a consumer that replaced the call with
+`UseWayland()`. `Setup` threw:
+
+    System.InvalidOperationException: No rendering system configured. Consider calling UseSkia().
+
+and then, once that was fixed:
+
+    System.InvalidOperationException: No text shaping system configured. Consider calling UseHarfBuzz().
+
+So `IWindowingBackend` deliberately does **not** hand a host the whole sequence.
+LunaP installs Skia and HarfBuzz itself on the seam path and calls
+`Install` afterwards, with the builder already complete apart from windowing. A
+host that had to remember two unrelated calls would eventually not, and the
+failure would land at `Setup` in an application this repository never sees.
+
+### 87.4 What is asserted, and the one thing that would catch a regression
+
+Four tests in `BootstrapTests`, and only one of them is interesting.
+
+`The_seam_receives_a_builder_that_already_has_the_renderer_and_text_shaper` has
+the backend record `RenderingSubsystemName` and `TextShapingSubsystemName` **at
+the moment `Install` is called**, and asserts both are already set. That is the
+§87.3 contract stated as an assertion rather than a paragraph asking the next
+author to remember. Moving either call after `Install` turns it red.
+
+The others pin the ordinary things: the backend is invoked, the application type
+and subsystems survive both overloads, and a null backend throws rather than
+falling through to platform detection — because falling through would hand a
+Wayland host an X11 session silently, which is the exact failure the seam exists
+to prevent.
+
+**Deliberately not asserted:** that the host's backend is the one that ends up
+selected. §35.1's rule applies — on this machine any such assertion would pass
+whether or not `Install`'s return value was used at all, because the only
+backend available to a test is X11 and that is what detection picks anyway. The
+return value is proven by use rather than by a test that cannot fail.

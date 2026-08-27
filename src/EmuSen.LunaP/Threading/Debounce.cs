@@ -6,8 +6,8 @@ namespace EmuSen.LunaP.Threading
     // "Wait until they stop typing, then do the expensive thing once."
     //
     // Nothing in any consumer does this, and two of them want it badly enough to be worth
-    // recording: one re-filters a ROM library on every keystroke and one re-queries an on-disk
-    // cheat database on every keystroke - see docs/LunaP.md §21.1. Neither is wrong at ten
+    // recording: one re-filters an in-memory library on every keystroke and one re-queries an
+    // on-disk database on every keystroke - see docs/LunaP.md §21.1. Neither is wrong at ten
     // entries and both are wrong at ten thousand.
     //
     // Trailing edge only. Poke() restarts the clock; the action runs once, `delay` after the last

@@ -14,7 +14,10 @@ namespace EmuSen.LunaP.Controls
     /// <param name="ValueText">The reading shown at the right - "3.2 GB", "61%" - which need not be the percentage.</param>
     public readonly record struct MeterEntry(string Label, double Percent, string ValueText);
 
-    // A vertical run of MeterRows. Grouping stays with the caller: the group headers are core/DianaOS vocabulary - see docs/LunaP.md §5.2.
+    // A vertical run of MeterRows. GROUPING STAYS WITH THE CALLER, and that is the agnosticism rule
+    // rather than a missing feature: a group header names whatever the meters are OF, so this control
+    // cannot emit one without knowing what it is being used for. A window that wants groups emits a
+    // SectionHeader and a MeterList per group - see docs/LunaP.md §5.2.
     /// <summary>A vertical run of meter rows, rebuilt from a list of entries.</summary>
     public class MeterList : TemplatedControl
     {

@@ -107,9 +107,22 @@ them in the automation tree.
 palette rather than FluentTheme's — you write `new TextBox()` and it fits. This
 is done by handing LunaP's colours to 51 of FluentTheme's own resource keys, so
 the templates, keyboard handling and accessibility behaviour are Avalonia's
-untouched, and a control added to Avalonia next year inherits it. A test shows
-every one of them in a live window and requires the colours it actually resolves
-to come from `LunaPalette`. `docs/LunaP.md` §48.
+untouched, and any control resolving one of those keys inherits it, including
+ones Avalonia adds later. A test shows every one of them in a live window and
+requires the colours it actually resolves to come from `LunaPalette`.
+`docs/LunaP.md` §48.
+
+**Fifty-one keys did not name everything a theme paints.** A sweep over all 100
+stock controls Avalonia ships found 29 still painting FluentTheme's colours —
+popups and tooltips, the date and time pickers, `Expander`, `HyperlinkButton` —
+and four of this kit's own alongside them, including `LunaList<T>`. The bridge
+doubled to 102 keys to close it. **All 100 stock controls and all 27 of this
+kit's now paint only in `LunaPalette`**, measured at rest, in the dark variant,
+on background, foreground and border. States — hover, pressed, disabled — are
+not swept and are a known gap. A second guard checks the overrides themselves:
+every one must name a key FluentTheme actually declares, and must resolve to a
+palette colour in *both* variants, so a typo or an Avalonia rename cannot fail
+silently. `docs/LunaP.md` §85.
 
 If you had restyled these controls yourself, your own styles still win: this
 changes resources, not templates.
@@ -529,11 +542,19 @@ pixels, under an opt-in `PaneKey`; `Orientation`, `Fixed`, `FixedSize`,
 ## Windows
 
 `ToolWindow` is the base: a `WindowKey` to remember geometry under,
-`ClosesOnEscape`, and the theme's restyle hook. `PollingWindow` refreshes on a
-cadence and stops while hidden. `MessageWindow` and `Dialogs` cover the rest —
-`ConfirmAsync`, `ErrorAsync`, `PickFileAsync`, `PickFolderAsync` and
-`SaveFileAsync`, all returning paths rather than storage items. `WindowSlot<T>`
-holds a one-at-a-time window, with `RefreshIfOpen` for the case where it is not.
+`ClosesOnEscape` (**off by default**), and the theme's restyle hook.
+`PollingWindow` refreshes on a cadence and stops while hidden. `Dialogs` covers
+the small modals and the pickers — `ConfirmAsync` for a question, `MessageAsync`
+for something that is neither a question nor a fault, `ErrorAsync` for one that
+is, plus `PickFileAsync`, `PickFolderAsync` and `SaveFileAsync`, all returning
+paths rather than storage items. `MessageWindow` is for output too long to be a
+dialog — read-only, selectable, monospaced, and not modal, so it can be left open
+beside whatever produced it. `WindowSlot<T>` holds a one-at-a-time window, with
+`RefreshIfOpen` for the case where it is not.
+
+This paragraph named `MessageWindow` before 0.11.0, when the only type of that
+name was internal and was the modal behind the two dialogs — so the front door
+was advertising something no consumer could reach. §84.3.
 
 **A window that remembers its own geometry:**
 
@@ -883,7 +904,7 @@ not. First place to look if an image comes out sheared (§53.2).
     dotnet build
     dotnet test
 
-**880 tests, all headless** — no window is ever put on a screen, including for
+**1049 tests, all headless** — no window is ever put on a screen, including for
 the render tests, which drive a real Avalonia control tree through a real Skia
 pass. That figure is checked by the suite itself, because a hand-written count
 of a thing the runner knows is a number that rots: this one said 207 for four

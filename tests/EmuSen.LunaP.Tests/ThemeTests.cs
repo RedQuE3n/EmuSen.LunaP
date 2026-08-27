@@ -22,6 +22,16 @@ namespace EmuSen.LunaP.Tests
         {
             _configDir = Path.Combine(Path.GetTempPath(), "lunap-theme-" + Guid.NewGuid().ToString("N"));
             LunaSettings.Store = new JsonSettingsStore(_configDir);
+
+            // THEMES NO LONGER FOLLOW THE STORE, SINCE §86.11. `LunaTheme.Directory` used to be
+            // `LunaSettings.Store.Directory("themes")`, so pointing the store at a temp folder gave
+            // this class its own themes folder for free. That coupling is exactly what made
+            // ISettingsStore demand a filesystem, and it is gone - so the theme source is now
+            // pointed somewhere private ON PURPOSE, which is also the migration a consumer makes.
+            //
+            // Isolation is not cosmetic here: without it every test class shares the one default
+            // folder, and a catalog assertion sees themes another class wrote.
+            LunaTheme.Source = new FolderThemeSource(Path.Combine(_configDir, LunaTheme.ThemeCategory));
             _reported = null;
             LunaSettings.Diagnostics = m => _reported = m;
         }
@@ -31,6 +41,7 @@ namespace EmuSen.LunaP.Tests
         {
             UiTest.Run(() => LunaTheme.Apply(LunaTheme.BuiltIn)).GetAwaiter().GetResult();
             LunaSettings.Store = new JsonSettingsStore(Path.Combine(Path.GetTempPath(), "lunap-unset"));
+            LunaTheme.Source = new FolderThemeSource(Path.Combine(Path.GetTempPath(), "lunap-unset", LunaTheme.ThemeCategory));
             if (Directory.Exists(_configDir)) Directory.Delete(_configDir, recursive: true);
         }
 
@@ -68,7 +79,7 @@ namespace EmuSen.LunaP.Tests
         {
             WriteTheme("Hotter", "<SolidColorBrush x:Key=\"LunaHot\" Color=\"#FF00FF\" />");
 
-            var row = new MeterRow { Label = "S-CPU", Percent = 95, ValueText = "95%" };
+            var row = new MeterRow { Label = "Import", Percent = 95, ValueText = "95%" };
             var window = new Window { Width = 400, Height = 100, Content = row };
             window.Show();
 

@@ -58,7 +58,22 @@
          Three control files are deliberately absent. ActionControls, LunaList
          and Widgets (LunaSwitch, Dropdown, Tabs) carry StyleKeyOverride and
          borrow FluentTheme's templates wholesale, so they have no styles of
-         their own to list - see §29.1. -->
+         their own to list - see §29.1.
+
+         AND BORROWING A TEMPLATE MEANS BORROWING ITS COLOURS, which this
+         paragraph did not say for four versions and which nothing checked.
+         Four of those controls were painting FluentTheme's palette rather than
+         this one: LunaList's background was Fluent's #2b2b2b, ActionToggle's
+         checked fill #33ffffff, ActionMenuItem's accelerator text #99ffffff,
+         and Tabs drew Fluent BLUE on the selected tab's pipe. A consumer saw
+         them on every screen those controls appeared on.
+
+         They are fixed in Theme/FluentBridge.axaml rather than here, and that
+         is the right place: the fix is to repaint the template these controls
+         borrow, not to stop borrowing it. Having no style file is still
+         correct. PaletteReachTests now sweeps this kit's controls alongside
+         Avalonia's, so a control that starts painting somebody else's colours
+         fails the build whether it has a style file or not. §85.3. -->
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/TextControls.axaml" />
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/EmptyState.axaml" />
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/MeterRow.axaml" />

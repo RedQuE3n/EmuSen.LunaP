@@ -9,7 +9,9 @@ using EmuSen.LunaP.Automation;
 
 namespace EmuSen.LunaP.Controls
 {
-    // A terminal-shaped pane: scrolling output, a prompt, an input box with history recall. Knows nothing about DianaOS - see docs/LunaP.md §5.6.
+    // A terminal-shaped pane: scrolling output, a prompt, an input box with history recall. It knows
+    // nothing about what any command means - it takes a Func<string, string> and never an interpreter
+    // - which is what lets one control serve any shell at all. See docs/LunaP.md §5.6.
     /// <summary>A terminal-shaped pane with scrolling output, a prompt, and an input box with history recall.</summary>
     public class ConsolePane : TemplatedControl
     {
@@ -41,7 +43,8 @@ namespace EmuSen.LunaP.Controls
         // property - so the cap is what actually bounds the per-line cost, not this.
         private string? _joined;
 
-        // -1 means "not recalling, editing whatever is live in the box" - the algorithm DianaOS's own ConsoleLineReader uses.
+        // -1 means "not recalling, editing whatever is live in the box" - the algorithm every
+        // readline-style history recall uses, so Up from a half-typed line comes back to it.
         private int _historyIndex = -1;
         private string _pendingInputText = "";
 

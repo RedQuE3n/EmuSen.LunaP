@@ -61,9 +61,9 @@ namespace EmuSen.LunaP.Threading
             // there until the next offer pushed it out.
             //
             // At 60 frames a second nobody could see it - the next frame arrived 16 ms later and
-            // carried the fix with it. It shows when the stream STOPS: pause an emulator and the
+            // carried the fix with it. It shows when the stream STOPS: halt the producer and the
             // final frame is the one at risk, which is the frame somebody is about to sit and look
-            // at. Clearing first means a late offer can always schedule again.
+            // at for as long as they like. Clearing first means a late offer can always schedule again.
             Interlocked.Exchange(ref _scheduled, 0);
 
             if (value is not null) _present(value);

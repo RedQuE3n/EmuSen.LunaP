@@ -7,8 +7,8 @@ using Avalonia.Platform.Storage;
 
 namespace EmuSen.LunaP.Windowing
 {
-    // The OS file/folder pickers and the two small modals, once, instead of per call site - see docs/LunaP.md §6 and §8.4.
-    /// <summary>The platform file and folder pickers, and the two small modal dialogs, in one place.</summary>
+    // The OS file/folder pickers and the three small modals, once, instead of per call site - see docs/LunaP.md §6 and §8.4.
+    /// <summary>The platform file and folder pickers, and the three small modal dialogs, in one place.</summary>
     public static class Dialogs
     {
         // False for cancel, for Escape, and for closing the window - anything that is not a deliberate yes.
@@ -21,7 +21,7 @@ namespace EmuSen.LunaP.Windowing
         /// <returns>True if the accepting button was pressed. Closing the dialog any other way answers false.</returns>
         public static async Task<bool> ConfirmAsync(Window owner, string title, string message,
             string acceptText = "OK", string cancelText = "Cancel") =>
-            await MessageWindow.Confirm(title, message, acceptText, cancelText).ShowDialog<bool>(owner);
+            await DialogWindow.Confirm(title, message, acceptText, cancelText).ShowDialog<bool>(owner);
 
         /// <summary>Shows a modal message with a single dismiss button.</summary>
         /// <param name="owner">The window to sit over.</param>
@@ -29,7 +29,30 @@ namespace EmuSen.LunaP.Windowing
         /// <param name="message">What went wrong, written for whoever is looking at the screen.</param>
         /// <returns>A task that completes when the dialog is dismissed.</returns>
         public static async Task ErrorAsync(Window owner, string title, string message) =>
-            await MessageWindow.Notice(title, message, "Close").ShowDialog<bool>(owner);
+            await DialogWindow.Notice(title, message, "Close").ShowDialog<bool>(owner);
+
+        // THE THIRD OF THE THREE, and it was missing until §84.2 rather than refused.
+        //
+        // Confirm asks a question, Error reports a fault, and this states something that is neither:
+        // "Choose a folder first", "Nothing to copy", "Six items were renamed". Without it a caller
+        // reaches for ErrorAsync and dresses a normal state as a failure - which is not cosmetic,
+        // because a user who is shown errors for ordinary conditions stops reading them.
+        //
+        // No mechanism is added: DialogWindow.Notice already takes a null cancel button and renders
+        // exactly this, and ErrorAsync IS this call with an error's title. LunaPY has had `message`
+        // beside `confirm` and `error` since it was written, so this is the C# half catching up to
+        // its own sibling rather than a new idea.
+        //
+        // FOR A SENTENCE, NOT FOR OUTPUT. Anything past a few lines wants MessageWindow, which is
+        // not modal and can be left open beside the thing it describes (§84.3).
+        /// <summary>Shows a modal informational message with a single dismiss button, for something that is neither a question nor a fault.</summary>
+        /// <param name="owner">The window to sit over.</param>
+        /// <param name="title">The dialog title.</param>
+        /// <param name="message">What the user needs to know. A sentence or two; use MessageWindow for output long enough to scroll.</param>
+        /// <param name="acceptText">The caption of the dismiss button.</param>
+        /// <returns>A task that completes when the dialog is dismissed.</returns>
+        public static async Task MessageAsync(Window owner, string title, string message, string acceptText = "OK") =>
+            await DialogWindow.Notice(title, message, acceptText).ShowDialog<bool>(owner);
 
         // Null means the user cancelled, or the control is not in a window yet.
         /// <summary>Asks the platform for a folder.</summary>

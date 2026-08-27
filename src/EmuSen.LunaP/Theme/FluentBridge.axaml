@@ -201,4 +201,202 @@
          than an inherited one. -->
     <SolidColorBrush x:Key="AccentButtonBackground" Color="{DynamicResource LunaAccentColor}" />
 
+    <!-- ==================================================================
+         §85's four kit controls, and the stock siblings they inherit from.
+
+         WHY THESE KEYS AND NOT ONES THAT LOOK LIKE THEM. Every key below was
+         read off the live ControlTheme's own Setters - the theme object
+         Application.TryFindResource hands back for the type - rather than
+         recalled or pattern-matched from a name. That distinction is not
+         pedantry here: Fluent ALIASES many key names onto one brush INSTANCE,
+         so nine different keys hand back the identical #99ffffff object. Which
+         means the obvious probe - find the key whose value equals the stray
+         colour - returns nine answers, eight of them wrong, and overriding any
+         of the wrong ones is a silent no-op. The setter says which one the
+         control actually resolves. §85.3.
+         ================================================================== -->
+
+    <!-- ListBox's Background setter names the system key directly - there is no
+         semantic "ListBoxBackground" to reach for. LunaList inherits this, being
+         a ListBox with StyleKeyOverride, which is how a control this toolkit
+         ships came to be painting Fluent's #ff2b2b2b. -->
+    <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumLowBrush" Color="{DynamicResource LunaSurfaceColor}" />
+
+    <!-- The same surface a Button rests on, deliberately: a toggle IS a button
+         that stays down, and giving it a different resting colour makes it read
+         as a different kind of control. ActionToggle inherits it. -->
+    <SolidColorBrush x:Key="ToggleButtonBackground" Color="{DynamicResource LunaInputSurfaceColor}" />
+
+    <!-- Tabs. The unselected header is muted and the selected one is not, which
+         is the same "this one, not that one" contrast LunaList and ComboBoxItem
+         already use. The pipe is the four-pixel bar under the selected tab, and
+         it was the most visible Fluent blue left in the kit - a Tabs control
+         showed it on every screen it appeared on. -->
+    <SolidColorBrush x:Key="TabItemHeaderForegroundUnselected" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="{DynamicResource LunaAccentColor}" />
+
+    <!-- The "Ctrl+Q" hint on the right of a menu item, which is a different key
+         from the item's own Foreground and is why a menu looked correct until
+         an accelerator was set on it. ActionMenuItem inherits it, and a
+         LunaAction with a gesture is the ordinary case rather than the rare
+         one. -->
+    <SolidColorBrush x:Key="MenuFlyoutItemKeyboardAcceleratorTextForeground" Color="{DynamicResource LunaMutedColor}" />
+
+    <!-- ==================================================================
+         POPUP AND OVERLAY SURFACES - §85.8.
+
+         Everything that opens OVER a window: the context menu Menus.Context
+         builds, a flyout, a menu flyout, a tooltip, a notification card. All
+         five were Fluent's #ff2b2b2b, and they are the strays that showed up
+         soonest in practice, because an application whose windows are LunaP's
+         greys grows a Fluent-grey menu the first time anybody right-clicks.
+
+         They take LunaSurfaceColor rather than LunaVoidColor: a popup sits
+         above the window rather than behind it, and Card and SidePanel already
+         use the surface for the same "raised" reading. §85.8.
+         ================================================================== -->
+    <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="{DynamicResource LunaSurfaceColor}" />
+    <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="{DynamicResource LunaSurfaceColor}" />
+    <SolidColorBrush x:Key="FlyoutBorderThemeBrush" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="ToolTipBackground" Color="{DynamicResource LunaSurfaceColor}" />
+    <SolidColorBrush x:Key="ToolTipForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="ToolTipBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="NotificationCardBackgroundBrush" Color="{DynamicResource LunaSurfaceColor}" />
+    <SolidColorBrush x:Key="NotificationCardForegroundBrush" Color="{DynamicResource LunaTextColor}" />
+
+    <!-- ==================================================================
+         STRUCTURE AND BUTTONS - §85.9.
+
+         SOME OF THESE FLUENT KEYS HOLD A Color AND NOT A Brush, and they are
+         overridden here with a brush anyway. That is deliberate and it is the
+         reason this block was measured rather than reasoned about: the setters
+         that read them assign to BorderBrush or Background, which take an
+         IBrush, so handing back a brush satisfies them and handing back a
+         Color relies on a conversion. A brush cannot be substituted where a
+         template genuinely wants a Color - a gradient stop, say - so every one
+         of these was checked by running the sweep afterwards rather than by
+         assuming the swap was safe. §85.9 records the two that had to stay
+         Colors.
+         ================================================================== -->
+
+    <!-- An expander is a card that folds, so it takes the card's surface. -->
+    <SolidColorBrush x:Key="ExpanderContentBackground" Color="{DynamicResource LunaSurfaceColor}" />
+    <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="ExpanderHeaderForeground" Color="{DynamicResource LunaTextColor}" />
+
+    <SolidColorBrush x:Key="GroupBoxBackground" Color="{DynamicResource LunaSurfaceColor}" />
+    <SolidColorBrush x:Key="GroupBoxBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+
+    <!-- SplitView's pane and DrawerPage's sheet are both "a surface that slides
+         in over the window", which is the same reading as a side panel. -->
+    <SolidColorBrush x:Key="SystemControlPageBackgroundChromeLowBrush" Color="{DynamicResource LunaSurfaceColor}" />
+    <SolidColorBrush x:Key="SystemControlPageBackgroundAltHighBrush" Color="{DynamicResource LunaSurfaceColor}" />
+    <SolidColorBrush x:Key="NavigationBarBackground" Color="{DynamicResource LunaSurfaceColor}" />
+
+    <!-- A divider is a border by another name, in both cases. -->
+    <SolidColorBrush x:Key="SystemControlForegroundBaseMediumLowBrush" Color="{DynamicResource LunaBorderColor}" />
+
+    <!-- A link takes the accent, which is the one place in the kit where being
+         the accent colour is the control's whole job rather than something it
+         inherited. -->
+    <SolidColorBrush x:Key="HyperlinkButtonForeground" Color="{DynamicResource LunaAccentColor}" />
+
+    <!-- Both rest on the same surface a Button does, for the reason
+         ToggleButtonBackground above does: they are buttons. -->
+    <SolidColorBrush x:Key="RepeatButtonBackground" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="RepeatButtonForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="SplitButtonBackground" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="SplitButtonForeground" Color="{DynamicResource LunaTextColor}" />
+
+    <!-- THE FIVE WHOSE COLOURS ARE IN THE TEMPLATE AND NOT IN A SETTER, so the
+         ControlTheme dump that named every key above says nothing about them.
+         Each was found by overriding candidate keys one at a time with a
+         sentinel colour and re-rendering to see which one moved - the honest
+         version of "find the key that holds this colour", because the obvious
+         version returns every alias. NavigationPage is the case that proves it
+         matters: TWENTY-SIX keys resolve to its #99ffffff and exactly one of
+         them repaints the control. §85.9. -->
+    <SolidColorBrush x:Key="SystemAltMediumLowColor" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="NavigationControlNavBarBackground" Color="{DynamicResource LunaSurfaceColor}" />
+    <SolidColorBrush x:Key="NavigationBarForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="PipsPagerNavigationButtonForeground" Color="{DynamicResource LunaMutedColor}" />
+
+    <!-- The border colour rather than the muted one, and the difference is the
+         point: a disabled arrow that is the same grey as an enabled one says
+         nothing. -->
+    <SolidColorBrush x:Key="PipsPagerNavigationButtonForegroundDisabled" Color="{DynamicResource LunaBorderColor}" />
+
+    <!-- Fluent's validation text is YELLOW (#fffff000). This palette has an
+         error colour and it is not that, so a form that failed validation was
+         telling the user in a colour the rest of the application never uses. -->
+    <SolidColorBrush x:Key="SystemControlErrorTextForegroundBrush" Color="{DynamicResource LunaErrorColor}" />
+
+    <!-- ==================================================================
+         DATE AND TIME - §85.10.
+
+         The heaviest cluster, and the one an application meets as soon as it
+         asks for a date. A DatePicker is a button that opens a flyout onto a
+         Calendar, so it is three surfaces rather than one, and all three were
+         Fluent's: the button #66000000, the flyout #ff2b2b2b, the calendar
+         grid #ff1f1f1f with today marked in #ff0078d7.
+         ================================================================== -->
+
+    <!-- The closed picker is a button that says a date, so it rests on the same
+         input surface a TextBox does - it is an input, not a command. -->
+    <SolidColorBrush x:Key="DatePickerButtonBackground" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="DatePickerButtonForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="DatePickerButtonBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="TimePickerButtonBackground" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="TimePickerButtonForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="TimePickerButtonBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+
+    <!-- The opened flyout is a popup, so it takes the popup surface the block
+         above gave every other popup. -->
+    <SolidColorBrush x:Key="DatePickerFlyoutPresenterBackground" Color="{DynamicResource LunaSurfaceColor}" />
+    <SolidColorBrush x:Key="DatePickerFlyoutPresenterBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="TimePickerFlyoutPresenterBackground" Color="{DynamicResource LunaSurfaceColor}" />
+    <SolidColorBrush x:Key="TimePickerFlyoutPresenterBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+
+    <SolidColorBrush x:Key="CalendarViewBackground" Color="{DynamicResource LunaSurfaceColor}" />
+    <SolidColorBrush x:Key="CalendarViewForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="CalendarViewBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+
+    <!-- The days either side of the month on show. -->
+    <SolidColorBrush x:Key="CalendarViewOutOfScopeBackground" Color="{DynamicResource LunaSurfaceColor}" />
+
+    <!-- TODAY'S CELL, and it took a visual-tree walk to find. It is not a setter
+         on CalendarDayButton and not reachable by searching for the colour: the
+         differential probe tried all forty keys that resolve to #ff0078d7 and
+         none of them moved it, because the setter lives in a style NESTED
+         inside `^:today`, targeting Border#Root, and reads SystemAccentColor -
+         a Color, not a brush, and one the probe's own override could not
+         reach. Walking the realised tree to ask which Border was blue, then
+         reading the theme that owns it, is what answered it. §85.10. -->
+    <!-- AND IT HAS TO BE A Color, WHICH IS THE ONE CASE THIS FILE'S USUAL TRICK
+         CANNOT DO. Every other override here is a SolidColorBrush pointing at a
+         variant-keyed Luna colour with DynamicResource, which is what keeps one
+         declaration serving both columns. SystemAccentColor cannot be one:
+         Fluent reads it where a Color is genuinely required, and substituting a
+         brush does not degrade quietly - it throws InvalidCastException and
+         takes the control's whole render down with it. Measured, not guessed:
+         the brush version turned five controls red - MeterRow, ProgressBar,
+         RadioButton and both picker presenters - each with
+         "Unable to cast object of type 'Avalonia.Media.SolidColorBrush' to type
+         'Avalonia.Media.Color'".
+
+         So it is an ALIAS instead, one per variant, which is the same idiom
+         Fluent uses internally and the reason so many of its key names hand
+         back one shared brush instance. §85.10. -->
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Dark">
+            <StaticResource x:Key="SystemAccentColor" ResourceKey="LunaAccentColor" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Light">
+            <StaticResource x:Key="SystemAccentColor" ResourceKey="LunaAccentColor" />
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+
 </ResourceDictionary>
