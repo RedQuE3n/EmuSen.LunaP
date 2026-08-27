@@ -10,6 +10,8 @@ using EmuSen.LunaP.Automation;
 using EmuSen.LunaP.Threading;
 using EmuSen.LunaP.Windowing;
 
+using EmuSen.LunaP.Settings;
+
 namespace EmuSen.LunaP.Controls
 {
     // Which pane keeps its size when the window is resized.
@@ -217,7 +219,7 @@ namespace EmuSen.LunaP.Controls
 
             // Edits the size and leaves everything else in the record alone. A side panel shares
             // this key and owns the Collapsed half of it - see PaneLayoutStore.Update.
-            PaneLayoutStore.Update(key, layout => layout.Size = FixedSize);
+            PaneLayoutStore.Update(key, layout => layout.Size = FixedSize, LunaSettings.For(this));
         }
 
         protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
@@ -250,7 +252,7 @@ namespace EmuSen.LunaP.Controls
         // written before a size ever was - a side panel saving that it was closed, most often.
         private void Restore()
         {
-            if (PaneKey is { } key && PaneLayoutStore.Load(key) is { Size: > 0 } saved)
+            if (PaneKey is { } key && PaneLayoutStore.Load(key, LunaSettings.For(this)) is { Size: > 0 } saved)
             {
                 FixedSize = saved.Size;
             }

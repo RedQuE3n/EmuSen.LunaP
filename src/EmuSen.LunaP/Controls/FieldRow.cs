@@ -29,8 +29,8 @@ namespace EmuSen.LunaP.Controls
         // obvious thing to reach for. It is the wrong shape here twice over: it reports errors
         // raised by a BINDING, and LunaP's controls are built in code and given values directly
         // (§5.2), so there is frequently no binding to raise one. And it would put the decision
-        // about what counts as invalid inside the control, when the only thing that knows a
-        // ROM directory must exist is the application. String in, string out, caller decides -
+        // about what counts as invalid inside the control, when the only thing that knows this
+        // particular folder must exist is the application. String in, string out, caller decides -
         // the same seam LunaTable's Validate uses, so an invalid field and an invalid cell are
         // one idea (§49).
         public static readonly StyledProperty<string> ErrorProperty =

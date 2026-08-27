@@ -50,6 +50,12 @@
     <!-- The harness is a package now, and this suite consumes it exactly as any
          other consumer would - which is what stops it drifting back into being
          private. docs/LunaP.md §22.8. -->
+    <!-- The gallery, which left the toolkit at docs/LunaP.md §86.13 so it stops
+         shipping inside every consumer's application. It is referenced here and
+         nowhere else: GalleryRenderTests is the render fixture for the whole
+         control kit, so the gallery has to stay reachable from the suite even
+         though it no longer reaches a consumer. -->
+    <ProjectReference Include="..\..\src\EmuSen.LunaP.Gallery\EmuSen.LunaP.Gallery.csproj" />
     <ProjectReference Include="..\..\src\EmuSen.LunaP.Testing\EmuSen.LunaP.Testing.csproj" />
   </ItemGroup>
 

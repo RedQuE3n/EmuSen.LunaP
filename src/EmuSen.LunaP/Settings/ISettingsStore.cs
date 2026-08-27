@@ -1,18 +1,19 @@
 namespace EmuSen.LunaP.Settings
 {
     // The seam between LunaP and whatever a host keeps its settings in - see docs/LunaP.md §19.
+    //
+    // TWO METHODS SINCE §86.11, AND THE THIRD LEAVING IS THE POINT OF THAT PASS. It was
+    // `string Directory(string? category)`, which is a PATH - so every implementation of this
+    // interface had to be file-backed or hand back something it did not mean. A consumer keeping
+    // settings in SQLite implemented it anyway and wrote down that the seam "leaks a file model on
+    // purpose", which is a consumer documenting a defect in a seam (§86.5).
+    //
+    // The one caller that needed it was LunaTheme, looking for a folder of hand-written theme
+    // files - documents a PERSON wrote, which is a different job from values the program saved.
+    // That job is `IThemeSource` now, and this interface stopped naming a storage medium.
     /// <summary>The seam between LunaP and whatever a host keeps its settings in.</summary>
     public interface ISettingsStore
     {
-        // A category is a subdirectory; null is the root. Resolving a path is all this does - an
-        // implementation creates the directory when it WRITES one, not when it is asked where a
-        // category lives, so a caller reading this must not assume the folder is there. It said
-        // "created if it does not exist" until §80.3, which no implementation has ever done.
-        /// <summary>The directory a category resolves to, whether or not it exists yet.</summary>
-        /// <param name="category">The subdirectory, or null for the root.</param>
-        /// <returns>The full path.</returns>
-        string Directory(string? category);
-
         // Null for missing, unreadable or corrupt - callers fall back to their own defaults rather than crash.
         /// <summary>Reads one file back, or answers null when it is absent or unreadable.</summary>
         /// <typeparam name="T">The type to deserialize into.</typeparam>

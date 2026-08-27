@@ -125,5 +125,44 @@ namespace EmuSen.LunaP.Tests
                 typeof(EmuSen.LunaP.Testing.UiTest).Assembly));
         }
 
+        // PASS 4's GUARD: the toolkit ships no gallery - see docs/LunaP.md §86.13.
+        //
+        // `GalleryWindow` was a public class inside EmuSen.LunaP until §86.13, so every consumer's
+        // application carried 458 lines of demo window it would never show. That is the "do one
+        // thing well" half of the §86 audit, and it is the same SHAPE of claim as the reference
+        // rule above: a statement about what this package IS, which nothing checked.
+        //
+        // The namespace and not the type name, deliberately. Asserting `GalleryWindow` is absent
+        // would pass the moment somebody added `GalleryPage` beside it, which is the thing actually
+        // being prevented - demo code drifting back into the shipped assembly one class at a time.
+        [Fact]
+        public void The_toolkit_ships_no_gallery()
+        {
+            Assembly lunaP = typeof(EmuSen.LunaP.Controls.MeterRow).Assembly;
+
+            string[] gallery = lunaP.GetTypes()
+                .Where(t => (t.Namespace ?? "").StartsWith("EmuSen.LunaP.Gallery", StringComparison.Ordinal))
+                .Select(t => t.FullName ?? t.Name)
+                .OrderBy(n => n, StringComparer.Ordinal)
+                .ToArray();
+
+            Assert.True(gallery.Length == 0,
+                "The toolkit assembly contains gallery types, which means demo code is shipping "
+                + "inside every consumer's application again:\n\n  "
+                + string.Join("\n  ", gallery)
+                + "\n\nThe gallery lives in src/EmuSen.LunaP.Gallery, which is not packable. "
+                + "See docs/LunaP.md §86.13.");
+        }
+
+        // The other direction, so the guard above cannot pass by the gallery having ceased to
+        // exist. It is still built, still referenced by this suite, and still the render fixture
+        // GalleryRenderTests drives.
+        [Fact]
+        public void The_gallery_still_exists_somewhere_else()
+        {
+            Assembly gallery = typeof(EmuSen.LunaP.Gallery.GalleryWindow).Assembly;
+
+            Assert.Equal("EmuSen.LunaP.Gallery", gallery.GetName().Name);
+        }
     }
 }

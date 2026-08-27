@@ -8,6 +8,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using EmuSen.LunaP.Settings;
+using EmuSen.LunaP.Testing;
 using EmuSen.LunaP.Windowing;
 
 namespace EmuSen.LunaP.Tests
@@ -150,6 +151,62 @@ namespace EmuSen.LunaP.Tests
             staying.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape });
             Assert.True(staying.IsVisible);
         }, default);
+
+        // MessageWindow - see docs/LunaP.md §84.3. LunaPY's control, ported; LunaP's own class of
+        // that name was the internal modal and is now DialogWindow.
+        [Fact]
+        public Task A_message_window_shows_its_body_and_can_be_escaped() => Session.Dispatch(() =>
+        {
+            var window = new MessageWindow("Build output", "one\ntwo");
+            window.Show();
+
+            Assert.Equal("Build output", window.Title);
+            Assert.Equal("one\ntwo", window.Body);
+
+            // Opted in explicitly rather than inherited: ToolWindow leaves this false (§84.4), and
+            // Escape is right here because there is nothing to cancel and nothing to lose.
+            Assert.True(window.ClosesOnEscape);
+
+            window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape });
+            Assert.False(window.IsVisible);
+        }, default);
+
+        // Appending rather than making the caller concatenate is the whole reason this method
+        // exists, so the join is what is pinned - including the empty case, where a naive
+        // implementation leaves the body starting with a blank line.
+        [Fact]
+        public Task Appending_to_a_message_window_joins_with_newlines() => Session.Dispatch(() =>
+        {
+            var window = new MessageWindow("Build output");
+            Assert.Equal(string.Empty, window.Body);
+
+            window.AppendLine("first");
+            Assert.Equal("first", window.Body);
+
+            window.AppendLine("second");
+            Assert.Equal("first\nsecond", window.Body);
+
+            window.Body = "replaced";
+            Assert.Equal("replaced", window.Body);
+        }, default);
+
+        // The body is the whole content, so a reader landing on it has to be told which output it
+        // is - a build log and a validation report are the same shape and different things. An
+        // untitled one still gets a name rather than nothing.
+        [Fact]
+        public Task A_message_window_names_its_text_for_a_reader() => Session.Dispatch(() =>
+        {
+            var titled = new MessageWindow("Validation report", "body");
+            titled.Show();
+            Assert.Equal("Validation report", NameOfBody(titled));
+
+            var untitled = new MessageWindow(body: "body");
+            untitled.Show();
+            Assert.Equal("Message", NameOfBody(untitled));
+        }, default);
+
+        private static string? NameOfBody(MessageWindow window) =>
+            Avalonia.Automation.AutomationProperties.GetName(window.FindPart<SelectableTextBlock>()!);
 
         [Fact]
         public Task A_window_with_no_key_is_never_remembered() => Session.Dispatch(() =>

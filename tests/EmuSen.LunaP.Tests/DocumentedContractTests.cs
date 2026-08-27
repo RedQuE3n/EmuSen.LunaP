@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using EmuSen.LunaP.Commands;
@@ -17,7 +18,7 @@ namespace EmuSen.LunaP.Tests
     // "Does not raise", "does nothing", "cannot", "without running any handler". A promise of
     // ABSENCE is the one kind a normal test never notices going wrong, because the assertion that
     // would catch it is one nobody writes: the feature still works, and the extra call is invisible
-    // until it costs something. §80.1 was a re-query of a ROM library and of an on-disk cheat
+    // until it costs something. §80.1 was a re-query of an in-memory library and of an on-disk cheat
     // database, fired by an application restoring a saved filter.
     //
     // Twenty-five claims, and one of them was false. The other twenty-four are pinned here so the
@@ -61,19 +62,36 @@ namespace EmuSen.LunaP.Tests
             Assert.Null(group.Checked);
         }
 
+        // AMENDED AT §86.4, AND THE CLAIM IT PINS IS NOT THE ONE IT USED TO PIN.
+        //
+        // This was `Reporting_with_no_diagnostics_hook_does_nothing`, against a summary that read
+        // "Null by default, which discards them". That promise of absence is gone: a report with
+        // no sink installed now goes to standard error, because defaulting the FAILURE channel to
+        // silence was the one place this toolkit had the loudness rule backwards.
+        //
+        // A promise of absence remains, and it is the one worth pinning. An installed sink gets
+        // the message and standard error gets nothing - a host that has taken responsibility for
+        // diagnostics has taken it, and a duplicate into a stream it cannot see would be noise it
+        // cannot turn off. `DiagnosticsTests` covers the positive half.
         [Fact]
-        public void Reporting_with_no_diagnostics_hook_does_nothing()
+        public void Reporting_through_an_installed_sink_writes_nothing_to_standard_error()
         {
-            Action<string>? previous = LunaSettings.Diagnostics;
+            Action<string>? previousSink = LunaSettings.Diagnostics;
+            TextWriter previousError = Console.Error;
+            var captured = new StringWriter();
             try
             {
-                LunaSettings.Diagnostics = null;
-                LunaSettings.Report("into the void");
+                LunaSettings.Diagnostics = _ => { };
+                Console.SetError(captured);
+                LunaSettings.Report("handled by the host");
             }
             finally
             {
-                LunaSettings.Diagnostics = previous;
+                Console.SetError(previousError);
+                LunaSettings.Diagnostics = previousSink;
             }
+
+            Assert.Equal(string.Empty, captured.ToString());
         }
 
         [Fact]

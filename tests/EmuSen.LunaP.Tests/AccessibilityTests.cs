@@ -73,12 +73,12 @@ namespace EmuSen.LunaP.Tests
         // reader hears, so the mapping is worth pinning by value rather than by "is not empty".
         [Theory]
         [InlineData(nameof(MeterRow), "CPU")]
-        [InlineData(nameof(EmptyState), "No cores loaded")]
+        [InlineData(nameof(EmptyState), "Nothing loaded")]
         [InlineData(nameof(FieldRow), "Save folder")]
         [InlineData(nameof(PathPickerRow), "Choose a save folder")]
-        [InlineData(nameof(StatusBar), "Applied 12 cheats")]
+        [InlineData(nameof(StatusBar), "Applied 12 changes")]
         [InlineData(nameof(LunaSwitch), "Enable rewind")]
-        [InlineData(nameof(Card), "Emulation")]
+        [InlineData(nameof(Card), "Library")]
         [InlineData(nameof(SidePanel), "Explorer")]
         public Task A_control_names_itself_from_the_property_it_already_had(string name, string expected) =>
             Session.Dispatch(() =>
@@ -209,27 +209,27 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task Browse_buttons_are_told_apart_by_help_text_not_by_renaming_them() => Session.Dispatch(() =>
         {
-            var saves = new PathPickerRow { BrowseTitle = "Choose a save folder" };
-            var roms = new PathPickerRow { BrowseTitle = "Choose a ROM folder" };
-            using var host = Host(saves, roms);
+            var savedTo = new PathPickerRow { BrowseTitle = "Choose a save folder" };
+            var exportTo = new PathPickerRow { BrowseTitle = "Choose an export folder" };
+            using var host = Host(savedTo, exportTo);
 
-            Button savesButton = saves.GetVisualDescendants().OfType<Button>().Single();
-            Button romsButton = roms.GetVisualDescendants().OfType<Button>().Single();
+            Button savedButton = savedTo.GetVisualDescendants().OfType<Button>().Single();
+            Button exportButton = exportTo.GetVisualDescendants().OfType<Button>().Single();
 
-            AutomationPeer savesPeer = ControlAutomationPeer.CreatePeerForElement(savesButton);
-            AutomationPeer romsPeer = ControlAutomationPeer.CreatePeerForElement(romsButton);
+            AutomationPeer savedPeer = ControlAutomationPeer.CreatePeerForElement(savedButton);
+            AutomationPeer exportPeer = ControlAutomationPeer.CreatePeerForElement(exportButton);
 
-            Assert.Equal("Browse...", savesPeer.GetName());
-            Assert.Equal("Browse...", romsPeer.GetName());
-            Assert.Equal("Choose a save folder", savesPeer.GetHelpText());
-            Assert.Equal("Choose a ROM folder", romsPeer.GetHelpText());
+            Assert.Equal("Browse...", savedPeer.GetName());
+            Assert.Equal("Browse...", exportPeer.GetName());
+            Assert.Equal("Choose a save folder", savedPeer.GetHelpText());
+            Assert.Equal("Choose an export folder", exportPeer.GetHelpText());
         }, default);
 
         // A status line is read rather than sought, which is what a live region is for.
         [Fact]
         public Task The_status_bar_is_a_live_region() => Session.Dispatch(() =>
         {
-            var status = new StatusBar { Status = "Applied 12 cheats" };
+            var status = new StatusBar { Status = "Applied 12 changes" };
             using var host = Host(status);
 
             Assert.Equal(AutomationLiveSetting.Polite,
@@ -273,7 +273,7 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task Nothing_the_keyboard_can_reach_in_a_shell_is_unnamed() => Session.Dispatch(() =>
         {
-            var open = new EmuSen.LunaP.Commands.LunaAction("Open ROM...");
+            var open = new EmuSen.LunaP.Commands.LunaAction("Import...");
             var grid = new EmuSen.LunaP.Commands.LunaAction("Grid") { IsCheckable = true };
 
             // The caller's own controls are named by the caller - that is not the shell's job and
@@ -313,7 +313,7 @@ namespace EmuSen.LunaP.Tests
 
             var panel = new StackPanel();
             panel.Children.Add(new FieldRow { Label = "Save folder", Content = new TextBox() });
-            panel.Children.Add(new PathPickerRow { BrowseTitle = "Choose a ROM folder" });
+            panel.Children.Add(new PathPickerRow { BrowseTitle = "Choose an export folder" });
             panel.Children.Add(new FilterBar { Placeholder = "Search games", FacetLabel = "Console:", ShowFacet = true });
             panel.Children.Add(console);
             panel.Children.Add(dropdown);
@@ -376,17 +376,17 @@ namespace EmuSen.LunaP.Tests
         {
             nameof(MeterRow) => new MeterRow { Label = "CPU", Percent = 62, ValueText = "62.0%" },
             nameof(MeterList) => new MeterList(),
-            nameof(EmptyState) => new EmptyState { Message = "No cores loaded", Detail = "Open a ROM to begin." },
+            nameof(EmptyState) => new EmptyState { Message = "Nothing loaded", Detail = "Open a ROM to begin." },
             nameof(FieldRow) => new FieldRow { Label = "Save folder", Hint = "Where states are written", Content = new TextBox() },
             nameof(PathPickerRow) => new PathPickerRow { BrowseTitle = "Choose a save folder" },
             nameof(FilterBar) => new FilterBar { Placeholder = "Search games" },
             nameof(ConsolePane) => new ConsolePane { Prompt = "> " },
-            nameof(StatusBar) => new StatusBar { Status = "Applied 12 cheats" },
+            nameof(StatusBar) => new StatusBar { Status = "Applied 12 changes" },
             nameof(ButtonBar) => new ButtonBar(),
             nameof(RgbaImageView) => new RgbaImageView(),
             nameof(LunaSwitch) => new LunaSwitch { Label = "Enable rewind" },
             nameof(ToolBar) => Loaded(new ToolBar()),
-            nameof(Card) => new Card { Header = "Emulation", Content = new TextBlock { Text = "inside" } },
+            nameof(Card) => new Card { Header = "Library", Content = new TextBlock { Text = "inside" } },
             nameof(SplitPane) => new SplitPane { First = new TextBlock(), Second = new TextBlock() },
             nameof(SidePanel) => new SidePanel { Title = "Explorer", Content = new TextBlock() },
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, "No builder for this control."),

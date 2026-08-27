@@ -30,8 +30,8 @@ namespace EmuSen.LunaP.Tests
             var box = new TextBox { Text = "/not/a/real/path" };
             var row = new FieldRow
             {
-                Label = "ROM Directory",
-                Hint = "Default folder for Open ROM... and the ROM list.",
+                Label = "Library Folder",
+                Hint = "Default folder for Import... and the photo list.",
                 Error = error,
                 Content = box,
             };
@@ -95,9 +95,9 @@ namespace EmuSen.LunaP.Tests
 
             AutomationPeer peer = ControlAutomationPeer.CreatePeerForElement(row);
 
-            Assert.Equal("ROM Directory", peer.GetName());
+            Assert.Equal("Library Folder", peer.GetName());
             Assert.Equal("That folder does not exist.", peer.GetItemStatus());
-            Assert.Equal("Default folder for Open ROM... and the ROM list.", peer.GetHelpText());
+            Assert.Equal("Default folder for Import... and the photo list.", peer.GetHelpText());
 
             window.Close();
         });

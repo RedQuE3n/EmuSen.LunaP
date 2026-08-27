@@ -6,6 +6,8 @@ using Avalonia.Layout;
 using EmuSen.LunaP.Commands;
 using EmuSen.LunaP.Controls;
 
+using EmuSen.LunaP.Settings;
+
 namespace EmuSen.LunaP.Windowing
 {
     // A window with a menu bar, a toolbar, a status line, panels down the sides and content in the
@@ -186,7 +188,7 @@ namespace EmuSen.LunaP.Windowing
             // state the panel saves end up as one record - see PaneLayoutStore.Update for why that
             // needs two writers of one entry rather than two entries.
             split.PaneKey = panel.PanelKey;
-            if (split.PaneKey is null || PaneLayoutStore.Load(split.PaneKey) is not { Size: > 0 })
+            if (split.PaneKey is null || PaneLayoutStore.Load(split.PaneKey, LunaSettings.For(this)) is not { Size: > 0 })
             {
                 split.FixedSize = panel.PanelSize;
             }

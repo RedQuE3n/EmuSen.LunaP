@@ -60,10 +60,10 @@ namespace EmuSen.LunaP.Tests
 
         private static Node[] Tree() => new[]
         {
-            new Node("roms",
-                new Node("snes", new Node("smw.sfc"), new Node("zelda.sfc")),
-                new Node("nes", new Node("metroid.nes"))),
-            new Node("saves"),
+            new Node("photos",
+                new Node("nikon", new Node("IMG_4021.CR2"), new Node("IMG_4022.JPG")),
+                new Node("kodak", new Node("IMG_4023.CR2"))),
+            new Node("scans"),
         };
 
         private static readonly Case[] Cases =
@@ -76,7 +76,7 @@ namespace EmuSen.LunaP.Tests
                     var pane = (ConsolePane)c;
                     pane.AppendLine("discarded");
                     pane.Clear();
-                    pane.AppendLine("DianaOS 1.0");
+                    pane.AppendLine("photos 1.0");
                     pane.AppendLine("ready");
                 },
                 c => c.FindNamed<SelectableTextBlock>("PART_Output").Text ?? ""),

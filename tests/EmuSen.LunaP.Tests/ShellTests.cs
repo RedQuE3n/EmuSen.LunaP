@@ -211,7 +211,7 @@ namespace EmuSen.LunaP.Tests
         public Task A_toolbar_button_follows_its_action() => Realised(() =>
         {
             var bar = new ToolBar();
-            bar.SetActions(new LunaAction("Open ROM...") { HelpText = "Chooses a ROM to load." });
+            bar.SetActions(new LunaAction("Import...") { HelpText = "Chooses a folder to import from." });
             return bar;
         }, bar =>
         {
@@ -221,9 +221,9 @@ namespace EmuSen.LunaP.Tests
             Assert.True(button.GetVisualChildren().Any(),
                 "The toolbar button has no visual children, so it was never templated.");
 
-            Assert.Equal("Open ROM...", button.Content);
-            Assert.Equal("Open ROM...", ControlAutomationPeer.CreatePeerForElement(button).GetName());
-            Assert.Equal("Chooses a ROM to load.", ControlAutomationPeer.CreatePeerForElement(button).GetHelpText());
+            Assert.Equal("Import...", button.Content);
+            Assert.Equal("Import...", ControlAutomationPeer.CreatePeerForElement(button).GetName());
+            Assert.Equal("Chooses a folder to import from.", ControlAutomationPeer.CreatePeerForElement(button).GetHelpText());
 
             button.Action.IsEnabled = false;
 
@@ -266,13 +266,13 @@ namespace EmuSen.LunaP.Tests
 
         [Fact]
         public Task A_card_renders_its_header_through_a_real_part() => Realised(
-            () => new Card { Header = "Emulation", Content = new TextBlock { Text = "inside" } },
+            () => new Card { Header = "Library", Content = new TextBlock { Text = "inside" } },
             card =>
             {
                 ContentPresenter header = card.FindNamed<ContentPresenter>("PART_Header");
 
                 Assert.True(header.IsVisible);
-                Assert.Equal("Emulation", header.Content);
+                Assert.Equal("Library", header.Content);
             });
 
         [Fact]

@@ -42,12 +42,12 @@ namespace EmuSen.LunaP.Tests
                 var chosen = new List<object?>();
                 drop.Chose += v => chosen.Add(v);
 
-                drop.Fill(new[] { "All consoles", "NES", "SNES" }, "SNES");
+                drop.Fill(new[] { "All cameras", "Kodak", "Nikon" }, "Nikon");
                 Assert.Empty(chosen);
-                Assert.Equal("SNES", drop.SelectedItem);
+                Assert.Equal("Nikon", drop.SelectedItem);
 
-                drop.SelectedItem = "NES";
-                Assert.Equal(new object?[] { "NES" }, chosen);
+                drop.SelectedItem = "Kodak";
+                Assert.Equal(new object?[] { "Kodak" }, chosen);
             });
 
         [Fact]
@@ -55,11 +55,11 @@ namespace EmuSen.LunaP.Tests
             Realised(() => new Tabs(), tabs =>
             {
                 tabs.Add("General", new TextBlock { Text = "general" });
-                tabs.Add("NES", new TextBlock { Text = "nes" });
-                tabs.Add("SNES", new TextBlock { Text = "snes" });
+                tabs.Add("Kodak", new TextBlock { Text = "kodak" });
+                tabs.Add("Nikon", new TextBlock { Text = "nikon" });
                 Assert.Equal(3, tabs.Items.Count);
 
-                // What a console-set change does: keep the declared tabs, drop the generated ones.
+                // What a category change does: keep the declared tabs, drop the generated ones.
                 tabs.RemoveFrom(1);
                 Assert.Single(tabs.Items);
                 Assert.Equal("General", ((TabItem)tabs.Items[0]!).Header);
@@ -113,13 +113,13 @@ namespace EmuSen.LunaP.Tests
         public Task Facets_set_before_the_template_still_arrive() => UiTest.Run(() =>
         {
             var bar = new FilterBar { ShowFacet = true };
-            bar.SetFacets(new[] { "All consoles", "SNES" }, "SNES");
+            bar.SetFacets(new[] { "All cameras", "Nikon" }, "Nikon");
 
             var window = new Window { Width = 500, Height = 300, Content = bar };
             window.Show();
 
-            Assert.Equal("SNES", bar.Facet);
-            Assert.Equal("SNES", bar.FindPart<Dropdown>()!.SelectedItem);
+            Assert.Equal("Nikon", bar.Facet);
+            Assert.Equal("Nikon", bar.FindPart<Dropdown>()!.SelectedItem);
             window.Close();
         });
 
@@ -128,13 +128,13 @@ namespace EmuSen.LunaP.Tests
             Realised(() => new FilterBar { ShowFacet = true }, bar =>
             {
                 int changes = 0;
-                bar.SetFacets(new[] { "All consoles", "NES", "SNES" }, "All consoles");
+                bar.SetFacets(new[] { "All cameras", "Kodak", "Nikon" }, "All cameras");
                 bar.Changed += () => changes++;
 
-                bar.FindPart<Dropdown>()!.SelectedItem = "NES";
+                bar.FindPart<Dropdown>()!.SelectedItem = "Kodak";
 
                 Assert.Equal(1, changes);
-                Assert.Equal("NES", bar.Facet);
+                Assert.Equal("Kodak", bar.Facet);
             });
 
         [Theory]

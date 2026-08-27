@@ -11,6 +11,201 @@ answer.
 
 ---
 
+## 0.11.0
+
+**Five findings from one consumer's first week, four of them additive and one that says what the
+0.10.0 audit could not see.** BIMA-C built an application shell on 0.10.0 — `AppWindow`, a menu bar,
+a settings store behind `ISettingsStore` — and reported these against the published surface. `§84`.
+
+- **`LunaAction.HasHandler` says whether invoking would reach anything.** `Invoked` is an event, and
+  a C# event exposes no invocation list outside the type that declares it, so there was no way at
+  all to tell a working action from `new LunaAction("Open PDF")`. The guard this enables is one
+  sweep over a menu — `Assert.True(action.HasHandler)` — and it is the guard `AppWindow` invites,
+  since a shell taken early has its menus in place before the features they will hold. **It is
+  about wiring and not state**: a disabled action still answers true, because a disabled placeholder
+  is still a placeholder; a separator and a submenu owner answer false, having nothing to run
+  (`§84.1`).
+- **`Dialogs.MessageAsync` is the informational third.** Confirm asks a question, Error reports a
+  fault, and "Open a PDF first" is neither — so callers were reaching for `ErrorAsync` and dressing
+  a normal state as a failure, which teaches a user that this application's errors are not worth
+  reading. LunaPY has had `message` beside `confirm` and `error` since it was written. No mechanism
+  is added: `ErrorAsync` was already this call with an error's title (`§84.2`).
+- **`MessageWindow` is now public, and is a different control from the one that had the name.** It
+  shows a body of read-only, selectable, monospaced text for output too long to belong in a dialog —
+  build output, a validation report, an exception trace, all of which are read *while* looking at
+  what produced them. This is LunaPY's control ported. The internal modal behind `ConfirmAsync` and
+  `ErrorAsync` was also called `MessageWindow` and is now `DialogWindow`; **that rename is invisible
+  to you** — it was internal, and the API baseline shows no change for it. The trap it removes is a
+  grep: the file existed, so the capability looked present, and the type was unreachable (`§84.3`).
+- **`ToolWindow.ClosesOnEscape` is false by default, and its summary said true.** The code was
+  right, its test was right, and only the sentence was wrong — so nothing failed. **If you read that
+  summary and wrote code against it, this is the entry to care about**; the behaviour has not
+  changed and is not changing (`§84.4`).
+- **Both `LunaAction` constructors document a compile error you will otherwise meet.**
+  `new LunaAction("Quit", Close)` inside a `Window` is CS0121: a method group matches both `Action`
+  and `Action<LunaAction>` whenever the method is overloaded, and `Window` has `Close()` and
+  `Close(object?)`. Wrap it in a lambda. Neither constructor can go, so this is a `<remarks>` rather
+  than a fix (`§84.5`).
+
+**Two new guards, because a summary naming a default was a class of claim nothing could check.** §80
+probed 544 summaries by *calling* things, and a default value is not reached by calling anything —
+it is what is already true beforehand. `DocumentedDefaultTests` now holds every summary that names a
+default, two-sided: the phrase asserted against the published XML, the value against a live
+instance, so editing either without the other fails. A third test sweeps for any new summary
+claiming a default and fails until it is checked or excused. **And the API baseline records
+`StyledProperty` default values** — thirty-nine of them — because a changed default is a breaking
+change nothing else could see: no signature moves, no consumer's build moves, and every control that
+had not set the property explicitly behaves differently (`§84.4`).
+
+**Every stock Avalonia control now paints in this palette, not FluentTheme's — 29 of them did not
+before.** §48 bridged nine form controls and its guard swept those same nine, so nothing could see
+the other ninety-one. A sweep that finds its own subjects — every control Avalonia ships, reflected
+rather than listed — found 29 still painting Fluent's colours, and four of this kit's own with them.
+All are fixed. `FluentBridge.axaml` went from 51 overrides to 102 (`§85`).
+
+**This is a visual change to your application, and it is the entry to read twice.** If you use any
+of these, they will look different after upgrading — the same greys and accent the rest of LunaP
+already used:
+
+- **Popups and overlays**: `ContextMenu` (including the one `Menus.Context` builds for you),
+  `ToolTip`, flyouts, menu flyouts, `NotificationCard`. These were Fluent's `#2b2b2b`, so an
+  application whose windows were LunaP's greys grew a Fluent-grey menu the first time anybody
+  right-clicked (`§85.8`).
+- **Four controls this kit ships**: `LunaList<T>`, `ActionToggle`, `ActionMenuItem` and `Tabs`. They
+  borrow FluentTheme's templates by design, and borrowing a template turned out to mean borrowing
+  its colours — nothing said so and nothing checked. `Tabs` was showing Fluent blue on its selected
+  tab (`§85.3`).
+- **Structure and buttons**: `Expander`, `GroupBox`, `SplitView`, `ListBox`, `TableView`, `TabItem`,
+  `Separator`, `GridSplitter`, `HyperlinkButton`, `SplitButton`, `RepeatButton`, `PipsPager`,
+  `NavigationPage`, `DrawerPage` (`§85.9`).
+- **Date and time**: `Calendar`, `DatePicker`, `TimePicker` and both flyout presenters (`§85.10`).
+- **Validation text was yellow.** Fluent draws `DataValidationErrors` in `#fff000`; it is now this
+  palette's error colour, so a failed field no longer reports itself in a colour nothing else in
+  your application uses (`§85.9`).
+
+**If you had overridden any of these keys yourself, you still win** — this changes resources, and a
+resource you set closer to your control is found first. Nothing here touches a template, so keyboard
+handling and accessibility behaviour remain Avalonia's.
+
+**What is not covered, said plainly**: controls are swept at rest, in the dark variant, on
+background, foreground and border. Hover, pressed, checked and disabled states are keyed separately
+by Fluent and are **not** swept — a control correct at rest can still show Fluent's blue under the
+pointer. That is a known gap with a section to itself rather than a silence (`§85.11`).
+
+### What upgrading costs
+
+**Nothing in the API, and a repaint in the UI.** No signature moved, nothing was removed or renamed
+in the public surface, and no behaviour changed — every API item above is new API or a corrected
+sentence.
+
+The colours are the exception, and they are the point of `§85` rather than a side effect: 29 stock
+controls and 4 of this kit's change appearance. If your application deliberately wanted FluentTheme's
+look for one of them, set that resource key yourself and yours wins.
+
+**A diagnostic with nowhere to go now goes to standard error instead of nowhere.** Until now
+`LunaSettings.Diagnostics` started null and `Report` discarded everything until a host installed a
+sink, which meant this toolkit defaulted to silence about the one category of thing it should be
+loud about — a theme file that would not parse, a settings write that failed, two menu commands
+claiming one keyboard shortcut. The measurement that forced it came from a consumer: deleting the
+sink installation from BIMA-CSharp's `Program.cs` left all twenty of its tests green, because nothing
+in that suite runs `Main`. The whole channel could be disconnected and nothing anywhere noticed
+(`§86.4`).
+
+**If you have already installed a sink, nothing changes for you** — it still receives every message,
+unprefixed, and standard error still gets nothing. What changes is the default:
+
+- **Nothing installed** → `LunaP: <message>` on standard error. It is prefixed because it arrives in
+  a stream this toolkit does not own, and an unattributed line sends somebody looking in their own
+  code first.
+- **Want silence?** It is still available and it is now a decision: `LunaSettings.Diagnostics = _ => { }`.
+
+**One thing this does not do, and it is worth knowing before you rely on it.** `dotnet test` does
+not surface the test host's standard error at default verbosity, so a diagnostic raised during your
+suite is still invisible unless you install a sink that writes somewhere you look. The new default
+helps an application that is *run*; it does not help a suite. `§86.10`.
+
+### Breaking: `GalleryWindow` is no longer in the package
+
+**If you referenced `EmuSen.LunaP.Gallery.GalleryWindow`, it is gone from the toolkit.** It moved to
+`src/EmuSen.LunaP.Gallery`, an application in the repository that is not published. Two entries left
+the public API — the class and its constructor — and 11,776 bytes left `EmuSen.LunaP.dll`
+(305,152 → 293,376), which every consumer's application was carrying to show a demo window it never
+would (`§86.13`).
+
+**It is also runnable for the first time**, which is the part worth knowing if you were ever curious
+what this kit looks like:
+
+    cd src/EmuSen.LunaP.Gallery && dotnet run
+
+There was no `OutputType` anywhere in this repository before now, so the gallery could not be opened
+by anybody — not a consumer evaluating the toolkit, not a maintainer checking a new control. `§7` has
+claimed since it was written that the gallery is how the kit is discovered; it now is.
+
+### Breaking: `ISettingsStore` has two methods, not three
+
+**`string Directory(string? category)` is gone from the interface.** If you implement
+`ISettingsStore`, delete your implementation of it — that is the whole migration, and your class
+gets shorter.
+
+It was there for one caller: `LunaTheme`, looking for the folder of hand-written theme files. A path
+is a filesystem, so its presence meant **every** settings store had to be file-backed or hand back
+something it did not mean. A consumer keeping settings in SQLite implemented it anyway and wrote in
+its own notes that the seam "leaks a file model on purpose" — which is a consumer documenting a
+defect in our interface (`§86.5`, `§86.11`).
+
+**If you keep settings in a file, nothing else changes.** `JsonSettingsStore.Directory` is untouched,
+same signature, still public — a file-backed store still has a directory. It is the *seam* that
+stopped naming a storage medium.
+
+**Themes now come from `LunaTheme.Source`, and this is the part that can move your users' files.**
+`LunaTheme.Directory` used to be `LunaSettings.Store.Directory("themes")`, so the themes folder
+followed whatever store you installed:
+
+- **You never assigned `LunaSettings.Store`** → nothing changes. The default source is a
+  `FolderThemeSource` over the same folder as before.
+- **You assigned a `JsonSettingsStore` with your own root, or your own `ISettingsStore`** → themes no
+  longer follow it. Point the source at wherever you were keeping them:
+
+      LunaTheme.Source = new FolderThemeSource(Path.Combine(myRoot, LunaTheme.ThemeCategory));
+
+### A window can own its settings store, and everything inside it follows
+
+**`LunaSettings.StoreProperty` is an inherited attached property**, so a store set on a window
+reaches the split panes, the side panels and the tables inside it — including the ones `AppWindow`
+builds for you and the ones you nest three levels down in your own layout. `ToolWindow.Settings` is
+the convenient spelling:
+
+    var window = new AppWindow { WindowKey = "main" };
+    window.Settings = myStore;    // before Show(): placement restores in OnOpened
+    window.Show();
+
+**If you set nothing, nothing changes.** A control in a tree nobody set a store on resolves the
+process-wide `LunaSettings.Store` exactly as before, so this is additive for every existing
+consumer. What it makes possible is two windows keeping two sets of placement, pane and table
+layout in one process, which nothing could express before — every control reached for the global,
+so "which store" was not a question a caller was allowed to answer (`§86.12`).
+
+`WindowPlacementStore`, `PaneLayoutStore` and `TableLayoutStore` each take an optional
+`ISettingsStore` now. Null still means the process-wide one, so existing calls are unchanged.
+
+**Two things deliberately stayed process-global.** The remembered *theme* choice, because the
+applied theme is `Application.Current.Resources` — one dictionary for the process — so a per-window
+theme choice would be a setting that cannot be honoured. And `LunaSettings.Diagnostics`, for the
+same reason. **And this does not let a LunaP test suite run in parallel**: the applied theme's
+resource dictionary is the third process-global behind that rule and this pass does not touch it.
+
+`LunaTheme.Directory` still exists and still answers the folder — but only when `Source` is a
+`FolderThemeSource`, and empty when it is not, because a source that is not a folder has no path to
+give. If you call `Directory.CreateDirectory(LunaTheme.Directory)` to show a user where to drop a
+theme file, hold the `FolderThemeSource` and call `EnsureExists()` instead.
+
+**And `IThemeSource` is a seam you can now fill.** Themes can come from resources compiled into your
+application, from a database, or from a dictionary — `Names()`, `Open(name)` and an `Origin` that is
+a message rather than a path. The whole of `LunaTheme` is reachable without touching a disk, which is
+the gate this change was defined by (`§86.11`).
+
+---
+
 ## 0.10.0
 
 **Five audit passes over the whole repository, and eighteen findings.** 0.9.0's

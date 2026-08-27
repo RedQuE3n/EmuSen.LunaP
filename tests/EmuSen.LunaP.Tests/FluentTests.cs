@@ -59,7 +59,7 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task Cols_assigns_columns_by_position() => Run(() =>
         {
-            var label = Ui.Text("S-CPU");
+            var label = Ui.Text("Import");
             var bar = new ProgressBar();
             var value = Ui.Text("62.0%");
 

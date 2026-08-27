@@ -41,15 +41,9 @@ namespace EmuSen.LunaP.Tests
         private static readonly HeadlessUnitTestSession Session =
             HeadlessUnitTestSession.GetOrStartForAssembly(typeof(FormControlTests).GetTypeInfo().Assembly);
 
-        // Every colour LunaPalette declares, by value. Read by reflection rather than listed, so a
-        // palette that gains a colour does not need this file edited.
-        private static HashSet<Color> Palette() =>
-            typeof(LunaPalette)
-                .GetFields(BindingFlags.Public | BindingFlags.Static)
-                .Select(f => f.GetValue(null))
-                .OfType<ISolidColorBrush>()
-                .Select(b => b.Color)
-                .ToHashSet();
+        // The measurement itself lives in PaletteSweep, because §85 asks the same question of every
+        // control Avalonia ships and two files defining "paints in the palette" separately is one
+        // edit away from disagreeing about the answer.
 
         // The form controls an office application is mostly made of. Named rather than reflected,
         // because the subject is "what a consumer reaches for", which is not a property of any
@@ -88,51 +82,26 @@ namespace EmuSen.LunaP.Tests
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "No factory for this control."),
         };
 
-        private static IEnumerable<(Visual Visual, string Property, Color Colour)> Painted(Visual root)
-        {
-            foreach (Visual visual in root.GetSelfAndVisualDescendants())
-            {
-                if (visual is not Control control) continue;
-
-                foreach ((string name, IBrush? brush) in new (string, IBrush?)[]
-                {
-                    ("Background", (control as TemplatedControl)?.Background ?? (control as Panel)?.Background ?? (control as Border)?.Background),
-                    ("Foreground", (control as TemplatedControl)?.Foreground ?? (control as TextBlock)?.Foreground),
-                    ("BorderBrush", (control as TemplatedControl)?.BorderBrush ?? (control as Border)?.BorderBrush),
-                })
-                {
-                    if (brush is ISolidColorBrush { Color: { A: > 0 } colour }) yield return (visual, name, colour);
-                }
-            }
-        }
-
         // THE SWEEP. Every colour every form control actually paints with must come from the
         // palette, or the seam §21.2 caught from the other side is still open.
         [Theory]
         [MemberData(nameof(Kinds))]
         public Task A_form_control_paints_only_in_the_palette(string kind) => Session.Dispatch(() =>
         {
-            HashSet<Color> palette = Palette();
-
             Control control = Build(kind);
             var window = new ToolWindow { Width = 420, Height = 260, Content = control };
             window.Show();
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
             UiTest.Capture(window);
 
-            (Visual Visual, string Property, Color Colour)[] strays = Painted(control)
-                .Where(p => !palette.Contains(p.Colour))
-                .ToArray();
+            string[] strays = PaletteSweep.Strays(control);
 
             window.Close();
 
             Assert.True(strays.Length == 0,
                 $"{kind} paints {strays.Length} colour(s) that are not in LunaPalette, so it renders in "
                 + "FluentTheme's palette rather than this toolkit's:"
-                + Environment.NewLine
-                + string.Join(Environment.NewLine, strays
-                    .Select(p => $"  {p.Visual.GetType().Name}.{p.Property} = {p.Colour}")
-                    .Distinct())
+                + Environment.NewLine + "  " + string.Join(Environment.NewLine + "  ", strays)
                 + Environment.NewLine
                 + "Style it in Theme/Controls/FormControls.axaml and list that file in LunaTheme.axaml. "
                 + "See docs/LunaP.md §48.");

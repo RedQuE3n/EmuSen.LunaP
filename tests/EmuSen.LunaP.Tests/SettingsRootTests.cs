@@ -65,8 +65,8 @@ namespace EmuSen.LunaP.Tests
         public void A_real_application_still_gets_a_folder_under_the_per_user_config_directory()
         {
             Assert.Equal(
-                Path.Combine(ConfigRoot, "Hotaru"),
-                JsonSettingsStore.ForApplication("Hotaru").Directory(null));
+                Path.Combine(ConfigRoot, "PhotoDesk"),
+                JsonSettingsStore.ForApplication("PhotoDesk").Directory(null));
         }
 
         // The divert is stated rather than silent, for a host that installed somewhere to state it
@@ -112,8 +112,8 @@ namespace EmuSen.LunaP.Tests
         [InlineData("dotnet-vstest", true)]
         // Applications. The third is what Microsoft.Testing.Platform reports - the test project
         // itself, which is already distinct per project and must not be diverted.
-        [InlineData("Hotaru", false)]
-        [InlineData("EmuSen.Mistress", false)]
+        [InlineData("PhotoDesk", false)]
+        [InlineData("Acme.PhotoDesk", false)]
         [InlineData("EmuSen.LunaP.Tests", false)]
         // The bare-StartsWith bug, pinned as a case so it cannot come back. Both of these matched
         // before the rule was tightened, and the first is a name an application could plausibly have.
@@ -156,16 +156,21 @@ namespace EmuSen.LunaP.Tests
                 ISettingsStore? original = LunaSettings.Store;
                 string key = "settings-root-probe-" + Guid.NewGuid().ToString("N");
 
+                // Exactly what a consumer who configures nothing gets. Held as the CONCRETE type,
+                // and outside the try because the finally needs it too: since §86.11 a directory is
+                // a property of a file-backed store rather than of the seam, so a settings store no
+                // longer has to be a filesystem in order to be one.
+                var store = JsonSettingsStore.ForApplication();
+
                 try
                 {
-                    // Exactly what a consumer who configures nothing gets.
-                    LunaSettings.Store = JsonSettingsStore.ForApplication();
+                    LunaSettings.Store = store;
 
                     var window = new ToolWindow { Width = 300, Height = 200, WindowKey = key };
                     window.Show();
                     window.Close();
 
-                    string root = LunaSettings.Store.Directory(null);
+                    string root = store.Directory(null);
                     string written = Path.Combine(root, WindowPlacementStore.FileName);
 
                     Assert.True(File.Exists(written),
@@ -186,7 +191,7 @@ namespace EmuSen.LunaP.Tests
                     // assertions above pass - which means the file has to be removed here, or every
                     // run leaves another entry behind. Leaving litter in a bin directory while
                     // testing a fix for litter in a config directory would be a poor joke.
-                    string diverted = LunaSettings.Store.Directory(null);
+                    string diverted = store.Directory(null);
                     LunaSettings.Store = original!;
 
                     if (Directory.Exists(diverted)) Directory.Delete(diverted, recursive: true);
@@ -202,7 +207,7 @@ namespace EmuSen.LunaP.Tests
 
             try
             {
-                JsonSettingsStore.ForApplication("Hotaru");
+                JsonSettingsStore.ForApplication("PhotoDesk");
             }
             finally
             {

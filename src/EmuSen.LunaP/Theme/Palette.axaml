@@ -83,8 +83,9 @@
             <Color x:Key="LunaSuccessColor">#2E8B57</Color>
             <Color x:Key="LunaInfoColor">#DAA520</Color>
 
-            <!-- The load ramp: what "getting busy" looks like, so the GUI
-                 dashboards and DianaOS's own ColoredBar never disagree - §2.2. -->
+            <!-- The load ramp: what "getting busy" looks like, so a graphical
+                 dashboard and the terminal tool it mirrors never disagree about
+                 what counts as hot - §2.2. -->
             <Color x:Key="LunaNominalColor">#32CD32</Color>
             <Color x:Key="LunaBusyColor">#FFD700</Color>
             <Color x:Key="LunaHotColor">#FF4500</Color>

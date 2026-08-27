@@ -40,31 +40,31 @@ namespace EmuSen.LunaP.Tests
             if (Directory.Exists(_configDir)) Directory.Delete(_configDir, recursive: true);
         }
 
-        private sealed record Field(string Name, string Type, int Page);
+        private sealed record Ingredient(string Name, string Kind, int Step);
 
-        private static readonly Field[] Fields =
+        private static readonly Ingredient[] Ingredients =
         {
-            new("Beta", "text", 20),
-            new("Alpha", "text", 30),
-            new("Gamma", "text", 10),
+            new("Beta", "dry", 20),
+            new("Alpha", "dry", 30),
+            new("Gamma", "dry", 10),
         };
 
-        private static LunaTable<Field> Make(string? key)
+        private static LunaTable<Ingredient> Make(string? key)
         {
-            var table = new LunaTable<Field>();
+            var table = new LunaTable<Ingredient>();
             table.Column("name", f => f.Name, "2*")
-                 .Column("type", f => f.Type, "Auto")
-                 .Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
+                 .Column("kind", f => f.Kind, "Auto")
+                 .Column(new LunaColumn<Ingredient>("step", f => f.Step.ToString())
                  {
                      Width = "40",
-                     Sort = (a, b) => a.Page.CompareTo(b.Page),
+                     Sort = (a, b) => a.Step.CompareTo(b.Step),
                  });
             table.TableKey = key;
-            table.Refresh(Fields);
+            table.Refresh(Ingredients);
             return table;
         }
 
-        private static void Shown(LunaTable<Field> table, Action<LunaTable<Field>> body)
+        private static void Shown(LunaTable<Ingredient> table, Action<LunaTable<Ingredient>> body)
         {
             var window = new ToolWindow { Width = 500, Height = 300, Content = table };
             window.Show();
@@ -74,7 +74,7 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         }
 
-        private static Button Heading(LunaTable<Field> table, string text) =>
+        private static Button Heading(LunaTable<Ingredient> table, string text) =>
             table.FindNamed<Grid>("PART_Header").Children.OfType<Button>()
                 .First(b => b.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == text));
 
@@ -88,10 +88,10 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task A_table_with_no_key_is_never_written_down() => Session.Dispatch(() =>
         {
-            LunaTable<Field> table = Make(null);
+            LunaTable<Ingredient> table = Make(null);
             Shown(table, t =>
             {
-                Click(Heading(t, "pg"));
+                Click(Heading(t, "step"));
                 t.SaveNow();
             });
 
@@ -102,20 +102,20 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task A_sort_the_user_left_comes_back() => Session.Dispatch(() =>
         {
-            Shown(Make("fields"), t =>
+            Shown(Make("ingredients"), t =>
             {
-                Click(Heading(t, "pg"));
-                Click(Heading(t, "pg"));
+                Click(Heading(t, "step"));
+                Click(Heading(t, "step"));
                 t.SaveNow();
 
                 Assert.Equal(new[] { "Alpha", "Beta", "Gamma" }, t.Models.Select(f => f.Name));
             });
 
-            TableLayout saved = TableLayoutStore.Load("fields")!;
-            Assert.Equal("pg", saved.SortedBy);
+            TableLayout saved = TableLayoutStore.Load("ingredients")!;
+            Assert.Equal("step", saved.SortedBy);
             Assert.True(saved.Descending);
 
-            Shown(Make("fields"), t =>
+            Shown(Make("ingredients"), t =>
                 Assert.Equal(new[] { "Alpha", "Beta", "Gamma" }, t.Models.Select(f => f.Name)));
         }, default);
 
@@ -132,15 +132,15 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task A_sort_survives_a_window_closing_without_anyone_asking_it_to() => Session.Dispatch(() =>
         {
-            Shown(Make("fields"), t => Click(Heading(t, "pg")));
+            Shown(Make("ingredients"), t => Click(Heading(t, "step")));
 
-            TableLayout? saved = TableLayoutStore.Load("fields");
+            TableLayout? saved = TableLayoutStore.Load("ingredients");
 
             Assert.NotNull(saved);
-            Assert.Equal("pg", saved!.SortedBy);
+            Assert.Equal("step", saved!.SortedBy);
             Assert.False(saved.Descending);
 
-            Shown(Make("fields"), t =>
+            Shown(Make("ingredients"), t =>
                 Assert.Equal(new[] { "Gamma", "Beta", "Alpha" }, t.Models.Select(f => f.Name)));
         }, default);
 
@@ -149,12 +149,12 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task A_sort_set_in_code_is_remembered_like_a_clicked_one() => Session.Dispatch(() =>
         {
-            Shown(Make("fields"), t => t.SortBy(2, descending: true));
+            Shown(Make("ingredients"), t => t.SortBy(2, descending: true));
 
-            TableLayout? saved = TableLayoutStore.Load("fields");
+            TableLayout? saved = TableLayoutStore.Load("ingredients");
 
             Assert.NotNull(saved);
-            Assert.Equal("pg", saved!.SortedBy);
+            Assert.Equal("step", saved!.SortedBy);
             Assert.True(saved.Descending);
         }, default);
 
@@ -167,21 +167,21 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task A_layout_whose_columns_no_longer_match_is_ignored() => Session.Dispatch(() =>
         {
-            Shown(Make("fields"), t =>
+            Shown(Make("ingredients"), t =>
             {
-                Click(Heading(t, "pg"));
+                Click(Heading(t, "step"));
                 t.SaveNow();
             });
 
-            var narrower = new LunaTable<Field>();
+            var narrower = new LunaTable<Ingredient>();
             narrower.Column("name", f => f.Name, "2*")
-                    .Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
+                    .Column(new LunaColumn<Ingredient>("step", f => f.Step.ToString())
                     {
                         Width = "40",
-                        Sort = (a, b) => a.Page.CompareTo(b.Page),
+                        Sort = (a, b) => a.Step.CompareTo(b.Step),
                     });
-            narrower.TableKey = "fields";
-            narrower.Refresh(Fields);
+            narrower.TableKey = "ingredients";
+            narrower.Refresh(Ingredients);
 
             Shown(narrower, t =>
             {
@@ -195,18 +195,18 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task A_sort_on_a_column_that_is_no_longer_sortable_is_dropped() => Session.Dispatch(() =>
         {
-            Shown(Make("fields"), t =>
+            Shown(Make("ingredients"), t =>
             {
-                Click(Heading(t, "pg"));
+                Click(Heading(t, "step"));
                 t.SaveNow();
             });
 
-            var plain = new LunaTable<Field>();
+            var plain = new LunaTable<Ingredient>();
             plain.Column("name", f => f.Name, "2*")
-                 .Column("type", f => f.Type, "Auto")
-                 .Column("pg", f => f.Page.ToString(), "40");
-            plain.TableKey = "fields";
-            plain.Refresh(Fields);
+                 .Column("kind", f => f.Kind, "Auto")
+                 .Column("step", f => f.Step.ToString(), "40");
+            plain.TableKey = "ingredients";
+            plain.Refresh(Ingredients);
 
             Shown(plain, t =>
             {
@@ -221,7 +221,7 @@ namespace EmuSen.LunaP.Tests
                 // pointing at an unsortable column re-saves that column as the sorted one, and the
                 // entry outlives every release that could have used it. §46.3.
                 t.SaveNow();
-                Assert.Null(TableLayoutStore.Load("fields")!.SortedBy);
+                Assert.Null(TableLayoutStore.Load("ingredients")!.SortedBy);
             });
         }, default);
 
@@ -231,28 +231,28 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task A_saved_layout_is_restored_whichever_order_it_is_set_in() => Session.Dispatch(() =>
         {
-            Shown(Make("fields"), t =>
+            Shown(Make("ingredients"), t =>
             {
-                Click(Heading(t, "pg"));
+                Click(Heading(t, "step"));
                 t.SaveNow();
             });
 
             // Key first, columns after - the object-initializer shape.
-            var keyFirst = new LunaTable<Field> { TableKey = "fields" };
+            var keyFirst = new LunaTable<Ingredient> { TableKey = "ingredients" };
             keyFirst.Column("name", f => f.Name, "2*")
-                    .Column("type", f => f.Type, "Auto")
-                    .Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
+                    .Column("kind", f => f.Kind, "Auto")
+                    .Column(new LunaColumn<Ingredient>("step", f => f.Step.ToString())
                     {
                         Width = "40",
-                        Sort = (a, b) => a.Page.CompareTo(b.Page),
+                        Sort = (a, b) => a.Step.CompareTo(b.Step),
                     });
-            keyFirst.Refresh(Fields);
+            keyFirst.Refresh(Ingredients);
 
             Shown(keyFirst, t =>
                 Assert.Equal(new[] { "Gamma", "Beta", "Alpha" }, t.Models.Select(f => f.Name)));
 
             // Columns first, key after - what Make does.
-            Shown(Make("fields"), t =>
+            Shown(Make("ingredients"), t =>
                 Assert.Equal(new[] { "Gamma", "Beta", "Alpha" }, t.Models.Select(f => f.Name)));
         }, default);
 
@@ -271,13 +271,13 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task A_saved_layout_reaches_columns_added_after_the_template() => Session.Dispatch(() =>
         {
-            Shown(Make("fields"), t =>
+            Shown(Make("ingredients"), t =>
             {
-                Click(Heading(t, "pg"));
+                Click(Heading(t, "step"));
                 t.SaveNow();
             });
 
-            var late = new LunaTable<Field> { TableKey = "fields" };
+            var late = new LunaTable<Ingredient> { TableKey = "ingredients" };
             var window = new ToolWindow { Width = 500, Height = 300, Content = late };
             window.Show();
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
@@ -285,13 +285,13 @@ namespace EmuSen.LunaP.Tests
             // The template exists and the table has no columns yet. Everything below happens after
             // OnPartsAttached has been and gone.
             late.Column("name", f => f.Name, "2*")
-                .Column("type", f => f.Type, "Auto")
-                .Column(new LunaColumn<Field>("pg", f => f.Page.ToString())
+                .Column("kind", f => f.Kind, "Auto")
+                .Column(new LunaColumn<Ingredient>("step", f => f.Step.ToString())
                 {
                     Width = "40",
-                    Sort = (a, b) => a.Page.CompareTo(b.Page),
+                    Sort = (a, b) => a.Step.CompareTo(b.Step),
                 });
-            late.Refresh(Fields);
+            late.Refresh(Ingredients);
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
             UiTest.Capture(window);
 
@@ -305,7 +305,7 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task A_dragged_width_comes_back_and_an_untouched_one_stays_relative() => Session.Dispatch(() =>
         {
-            Shown(Make("fields"), t =>
+            Shown(Make("ingredients"), t =>
             {
                 Grid header = t.FindNamed<Grid>("PART_Header");
                 header.ColumnDefinitions[0].Width = new GridLength(150);
@@ -317,10 +317,10 @@ namespace EmuSen.LunaP.Tests
                 t.SaveNow();
             });
 
-            TableLayout saved = TableLayoutStore.Load("fields")!;
+            TableLayout saved = TableLayoutStore.Load("ingredients")!;
             Assert.Equal(new[] { "150", "Auto", "40" }, saved.Widths);
 
-            Shown(Make("fields"), t =>
+            Shown(Make("ingredients"), t =>
             {
                 Grid header = t.FindNamed<Grid>("PART_Header");
                 Assert.True(header.ColumnDefinitions[0].Width.IsAbsolute);
@@ -334,13 +334,13 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task A_layout_with_an_unparseable_width_is_refused_whole() => Session.Dispatch(() =>
         {
-            TableLayoutStore.Update("fields", layout =>
+            TableLayoutStore.Update("ingredients", layout =>
             {
                 layout.Widths = new System.Collections.Generic.List<string> { "150", "not-a-width", "40" };
-                layout.SortedBy = "pg";
+                layout.SortedBy = "step";
             });
 
-            Shown(Make("fields"), t =>
+            Shown(Make("ingredients"), t =>
             {
                 Grid header = t.FindNamed<Grid>("PART_Header");
 
@@ -355,13 +355,13 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public Task Every_resize_grip_can_be_found_and_named() => Session.Dispatch(() =>
         {
-            Shown(Make("fields"), t =>
+            Shown(Make("ingredients"), t =>
             {
                 GridSplitter[] grips = t.FindNamed<Grid>("PART_Header").Children.OfType<GridSplitter>().ToArray();
 
                 // Two, not three: no grip after the last column, because nothing is to its right.
                 Assert.Equal(2, grips.Length);
-                Assert.Equal(new[] { "Resize name", "Resize type" },
+                Assert.Equal(new[] { "Resize name", "Resize kind" },
                     grips.Select(AutomationProperties.GetName));
                 Assert.All(grips, g => Assert.True(g.Focusable));
             });

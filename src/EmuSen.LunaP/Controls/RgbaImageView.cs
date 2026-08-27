@@ -29,9 +29,10 @@ namespace EmuSen.LunaP.Controls
         // irregular banding; on anything that scrolls or moves, the tall rows travel through the
         // picture and it shimmers.
         //
-        // Rounding the factor down to 4x and centring what is left is what every emulator frontend
-        // ends up doing, and it is why this is opt-in rather than automatic: it trades screen area
-        // for evenness, and a tile viewer in a small panel would rather have the area.
+        // Rounding the factor down to 4x and centring what is left is what anything showing a small
+        // fixed-size frame at a large size ends up doing, and it is why this is opt-in rather than
+        // automatic: it trades screen area for evenness, and a thumbnail in a small panel would
+        // rather have the area.
         public static readonly StyledProperty<bool> IntegerScaleProperty =
             AvaloniaProperty.Register<RgbaImageView, bool>(nameof(IntegerScale));
 
@@ -42,15 +43,15 @@ namespace EmuSen.LunaP.Controls
 
         // DEFAULTS TO None, WHICH DOES NOT SCALE AT ALL - one bitmap pixel to one layout pixel, and
         // the frame cropped by the control's bounds rather than fitted to them. That is what a
-        // pixel-accurate view of a framebuffer wants, and it is why the template pins
+        // pixel-accurate view of a pixel buffer wants, and it is why the template pins
         // BitmapInterpolationMode to None beside it: scaling and smoothing are the two ways a
-        // framebuffer stops being the thing that was rendered.
+        // buffer stops being the thing that was rendered.
         //
         // This summary said "defaults to preserving the aspect ratio" until §52. That describes
         // Uniform, which is a different member and a different picture - it fits the frame to the
         // control and letterboxes it. The value was always right; the sentence named the wrong one,
         // and it is a /// summary, so it was what a consumer's IntelliSense showed.
-        /// <summary>How the frame fills the control. Defaults to Stretch.None, which does not scale: one bitmap pixel to one layout pixel, which is what a pixel-accurate view of a framebuffer needs.</summary>
+        /// <summary>How the frame fills the control. Defaults to Stretch.None, which does not scale: one bitmap pixel to one layout pixel, which is what a pixel-accurate view of a pixel buffer needs.</summary>
         public Stretch Stretch
         {
             get => GetValue(StretchProperty);
@@ -182,8 +183,8 @@ namespace EmuSen.LunaP.Controls
         // about memory this control is about to read. Get them wrong and it reads past the buffer -
         // which is a crash at best and somebody else's pixels at worst.
         //
-        // It exists because the alternative for a caller whose frame is already in native memory - an
-        // emulator core's framebuffer, a decoder's output - was to marshal it into a managed array so
+        // It exists because the alternative for a caller whose frame is already in native memory - a
+        // decoder's output, a capture device, a scanner - was to marshal it into a managed array so
         // that this control could copy it straight back out again. Two copies to avoid a pointer.
         /// <summary>Shows a frame of raw pixels straight from unmanaged memory, without copying them into a managed array first.</summary>
         /// <param name="rgba">The address of the first pixel. Four bytes each in R, G, B, A order, row by row from the top. Read immediately and not retained.</param>

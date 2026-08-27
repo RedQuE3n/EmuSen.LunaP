@@ -350,15 +350,15 @@ namespace EmuSen.LunaP.Tests
         // And a tree does, because there it means something a caller can perform: reparent.
         [Fact]
         public Task A_tree_reports_a_drop_into_the_middle_of_a_row_as_a_reparent() => Realised(
-            () => Table(new[] { new Row("roms", new Row("smw")), new Row("saves") }, tree: true),
+            () => Table(new[] { new Row("photos", new Row("IMG_4021")), new Row("scans") }, tree: true),
             table =>
             {
                 var heard = new List<string>();
                 table.RowDropped += drop => heard.Add(Report(drop));
 
-                Drag(table, "saves", In(table, "roms", 0.5));
+                Drag(table, "scans", In(table, "photos", 0.5));
 
-                Assert.Equal(new[] { "saves Inside roms" }, heard);
+                Assert.Equal(new[] { "scans Inside photos" }, heard);
             });
 
         // ---- the keyboard, which §24 makes a requirement and not a nicety ----

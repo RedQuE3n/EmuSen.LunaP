@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -36,7 +35,7 @@ namespace EmuSen.LunaP.Theme
         /// <summary>The file the chosen theme name is remembered in.</summary>
         public const string ChoiceFileName = "luna.json";
 
-        // The category the themes folder is, which is also the shape cheats/<name>.json already uses - see `man hier`.
+        // The category the themes folder is: one <name>.json per theme, under the settings root.
         /// <summary>The settings category theme files are read from.</summary>
         public const string ThemeCategory = "themes";
 
@@ -97,27 +96,55 @@ namespace EmuSen.LunaP.Theme
             root.Content = content;
         }
 
-        // NOT created by asking - Available guards with Exists below for exactly that reason, and a
-        // fresh install has no themes folder until something writes one. It said "created on
-        // demand" until §80.3. A consumer telling a user where to drop a theme file should create
-        // it: System.IO.Directory.CreateDirectory(LunaTheme.Directory).
-        /// <summary>The folder theme files are read from, whether or not it exists yet.</summary>
-        public static string Directory => LunaSettings.Store.Directory(ThemeCategory);
+        // THE SEAM, AND KNOWINGLY A THIRD PROCESS-GLOBAL OF THE SAME FAMILY AS LunaSettings.Store.
+        //
+        // Worth naming rather than hiding: §86.3 records that filling a seam from ambient static
+        // state is the thing this toolkit gets wrong, and this pass adds one more of them. Pass 2's
+        // job is separating two responsibilities that were fused into one interface; where a seam
+        // is installed FROM is pass 3's question and it threads all of them together. Doing both at
+        // once makes one change nobody can review.
+        //
+        // Latched on first use rather than at type load, so a host that assigns one at startup is
+        // never a moment too late - the same arrangement, and the same reason, as LunaSettings.Store.
+        /// <summary>Where theme files are read from. Defaults to a FolderThemeSource over the application's themes folder. Process-global: set it once at startup.</summary>
+        public static IThemeSource Source
+        {
+            get => _source ??= new FolderThemeSource(JsonSettingsStore.ForApplication().Directory(ThemeCategory));
+            set => _source = value;
+        }
 
-        // Built-in first, then whatever is on disk, alphabetically. A name is listed once however many formats spell it.
-        /// <summary>The themes a user can choose, found by looking in the themes folder.</summary>
-        /// <returns>BuiltIn first, then each theme file found, by name without its extension. A name present as both .axaml and .css appears once.</returns>
+        private static IThemeSource? _source;
+
+        // NARROWED AT §86.11, AND THE SUMMARY SAYS SO RATHER THAN THE CHANGE BEING SILENT.
+        //
+        // This was `LunaSettings.Store.Directory(ThemeCategory)`, so the themes folder followed
+        // whatever settings store a host had installed. That linkage is what made ISettingsStore
+        // demand a filesystem (§86.5). Themes now come from `Source`, which need not be a folder at
+        // all - so this answers the folder when it is one and empty when it is not.
+        //
+        // A consumer that wants the folder AND wants to create it should hold a FolderThemeSource
+        // and call EnsureExists. The folder is still not created by asking, which is what §80.3
+        // corrected the old summary to say.
+        /// <summary>The folder theme files are read from when Source is a FolderThemeSource, whether or not it exists yet. Empty when Source is not a folder.</summary>
+        public static string Directory => (Source as FolderThemeSource)?.Folder ?? string.Empty;
+
+        // Built-in first, then whatever the source offers. A name is listed once however many formats spell it.
+        /// <summary>The themes a user can choose, found by asking Source what it has.</summary>
+        /// <returns>BuiltIn first, then each theme the source offers, by name without its extension. A name present as both .axaml and .css appears once.</returns>
         public static IReadOnlyList<string> Available()
         {
             var names = new List<string> { BuiltIn };
-            if (!System.IO.Directory.Exists(Directory)) return names;
-
-            names.AddRange(Extensions
-                .SelectMany(ext => System.IO.Directory.EnumerateFiles(Directory, "*" + ext))
-                .Select(Path.GetFileNameWithoutExtension)
-                .Where(n => !string.IsNullOrEmpty(n) && !string.Equals(n, BuiltIn, StringComparison.OrdinalIgnoreCase))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)!);
+            try
+            {
+                names.AddRange(Source.Names()
+                    .Where(n => !string.IsNullOrEmpty(n) && !string.Equals(n, BuiltIn, StringComparison.OrdinalIgnoreCase)));
+            }
+            catch (Exception ex)
+            {
+                // A source that throws must not take the theme menu with it. An application that
+                // cannot list themes should still open, still offer BuiltIn, and say why not.
+                LunaSettings.Report($"{Source.Origin}: {ex.Message} No themes could be listed.");
+            }
 
             return names;
         }
@@ -160,14 +187,8 @@ namespace EmuSen.LunaP.Theme
                 return true;
             }
 
-            string? path = Resolve(name);
-            if (path is null)
-            {
-                LunaSettings.Report($"theme '{name}' not found in {Directory}.");
-                return false;
-            }
-
-            if (Read(path) is not { } content) return false;
+            if (Opened(name) is not { } document) return false;
+            if (Read(document) is not { } content) return false;
 
             (ResourceDictionary loaded, Styles? styles) = content;
             bool touchedStyles = Remove(app);
@@ -189,33 +210,49 @@ namespace EmuSen.LunaP.Theme
             return true;
         }
 
-        // The first format that exists wins; a theme is one name, whatever it is written in.
-        private static string? Resolve(string name) =>
-            Extensions.Select(ext => Path.Combine(Directory, name + ext)).FirstOrDefault(File.Exists);
-
-        private static (ResourceDictionary Resources, Styles? Styles)? Read(string path)
+        // TWO WAYS TO GET NOTHING, REPORTED DIFFERENTLY, because they need different things from
+        // the person reading the message: "there is no theme by that name" is a name to correct,
+        // "the source threw" is something broken.
+        private static ThemeDocument? Opened(string name)
         {
             try
             {
-                return Path.GetExtension(path).Equals(CssExtension, StringComparison.OrdinalIgnoreCase)
-                    ? ReadCss(path)
-                    : AvaloniaRuntimeXamlLoader.Load(File.ReadAllText(path)) is ResourceDictionary dictionary
+                ThemeDocument? document = Source.Open(name);
+                if (document is null) LunaSettings.Report($"theme '{name}' not found in {Source.Origin}.");
+                return document;
+            }
+            catch (Exception ex)
+            {
+                // A source that cannot be read must never take the program down with it - the same
+                // rule that has always applied to a broken theme file.
+                LunaSettings.Report($"{Source.Origin}: {ex.Message} Falling back to the previous theme.");
+                return null;
+            }
+        }
+
+        private static (ResourceDictionary Resources, Styles? Styles)? Read(ThemeDocument document)
+        {
+            try
+            {
+                return document.Format.Equals(CssExtension, StringComparison.OrdinalIgnoreCase)
+                    ? ReadCss(document)
+                    : AvaloniaRuntimeXamlLoader.Load(document.Text) is ResourceDictionary dictionary
                         ? (dictionary, null)
-                        : Reported(path, "the file is not a ResourceDictionary");
+                        : Reported(document.Origin, "the file is not a ResourceDictionary");
             }
             catch (Exception ex)
             {
                 // A broken theme must never take the program down with it - the same rule Galaxia applies to config.
-                return Reported(path, ex.Message);
+                return Reported(document.Origin, ex.Message);
             }
         }
 
-        private static (ResourceDictionary, Styles?) ReadCss(string path)
+        private static (ResourceDictionary, Styles?) ReadCss(ThemeDocument document)
         {
-            CssThemeResult css = CssTheme.Parse(File.ReadAllText(path));
+            CssThemeResult css = CssTheme.Parse(document.Text);
 
             // Skipped rules are reported but do not refuse the theme - see docs/LunaP.md §12.2.
-            if (css.Warnings.Count > 0) LunaSettings.Report($"{path}: {string.Join(" ", css.Warnings)}");
+            if (css.Warnings.Count > 0) LunaSettings.Report($"{document.Origin}: {string.Join(" ", css.Warnings)}");
 
             return (css.Resources, css.Styles);
         }

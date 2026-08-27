@@ -225,7 +225,7 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public void A_menu_walks_its_submenus_and_skips_separators()
         {
-            var nested = new LunaMenu("Recent", new LunaAction("smw.sfc"), new LunaAction("zelda.sfc"));
+            var nested = new LunaMenu("Recent", new LunaAction("IMG_4021.CR2"), new LunaAction("IMG_4022.JPG"));
             var file = new LunaMenu("File",
                 new LunaAction("Open"),
                 LunaAction.Separator(),
@@ -234,7 +234,7 @@ namespace EmuSen.LunaP.Tests
 
             string[] names = file.Commands().Select(a => a.Text).ToArray();
 
-            Assert.Equal(new[] { "Open", "Recent", "smw.sfc", "zelda.sfc", "Quit" }, names);
+            Assert.Equal(new[] { "Open", "Recent", "IMG_4021.CR2", "IMG_4022.JPG", "Quit" }, names);
         }
 
         [Fact]
@@ -338,6 +338,79 @@ namespace EmuSen.LunaP.Tests
             Assert.Single(bound);
             Assert.Empty(_diagnostics);
         }, default);
+
+        // HasHandler - see docs/LunaP.md §84.1. The question a consumer could not ask until 0.11.0,
+        // and the reason it wanted to: a shell taken before its features has menus with items still
+        // being added to them, and a placeholder that does nothing is the predictable mistake.
+        [Fact]
+        public void An_action_with_nothing_to_run_says_so()
+        {
+            Assert.False(new LunaAction("Export").HasHandler);
+            Assert.False(new LunaAction("Export", (Action<LunaAction>?)null).HasHandler);
+        }
+
+        [Fact]
+        public void Either_constructor_counts_as_a_handler()
+        {
+            Assert.True(new LunaAction("Save", () => { }).HasHandler);
+            Assert.True(new LunaAction("Save", _ => { }).HasHandler);
+        }
+
+        // The other path into the action. A caller that constructs an action bare and subscribes
+        // afterwards has wired it just as surely, and a sweep that missed this would report working
+        // menus as broken - which is worse than not having the sweep, because it would be turned off.
+        [Fact]
+        public void Subscribing_to_Invoked_counts_too()
+        {
+            var action = new LunaAction("Save");
+            Assert.False(action.HasHandler);
+
+            action.Invoked += _ => { };
+
+            Assert.True(action.HasHandler);
+        }
+
+        // WIRING, NOT STATE, and this is the case that pins the distinction. A disabled placeholder
+        // is still a placeholder; if disabling an action made it answer false, every sweep would
+        // pass over exactly the items most likely to be unfinished.
+        [Fact]
+        public void A_disabled_action_still_has_its_handler()
+        {
+            var action = new LunaAction("Save", () => { }) { IsEnabled = false };
+
+            Assert.True(action.HasHandler);
+        }
+
+        // Both legitimately have nothing to run, so both answer false, and a caller sweeping a menu
+        // skips them before asking. Pinned so that neither is "fixed" into answering true.
+        [Fact]
+        public void A_separator_and_a_submenu_owner_have_no_handler()
+        {
+            Assert.False(LunaAction.Separator().HasHandler);
+
+            var owner = new LunaAction("Theme") { Submenu = new LunaMenu("Theme", new[] { new LunaAction("Built-in", () => { }) }) };
+            Assert.False(owner.HasHandler);
+        }
+
+        // The guard this exists for, written the way a consumer writes it. Menus.Commands returns a
+        // submenu owner before the actions it contains (§82.2), so the skip is part of the idiom.
+        [Fact]
+        public void A_menu_can_be_swept_for_items_that_do_nothing()
+        {
+            var menu = new LunaMenu("File", new[]
+            {
+                new LunaAction("Open", () => { }),
+                LunaAction.Separator(),
+                new LunaAction("Export"),          // the placeholder
+            });
+
+            string[] dead = menu.Commands()
+                .Where(a => !a.IsSeparator && a.Submenu is null && !a.HasHandler)
+                .Select(a => a.Text)
+                .ToArray();
+
+            Assert.Equal(new[] { "Export" }, dead);
+        }
 
         [Fact]
         public Task A_context_menu_is_items_and_separators_in_the_order_given() => Session.Dispatch(() =>

@@ -70,7 +70,7 @@ namespace EmuSen.LunaP.Controls
 
         // BrowseTitle is doing double duty now, and it is the right property for it: it already
         // holds the one thing that distinguishes one picker row from another - "Choose a save
-        // folder" rather than "Choose a ROM folder" - and a settings page full of these had no
+        // folder" rather than "Choose an export folder" - and a settings page full of these had no
         // other way to tell them apart. The template hangs the path box's name and the button's
         // help text off it; see docs/LunaP.md §24.2 for why the button's NAME stays "Browse...".
         protected override AutomationPeer OnCreateAutomationPeer() =>
