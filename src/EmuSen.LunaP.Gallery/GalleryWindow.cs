@@ -266,6 +266,58 @@ namespace EmuSen.LunaP.Gallery
                 Second = Ui.Hint("Elastic: takes whatever is left."),
             };
 
+            // A library window and the thing it opens, §88's four controls together because they
+            // only make sense together: a sidebar choosing what the grid shows, and over a "viewer"
+            // the bar that appears when the pointer moves and the notice a button puts up.
+            //
+            // THE GRID HAS A HEIGHT, and it has to. This page is one long vertical stack in a scroll
+            // viewer, so anything in it is offered unbounded height - and a TileGrid offered that
+            // realises every tile, which is the one configuration §88.2 records as defeating it.
+            var albumList = new SourceList { Width = 180 };
+            albumList.Fill(new[]
+            {
+                new SourceListGroup("Library", new[]
+                {
+                    new SourceListItem("all", "All Photos", "40"),
+                    new SourceListItem("starred", "Starred", "6"),
+                }),
+                new SourceListGroup("Albums", new[]
+                {
+                    new SourceListItem("iceland", "Iceland", "24"),
+                    new SourceListItem("studio", "Studio", "16"),
+                }),
+            }, "all");
+            Avalonia.Automation.AutomationProperties.SetName(albumList, "Albums");
+
+            var thumbnails = new TileGrid<string> { TileWidth = 96, TileHeight = 72, Spacing = 12 };
+            var shots = new List<string>();
+            for (int i = 0; i < 40; i++) shots.Add($"IMG_{4000 + i}.JPG");
+            thumbnails.Refresh(shots);
+            thumbnails.Select("IMG_4002.JPG");
+            Avalonia.Automation.AutomationProperties.SetName(thumbnails, "Photos");
+            thumbnails.Activated += shot => Status = $"Opened {shot}.";
+
+            var library = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Height = 220 };
+            library.Children.Add(albumList);
+            Grid.SetColumn(thumbnails, 1);
+            library.Children.Add(thumbnails);
+
+            var viewer = new Border { Background = LunaPalette.Void, Height = 150 };
+            var notice = new NoticeLayer();
+            var hud = new OverlayBar
+            {
+                Watch = viewer,
+                Content = Ui.Row(8,
+                    Ui.Button("Previous", () => { }),
+                    Ui.Button("Pause", () => notice.Show("Slideshow paused")),
+                    Ui.Button("Next", () => { }),
+                    new Slider { Minimum = 0, Maximum = 100, Value = 30, Width = 120 }),
+            };
+            var stage = new Grid();
+            stage.Children.Add(viewer);
+            stage.Children.Add(hud);
+            stage.Children.Add(notice);
+
             // SAID ON THE PAGE AND NOT ONLY IN A COMMENT, because the reader this line is for is
             // looking at the window rather than at this file. Until §86.15 every sample here was an
             // emulator's, and the leak was found by somebody RUNNING the gallery and recognising a
@@ -342,6 +394,11 @@ namespace EmuSen.LunaP.Gallery
                 }),
 
                 Ui.Section("Table", photos.Height(150)),
+
+                Ui.Section("Library and viewer", Ui.Stack(8,
+                    library,
+                    Ui.Hint("Move the pointer over the picture for its bar; Pause puts up a notice."),
+                    stage)),
 
                 Ui.Section("Split pane", split)).Margin(12));
 

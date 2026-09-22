@@ -1,0 +1,62 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- A scroll viewer and nothing else: the grid puts its own panel inside
+         PART_Scroll, so a host replacing this template keeps virtualisation as
+         long as it keeps a ScrollViewer by that name. Sideways scrolling is off
+         because the columns are computed from the width - a grid that could
+         scroll sideways would be offered infinite width and lay every tile out
+         in one row. §88.2.
+
+         `:is(...)` for the reason LunaTable.axaml gives at length: every
+         instance is a TileGrid<T>, and a bare type selector matches none. -->
+    <Style Selector=":is(luna|TileGrid)">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}">
+                    <ScrollViewer Name="PART_Scroll"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- OpenEmu's selection ring, measured from its OEGridGameCell: a rounded
+         rectangle outset 6 px around the tile, a 4 px stroke, corner radius 3,
+         in the selection colour. The negative margin is what outsets it; the
+         default Spacing of 20 leaves room for two rings to sit side by side
+         without touching. Hidden rather than transparent while unselected, so
+         the palette sweep does not see a stroke that is never drawn. -->
+    <Style Selector="luna|TileGridItem">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <ContentPresenter Name="PART_Content"
+                                      Content="{TemplateBinding Content}"
+                                      HorizontalContentAlignment="Stretch"
+                                      VerticalContentAlignment="Stretch" />
+                    <Border Name="PART_Ring"
+                            Margin="-6"
+                            BorderThickness="4"
+                            CornerRadius="3"
+                            IsHitTestVisible="False"
+                            IsVisible="False" />
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- A style rather than a template attribute, so `luna|TileGridItem.selected
+         /template/ Border#PART_Ring` in a host's styles wins - §39.2's rule. -->
+    <Style Selector="luna|TileGridItem /template/ Border#PART_Ring">
+        <Setter Property="BorderBrush" Value="{DynamicResource LunaAccent}" />
+    </Style>
+
+    <Style Selector="luna|TileGridItem.selected /template/ Border#PART_Ring">
+        <Setter Property="IsVisible" Value="True" />
+    </Style>
+
+</Styles>

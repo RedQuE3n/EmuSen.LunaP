@@ -251,6 +251,68 @@ namespace EmuSen.LunaP.Tests
                         $"{n.Name}{(table.IsExpanded(n) ? "+" : "")}"));
                 }),
 
+            // §88's four. A grid refreshed and selected from a window's constructor must come up with
+            // the tile ringed - the §27.6 shape exactly, for a control whose containers do not exist
+            // until a layout pass has measured the rows in view.
+            new("TileGrid.Refresh/Select",
+                () => new TileGrid<string>(),
+                c =>
+                {
+                    var grid = (TileGrid<string>)c;
+                    grid.Refresh(new[] { "alpha", "beta", "gamma", "delta" });
+                    grid.Select("gamma");
+                },
+                c =>
+                {
+                    var grid = (TileGrid<string>)c;
+                    var tiles = c.GetVisualDescendants().OfType<TileGridItem>().Where(t => t.IsVisible).ToList();
+                    return $"{tiles.Count} tiles, ringed {string.Join("/", tiles.Where(t => t.IsSelected).Select(t => ((TextBlock)t.Content!).Text))}, "
+                        + $"model {grid.Selected}, columns {grid.Columns}";
+                }),
+
+            new("SourceList.Fill",
+                () => new SourceList(),
+                c => ((SourceList)c).Fill(new[]
+                {
+                    new SourceListGroup("Library", new[] { new SourceListItem("all", "All Games", "3") }),
+                    new SourceListGroup("Consoles", new[] { new SourceListItem("snes", "SNES"), new SourceListItem("n64", "N64", "2") }),
+                }, "n64"),
+                c =>
+                {
+                    var rows = c.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("source-row")).ToList();
+                    string selected = string.Join("/", rows.Where(r => r.Classes.Contains("selected"))
+                        .Select(r => r.GetVisualDescendants().OfType<TextBlock>().First().Text));
+                    return $"{rows.Count} rows, painted {selected}, key {((SourceList)c).SelectedKey}";
+                }),
+
+            // State the bar owns - revealed or not, and whether its timer runs - so the template has
+            // nothing to drop; the case is here to prove it rather than to assume it.
+            new("OverlayBar.Reveal/Conceal",
+                () => new OverlayBar { Content = new Button { Content = "Pause" } },
+                c =>
+                {
+                    var bar = (OverlayBar)c;
+                    bar.Reveal();
+                    bar.Conceal();
+                    bar.Reveal();
+                },
+                c =>
+                {
+                    var bar = (OverlayBar)c;
+                    return $"1 bar, revealed {bar.IsRevealed}, :revealed {bar.Classes.Contains(":revealed")}, "
+                        + $"hit-testable {bar.IsHitTestVisible}, pending {bar.IsHidePending}";
+                }),
+
+            new("NoticeLayer.Show",
+                () => new NoticeLayer(),
+                c =>
+                {
+                    var notice = (NoticeLayer)c;
+                    notice.Show("Quick Save");
+                    notice.Show("Quick Load");
+                },
+                c => $"current {((NoticeLayer)c).Current}, part {c.FindNamed<TextBlock>("PART_Text").Text}"),
+
             new("RgbaImageView.SetFrame/Clear",
                 () => new RgbaImageView(),
                 c =>
@@ -378,6 +440,12 @@ namespace EmuSen.LunaP.Tests
             (typeof(ToolBar), nameof(ToolBar.SetActions)),
             (typeof(RgbaImageView), nameof(RgbaImageView.SetFrame)),
             (typeof(RgbaImageView), nameof(RgbaImageView.Clear)),
+            (typeof(TileGrid<>), "Refresh"),
+            (typeof(TileGrid<>), "Select"),
+            (typeof(SourceList), nameof(SourceList.Fill)),
+            (typeof(OverlayBar), nameof(OverlayBar.Reveal)),
+            (typeof(OverlayBar), nameof(OverlayBar.Conceal)),
+            (typeof(NoticeLayer), nameof(NoticeLayer.Show)),
         };
 
         // Methods that carry no state a template could show, each with the reason it is here

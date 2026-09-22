@@ -381,6 +381,36 @@ public class EmuSen.LunaP.Controls.MeterRow : Avalonia.Controls.Primitives.Templ
 public class EmuSen.LunaP.Controls.MonoText : Avalonia.Controls.TextBlock
     public MonoText()
 
+public class EmuSen.LunaP.Controls.NoticeLayer : Avalonia.Controls.Primitives.TemplatedControl
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    public NoticeLayer()
+    public System.TimeSpan Duration { get; set; }
+    public static readonly Avalonia.DirectProperty<EmuSen.LunaP.Controls.NoticeLayer, string?> CurrentProperty
+    public static readonly Avalonia.StyledProperty<System.TimeSpan> DurationProperty = 00:00:01.7500000
+    public string? Current { get; }
+    public void Show(string text)
+
+public class EmuSen.LunaP.Controls.OverlayBar : Avalonia.Controls.ContentControl
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    protected override void OnPointerExited(Avalonia.Input.PointerEventArgs e)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public Avalonia.Controls.Control? Watch { get; set; }
+    public OverlayBar()
+    public System.TimeSpan HideAfter { get; set; }
+    public bool IsHidePending { get; }
+    public bool IsRevealed { get; }
+    public bool KeepOpen { get; set; }
+    public event System.Action<bool> RevealedChanged
+    public static readonly Avalonia.DirectProperty<EmuSen.LunaP.Controls.OverlayBar, bool> IsRevealedProperty
+    public static readonly Avalonia.StyledProperty<Avalonia.Controls.Control?> WatchProperty = null
+    public static readonly Avalonia.StyledProperty<System.TimeSpan> HideAfterProperty = 00:00:01.5000000
+    public static readonly Avalonia.StyledProperty<bool> KeepOpenProperty = false
+    public void Conceal()
+    public void Reveal()
+
 public enum EmuSen.LunaP.Controls.PanelSide
     public const EmuSen.LunaP.Controls.PanelSide Bottom = 2
     public const EmuSen.LunaP.Controls.PanelSide Left = 0
@@ -446,6 +476,41 @@ public class EmuSen.LunaP.Controls.SidePanel : Avalonia.Controls.ContentControl
     public string Title { get; set; }
     public string? PanelKey { get; set; }
 
+public class EmuSen.LunaP.Controls.SourceList : Avalonia.Controls.Primitives.TemplatedControl
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
+    protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
+    protected override void OnPointerPressed(Avalonia.Input.PointerPressedEventArgs e)
+    public SourceList()
+    public event System.Action<string> Chose
+    public string? SelectedKey { get; }
+    public void Fill(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.SourceListGroup> groups, string? selectedKey)
+
+public sealed class EmuSen.LunaP.Controls.SourceListGroup : System.IEquatable<EmuSen.LunaP.Controls.SourceListGroup>
+    public SourceListGroup(string Header, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.SourceListItem> Items)
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.SourceListItem> Items { get; init; }
+    public bool Equals(EmuSen.LunaP.Controls.SourceListGroup? other)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.SourceListGroup? left, EmuSen.LunaP.Controls.SourceListGroup? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.SourceListGroup? left, EmuSen.LunaP.Controls.SourceListGroup? right)
+    public string Header { get; init; }
+    public void Deconstruct(out string Header, out System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.SourceListItem> Items)
+
+public sealed class EmuSen.LunaP.Controls.SourceListItem : System.IEquatable<EmuSen.LunaP.Controls.SourceListItem>
+    public SourceListItem(string Key, string Text, string? Badge = null)
+    public bool Equals(EmuSen.LunaP.Controls.SourceListItem? other)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.SourceListItem? left, EmuSen.LunaP.Controls.SourceListItem? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.SourceListItem? left, EmuSen.LunaP.Controls.SourceListItem? right)
+    public string Key { get; init; }
+    public string Text { get; init; }
+    public string? Badge { get; init; }
+    public void Deconstruct(out string Key, out string Text, out string? Badge)
+
 public class EmuSen.LunaP.Controls.SplitPane : Avalonia.Controls.Primitives.TemplatedControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
@@ -502,6 +567,40 @@ public class EmuSen.LunaP.Controls.Tabs : Avalonia.Controls.TabControl
     public Tabs()
     public const string StyleClass = "luna-tabs"
     public void RemoveFrom(int index)
+
+public abstract class EmuSen.LunaP.Controls.TileGrid : Avalonia.Controls.Primitives.TemplatedControl
+    protected TileGrid()
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public double Spacing { get; set; }
+    public double TileHeight { get; set; }
+    public double TileWidth { get; set; }
+    public int Columns { get; }
+    public static readonly Avalonia.StyledProperty<double> SpacingProperty = 20
+    public static readonly Avalonia.StyledProperty<double> TileHeightProperty = 200
+    public static readonly Avalonia.StyledProperty<double> TileWidthProperty = 160
+
+public class EmuSen.LunaP.Controls.TileGrid<T> : EmuSen.LunaP.Controls.TileGrid where T : class
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
+    protected override void OnPointerPressed(Avalonia.Input.PointerPressedEventArgs e)
+    public System.Action<Avalonia.Controls.Control, T> BindTile { get; set; }
+    public System.Func<Avalonia.Controls.Control> CreateTile { get; set; }
+    public System.Func<T, object?> Key { get; set; }
+    public System.Func<T, string> Label { get; set; }
+    public T? Selected { get; }
+    public TileGrid<T>()
+    public event System.Action<T> Activated
+    public event System.Action<T> Chose
+    public void Refresh(System.Collections.Generic.IReadOnlyList<T> items)
+    public void Select(T? item)
+
+public class EmuSen.LunaP.Controls.TileGridItem : Avalonia.Controls.ContentControl
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    public TileGridItem()
+    public bool IsSelected { get; }
+    public const string SelectedClass = "selected"
 
 public class EmuSen.LunaP.Controls.ToolBar : Avalonia.Controls.ItemsControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
@@ -630,6 +729,7 @@ public static class EmuSen.LunaP.Theme.LunaPalette
     public static readonly Avalonia.Media.ISolidColorBrush Busy
     public static readonly Avalonia.Media.ISolidColorBrush Error
     public static readonly Avalonia.Media.ISolidColorBrush Hot
+    public static readonly Avalonia.Media.ISolidColorBrush HudSurface
     public static readonly Avalonia.Media.ISolidColorBrush Info
     public static readonly Avalonia.Media.ISolidColorBrush InputSurface
     public static readonly Avalonia.Media.ISolidColorBrush MeterText

@@ -82,6 +82,12 @@ namespace EmuSen.LunaP.Tests
                 "16 by default", () => new LunaTable<Row>().IndentSize),
             ("P:EmuSen.LunaP.Controls.LunaTable`1.ExpanderColumn",
                 "The first column by default", () => new LunaTable<Row>().ExpanderColumn),
+
+            ("P:EmuSen.LunaP.Controls.TileGrid.TileWidth", "160 by default", () => new TileGrid<Row>().TileWidth),
+            ("P:EmuSen.LunaP.Controls.TileGrid.TileHeight", "200 by default", () => new TileGrid<Row>().TileHeight),
+            ("P:EmuSen.LunaP.Controls.TileGrid.Spacing", "20 by default", () => new TileGrid<Row>().Spacing),
+            ("P:EmuSen.LunaP.Controls.OverlayBar.HideAfter", "1.5 seconds by default", () => new OverlayBar().HideAfter),
+            ("P:EmuSen.LunaP.Controls.NoticeLayer.Duration", "1.75 seconds by default", () => new NoticeLayer().Duration),
         };
 
         // What each claim's words mean, kept apart from the phrase so that neither can be quietly
@@ -102,6 +108,11 @@ namespace EmuSen.LunaP.Tests
             ["P:EmuSen.LunaP.Controls.LunaTable`1.GridLines"] = LunaGridLines.None,
             ["P:EmuSen.LunaP.Controls.LunaTable`1.IndentSize"] = 16.0,
             ["P:EmuSen.LunaP.Controls.LunaTable`1.ExpanderColumn"] = 0,
+            ["P:EmuSen.LunaP.Controls.TileGrid.TileWidth"] = 160.0,
+            ["P:EmuSen.LunaP.Controls.TileGrid.TileHeight"] = 200.0,
+            ["P:EmuSen.LunaP.Controls.TileGrid.Spacing"] = 20.0,
+            ["P:EmuSen.LunaP.Controls.OverlayBar.HideAfter"] = TimeSpan.FromSeconds(1.5),
+            ["P:EmuSen.LunaP.Controls.NoticeLayer.Duration"] = TimeSpan.FromSeconds(1.75),
         };
 
         // A claim the sweep finds and this file does not check, with the reason it cannot be.

@@ -13,6 +13,32 @@ answer.
 
 ## 0.11.0
 
+**Four new controls for a library window and the game it opens, all additive.** Nothing existing
+changed shape; these are new types, one new palette token, and nothing to migrate. `§88`.
+
+- **`TileGrid<T>`** — a virtualised grid of fixed-size tiles (OpenEmu's cover grid), with `TileWidth`,
+  `TileHeight`, `Spacing`, `CreateTile`/`BindTile`, `Label`, `Key`, `Refresh`, `Select`, `Selected`,
+  `Columns`, and `Chose`/`Activated`. It realises the rows in view plus one either side and reuses its
+  containers: 16 of them for 5,000 items in an 800×600 window, where a `ListBox` over a `WrapPanel`
+  builds 5,000. **Two things to know before using it**: `BindTile` must set everything a tile shows,
+  because a tile control is reused for other items; and the grid needs a bounded height, or it
+  realises every tile. It has two companion public types — `TileGrid`, a non-generic base a style
+  selector can name, and `TileGridItem`, the container that draws the selection ring and carries the
+  `selected` class (`§88.2`).
+- **`SourceList`**, with `SourceListGroup` and `SourceListItem` records — OpenEmu's sidebar: grouped
+  24 px rows under small capital headings, an optional badge, selection by a string key (`§88.3`).
+- **`OverlayBar`** — a bar of controls over another element, revealed by pointer movement over
+  `Watch` and concealed `HideAfter` (1.5 s) later, never while the pointer or focus is on it or
+  `KeepOpen` is set. `Conceal()` hides it regardless (`§88.4`).
+- **`NoticeLayer`** — `Show(text)` fades a notice in and out over `Duration` (1.75 s), and a second
+  call replaces the first. `Current` says what is showing (`§88.5`).
+- **`LunaHudSurface`**, a new palette token (`LunaPalette.HudSurface`, `#E61C1C1C`), the same in both
+  variants. `CssTheme.TokenNames` has 21 entries where it had 20, and `--luna-hud-surface` is valid in
+  a `:root` block. The CSS element vocabulary does **not** include the four new controls.
+
+As in `LunaList<T>`, `Chose` on both lists is raised only by a person — pointer, keyboard, or a
+screen reader's select — never by `Refresh`, `Select` or `Fill`.
+
 **Five findings from one consumer's first week, four of them additive and one that says what the
 0.10.0 audit could not see.** BIMA-C built an application shell on 0.10.0 — `AppWindow`, a menu bar,
 a settings store behind `ISettingsStore` — and reported these against the published surface. `§84`.

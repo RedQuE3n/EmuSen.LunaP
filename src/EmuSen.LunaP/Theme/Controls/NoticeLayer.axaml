@@ -1,0 +1,47 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- Top right with a margin, as OpenEmu places its notifications, and never
+         hit-testable: a notice is something to read in passing, and one that
+         swallowed a click meant for the game under it would be a bug a player
+         meets at the worst moment. The host moves it with the ordinary
+         alignment properties.
+
+         The pill starts at opacity 0, so the control is invisible until the
+         first Show; the fade in NoticeLayer.cs animates it from there. It is the
+         same dark plate as OverlayBar, and resolves its text in the Dark palette
+         for the same reason (§88.4, §88.5).
+
+         Polite, so a reader announces a notice after what it is saying now
+         rather than interrupting it - a quick-save is not an alarm. A host can
+         set AutomationProperties.LiveSetting itself; a style loses to that. -->
+    <Style Selector="luna|NoticeLayer">
+        <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+        <Setter Property="Margin" Value="20" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Background" Value="{DynamicResource LunaHudSurface}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="(AutomationProperties.LiveSetting)" Value="Polite" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ThemeVariantScope RequestedThemeVariant="Dark">
+                    <Border Name="PART_Pill"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}"
+                            Opacity="0">
+                        <TextBlock Name="PART_Text" Text="{TemplateBinding Current}" />
+                    </Border>
+                </ThemeVariantScope>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="luna|NoticeLayer /template/ TextBlock#PART_Text">
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
+    </Style>
+
+</Styles>
