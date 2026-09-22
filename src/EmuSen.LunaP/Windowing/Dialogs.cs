@@ -54,6 +54,21 @@ namespace EmuSen.LunaP.Windowing
         public static async Task MessageAsync(Window owner, string title, string message, string acceptText = "OK") =>
             await DialogWindow.Notice(title, message, acceptText).ShowDialog<bool>(owner);
 
+        // THE FOURTH SMALL MODAL, for the one thing the other three cannot ask: a word. A name for a
+        // new collection, a rename. Null for Cancel, Escape and closing, as Confirm is false for them;
+        // never an empty string, because the accept button waits for text (§89).
+        /// <summary>Asks for one line of text in a modal dialog, such as a name.</summary>
+        /// <param name="owner">The window to sit over. The dialog is modal to it.</param>
+        /// <param name="title">The dialog title.</param>
+        /// <param name="message">What is being asked for. Also the text box's accessible name.</param>
+        /// <param name="initial">The text the box starts with, selected so that typing replaces it.</param>
+        /// <param name="acceptText">The caption of the accepting button, which is disabled while the text is blank.</param>
+        /// <param name="cancelText">The caption of the cancelling button.</param>
+        /// <returns>The text, trimmed and never empty, or null if the dialog was dismissed any other way.</returns>
+        public static async Task<string?> PromptAsync(Window owner, string title, string message, string initial = "",
+            string acceptText = "OK", string cancelText = "Cancel") =>
+            await new PromptWindow(title, message, initial, acceptText, cancelText).ShowDialog<string?>(owner);
+
         // Null means the user cancelled, or the control is not in a window yet.
         /// <summary>Asks the platform for a folder.</summary>
         /// <param name="owner">Any visual in the window the picker should belong to.</param>

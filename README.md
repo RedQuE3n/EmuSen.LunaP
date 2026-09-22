@@ -578,7 +578,7 @@ pixels, under an opt-in `PaneKey`; `Orientation`, `Fixed`, `FixedSize`,
 `PollingWindow` refreshes on a cadence and stops while hidden. `Dialogs` covers
 the small modals and the pickers — `ConfirmAsync` for a question, `MessageAsync`
 for something that is neither a question nor a fault, `ErrorAsync` for one that
-is, plus `PickFileAsync`, `PickFolderAsync` and `SaveFileAsync`, all returning
+is, `PromptAsync` for one line of text (trimmed, never empty, null for cancel), plus `PickFileAsync`, `PickFolderAsync` and `SaveFileAsync`, all returning
 paths rather than storage items. `MessageWindow` is for output too long to be a
 dialog — read-only, selectable, monospaced, and not modal, so it can be left open
 beside whatever produced it. `WindowSlot<T>` holds a one-at-a-time window, with
@@ -936,7 +936,7 @@ not. First place to look if an image comes out sheared (§53.2).
     dotnet build
     dotnet test
 
-**1109 tests, all headless** — no window is ever put on a screen, including for
+**1113 tests, all headless** — no window is ever put on a screen, including for
 the render tests, which drive a real Avalonia control tree through a real Skia
 pass. That figure is checked by the suite itself, because a hand-written count
 of a thing the runner knows is a number that rots: this one said 207 for four
