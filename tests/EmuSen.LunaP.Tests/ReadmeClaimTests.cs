@@ -21,7 +21,7 @@ namespace EmuSen.LunaP.Tests
         public void The_vocabulary_is_the_size_the_readme_says()
         {
             Assert.Equal(22, CssTheme.ElementNames.Count);
-            Assert.Equal(20, CssTheme.TokenNames.Count);
+            Assert.Equal(21, CssTheme.TokenNames.Count);
         }
 
         [Fact]

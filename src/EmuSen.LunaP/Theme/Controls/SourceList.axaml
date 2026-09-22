@@ -1,0 +1,92 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- The rows are built in code and put in PART_Rows, so everything below
+         styles them by class. A host that replaces this template keeps the
+         control working as long as it keeps a StackPanel by that name. §88.3.
+
+         `:is(Border)` AND NOT `Border` before `.source-row`: a row is a
+         Border subclass, and a type selector is an exact match - written as
+         `Border.source-row` every rule below matched nothing, the rows came up
+         20 px high and unpainted, and the first run of SourceListTests is what
+         said so. The §28.1 trap, met here in a selector over code-built
+         children rather than over a generic control. -->
+    <Style Selector="luna|SourceList">
+        <Setter Property="Background" Value="{DynamicResource LunaSurface}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}">
+                    <ScrollViewer Name="PART_Scroll"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel Name="PART_Rows" Margin="0,0,0,8" />
+                    </ScrollViewer>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- Small, bold, muted capitals: the brief's description of OpenEmu's group
+         headings. Its SidebarHeaderView.swift sets no font - the look is in
+         SidebarController.xib, which was not read - so this is the brief's
+         measurement rather than one taken here (§88.1). -->
+    <Style Selector="luna|SourceList TextBlock.source-header">
+        <Setter Property="Foreground" Value="{DynamicResource LunaMuted}" />
+        <Setter Property="FontSize" Value="{DynamicResource LunaHintFontSize}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Margin" Value="12,12,8,4" />
+    </Style>
+
+    <!-- 24 px: OpenEmu's SidebarController answers heightOfRowByItem with 24
+         for every row. Transparent rather than unset so a press anywhere on
+         the row, not only on its text, lands on it. -->
+    <Style Selector="luna|SourceList :is(Border).source-row">
+        <Setter Property="Height" Value="24" />
+        <Setter Property="Padding" Value="20,0,10,0" />
+        <Setter Property="Margin" Value="6,0" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="luna|SourceList TextBlock.source-text">
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
+    </Style>
+
+    <!-- The selected row in the accent, with the text that goes on it. The
+         same pairing a checked CheckBox uses, and held to the same 4.5:1 by
+         PaletteVariantTests (§48.3). -->
+    <Style Selector="luna|SourceList :is(Border).source-row.selected">
+        <Setter Property="Background" Value="{DynamicResource LunaAccent}" />
+    </Style>
+
+    <Style Selector="luna|SourceList :is(Border).source-row.selected TextBlock.source-text">
+        <Setter Property="Foreground" Value="{DynamicResource LunaOnAccent}" />
+    </Style>
+
+    <!-- A count in a pill, as macOS draws a source list's badge: the input
+         surface under body text, and inverted on a selected row so it still
+         reads against the accent. -->
+    <Style Selector="luna|SourceList Border.source-badge">
+        <Setter Property="Background" Value="{DynamicResource LunaInputSurface}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="6,0" />
+        <Setter Property="MinWidth" Value="20" />
+        <Setter Property="Margin" Value="6,0,0,0" />
+    </Style>
+
+    <Style Selector="luna|SourceList TextBlock.source-badge-text">
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
+        <Setter Property="FontSize" Value="{DynamicResource LunaHintFontSize}" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="luna|SourceList :is(Border).source-row.selected Border.source-badge">
+        <Setter Property="Background" Value="{DynamicResource LunaOnAccent}" />
+    </Style>
+
+    <Style Selector="luna|SourceList :is(Border).source-row.selected TextBlock.source-badge-text">
+        <Setter Property="Foreground" Value="{DynamicResource LunaAccent}" />
+    </Style>
+
+</Styles>

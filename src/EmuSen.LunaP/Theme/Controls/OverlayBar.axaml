@@ -1,0 +1,54 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- A dark plate, in whatever variant the window is: the bar floats over a
+         game frame, not over the window, so its content is resolved in the
+         Dark palette by the ThemeVariantScope below - a light-theme button on
+         a dark plate would be dark text on dark. The plate itself is
+         LunaHudSurface, the same in both columns for the same reason (§88.4).
+
+         The plate's look is the brief's (#1C1C1C at 90%, radius 10, padding
+         10,5); OpenEmu draws its bar from an image and GameControlsBarView.swift
+         names no colour, so those figures were not re-measured here. The
+         0.25 s fade is the transition the brief asks for.
+
+         Set as styles on the control and bound into the template, so a host
+         rule on `luna|OverlayBar` reaches them (§39.2). -->
+    <Style Selector="luna|OverlayBar">
+        <Setter Property="Background" Value="{DynamicResource LunaHudSurface}" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="10,5" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Bottom" />
+        <Setter Property="Margin" Value="0,0,0,24" />
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.25" />
+            </Transitions>
+        </Setter>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ThemeVariantScope RequestedThemeVariant="Dark">
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Name="PART_Content"
+                                          Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}" />
+                    </Border>
+                </ThemeVariantScope>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="luna|OverlayBar /template/ ContentPresenter#PART_Content">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource LunaText}" />
+    </Style>
+
+    <Style Selector="luna|OverlayBar:revealed">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+
+</Styles>

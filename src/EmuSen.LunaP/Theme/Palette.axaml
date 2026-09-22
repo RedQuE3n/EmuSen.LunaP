@@ -24,6 +24,15 @@
             <Color x:Key="LunaInputSurfaceColor">#252526</Color>
             <Color x:Key="LunaVoidColor">#000000</Color>
 
+            <!-- The translucent plate a heads-up bar or a notice sits on, OVER
+                 a picture rather than beside one: #1C1C1C at 90% (E6), the
+                 look the brief gives for OpenEmu's in-game bar. Not a surface
+                 of the window, so it does not lighten with the theme - like
+                 LunaVoid, what is under it is a game frame whatever the
+                 desktop's variant, and a light plate over a dark game would
+                 read as a hole. §88.4. -->
+            <Color x:Key="LunaHudSurfaceColor">#E61C1C1C</Color>
+
             <!-- Where one surface stops and the next begins: a card's edge, the
                  rule under a panel header, the divider a splitter is dragged by.
                  The first token in this palette that is neither a surface nor
@@ -104,6 +113,8 @@
                  rather than a surface, and it is black on any desktop for the
                  same reason a cinema's masking is. -->
             <Color x:Key="LunaVoidColor">#000000</Color>
+            <!-- The same plate as the dark column, for LunaVoid's reason. -->
+            <Color x:Key="LunaHudSurfaceColor">#E61C1C1C</Color>
 
             <!-- 3.03:1 on the light surface, 3.36:1 on white. Darkened rather
                  than inverted, the same way every other colour in this column
@@ -140,6 +151,7 @@
     <SolidColorBrush x:Key="LunaSurface" Color="{DynamicResource LunaSurfaceColor}" />
     <SolidColorBrush x:Key="LunaInputSurface" Color="{DynamicResource LunaInputSurfaceColor}" />
     <SolidColorBrush x:Key="LunaVoid" Color="{DynamicResource LunaVoidColor}" />
+    <SolidColorBrush x:Key="LunaHudSurface" Color="{DynamicResource LunaHudSurfaceColor}" />
     <SolidColorBrush x:Key="LunaBorder" Color="{DynamicResource LunaBorderColor}" />
 
     <SolidColorBrush x:Key="LunaText" Color="{DynamicResource LunaTextColor}" />

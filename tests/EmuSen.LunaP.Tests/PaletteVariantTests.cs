@@ -39,6 +39,7 @@ namespace EmuSen.LunaP.Tests
         [Theory]
         [InlineData("LunaSurfaceColor", "#1E1E1E", "#F3F3F3")]
         [InlineData("LunaInputSurfaceColor", "#252526", "#FFFFFF")]
+        [InlineData("LunaHudSurfaceColor", "#E61C1C1C", "#E61C1C1C")]
         [InlineData("LunaBorderColor", "#6E6E6E", "#8C8C8C")]
         [InlineData("LunaTextColor", "#D4D4D4", "#1F1F1F")]
         [InlineData("LunaMeterTextColor", "#DCDCDC", "#2A2A2A")]

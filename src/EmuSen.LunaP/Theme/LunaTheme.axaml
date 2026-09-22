@@ -94,6 +94,13 @@
 
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/ConsolePane.axaml" />
 
+    <!-- A library window and the game in front of it: OpenEmu's cover grid and
+         sidebar, and its in-game bar and notice. §88. -->
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/TileGrid.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/SourceList.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/OverlayBar.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/NoticeLayer.axaml" />
+
     <!-- The form controls a stock Avalonia application is mostly made of. Almost
          all of that work is resource overrides in Theme/FluentBridge.axaml; this
          file is only the handful whose colours no resource key can reach. §48. -->

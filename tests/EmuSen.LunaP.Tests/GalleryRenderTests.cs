@@ -45,6 +45,15 @@ namespace EmuSen.LunaP.Tests
             // either without knowing the gallery's own model type.
             Assert.Equal(1, window.CountParts<LunaTable>());
 
+            // §88's four, the grid counted through its non-generic base for the reason above. The
+            // grid's tiles are asserted realised and bounded: the gallery's is 40 photos in a 220px
+            // strip, so a count of 40 would mean the height it is given stopped reaching it.
+            Assert.Equal(1, window.CountParts<TileGrid>());
+            Assert.Equal(1, window.CountParts<SourceList>());
+            Assert.Equal(1, window.CountParts<OverlayBar>());
+            Assert.Equal(1, window.CountParts<NoticeLayer>());
+            Assert.InRange(window.FindPart<TileGrid>()!.CountParts<TileGridItem>(), 1, 39);
+
             // The header proves the template applied - the whole risk with a generic control,
             // whose style selector has to be `:is(...)` or it silently matches nothing (§27.2).
             //

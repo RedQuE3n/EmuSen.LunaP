@@ -122,6 +122,7 @@ namespace EmuSen.LunaP.Tests
             nameof(ActionMenuItem) => new ActionMenuItem(new LunaAction("Quit", () => { })),
             "LunaList<T>" => new LunaList<string> { ItemsSource = new[] { "alpha", "beta" } },
             "LunaTable<T>" => BuildTable(),
+            "TileGrid<T>" => BuildTiles(),
             _ => (Control)Activator.CreateInstance(
                      StockControls().Concat(KitControls()).First(t => PaletteSweep.Readable(t) == name))!,
         };
@@ -135,6 +136,15 @@ namespace EmuSen.LunaP.Tests
             table.Column("Length", x => x.Length.ToString());
             table.Refresh(new[] { "alpha", "beta", "gamma" });
             return table;
+        }
+
+        // Populated and with a tile selected, so the selection ring is on screen to be swept.
+        private static Control BuildTiles()
+        {
+            var grid = new TileGrid<string>();
+            grid.Refresh(new[] { "alpha", "beta", "gamma" });
+            grid.Select("beta");
+            return grid;
         }
 
         // Content, so that a container is not clean merely by being empty. Tabs is the case that
@@ -271,7 +281,7 @@ namespace EmuSen.LunaP.Tests
             int kit = KitControls().Count();
 
             Assert.True(stock >= 100, $"Only {stock} stock controls are swept; there were 100 when §85 was written.");
-            Assert.True(kit >= 27, $"Only {kit} kit controls are swept; the README says twenty-seven.");
+            Assert.True(kit >= 32, $"Only {kit} kit controls are swept; the README says thirty-two (twenty-seven before §88).");
         }
     }
 }

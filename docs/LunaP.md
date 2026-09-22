@@ -10309,3 +10309,288 @@ selected. §35.1's rule applies — on this machine any such assertion would pas
 whether or not `Install`'s return value was used at all, because the only
 backend available to a test is X11 and that is what detection picks anyway. The
 return value is proven by use rather than by a test that cannot fail.
+
+## 88. Four controls for a library window, and the timer §76.9 could not make fire
+
+`TileGrid<T>`, `SourceList`, `OverlayBar` and `NoticeLayer` were asked for by a consumer building
+an emulator frontend on the model of OpenEmu's library window: a cover grid beside a sidebar, and
+over the running game a bar that appears when the pointer moves and a notice that fades. None of
+the four names that consumer or anything it owns. The grid takes a `Func<Control>` and an
+`Action<Control, T>`; the sidebar takes records of strings; the bar and the notice take content and
+text. §1's rule holds, and `LayeringTests` still passes unchanged.
+
+The suite went from 1,049 tests to 1,108.
+
+### 88.1 What was taken from OpenEmu, and what was only taken from the brief
+
+The brief gave figures and said they were OpenEmu's. **Four of them were checked against OpenEmu's
+source**, fetched through the GitHub API at commit `1d205104640d8410659d321809889cbfd06b99a9`:
+
+| Figure | Where it is | Used for |
+|---|---|---|
+| Selection ring: `CGRectInset(frame, -6, -6)`, `borderWidth = 4.0`, `cornerRadius = 3.0` | `OEGridGameCell.m`, lines 346–356 | `TileGridItem`'s `PART_Ring` |
+| Hide delay: `fadeOutDelayKey : 1.5`, and `canFadeOut` false while the pointer is inside the bar | `GameControlsBar.swift`, line 39 and `timerDidFire` | `OverlayBar.HideAfter` and its hiding rule |
+| Notice: `duration = 1.75`, `values = [0, 1, 1, 0]`, `keyTimes = [0, 0.15, 0.85, 1]` | `OEGameLayerNotificationView.swift`, lines 121–124 | `NoticeLayer.Duration` and its curve |
+| Sidebar rows: `heightOfRowByItem` returns `24` | `SidebarController.swift`, line 440 | `.source-row` height |
+
+**Three were not, and are the brief's**: the HUD plate (`#1C1C1C` at 90%, radius 10, padding
+10,5), the notice pill's look and top-right placement, and the sidebar headings' small bold
+capitals. `GameControlsBarView.swift` names no colour — the bar is drawn from an image asset — and
+`SidebarHeaderView.swift` sets no font, the look living in `SidebarController.xib`, which was not
+read. They are recorded here as someone else's measurement rather than one taken, and the theme
+files say the same beside each value.
+
+One figure was checked and deliberately not followed. OpenEmu draws the ring in
+`unemphasizedSelectedContentBackgroundColor` when the window is inactive. The ring here stays the
+accent; the brief allowed it, and an inactive variant needs a window-activity pseudo-class this kit
+does not yet have.
+
+### 88.2 `TileGrid<T>`
+
+A grid of same-size tiles over a list of models, with single selection, keyboard navigation and
+activation. **Its reason to exist is a measurement.** A `ListBox` whose `ItemsPanel` is a
+`WrapPanel`, given 5,000 strings in an 800×600 window, realised **5,000 containers** and took
+**1,652 ms** to its first frame. `TileGrid<string>` over the same 5,000 items in the same window
+realised **16** and took **40 ms**. One run of each, on the development machine, headless with
+Skia; the ratio is the finding, not the milliseconds.
+
+**Why the stock parts cannot be assembled into it.** `WrapPanel` is not a virtualising panel, so an
+`ItemsControl` over it builds a container per item. Avalonia ships no virtualising wrap panel, and
+its `VirtualizingPanel` base is organised around one stacking axis. A `ListBox` of *rows*, each row
+a horizontal strip of N tiles, does virtualise — and was refused because N is a function of the
+width: every resize would rebuild the row models, keyboard Up/Down would have to be taught that a
+"row" is N items, and selection would be a (row, column) pair translated back into a model on
+every change. The grid computes its own layout instead, which is cheap only because every tile is
+the same size: item *n* is in row *n* / `Columns`, the extent is a multiplication, and the rows in
+view are two divisions of the scroll offset.
+
+**The layout** is IKImageBrowserView's, which is what OpenEmu's grid is: as many columns as fit
+with at least `Spacing` between them and at both edges, then the leftover width shared evenly
+among all `Columns + 1` gaps. Rows keep exactly `Spacing`. `TileLayout` holds the arithmetic and
+nothing else, so the keyboard handler can ask how many rows a viewport holds without depending on
+a layout pass. `Leftover_width_is_shared_evenly_between_the_columns` pins it.
+
+**Virtualisation and recycling.** An internal `TilePanel` inside the template's `PART_Scroll`
+reports the full extent and holds containers only for the rows in view plus one buffer row either
+side. A container leaving the view is hidden and pooled rather than removed — removal would detach,
+restyle and re-template it on the way back in, which is the cost recycling exists to avoid. The
+tile control inside a container is made once by `CreateTile` and never rebuilt.
+
+**`BindTile`'s contract is the consumer's to know.** It is called when a container is realised for
+an item it was not already showing, and for every realised tile on `Refresh` — including when
+`Refresh` is handed the *same* objects, because a model edited in place is the ordinary reason to
+refresh. It must set everything the tile shows, since the control it is given last showed some other
+item. A container realised again for the item it already shows is not re-bound, so scrolling back
+and forth over the same rows costs nothing.
+
+**The configuration that defeats it.** Offered unbounded height — a `TileGrid` placed directly in a
+vertical `StackPanel` or an outer `ScrollViewer` — the grid's own scroll viewer is as tall as its
+content, every row is "in view", and every tile is realised. That is correct and slow rather than
+blank, which was the choice: a fallback that capped realisation at the window's height would leave
+the outer scroll showing empty space. The gallery's grid has a `Height` for exactly this reason, and
+its render test asserts fewer than 40 of its 40 tiles are realised, so a gallery edit that removed
+the height would turn it red. Horizontal scrolling is disabled in the template for the mirror-image
+reason: offered infinite width, the grid would lay every tile in one row.
+
+**Selection** is the same contract as `LunaList<T>` (§22.9, §78): `Label` and `Key` are delegates,
+`Refresh` keeps the selection by key, and neither `Refresh` nor `Select` raises `Chose`. `Chose` is
+`Action<T>`, not `Action<T?>`, and that decides one behaviour: **a press in the gap between tiles
+leaves the selection alone**, where OpenEmu clears it, because a cleared selection is a change the
+event could not report. `Select` also scrolls the tile into view, and waits for `LayoutUpdated` to
+do it when layout is stale — a `Select` straight after a `Refresh` would otherwise scroll within the
+old extent and be clamped short.
+
+**`Activated`, the event `LunaList` refused.** §78 declined an activation event on `LunaList`
+because it is a `ListBox`: `DoubleTapped` on its rows and `KeyDown` on the list are Avalonia's own,
+and a wrapper would be a third spelling of them. That argument does not reach this control. Its
+containers are recycled, so a host hooking `DoubleTapped` on one hooks whatever item it shows next,
+and a host handling `KeyDown` itself would have to duplicate the grid's idea of the selection. The
+grid is the only thing that knows which item a gesture landed on.
+
+**Keyboard**, with the grid focused: Left and Right step through the list and so wrap between rows;
+Up and Down move by `Columns`; Down from the last full row onto a shorter one goes to the last tile;
+Home and End; PageUp and PageDown by the number of whole rows in the viewport; Enter and Space
+activate. Each change raises `Chose`. **The right button selects on press**, before a context menu
+opens on release, so a host's `ContextMenu` reads `Selected` and finds the tile under the pointer —
+pinned by a test that reads `Selected` from the menu's `Opening`.
+
+**Two public types beyond the brief.** `TileGrid` is an abstract non-generic base, for LunaTable's
+reason (§27.2): a style selector cannot name a generic type, so the theme writes
+`:is(luna|TileGrid)`, and a test or gallery counting grids counts the base. `TileGridItem` is the
+container, public so a host restyling the ring can write `luna|TileGridItem.selected`. The brief's
+`TileGrid<T> : TemplatedControl` still holds — through the base.
+
+**One result from this harness that §22.6 would not predict.** §22.6 found a headless
+`ScrollViewer` reporting extent equal to viewport for `ConsolePane`'s text, so nothing there could
+be scrolled. Here the extent is real — the panel measures a real height — and the scroll assertions
+mean what they say: `Scrolling_reuses_containers_and_rebinds_them` sets an offset of 132,000 and
+finds the first realised item is exactly 2,392, the first of buffer row 598.
+
+### 88.3 `SourceList`
+
+OpenEmu's sidebar: groups under small capital headings, 24-pixel rows of text with an optional
+right-aligned badge. It is filled with `SourceListGroup` and `SourceListItem` records and reports
+selection by `Key`, a string the host switches on; the text is what a host localises, and a
+selection held by text would be lost to a translation or a changed count.
+
+**Not a `ListBox` of mixed rows.** A `ListBox` selects containers, so a heading would be a
+selectable item every consumer had to un-select, skip on arrow keys and hide from a reader — three
+corrections to make a control not do something. Built from panels, a heading is not a row: it has
+no selected state, the keyboard walks rows only, and the automation tree is list, group, item.
+
+**Capitals are drawn, not stored.** Avalonia's `TextBlock` has no text-transform, so the heading is
+upper-cased in code and hidden from automation (`AccessibilityView.Raw`), and the group announces
+the header as the host wrote it. A reader otherwise meets "CONSOLES" twice, once possibly spelled
+out as an acronym.
+
+**Found by the first test run: the exact-type selector trap, in a new place.** The rows are internal
+`Border` subclasses, and the first `SourceList.axaml` styled them as `Border.source-row`. A type
+selector is an exact match, so every rule matched nothing: rows came up 20 px high and unpainted,
+and `Groups_have_capital_headings_and_rows_are_24_pixels` and
+`The_selected_row_is_painted_in_the_accent` both said so. The selectors are `:is(Border).source-row`
+now. It is §28.1's trap — until now met only as a generic control with no template — reached through
+code-built children, where `TemplateReachTests` cannot see it because the control itself is
+templated correctly.
+
+### 88.4 `OverlayBar`, and the palette's first colour for something over a picture
+
+A `ContentControl` the host places in a `Grid` over the element it names as `Watch`. Pointer
+movement over that element, or over the bar, reveals it and restarts `HideAfter`; when the delay
+elapses the bar conceals itself **unless the pointer is over it, `KeepOpen` is set, or keyboard
+focus is inside it**. OpenEmu's `timerDidFire` re-checks after another interval when it cannot fade;
+this re-arms on the pointer leaving, `KeepOpen` clearing, or focus leaving instead, which is the
+same outcome with no timer running while somebody reads a tooltip.
+
+Three decisions beyond the brief:
+
+- **`Conceal()` overrules the rule.** A host concealing the bar — a pause menu opening, a switch to
+  full screen — means it, pointer or no pointer. The rule governs the timer, not the host.
+- **Focus reveals it.** A keyboard user has no pointer to move, and a focused button nobody can see
+  is a trap. The bar also stays in the automation tree while concealed, for the same user.
+- **`IsHidePending` is public.** After the delay passes with the pointer on the bar, `IsRevealed`
+  alone cannot say whether the bar decided to stay or has not been asked yet. It is the fact the
+  tests needed, and a host deciding whether to show its own hint needs the same one.
+
+Pointer events from `Watch` are taken with `handledEventsToo`, because a game view that marks its
+own pointer movement handled is the likeliest thing to be watched. Concealed, the bar is not
+hit-testable, so a click where it would be reaches the game.
+
+**`LunaHudSurface`**, `#E61C1C1C`, is the palette's first colour for something drawn *over* a
+picture rather than on the window. It is the same in both variants for `LunaVoid`'s reason (§23):
+what is under it is a game frame whatever the desktop's variant. The bar's content is resolved in
+the Dark palette by a `ThemeVariantScope` in the template, so a light-theme button does not put dark
+text on the dark plate — `The_plate_is_dark_in_either_variant` sets the application Light and finds
+the button Dark and the game beside it Light. The token is spelled in both halves (§2.1), in both
+columns of `PaletteVariantTests`, and reaches the CSS vocabulary by reflection (§79.4): 21 tokens
+where there were 20.
+
+### 88.5 `NoticeLayer`
+
+`Show(text)` puts up a pill that fades 0 → 1 → 1 → 0 at 0 / 0.15 / 0.85 / 1 of `Duration`, and a
+second `Show` replaces the first and starts the curve again. `Current` is the text showing, or null
+once its `Duration` has run. It is not hit-testable, sits top-right by default, and is a polite live
+region; `Show` raises a name-changed event on its automation peer, because a live region whose name
+is read from a delegate changes without anything saying so otherwise.
+
+**Two clocks.** The fade is an Avalonia `Animation`; `Current` is ended by a `DispatcherTimer` of the
+same `Duration`. Keeping the fact off the render clock is reasoning rather than a measurement: a
+window that is not being drawn is not guaranteed to tick its animations, and a notice that could
+only end by being seen to fade would outlive its `Duration` there. What *was* measured is in §88.7.
+
+### 88.6 Automation
+
+Two internal peers serve both lists, because they need identical answers and two copies would drift:
+`SingleSelectionPeer` (`ISelectionProvider`, never multiple, never required) and
+`SelectableItemPeer` (`ISelectionItemProvider`). A reader's `Select()` on an item **raises `Chose`**
+— it is a person acting through assistive technology, the opposite of a host's `Select`, which no
+reader calls.
+
+| Control | Reports as | Named by |
+|---|---|---|
+| `TileGrid<T>` | List, with its selection | the host's `AutomationProperties.Name` |
+| `TileGridItem` | ListItem, selectable | `Label(item)` |
+| `SourceList` | List, with its selection | the host's `AutomationProperties.Name` |
+| a `SourceList` group | Group | the header as written |
+| a `SourceList` row | ListItem, selectable, badge as item status | its text |
+| `OverlayBar` | ToolBar | the host |
+| `NoticeLayer` | Text, polite live region | `Current` |
+
+The grid and the sidebar are tab stops and have **no fallback name**, which is the `Dropdown`
+arrangement: a list's name is what it is a list *of*, and only the host knows. Their tiles and rows
+are not tab stops — the list holds focus and the arrows move within it — and
+`Nothing_the_keyboard_can_reach_is_unnamed` now includes a named grid and sidebar, so an unnamed tab
+stop inside either would fail it. **A selection scrolled out of view has no container and reports no
+selection**, the same answer `LunaTable` gives for a row that is not realised. Recorded as a hazard:
+nothing here has been run against a screen reader (§24.4).
+
+### 88.7 Correction to §76.9: a timer can fire inside a test, if the test pushes a frame
+
+§76.9 measured that a `DispatcherTimer` never fires inside `Session.Dispatch` — a 30 ms timer, slept
+past and pumped with `RunJobs()`, fired zero times — and concluded that no test in this harness can
+watch a delay elapse. **The measurement was right and the conclusion was too wide.** `RunJobs()`
+drains queued jobs and does not promote timers. A nested `DispatcherFrame`, pushed with
+`Dispatcher.UIThread.PushFrame` and ended by a second `DispatcherTimer`, runs the dispatcher's own
+loop, and timers fire inside it: a 50 ms timer fired once inside a 300 ms frame on the first probe.
+
+`tests/EmuSen.LunaP.Tests/RealTime.cs` is that helper, and the `OverlayBar` and `NoticeLayer` tests use it. The
+claim was checked from the other side too: rewriting `RealTime.Wait` as §76.9's method — sleep, then
+`RunJobs()` — turned **seven** of their sixteen tests red, every one that waits.
+
+**What it makes sound, and what it does not.** Dispatcher timers fire in the order they fall due, so
+a control's 100 ms timer has fired by the end of a 500 ms wait on any machine; load changes how long
+the wait takes, not what has happened by its end. What it cannot make sound is "not yet", which a
+stalled dispatcher could falsify. The suite has one: `A_second_notice_replaces_the_first_and_restarts_it`
+asserts the second notice still showing 400 ms before its timer is due, and says so beside the
+assertion.
+
+**The render loop runs inside the frame as well.** The fade assertions were first written with
+`AvaloniaHeadlessPlatform.ForceRenderTimerTick()` before each opacity read, on the belief that the
+headless render loop only advances when asked. Removing the forced tick left both passing, so it was
+removed and the comments that stated the belief were corrected before commit. An animation started
+and read with `RunJobs()` alone had, in the first probe, advanced only with wall-clock time sampled at
+forced ticks — so the difference is again the frame, not the animation.
+
+`IdleCursorTests` is not changed. Its thirty-second delay and explicit `Hide()` are still a correct
+way to test that control, and §76.9's recorded hazard — that the debounce wiring is unasserted — is
+now one that *could* be closed, which is worth knowing and is not done here.
+
+### 88.8 The guards were made to fail
+
+Every sabotage below was applied to the finished code, run against the named filter, and reverted.
+
+| Sabotage | Turned red |
+|---|---|
+| `RealiseFor` realises every row | `Five_thousand_items_realise_only_the_rows_in_view` |
+| `Select` raises `Chose` | `Select_and_refresh_never_raise_chose`, `A_press_between_tiles_keeps_the_selection`, `It_is_a_named_list_of_named_items_that_reports_its_selection` |
+| Keyboard moves by 1 where it should move by `Columns` | `Arrow_keys_move_by_one_and_by_a_row_of_columns`, `Down_onto_a_short_last_row_goes_to_the_last_tile`, `Page_down_moves_a_viewport_of_rows` |
+| `Refresh` stops clearing the pool's bindings | **nothing, at first** — see below |
+| `SourceList.OnApplyTemplate` stops building the rows | all six `SourceListTests`, and `TemplateOrderTests` for `SourceList.Fill` |
+| `Fill` raises `Chose` | `Fill_selects_by_key_without_raising_chose`, `A_click_chooses_the_row_and_a_heading_chooses_nothing` |
+| `OverlayBar` hides with the pointer over it | `It_does_not_hide_while_the_pointer_is_over_it` |
+| `OverlayBar` ignores `KeepOpen` | `Keep_open_holds_it_and_clearing_it_restarts_the_delay` |
+| `OverlayBar` stays hit-testable while concealed | `It_starts_concealed_and_out_of_the_pointers_way`, `Moving_over_the_watched_element_reveals_and_stopping_conceals` |
+| A second `Show` does not restart the clock | `A_second_notice_replaces_the_first_and_restarts_it` |
+| `Show` raises no name-changed event | `It_is_a_polite_live_region_that_says_when_it_changes` |
+| The curve's third keyframe sags to 0.2 at 0.4 | `The_curve_is_openemus`, `The_pill_holds_full_opacity_through_the_middle_and_fades_out` |
+| `RealTime.Wait` done §76.9's way | seven of sixteen `OverlayBar`/`NoticeLayer` tests (§88.7) |
+
+**The fourth row is the one worth keeping.** Every `Refresh` the first draft of `TileGridTests` made
+passed newly built objects, and a container shown a new object re-binds by reference whatever the
+pool flag says — so the flag that makes `Refresh` re-bind *the same* objects could be deleted with
+all fifteen tests green. `Refresh_rebinds_tiles_whose_model_changed_in_place` was written for it,
+edits a label in place and refreshes with the same array, and turns red under the same sabotage.
+
+### 88.9 Avalonia defects
+
+**None found.** The two surprises in this section are documented behaviour met in a new place — the
+exact-type selector (§88.3) and `RunJobs` not promoting timers (§88.7) — and are recorded as such
+rather than as defects.
+
+### 88.10 Not built, and known gaps
+
+- **No CSS vocabulary for the four.** `CssTheme.ElementNames` is unchanged at 22; a CSS theme reaches
+  them through the palette tokens, `--luna-hud-surface` included, and not through element rules.
+- **No inactive-window ring** (§88.1), **no multiple selection**, **no type-ahead** in either list.
+- **No drag and drop** out of the grid, and no rubber-band selection.
+- **`OverlayBar` watches one element.** A bar over two panes needs two bars or a common parent.
+- **A screen reader has not been run** against any of it (§24.4).

@@ -36,6 +36,11 @@ namespace EmuSen.LunaP.Theme
         /// <summary>True black, for an image view letterboxing an area with no pixels in it.</summary>
         public static readonly ISolidColorBrush Void = Brush("#000000");
 
+        // #1C1C1C at 90%, the same in both variants for Void's reason: it sits over a game frame, not
+        // on the window. OverlayBar and NoticeLayer paint it - docs/LunaP.md §88.4.
+        /// <summary>The translucent dark plate a heads-up bar or an in-game notice sits on, over a picture rather than on the window.</summary>
+        public static readonly ISolidColorBrush HudSurface = Brush("#E61C1C1C");
+
         // Card edges, the rule under a panel header, the divider a splitter is dragged by. Picked
         // against WCAG 1.4.11's 3:1 rather than by eye, because a divider you have to find with a
         // mouse is a control and not decoration - 3.27:1 on the dark surface, and docs/LunaP.md

@@ -89,16 +89,17 @@ nothing once shipped — §11 of the design record is the incident.
 
 ## The control kit
 
-Twenty-seven controls, every one of them in `GalleryWindow` and every one of
+Thirty-two controls, every one of them in `GalleryWindow` and every one of
 them in the automation tree.
 
 | | |
 |---|---|
 | **Text** | `SectionHeader`, `HintText`, `MonoText`, `ErrorText` — the four idioms the theme knows about |
 | **Fields** | `FieldRow` (label, hint, error), `PathPickerRow`, `LunaSwitch`, `Dropdown`, `Tabs` |
-| **Data** | `LunaList<T>`, `LunaTable<T>` |
+| **Data** | `LunaList<T>`, `LunaTable<T>`, `TileGrid<T>` (and its `TileGridItem`), `SourceList` |
 | **Readouts** | `MeterRow`, `MeterList`, `StatusBar`, `EmptyState`, `RgbaImageView` |
 | **Surfaces** | `Card`, `SplitPane`, `SidePanel`, `ConsolePane`, `FilterBar` |
+| **Over a picture** | `OverlayBar`, `NoticeLayer` |
 | **Commands** | `MenuBar`, `ToolBar`, `ButtonBar`, `ActionButton`, `ActionToggle`, `ActionMenuItem` |
 
 **Stock Avalonia controls are themed too, as of 0.8.0.** A `TextBox`,
@@ -116,7 +117,7 @@ requires the colours it actually resolves to come from `LunaPalette`.
 stock controls Avalonia ships found 29 still painting FluentTheme's colours —
 popups and tooltips, the date and time pickers, `Expander`, `HyperlinkButton` —
 and four of this kit's own alongside them, including `LunaList<T>`. The bridge
-doubled to 102 keys to close it. **All 100 stock controls and all 27 of this
+doubled to 102 keys to close it. **All 100 stock controls and all 32 of this
 kit's now paint only in `LunaPalette`**, measured at rest, in the dark variant,
 on background, foreground and border. States — hover, pressed, disabled — are
 not swept and are a known gap. A second guard checks the overrides themselves:
@@ -194,6 +195,37 @@ because a direct index write is not a restore.
 `FilterBar.Changed` only started honouring this in 0.10.0; before that, assigning
 `SearchText` raised it synchronously. If you have code that leant on the raise,
 call your handler yourself after setting the value. `docs/LunaP.md` §80.1.
+
+## Tile grids, sidebars and a heads-up bar
+
+Four controls for a library window and the thing it opens, modelled on
+OpenEmu's (`docs/LunaP.md` §88):
+
+```csharp
+var covers = new TileGrid<Game> { Key = g => g.Id, Label = g => g.Title };
+covers.CreateTile = () => new CoverTile();                  // once per container
+covers.BindTile = (tile, g) => ((CoverTile)tile).Show(g);   // on every reuse
+covers.Refresh(library);
+covers.Activated += Launch;
+
+var sidebar = new SourceList();
+sidebar.Fill(new[] { new SourceListGroup("Consoles", consoles) }, "snes");
+sidebar.Chose += key => covers.Refresh(GamesFor(key));
+```
+
+`TileGrid<T>` realises only the rows in view plus one either side, and reuses
+its containers as you scroll — 16 containers for 5,000 items in an 800×600
+window, where a `ListBox` over a `WrapPanel` makes 5,000. Two things follow.
+**`BindTile` must set everything a tile shows**, because the control it is
+handed last showed another item. And **the grid needs a bounded height**: put
+it straight into a vertical `StackPanel` or an outer `ScrollViewer` and every
+tile is realised. Give it a `Grid` cell, a `DockPanel`'s fill, or a `Height`.
+
+`OverlayBar` goes in a `Grid` over the element it names as `Watch`; it appears
+when the pointer moves there and conceals itself `HideAfter` (1.5 s) later,
+but never while the pointer is on it, focus is in it, or `KeepOpen` is set —
+set that while a menu opened from the bar is up. `NoticeLayer.Show("Quick
+Save")` fades a pill in and out over 1.75 s; a second call replaces the first.
 
 ## Tables
 
@@ -717,12 +749,12 @@ lists them, `LunaTheme.Apply(name)` applies one, `LunaTheme.Current` and
 `LunaTheme.Saved` read the state back, and the built-in palette is the fallback
 under everything.
 
-**Seventeen colour tokens**, each spelled as a brush and a colour
+**Eighteen colour tokens**, each spelled as a brush and a colour
 (`LunaSurface` / `LunaSurfaceColor`, and so on):
 
 | | |
 |---|---|
-| Surfaces | `LunaSurface`, `LunaInputSurface`, `LunaVoid`, `LunaBorder` |
+| Surfaces | `LunaSurface`, `LunaInputSurface`, `LunaVoid`, `LunaHudSurface`, `LunaBorder` |
 | Text | `LunaText`, `LunaMuted`, `LunaSectionHeader`, `LunaMeterText` |
 | Status | `LunaError`, `LunaWarning`, `LunaSuccess`, `LunaInfo` |
 | Accent | `LunaAccent`, `LunaOnAccent` |
@@ -750,7 +782,7 @@ The whole vocabulary is enumerable rather than something to guess at:
 `CssTheme.ElementNames` gives the **22** element names a rule may target,
 `PartsOf` and `StatesOf` their parts and states, `PropertyNames` the six property
 names (`color`, `background`, `background-color`, `font-family`, `font-size`,
-`font-weight`), and `CssTheme.TokenNames` the **20** `--luna-` tokens a `:root`
+`font-weight`), and `CssTheme.TokenNames` the **21** `--luna-` tokens a `:root`
 block may set. Anything outside it — an unknown element, an unknown property, or
 a misspelled token — is reported through `CssThemeResult.Warnings` rather than
 silently ignored. **Token names were not checked before 0.10.0**, so
@@ -904,7 +936,7 @@ not. First place to look if an image comes out sheared (§53.2).
     dotnet build
     dotnet test
 
-**1049 tests, all headless** — no window is ever put on a screen, including for
+**1108 tests, all headless** — no window is ever put on a screen, including for
 the render tests, which drive a real Avalonia control tree through a real Skia
 pass. That figure is checked by the suite itself, because a hand-written count
 of a thing the runner knows is a number that rots: this one said 207 for four

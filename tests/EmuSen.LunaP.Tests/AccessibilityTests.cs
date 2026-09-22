@@ -52,6 +52,14 @@ namespace EmuSen.LunaP.Tests
             { nameof(Card), AutomationControlType.Group },
             { nameof(SplitPane), AutomationControlType.Pane },
             { nameof(SidePanel), AutomationControlType.Pane },
+
+            // §88. The grid and the sidebar are lists that report their selection; a tile is a
+            // list item; the bar is a run of commands; a notice is text in a polite live region.
+            { "TileGrid", AutomationControlType.List },
+            { nameof(TileGridItem), AutomationControlType.ListItem },
+            { nameof(SourceList), AutomationControlType.List },
+            { nameof(OverlayBar), AutomationControlType.ToolBar },
+            { nameof(NoticeLayer), AutomationControlType.Text },
         };
 
         [Theory]
@@ -319,6 +327,16 @@ namespace EmuSen.LunaP.Tests
             panel.Children.Add(dropdown);
             panel.Children.Add(new LunaSwitch { Label = "Enable rewind" });
 
+            // §88's two focusable lists, named the way a host names them. Their tiles and rows are
+            // deliberately not tab stops - the list holds focus and the arrows move within it - so
+            // an unnamed tab stop inside either is a defect this would catch.
+            TileGrid<string> tiles = Tiles();
+            AutomationProperties.SetName(tiles, "Library");
+            panel.Children.Add(tiles);
+            SourceList sidebar = Sidebar();
+            AutomationProperties.SetName(sidebar, "Sidebar");
+            panel.Children.Add(sidebar);
+
             using var host = Host(panel);
 
             // A console with no output has no output to name itself with - see §24.5. Giving it a
@@ -389,8 +407,27 @@ namespace EmuSen.LunaP.Tests
             nameof(Card) => new Card { Header = "Library", Content = new TextBlock { Text = "inside" } },
             nameof(SplitPane) => new SplitPane { First = new TextBlock(), Second = new TextBlock() },
             nameof(SidePanel) => new SidePanel { Title = "Explorer", Content = new TextBlock() },
+            "TileGrid" => Tiles(),
+            nameof(TileGridItem) => new TileGridItem { Content = new TextBlock { Text = "cover" } },
+            nameof(SourceList) => Sidebar(),
+            nameof(OverlayBar) => new OverlayBar { Content = new Button { Content = "Pause" } },
+            nameof(NoticeLayer) => new NoticeLayer(),
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, "No builder for this control."),
         };
+
+        private static TileGrid<string> Tiles()
+        {
+            var grid = new TileGrid<string> { Height = 300 };
+            grid.Refresh(new[] { "alpha", "beta" });
+            return grid;
+        }
+
+        private static SourceList Sidebar()
+        {
+            var list = new SourceList();
+            list.Fill(new[] { new SourceListGroup("Library", new[] { new SourceListItem("all", "All Games") }) }, "all");
+            return list;
+        }
 
         // A toolbar with one command in it. Empty, it is a run of nothing, and a peer over a
         // control with no items would pass this file's assertions while telling a reader nothing.
