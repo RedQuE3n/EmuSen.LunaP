@@ -10594,3 +10594,15 @@ rather than as defects.
 - **No drag and drop** out of the grid, and no rubber-band selection.
 - **`OverlayBar` watches one element.** A bar over two panes needs two bars or a common parent.
 - **A screen reader has not been run** against any of it (§24.4).
+
+### 88.11 Correction: the ring was never painted, and the guard that said it was
+
+**What §88.2 and §88.8 said.** That the selected tile carries OpenEmu's ring, outset 6 px with a 4 px stroke, and that `The_ring_is_outset_six_pixels_in_the_accent` and `Select_scrolls_the_tile_into_view_and_rings_it` pin it.
+
+**What was true.** Both tests passed and no ring was ever drawn. `TileGridItem` is a `ContentControl`, and its `ClipToBounds` is true (read off the live tree: the item reported `clip=True`, its template `Panel` and the ring's `Border` `False`). A stroke outset by 6 with a thickness of 4 lies entirely in the band from -6 to -2, which is wholly outside the item's bounds, so the clip removed every pixel of it. The ring's bounds were `-6, -6, 172, 212`, its `IsVisible` true and its brush the accent: every property a test could read was right, and the screen showed the tile with nothing round it.
+
+**How it was found.** EmuSen's Mistress, the first consumer, rendered its library to a PNG before committing and the selected cover had no ring. Rendering a bare `TileGrid<string>` from the gallery's defaults showed the same, which put the fault here rather than in the consumer's tiles. Setting the ring's margin to 0 in the live tree made it appear, and walking the parent chain found the clip.
+
+**The fix** is `ClipToBounds = False` in the `TileGridItem` style, where it sits beside a comment naming this section. **The guard** is `The_ring_is_painted_outside_the_tile_it_surrounds`, which reads the captured frame 4 px outside the selected tile's left edge and requires the accent there. It failed before the fix, reading `#1E1E1E`, the surface, where the stroke should have been. Its first version also failed after the fix, reading `#CC7A00`: it had assumed BGRA order, and the headless capture here is RGBA. It now reads the framebuffer's own `Format` rather than assuming one.
+
+**What it says about §88.8.** Thirteen sabotages were recorded there, and none could have caught this, because every one of them changed code that a property-reading test observes. A drawing that the platform discards is not observable through properties at all. The general rule this adds is narrow and stated as narrow: **anything drawn outside its own control's bounds needs a pixel test**, because the clip is the one thing between the property and the screen that no property reports.

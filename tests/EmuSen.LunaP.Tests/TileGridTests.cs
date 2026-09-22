@@ -232,6 +232,38 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // THE PROPERTY TEST ABOVE PASSED WHILE NO RING WAS EVER DRAWN, which is why this one reads
+        // pixels. TileGridItem clips to its bounds, and a 4 px stroke outset by 6 lies wholly outside
+        // them, so the ring had the right size, colour and visibility and painted nothing at all. A
+        // consumer found it in its first screenshot (§88.11). The sample is the middle of the stroke's
+        // left edge, 4 px outside the tile.
+        [Fact]
+        public Task The_ring_is_painted_outside_the_tile_it_surrounds() => UiTest.Run(() =>
+        {
+            TileGrid<Game> grid = Grid(4, out Game[] games);
+            ToolWindow window = Show(grid);
+            grid.Select(games[1]);
+            Settle(window);
+
+            TileGridItem tile = TileShowing(grid, "Game 0001");
+            Point corner = tile.TranslatePoint(new Point(0, 0), window)!.Value;
+            Application.Current!.TryGetResource("LunaAccentColor", Avalonia.Styling.ThemeVariant.Dark, out object? accent);
+            Avalonia.Media.Color expected = (Avalonia.Media.Color)accent!;
+
+            Avalonia.Media.Imaging.WriteableBitmap frame = window.CaptureRenderedFrame()!;
+            using Avalonia.Platform.ILockedFramebuffer pixels = frame.Lock();
+            int x = (int)corner.X - 4, y = (int)(corner.Y + tile.Bounds.Height / 2);
+            byte[] bgra = new byte[4];
+            System.Runtime.InteropServices.Marshal.Copy(pixels.Address + y * pixels.RowBytes + x * 4, bgra, 0, 4);
+
+            bool bgr = pixels.Format == Avalonia.Platform.PixelFormat.Bgra8888;
+            byte r = bgr ? bgra[2] : bgra[0], g = bgra[1], b = bgr ? bgra[0] : bgra[2];
+            Assert.True(Math.Abs(r - expected.R) < 12 && Math.Abs(g - expected.G) < 12 && Math.Abs(b - expected.B) < 12,
+                $"the ring's stroke at ({x},{y}) is #{r:X2}{g:X2}{b:X2} ({pixels.Format}), not the accent #{expected.R:X2}{expected.G:X2}{expected.B:X2}");
+
+            window.Close();
+        });
+
         // Two-dimensional, and every step is a user's change: Chose each time.
         [Fact]
         public Task Arrow_keys_move_by_one_and_by_a_row_of_columns() => UiTest.Run(() =>

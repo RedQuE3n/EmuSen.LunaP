@@ -31,6 +31,10 @@
          without touching. Hidden rather than transparent while unselected, so
          the palette sweep does not see a stroke that is never drawn. -->
     <Style Selector="luna|TileGridItem">
+        <!-- Off, or the ring is never seen: the item clips to its bounds by
+             default, and the stroke lies wholly outside them. The property
+             test passed for a version while nothing was painted; §88.11. -->
+        <Setter Property="ClipToBounds" Value="False" />
         <Setter Property="Template">
             <ControlTemplate>
                 <Panel>
