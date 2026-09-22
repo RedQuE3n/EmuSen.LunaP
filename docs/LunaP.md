@@ -10606,3 +10606,19 @@ rather than as defects.
 **The fix** is `ClipToBounds = False` in the `TileGridItem` style, where it sits beside a comment naming this section. **The guard** is `The_ring_is_painted_outside_the_tile_it_surrounds`, which reads the captured frame 4 px outside the selected tile's left edge and requires the accent there. It failed before the fix, reading `#1E1E1E`, the surface, where the stroke should have been. Its first version also failed after the fix, reading `#CC7A00`: it had assumed BGRA order, and the headless capture here is RGBA. It now reads the framebuffer's own `Format` rather than assuming one.
 
 **What it says about §88.8.** Thirteen sabotages were recorded there, and none could have caught this, because every one of them changed code that a property-reading test observes. A drawing that the platform discards is not observable through properties at all. The general rule this adds is narrow and stated as narrow: **anything drawn outside its own control's bounds needs a pixel test**, because the clip is the one thing between the property and the screen that no property reports.
+
+## 89. A prompt for one line of text
+
+**What was missing.** The same consumer, adding user-made collections to its library, needed a name for each and had nowhere in the kit to ask for one. `Dialogs` asked yes or no (`ConfirmAsync`), reported a fault (`ErrorAsync`) and stated a fact (`MessageAsync`, §84.2); none of them takes an answer. Without one the consumer would have built a window of its own for a text box and two buttons, which is the hand-rolled-control shape §84 kept finding.
+
+**`Dialogs.PromptAsync(owner, title, message, initial, acceptText, cancelText)`** returns `Task<string?>`. Its window is `Windowing/PromptWindow.cs`, internal like `DialogWindow`, and a separate class rather than a mode of that one because `ShowDialog<T>` is typed by its result: one class answering both a bool and a string would answer `object`.
+
+Three decisions, each pinned by `PromptTests`:
+
+- **The accept button is disabled while the text is blank, and whitespace is blank.** A caller asking for a name has no use for an empty one, and would otherwise write the same check after every await and then ask again, which is the dialog's job done one level up. Sabotage: enabling it unconditionally turned `Blank_text_cannot_be_accepted` red.
+- **The answer comes back trimmed.** A name with a leading space is a defect nobody can see in a list. Sabotage: returning the raw text turned two tests red, the trimming test and the blank test (whose three spaces then counted as text).
+- **Cancel, Escape and the close button all answer null**, Confirm's rule from §8.4: anything that is not a deliberate answer is no answer.
+
+The text box is named, for a reader, by the message, since the message is the question the box answers; and it opens focused with its initial text selected, so a rename is one keystroke from replacing the old name.
+
+**Not covered.** No validation hook: a caller that needs to refuse a particular answer (a duplicate name) learns of it after the dialog has closed and must ask again. That is a deliberate omission until a second consumer wants it, since a validator delegate is the kind of seam §1 asks to be earned.

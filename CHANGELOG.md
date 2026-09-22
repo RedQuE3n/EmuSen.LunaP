@@ -35,6 +35,10 @@ changed shape; these are new types, one new palette token, and nothing to migrat
 - **`LunaHudSurface`**, a new palette token (`LunaPalette.HudSurface`, `#E61C1C1C`), the same in both
   variants. `CssTheme.TokenNames` has 21 entries where it had 20, and `--luna-hud-surface` is valid in
   a `:root` block. The CSS element vocabulary does **not** include the four new controls.
+- **`Dialogs.PromptAsync`** asks for one line of text - a name for a new collection, a rename -
+  and answers it trimmed and never empty, or null for Cancel, Escape and closing. The accept button
+  waits for text, so a caller has no blank answer to handle. The fourth small modal beside Confirm,
+  Error and Message (`§89`).
 
 As in `LunaList<T>`, `Chose` on both lists is raised only by a person — pointer, keyboard, or a
 screen reader's select — never by `Refresh`, `Select` or `Fill`.

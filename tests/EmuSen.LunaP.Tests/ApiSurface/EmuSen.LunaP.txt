@@ -823,6 +823,7 @@ public static class EmuSen.LunaP.Windowing.Dialogs
     public static System.Threading.Tasks.Task<System.ValueTuple<string, string>?> PickFileAsync(Avalonia.Visual owner, string title, System.Collections.Generic.IReadOnlyList<Avalonia.Platform.Storage.FilePickerFileType>? types = null, string? startIn = null)
     public static System.Threading.Tasks.Task<bool> ConfirmAsync(Avalonia.Controls.Window owner, string title, string message, string acceptText = "OK", string cancelText = "Cancel")
     public static System.Threading.Tasks.Task<string?> PickFolderAsync(Avalonia.Visual owner, string title, string? startIn = null)
+    public static System.Threading.Tasks.Task<string?> PromptAsync(Avalonia.Controls.Window owner, string title, string message, string initial = "", string acceptText = "OK", string cancelText = "Cancel")
     public static System.Threading.Tasks.Task<string?> SaveFileAsync(Avalonia.Visual owner, string title, string? suggestedName = null, System.Collections.Generic.IReadOnlyList<Avalonia.Platform.Storage.FilePickerFileType>? types = null, string? startIn = null, string? defaultExtension = null)
 
 public sealed class EmuSen.LunaP.Windowing.FileDrop : System.IDisposable
