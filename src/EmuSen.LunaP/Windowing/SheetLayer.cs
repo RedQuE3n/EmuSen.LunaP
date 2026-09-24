@@ -258,6 +258,9 @@ namespace EmuSen.LunaP.Windowing
 
                 // Tab stays on the sheet: the host's controls underneath are not what anybody is working on.
                 KeyboardNavigation.SetTabNavigation(Root, KeyboardNavigationMode.Cycle);
+
+                // A session that shows one window shows no popup window either - §92.5.
+                EmbeddedPopups.SetIsEnabled(Root, true);
                 Root.KeyDown += OnKeyDown;
                 Restyle();
             }

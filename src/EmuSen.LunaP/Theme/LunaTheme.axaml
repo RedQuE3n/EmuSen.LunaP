@@ -32,7 +32,7 @@
          now reachable by forgetting a line here rather than by mistyping a
          selector.
 
-         ALL SEVENTEEN OMISSIONS TURN THE SUITE RED, by four different guards
+         ALL EIGHTEEN OMISSIONS TURN THE SUITE RED, by four different guards
          and for four different reasons. It said SIXTEEN until §79.7, which is
          the count from before §48 added FormControls.axaml - the comment was
          not moved with the line. Corrected rather than quietly renumbered
@@ -48,7 +48,8 @@
          only since §30 - it was the one file whose omission cost nothing, which
          is how the defect in §30 was found. Each was measured by deleting the
          line and running the suite: 11, 13 and 1 red respectively. §29.2 has
-         the table.
+         the table. The eighteenth, EmbeddedPopups.axaml (§92.5), is caught
+         by SheetLayerTests, 2 red, measured the same way.
 
          Order is the order the single file had, which is not load-bearing -
          every style below names a distinct control type, so none overrides
@@ -105,6 +106,9 @@
          all of that work is resource overrides in Theme/FluentBridge.axaml; this
          file is only the handful whose colours no resource key can reach. §48. -->
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/FormControls.axaml" />
+
+    <!-- Popups drawn inside their window under an element that asks for it, as a sheet does. §92.5. -->
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/EmbeddedPopups.axaml" />
 
     <Styles.Resources>
         <ResourceDictionary>

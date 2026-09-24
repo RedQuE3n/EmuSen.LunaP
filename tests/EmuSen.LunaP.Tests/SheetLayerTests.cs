@@ -67,6 +67,49 @@ namespace EmuSen.LunaP.Tests
             host.Close();
         }, default);
 
+        // The headless platform draws every popup in the overlay layer whatever this says, so what is read is the request - §92.6.
+        private static bool InWindow(ComboBox combo) =>
+            combo.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Popup>().First().ShouldUseOverlayLayer;
+
+        // A dropdown on a sheet opens its list inside the owner, as the session shows no popup window either - §92.5.
+        [Fact]
+        public Task A_dropdown_on_a_sheet_opens_its_list_inside_the_owner() => Session.Dispatch(() =>
+        {
+            var (host, layer, _) = Host();
+            var combo = new ComboBox { ItemsSource = new[] { "one", "two" }, SelectedIndex = 0 };
+            var child = new ToolWindow { Title = "Settings", Width = 400, Content = combo };
+            SheetLayer.Show(child, host);
+            Dispatcher.UIThread.RunJobs();
+
+            combo.IsDropDownOpen = true;
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(InWindow(combo));
+            combo.IsDropDownOpen = false;
+            child.Close();
+            host.Close();
+        }, default);
+
+        // The attached property alone, on and off, on an element that is not a sheet.
+        [Fact]
+        public Task Embedded_popups_is_scoped_to_the_element_and_can_be_turned_off() => Session.Dispatch(() =>
+        {
+            var inside = new ComboBox { ItemsSource = new[] { "one", "two" }, SelectedIndex = 0 };
+            var outside = new ComboBox { ItemsSource = new[] { "one", "two" }, SelectedIndex = 0 };
+            var scope = new Border { Child = inside };
+            EmbeddedPopups.SetIsEnabled(scope, true);
+            var window = new ToolWindow { Width = 400, Height = 300, Content = new StackPanel { Children = { scope, outside } } };
+            window.Show();
+
+            bool Opens(ComboBox c) { c.IsDropDownOpen = true; Dispatcher.UIThread.RunJobs(); bool embedded = InWindow(c); c.IsDropDownOpen = false; Dispatcher.UIThread.RunJobs(); return embedded; }
+
+            Assert.True(EmbeddedPopups.GetIsEnabled(scope));
+            Assert.True(Opens(inside));
+            Assert.False(Opens(outside));
+            EmbeddedPopups.SetIsEnabled(scope, false);
+            Assert.False(Opens(inside));
+            window.Close();
+        }, default);
+
         [Fact]
         public Task A_layer_that_does_not_present_leaves_the_window_a_window() => Session.Dispatch(() =>
         {

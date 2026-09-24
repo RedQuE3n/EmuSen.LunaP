@@ -82,6 +82,36 @@ namespace EmuSen.LunaP.Tests
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "No factory for this control."),
         };
 
+        // An open dropdown paints the focused item in the accent and the selected one in the input surface - §93.
+        [Fact]
+        public Task An_open_dropdowns_accent_follows_the_focus_not_the_selection() => Session.Dispatch(() =>
+        {
+            var combo = new ComboBox { ItemsSource = new[] { "one", "two", "three" }, SelectedIndex = 0 };
+            EmbeddedPopups.SetIsEnabled(combo, true);
+            var window = new ToolWindow { Width = 420, Height = 260, Content = combo };
+            window.Show();
+            combo.IsDropDownOpen = true;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Color accent = ((ISolidColorBrush)window.FindResource("LunaAccent")!).Color;
+            Color surface = ((ISolidColorBrush)window.FindResource("LunaInputSurface")!).Color;
+            Color? Fill(int index) => (((ComboBoxItem)combo.ContainerFromIndex(index)!).GetVisualDescendants()
+                .OfType<Avalonia.Controls.Presenters.ContentPresenter>().First(c => c.Name == "PART_ContentPresenter").Background as ISolidColorBrush)?.Color;
+
+            ((ComboBoxItem)combo.ContainerFromIndex(0)!).Focus(Avalonia.Input.NavigationMethod.Directional);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Equal(accent, Fill(0));
+
+            ((ComboBoxItem)combo.ContainerFromIndex(1)!).Focus(Avalonia.Input.NavigationMethod.Directional);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Equal(0, combo.SelectedIndex);
+            Assert.Equal(accent, Fill(1));
+            Assert.Equal(surface, Fill(0));
+
+            combo.IsDropDownOpen = false;
+            window.Close();
+        }, default);
+
         // THE SWEEP. Every colour every form control actually paints with must come from the
         // palette, or the seam §21.2 caught from the other side is still open.
         [Theory]
