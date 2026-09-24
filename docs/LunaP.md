@@ -10709,3 +10709,77 @@ Close.
 - **The platform's file pickers** are asked of the window's own `TopLevel`, which on a sheet is a window that was
   never shown. Whether a picker opens from one is the platform's answer and is not measured here.
 
+## 91. An on-screen keyboard, and a path that can be typed
+
+**What was missing.** A consumer on a handheld's game session needs text from a pad: a cheat code, a description, a
+folder. The platform may offer a keyboard of its own (Steam's, on SteamOS), and the first consumer asks for it where it
+can (its §4.30). But that keyboard is laid out for prose, is reached through a URL whose honouring for a non-Steam
+application is reported rather than documented, and types by synthesising key events through the compositor. For a
+cheat code, which is sixteen hexadecimal digits and a separator, a QWERTY layout makes every character three or four
+moves away. This section is the keyboard the toolkit now draws itself, and the smaller change that lets a path row take
+typed text at all.
+
+### 91.1 `OnScreenKeyboard`
+
+`OnScreenKeyboard.Show(textBox, layouts, hint)` draws a keyboard at the bottom of the window holding the text box, in
+the window's overlay layer, and gives it the keyboard focus. It types into the text box at its caret. It knows nothing
+about a pad: it is steered by methods, `Move(columns, rows)`, `Press()`, `Type(key)`, `Erase()`, `NextLayout(by)`,
+`Finish()` and `Cancel()`, which a consumer maps its own buttons onto, and by the keys a keyboard user would use
+(arrows, Enter or Space, Backspace, Escape). Its keys are also buttons, so a pointer or a touch screen can press them.
+
+- **Moving between rows lands on the key under the middle of the one left**, measured in key units from the row's
+  centre, so a wide key such as Space or Erase is reached from any key above it and the highlight does not drift left
+  on a row with fewer keys. Of two keys equally near, the left one. Across a row the highlight wraps.
+- **Done keeps the text; Cancel and Escape put back the text the box had when the keyboard opened.** `Closed`
+  completes with which it was, and the focus goes back to the text box.
+- **Shift capitalises the next letter only**, on a layout that has a Shift key.
+- **The Next key names the layout it goes to**, so a player can see what it will do before pressing it.
+- **A transparent, hit-testable panel under the keyboard** keeps a pointer off the window beneath while it is open.
+  It is transparent rather than shaded because a kit control paints only in the palette (§85), and no palette token is
+  a translucent shade.
+- `OnScreenKeyboard.OpenOver(visual)` answers the keyboard open over a window, which is how a consumer's input router
+  knows to send its buttons there first.
+
+### 91.2 `KeyboardLayout`
+
+A layout is plain data: rows of keys, each the text it types or one of five named keys (`Erase`, `Space`, `Shift`,
+`Next`, `Done`), each with a width in key units; `KeyboardLayout.Row("1 2 Space:4")` reads one row. Three are
+shipped, for the three shapes of text a pad user is asked for:
+
+- `Code`: the sixteen hexadecimal digits in two rows of eight, then `+ : - .`, a space and Erase. Every character of
+  an SNES Pro Action Replay code, a Game Boy GameShark code or an N64 GameShark code is at most four moves from the
+  first key.
+- `GameGenie`: the sixteen letters an NES Game Genie code is written in, in the order its own code wheel prints them
+  (A P Z L G I T Y, then E O X U K S V N).
+- `Letters`: digits, a lower-case QWERTY alphabet, common punctuation, Shift and a four-unit space, for a description
+  or a name.
+
+Every row of a shipped layout is the same number of units wide, and every layout has Done and Erase; a test holds
+both.
+
+### 91.3 What this is not
+
+It is not an input method: no languages, no prediction, no swipe, and no accents beyond what a layout lists. A
+consumer that has a platform keyboard and wants prose should keep asking for it; this is for the short, constrained
+text a platform keyboard serves badly and for the machine that has no platform keyboard at all.
+
+### 91.4 `PathPickerRow.IsEditable`
+
+A path row was a read-only box and a Browse button that opens the platform's picker. In a session whose platform
+picker is drawn by another process that the compositor does not show, that left no way to set a path. `IsEditable`
+(false by default, so nothing changes for an existing consumer) makes the box take typed text, committed when Enter is
+pressed in it or the focus leaves it. A committed path is a pick like any other and raises `PathPicked`; blank text or
+the path it already held is not, and the box goes back to showing the path. It is committed on leaving the box rather
+than on every keystroke because a half-typed folder is not one the consumer should scan.
+
+### 91.5 Tests
+
+`OnScreenKeyboardTests`, eight cases: it opens over the window with the focus and is found there; a code typed by
+moving and pressing, with the row change landing under the key left, a tie going left and a row wrapping; typing at
+the caret and an erase at the start doing nothing; Shift for one letter and Next naming and changing the layout; Done
+keeping the text and returning the focus; the arrows, Enter, Backspace and Escape, with Escape putting the text back;
+a key clicked with a pointer; and the three layouts' rows and keys. `PathPickerTypingTests`, two: a typed path picked
+on leaving the box and on Enter, and blank text not; a row that is not editable staying read-only. Three mutants,
+each caught by one case: a row change keeping the column index, Cancel keeping what was typed, and a typed path
+committed when the row is not editable.
+

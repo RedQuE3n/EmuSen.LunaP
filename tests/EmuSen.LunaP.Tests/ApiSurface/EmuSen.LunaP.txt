@@ -168,6 +168,20 @@ public class EmuSen.LunaP.Controls.FilterBar : Avalonia.Controls.Primitives.Temp
 public class EmuSen.LunaP.Controls.HintText : Avalonia.Controls.TextBlock
     public HintText()
 
+public sealed class EmuSen.LunaP.Controls.KeyboardLayout
+    public KeyboardLayout(string name, System.Collections.Generic.IEnumerable<System.Collections.Generic.IReadOnlyList<System.ValueTuple<string, int>>> rows)
+    public System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<System.ValueTuple<string, int>>> Rows { get; }
+    public const string Done = "Done"
+    public const string Erase = "Erase"
+    public const string Next = "Next"
+    public const string Shift = "Shift"
+    public const string Space = "Space"
+    public static EmuSen.LunaP.Controls.KeyboardLayout Code { get; }
+    public static EmuSen.LunaP.Controls.KeyboardLayout GameGenie { get; }
+    public static EmuSen.LunaP.Controls.KeyboardLayout Letters { get; }
+    public static System.Collections.Generic.IReadOnlyList<System.ValueTuple<string, int>> Row(string keys)
+    public string Name { get; }
+
 public struct EmuSen.LunaP.Controls.LunaCell<T> : System.ValueType, System.IEquatable<EmuSen.LunaP.Controls.LunaCell<T>> where T : class
     public LunaCell<T>(T Row, int Column)
     public T Row { get; init; }
@@ -392,6 +406,27 @@ public class EmuSen.LunaP.Controls.NoticeLayer : Avalonia.Controls.Primitives.Te
     public string? Current { get; }
     public void Show(string text)
 
+public class EmuSen.LunaP.Controls.OnScreenKeyboard : Avalonia.Controls.Border
+    protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
+    public Avalonia.Controls.TextBox Target { get; }
+    public EmuSen.LunaP.Controls.KeyboardLayout Layout { get; }
+    public OnScreenKeyboard(Avalonia.Controls.TextBox target, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.KeyboardLayout> layouts)
+    public System.Threading.Tasks.Task<bool> Closed { get; }
+    public bool Erase()
+    public bool IsOpen { get; }
+    public bool Shifted { get; }
+    public double KeySize { get; set; }
+    public static EmuSen.LunaP.Controls.OnScreenKeyboard Show(Avalonia.Controls.TextBox target, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.KeyboardLayout> layouts, string? hint = null)
+    public static EmuSen.LunaP.Controls.OnScreenKeyboard? OpenOver(Avalonia.Visual visual)
+    public string CurrentKey { get; }
+    public string? Hint { get; set; }
+    public void Cancel()
+    public void Finish()
+    public void Move(int columns, int rows)
+    public void NextLayout(int by)
+    public void Press()
+    public void Type(string key)
+
 public class EmuSen.LunaP.Controls.OverlayBar : Avalonia.Controls.ContentControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
@@ -427,8 +462,10 @@ public class EmuSen.LunaP.Controls.PathPickerRow : Avalonia.Controls.Primitives.
     protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
     public EmuSen.LunaP.Controls.PathPickerMode Mode { get; set; }
     public PathPickerRow()
+    public bool IsEditable { get; set; }
     public event System.Action<string> PathPicked
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PathPickerMode> ModeProperty = Folder
+    public static readonly Avalonia.StyledProperty<bool> IsEditableProperty = false
     public static readonly Avalonia.StyledProperty<string> BrowseTitleProperty = "Choose"
     public static readonly Avalonia.StyledProperty<string> PathProperty = ""
     public static readonly Avalonia.StyledProperty<string> PlaceholderProperty = ""

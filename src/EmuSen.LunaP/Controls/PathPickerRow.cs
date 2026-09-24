@@ -33,10 +33,21 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<PathPickerMode> ModeProperty =
             AvaloniaProperty.Register<PathPickerRow, PathPickerMode>(nameof(Mode));
 
+        public static readonly StyledProperty<bool> IsEditableProperty =
+            AvaloniaProperty.Register<PathPickerRow, bool>(nameof(IsEditable));
+
         private Button? _browse;
+        private TextBox? _box;
+
+        /// <summary>Whether a path can be typed into the box as well as picked, committed on Enter or on leaving the box. False by default, which keeps the box read-only.</summary>
+        public bool IsEditable
+        {
+            get => GetValue(IsEditableProperty);
+            set => SetValue(IsEditableProperty, value);
+        }
 
         // Raised only when the user actually picks something, never on a cancel.
-        /// <summary>Raised when a path is chosen through the browse button, with the new path. Not raised when Path is set in code.</summary>
+        /// <summary>Raised when a path is chosen through the browse button or typed into an editable box, with the new path. Not raised when Path is set in code.</summary>
         public event Action<string>? PathPicked;
 
         /// <summary>The current path. Setting it does not raise PathPicked.</summary>
@@ -83,6 +94,41 @@ namespace EmuSen.LunaP.Controls
             if (_browse is not null) _browse.Click -= OnBrowseClick;
             _browse = e.NameScope.Find<Button>("PART_Browse");
             if (_browse is not null) _browse.Click += OnBrowseClick;
+
+            if (_box is not null)
+            {
+                _box.LostFocus -= OnBoxLeft;
+                _box.KeyDown -= OnBoxKey;
+            }
+            _box = e.NameScope.Find<TextBox>("PART_Path");
+            if (_box is not null)
+            {
+                _box.LostFocus += OnBoxLeft;
+                _box.KeyDown += OnBoxKey;
+            }
+        }
+
+        private void OnBoxLeft(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => CommitTyped();
+
+        private void OnBoxKey(object? sender, Avalonia.Input.KeyEventArgs e)
+        {
+            if (e.Key == Avalonia.Input.Key.Enter) CommitTyped();
+        }
+
+        // A typed path is a pick like any other; blank or unchanged text is not, and the box goes back to the path.
+        private void CommitTyped()
+        {
+            if (!IsEditable || _box is null) return;
+
+            string typed = (_box.Text ?? string.Empty).Trim();
+            if (typed.Length == 0 || typed == Path)
+            {
+                _box.Text = Path;
+                return;
+            }
+
+            Path = typed;
+            PathPicked?.Invoke(typed);
         }
 
         private async void OnBrowseClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)

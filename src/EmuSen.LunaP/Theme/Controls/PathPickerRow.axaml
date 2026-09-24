@@ -10,8 +10,10 @@
                          often long and truncated on screen, and focusing it is
                          how a keyboard reads or copies the whole thing. That
                          only works if it says which path it holds. -->
+                    <!-- Typing is off unless IsEditable says so; a typed path is committed on Enter or on leaving the box (§91.4). -->
                     <TextBox Grid.Column="0"
-                             IsReadOnly="True"
+                             Name="PART_Path"
+                             IsReadOnly="{TemplateBinding IsEditable, Converter={x:Static BoolConverters.Not}}"
                              AutomationProperties.Name="{TemplateBinding BrowseTitle}"
                              Text="{TemplateBinding Path}"
                              PlaceholderText="{TemplateBinding Placeholder}" />
