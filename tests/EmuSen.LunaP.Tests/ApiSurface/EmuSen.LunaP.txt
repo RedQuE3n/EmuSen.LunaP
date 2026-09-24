@@ -867,6 +867,28 @@ public abstract class EmuSen.LunaP.Windowing.PollingWindow : EmuSen.LunaP.Window
     public bool IsPolling { get; }
     public void RefreshNow()
 
+public class EmuSen.LunaP.Windowing.SheetLayer : Avalonia.Controls.Panel
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public Avalonia.Controls.Control? SheetOf(Avalonia.Controls.Window window)
+    public Avalonia.Controls.Window? Current { get; }
+    public SheetLayer()
+    public System.Collections.Generic.IReadOnlyList<Avalonia.Controls.Window> Presented { get; }
+    public System.Threading.Tasks.Task Present(Avalonia.Controls.Window window)
+    public bool IsPresenting { get; }
+    public bool PresentsWindows { get; set; }
+    public double Scale { get; set; }
+    public event System.Action PresentedChanged
+    public static EmuSen.LunaP.Windowing.SheetLayer? LayerFor(Avalonia.Controls.Window? owner)
+    public static EmuSen.LunaP.Windowing.SheetLayer? PresenterOf(Avalonia.Controls.Window window)
+    public static System.Threading.Tasks.Task Show(Avalonia.Controls.Window window, Avalonia.Controls.Window? owner)
+    public static System.Threading.Tasks.Task<TResult?> ShowDialog<TResult>(EmuSen.LunaP.Windowing.ToolWindow dialog, Avalonia.Controls.Window owner)
+    public static readonly Avalonia.StyledProperty<bool> PresentsWindowsProperty = false
+    public static readonly Avalonia.StyledProperty<double> ScaleProperty = 1
+    public static readonly Avalonia.StyledProperty<string?> HintProperty = null
+    public static void Activate(Avalonia.Controls.Window window)
+    public string? Hint { get; set; }
+    public void BringToFront(Avalonia.Controls.Window window)
+
 public class EmuSen.LunaP.Windowing.ToolWindow : Avalonia.Controls.Window
     protected override void OnClosing(Avalonia.Controls.WindowClosingEventArgs e)
     protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
@@ -877,8 +899,10 @@ public class EmuSen.LunaP.Windowing.ToolWindow : Avalonia.Controls.Window
     public bool ClosesOnEscape { get; set; }
     public bool IsFullScreen { get; set; }
     public event System.Action<bool> FullScreenChanged
+    public object? DialogResult { get; }
     public static readonly Avalonia.StyledProperty<bool> ClosesOnEscapeProperty = false
     public string? WindowKey { get; set; }
+    public void Close(object? dialogResult)
     public void ToggleFullScreen()
 
 public sealed class EmuSen.LunaP.Windowing.WindowPlacement

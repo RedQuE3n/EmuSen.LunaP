@@ -124,6 +124,18 @@ namespace EmuSen.LunaP.Windowing
             base.OnClosing(e);
         }
 
+        /// <summary>What the window was last closed with through <see cref="Close(object?)"/>, which a window shown on a sheet answers with in place of ShowDialog's result.</summary>
+        public object? DialogResult { get; private set; }
+
+        // Hides Window.Close(object) so the answer outlives a window that was never shown - see docs/LunaP.md §90.3.
+        /// <summary>Closes the window with a result, which ShowDialog returns and <see cref="DialogResult"/> keeps.</summary>
+        /// <param name="dialogResult">The answer the dialog gives, returned by ShowDialog and kept in DialogResult.</param>
+        public new void Close(object? dialogResult)
+        {
+            DialogResult = dialogResult;
+            base.Close(dialogResult);
+        }
+
         protected override void OnKeyDown(KeyEventArgs e)
         {
             if (ClosesOnEscape && e.Key == Key.Escape)

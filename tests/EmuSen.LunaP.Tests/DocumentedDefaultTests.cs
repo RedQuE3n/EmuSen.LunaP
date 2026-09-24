@@ -88,6 +88,7 @@ namespace EmuSen.LunaP.Tests
             ("P:EmuSen.LunaP.Controls.TileGrid.Spacing", "20 by default", () => new TileGrid<Row>().Spacing),
             ("P:EmuSen.LunaP.Controls.OverlayBar.HideAfter", "1.5 seconds by default", () => new OverlayBar().HideAfter),
             ("P:EmuSen.LunaP.Controls.NoticeLayer.Duration", "1.75 seconds by default", () => new NoticeLayer().Duration),
+            ("P:EmuSen.LunaP.Windowing.SheetLayer.PresentsWindows", "False by default", () => new EmuSen.LunaP.Windowing.SheetLayer().PresentsWindows),
         };
 
         // What each claim's words mean, kept apart from the phrase so that neither can be quietly
@@ -113,6 +114,7 @@ namespace EmuSen.LunaP.Tests
             ["P:EmuSen.LunaP.Controls.TileGrid.Spacing"] = 20.0,
             ["P:EmuSen.LunaP.Controls.OverlayBar.HideAfter"] = TimeSpan.FromSeconds(1.5),
             ["P:EmuSen.LunaP.Controls.NoticeLayer.Duration"] = TimeSpan.FromSeconds(1.75),
+            ["P:EmuSen.LunaP.Windowing.SheetLayer.PresentsWindows"] = false,
         };
 
         // A claim the sweep finds and this file does not check, with the reason it cannot be.

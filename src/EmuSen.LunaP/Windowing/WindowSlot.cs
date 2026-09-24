@@ -24,7 +24,7 @@ namespace EmuSen.LunaP.Windowing
             if (Current is { } existing)
             {
                 refresh?.Invoke(existing);
-                existing.Activate();
+                SheetLayer.Activate(existing);
                 return;
             }
 
@@ -35,8 +35,8 @@ namespace EmuSen.LunaP.Windowing
                 if (ReferenceEquals(Current, window)) Current = null;
             };
 
-            if (owner is null) window.Show();
-            else window.Show(owner);
+            // On a sheet where the owner presents its windows, else the window it always was - see docs/LunaP.md §90.4.
+            _ = SheetLayer.Show(window, owner);
         });
 
         // Never creates and never activates: a core swap should not pop up a dashboard nobody asked for, or steal focus mid-game.

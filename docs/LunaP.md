@@ -10622,3 +10622,86 @@ Three decisions, each pinned by `PromptTests`:
 The text box is named, for a reader, by the message, since the message is the question the box answers; and it opens focused with its initial text selected, so a rename is one keystroke from replacing the old name.
 
 **Not covered.** No validation hook: a caller that needs to refuse a particular answer (a duplicate name) learns of it after the dialog has closed and must ask again. That is a deliberate omission until a second consumer wants it, since a validator delegate is the kind of seam §1 asks to be earned.
+
+## 90. Sheets: a window's content inside its owner, for a session that shows one window
+
+**What was missing.** A consumer running on a handheld's game session (SteamOS's Game Mode, which is the gamescope
+compositor) shows one application window at a time, full screen, and has no window manager to raise, place or
+return from a second one. Every settings window the consumer had was a `ToolWindow` shown with `Show(owner)`, and a
+modal question was a `Dialogs` call. What a second top-level window does under that compositor is its business and
+not this toolkit's to settle; what the toolkit can offer is a way to not need one.
+
+### 90.1 `SheetLayer`
+
+A `Panel` a host window places over its own content, hidden until something is presented. `Present(window)` takes
+the window's `Content` out of it and puts it on a *sheet* (a titled, rounded surface with an optional hint line
+beneath) laid over the host, and takes it off when the window raises `Closed`. The window is still built, still owns
+its fields and handlers, and still closes itself with `Close()`; only where its content is drawn changes.
+
+- **One sheet is drawn at a time.** A window presented from a presented window goes on top and hides the one
+  beneath until it closes, which is how the one-window session this is for behaves anyway, and it keeps focus and
+  the Tab cycle to one sheet.
+- **Tab cycles on the sheet** (`KeyboardNavigationMode.Cycle` on its root), because the host's controls underneath
+  are not what anybody is working on.
+- **Focus starts on the default button if there is one, else the first control that takes it**, and goes back to
+  whatever had it before the first sheet when the last one closes.
+- **A desk-sized window keeps its width.** A sheet's content is capped at the window's `Width` and centred, and
+  `Scale` enlarges it as a layout transform, so text stays sharp on a television rather than a small window
+  stretched across it.
+- **Escape closes a `ToolWindow` whose `ClosesOnEscape` is set**, as it did as a window: the window's own
+  `OnKeyDown` no longer sees keys typed on its content, so the sheet honours the property itself.
+
+### 90.2 What adoption relies on, measured
+
+Closing a window that was never shown raises `Closing` and `Closed` as a shown one does (measured on Avalonia 12.1:
+both fire, in that order). That is the whole of what lets a window be presented without knowing it: its Close
+button, its Escape and its caller's `Close()` all end the sheet through the event the sheet already listens to.
+
+**Why adopt rather than ask each window to be a page as well.** A window written as a `Window` would otherwise need
+a second shape, a `UserControl` with the same fields and a host that forwards `Close` to it, and every window in a
+consumer would pay that for the sake of one mode. Adoption costs the window nothing and the consumer one call.
+
+### 90.3 A dialog's answer, and the one member that hides another
+
+`ShowDialog<T>` returns what `Close(result)` was given, and Avalonia keeps that value privately; a window that was
+never shown has no dialog to return it through. `ToolWindow` therefore gains `DialogResult` and a `Close(object?)`
+that records the answer and then calls the base. It *hides* `Window.Close(object?)` rather than overriding it,
+because Avalonia's is not virtual; a call made through a reference typed as `Window` reaches the base and records
+nothing. Every dialog in this toolkit, and every `ToolWindow` subclass that calls `Close(result)` on itself, binds to
+the new member at compile time, which is the case that matters. `SheetLayer.ShowDialog<T>(dialog, owner)` presents a
+dialog where `Show` would, awaits its close and returns `DialogResult` as `T`, or the default when it closed with
+nothing, as Escape and the close button do. `Dialogs.ConfirmAsync`, `ErrorAsync`, `MessageAsync` and `PromptAsync`
+now go through it, so a consumer whose windows are on sheets gets its questions there too without changing a call.
+
+### 90.4 The one call a consumer makes
+
+`SheetLayer.Show(window, owner)` decides nothing itself. An owner that is presented presents its child on the same
+layer; an owner that hosts a layer with `PresentsWindows` set presents there; anything else is shown as the owned
+window it always was. `PresentsWindows` is false by default, so placing a layer in a window changes nothing until the
+consumer decides the session wants it. `WindowSlot.Show` goes through the same call, and brings a presented window
+forward with `SheetLayer.Activate` rather than `Window.Activate`, which a never-shown window would ignore.
+
+### 90.5 Tests, and the guard that was made to fail
+
+`SheetLayerTests`, eight cases: the content moves onto the sheet and everything (content, focus, visibility) comes
+back on close; a layer that does not present leaves the window a window; a child of a presented window goes on top and
+the one beneath returns; Tab stays on the sheet and Escape closes; a dialog's answer, and Escape's default, come back
+through `DialogResult`; a window slot presents once and brings the sheet forward; a shown window cannot also be
+presented. Three mutants: keeping no `DialogResult` (caught by the dialog case), not presenting a presented window's
+child (caught by the nesting case), and dropping the Tab cycle. **The third survived the first version of its
+test**, which tabbed four times and looked only at where the focus ended; with two buttons on the sheet and one
+under it, four presses ended on the sheet either way. The test now checks after every press, and fails without the
+cycle.
+
+### 90.6 What does not carry over
+
+- **The window's own `Styles` and `Resources`** stay with the window, so content that relies on them looks as the
+  host's styles say.
+- **`Opened` is never raised**, since only a shown window can raise it. A window that focuses something in `Opened`
+  gets the sheet's choice instead (§90.1).
+- **Handlers the window registered on itself**, such as a tunnel `KeyDown` added with `AddHandler` on the window,
+  no longer hear keys typed on its content, which is now under the host. A window that needs one registers it on its
+  content instead.
+- **The platform's file pickers** are asked of the window's own `TopLevel`, which on a sheet is a window that was
+  never shown. Whether a picker opens from one is the platform's answer and is not measured here.
+

@@ -21,7 +21,7 @@ namespace EmuSen.LunaP.Windowing
         /// <returns>True if the accepting button was pressed. Closing the dialog any other way answers false.</returns>
         public static async Task<bool> ConfirmAsync(Window owner, string title, string message,
             string acceptText = "OK", string cancelText = "Cancel") =>
-            await DialogWindow.Confirm(title, message, acceptText, cancelText).ShowDialog<bool>(owner);
+            await SheetLayer.ShowDialog<bool>(DialogWindow.Confirm(title, message, acceptText, cancelText), owner);
 
         /// <summary>Shows a modal message with a single dismiss button.</summary>
         /// <param name="owner">The window to sit over.</param>
@@ -29,7 +29,7 @@ namespace EmuSen.LunaP.Windowing
         /// <param name="message">What went wrong, written for whoever is looking at the screen.</param>
         /// <returns>A task that completes when the dialog is dismissed.</returns>
         public static async Task ErrorAsync(Window owner, string title, string message) =>
-            await DialogWindow.Notice(title, message, "Close").ShowDialog<bool>(owner);
+            await SheetLayer.ShowDialog<bool>(DialogWindow.Notice(title, message, "Close"), owner);
 
         // THE THIRD OF THE THREE, and it was missing until §84.2 rather than refused.
         //
@@ -52,7 +52,7 @@ namespace EmuSen.LunaP.Windowing
         /// <param name="acceptText">The caption of the dismiss button.</param>
         /// <returns>A task that completes when the dialog is dismissed.</returns>
         public static async Task MessageAsync(Window owner, string title, string message, string acceptText = "OK") =>
-            await DialogWindow.Notice(title, message, acceptText).ShowDialog<bool>(owner);
+            await SheetLayer.ShowDialog<bool>(DialogWindow.Notice(title, message, acceptText), owner);
 
         // THE FOURTH SMALL MODAL, for the one thing the other three cannot ask: a word. A name for a
         // new collection, a rename. Null for Cancel, Escape and closing, as Confirm is false for them;
@@ -67,7 +67,7 @@ namespace EmuSen.LunaP.Windowing
         /// <returns>The text, trimmed and never empty, or null if the dialog was dismissed any other way.</returns>
         public static async Task<string?> PromptAsync(Window owner, string title, string message, string initial = "",
             string acceptText = "OK", string cancelText = "Cancel") =>
-            await new PromptWindow(title, message, initial, acceptText, cancelText).ShowDialog<string?>(owner);
+            await SheetLayer.ShowDialog<string>(new PromptWindow(title, message, initial, acceptText, cancelText), owner);
 
         // Null means the user cancelled, or the control is not in a window yet.
         /// <summary>Asks the platform for a folder.</summary>
