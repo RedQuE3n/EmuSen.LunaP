@@ -273,6 +273,19 @@ namespace EmuSen.LunaP.Gallery
             // THE GRID HAS A HEIGHT, and it has to. This page is one long vertical stack in a scroll
             // viewer, so anything in it is offered unbounded height - and a TileGrid offered that
             // realises every tile, which is the one configuration §88.2 records as defeating it.
+            // A long list under headings, and one adjustable number with its default - §94.
+            var lenses = new GroupedList<string[]> { Group = l => l[0], Label = l => l[1], Detail = l => l[2], Badge = l => l[1] == "35mm f/1.4" ? "Mounted" : null, Key = l => l[1] };
+            lenses.Refresh(new[]
+            {
+                new[] { "Primes", "35mm f/1.4", "Wide normal, weather sealed" },
+                new[] { "Primes", "85mm f/1.8", "Portrait" },
+                new[] { "Zooms", "24-70mm f/2.8", "Standard zoom" },
+                new[] { "Zooms", "70-200mm f/4", "Telephoto zoom with a long name that wraps onto a second line" },
+            });
+            lenses.Select(new[] { "Primes", "35mm f/1.4", "" });
+            Avalonia.Automation.AutomationProperties.SetName(lenses, "Lenses");
+            var exposure = new SliderRow { Label = "Exposure compensation", Minimum = -3, Maximum = 3, Step = 0.3, DefaultValue = 0, Value = 0.6 };
+
             var albumList = new SourceList { Width = 180 };
             albumList.Fill(new[]
             {
@@ -377,6 +390,8 @@ namespace EmuSen.LunaP.Gallery
 
                 Ui.Section("Lists and empty states", Ui.Stack(8,
                     albums,
+                    lenses.Height(180),
+                    exposure,
                     new EmptyState
                     {
                         Message = "No photos in the library.",

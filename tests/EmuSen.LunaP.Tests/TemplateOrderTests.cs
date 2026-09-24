@@ -183,6 +183,17 @@ namespace EmuSen.LunaP.Tests
                 c => $"{c.GetVisualDescendants().OfType<ListBoxItem>().Count(i => i.IsSelected)} selected, "
                     + $"model {((LunaList<string>)c).Selected}"),
 
+            new("GroupedList.Refresh/Select",
+                () => new GroupedList<string> { Group = x => x.Length > 3 ? "Long" : "Short" },
+                c =>
+                {
+                    var list = (GroupedList<string>)c;
+                    list.Refresh(new[] { "one", "two", "three" });
+                    list.Select("three");
+                },
+                c => $"{c.GetVisualDescendants().OfType<ListBoxItem>().Count(i => i.IsSelected)} selected, "
+                    + $"model {((GroupedList<string>)c).Selected}"),
+
             new("Dropdown.Fill",
                 () => new Dropdown(),
                 c => ((Dropdown)c).Fill(Facets, "Audio"),
@@ -433,6 +444,8 @@ namespace EmuSen.LunaP.Tests
 
             (typeof(LunaList<>), "Refresh"),
             (typeof(LunaList<>), "Select"),
+            (typeof(GroupedList<>), "Refresh"),
+            (typeof(GroupedList<>), "Select"),
             (typeof(Dropdown), nameof(Dropdown.Fill)),
             (typeof(Tabs), nameof(Tabs.Add)),
             (typeof(Tabs), nameof(Tabs.RemoveFrom)),

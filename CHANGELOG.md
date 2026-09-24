@@ -65,6 +65,16 @@ changed shape; these are new types, one new palette token, and nothing to migrat
   window's overlay layer (`Popup.ShouldUseOverlayLayer`), on any platform, through the new theme class
   `luna-embedded-popups`. **`SheetLayer` sets it on every sheet**, so a presented window's dropdowns no longer open
   windows of their own (`§92.5`).
+- **`GroupedList<T>`** — a virtualised list of models under group headings, each row a wrapped name, an optional
+  muted `Detail` line and an optional `Badge` pill, with `Group`, `Label`, `Key`, `ShowGroupCounts`, `Refresh`,
+  `Select`, `Selected`, `Models` and `Chose` as `LunaList<T>` has them. A heading is drawn on the first row of its
+  group, so the list holds one row per model and the arrow keys never stop on a heading; **pass the models already
+  grouped**. A new theme file, `GroupedList.axaml`, paints the row rather than its container (`§94.1`).
+- **`SliderRow`** — a labelled slider over `Minimum` to `Maximum` moved by `Step`, showing its value, its
+  `DefaultValue` while the two differ, and a Reset button above the slider's right end. `Value` set in code raises
+  nothing; `ValueChanged` is a person's move or Reset (`§94.2`).
+- **`FilterBar.MatchesWords(search, fields)`** — every word of a search, in any case, in at least one of several
+  fields, so "royale kuro" finds `crt-royale-kurozumi` (`§94.3`).
 
 As in `LunaList<T>`, `Chose` on both lists is raised only by a person — pointer, keyboard, or a
 screen reader's select — never by `Refresh`, `Select` or `Fill`.

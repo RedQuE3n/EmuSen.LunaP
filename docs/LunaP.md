@@ -10884,3 +10884,103 @@ the accent there and the input surface on the selected one. Deleting either styl
 focuses the selected item on opening is not asserted: it does so only for a `ComboBox` that already holds the focus,
 which is Avalonia's behaviour and not this rule's.
 
+
+## 94. A long list under headings, and one adjustable number
+
+**What was missing.** The first consumer, EmuSen's Mistress, offers libretro's slang shader pack: 2,658 presets in 37
+top-level folders, 1,494 of them under `bezel/`, several six folders deep. Its picker was a `LunaList<string>` of
+relative paths, so a row read `bezel/Mega_Bezel/Presets/Base_CRT_Presets/MBZ__0__SMOOTH-ADV__GDV.slangp` and was cut at
+the window's edge. The player reported that the names could not be read and the list could not be searched through.
+Each preset also declares parameters (`crt-royale` 60, a Mega Bezel preset several hundred), each a number with a
+range and a step, which the consumer wanted as sliders. The kit had a sidebar of groups (`SourceList`, §88.3) and a
+slider with nothing round it. This section is the two controls the consumer built its window from, and one matching
+rule for the search box.
+
+### 94.1 `GroupedList<T>`
+
+A `ListBox` subclass, like `LunaList<T>` (§22.9), taking projections rather than an interface: `Group`, `Label`,
+`Detail` (a second, muted line), `Badge` (a pill at the right, such as "In use") and `Key`. `Refresh`, `Select`,
+`Selected`, `Models` and `Chose` keep `LunaList`'s contract: `Chose` is a person's change of selection, never raised
+by `Refresh` or `Select`, and there is no activation event, for §78's reason.
+
+**Why not `SourceList`.** `SourceList` builds a panel per row. That is right for a sidebar of thirty rows and wrong for
+2,658, and its selection is by string key, which a list of models would have to translate. A `ListBox` virtualises
+its rows and is already what a keyboard, a screen reader and the consumer's pad router know how to walk.
+
+**Headings ride on the first row of their group.** §88.3 refused headings as rows of a `ListBox` because a heading
+would then be a selectable item every consumer has to skip. Here a heading is drawn *inside* the container of the row
+that opens a group, above the row itself, so the list holds exactly one container per model: the arrow keys never
+land on a heading, the selected index is the model's index, and a reader walking the list meets rows, each named
+"heading: label" when it opens a group and "label" otherwise (`AutomationProperties.Name` on the container, since
+the container's content is not a string). A group is opened wherever the group differs from the row before, so the
+caller passes models already grouped; the heading shows the group's count in the current list unless
+`ShowGroupCounts` is false.
+
+**The container paints nothing.** Fluent paints a selected `ListBoxItem`'s whole content presenter, which here would
+put the heading in the accent with the row. `Theme/Controls/GroupedList.axaml` makes the presenter transparent in
+every state and paints the row's own `Border`: the input surface under the pointer, the accent with `LunaOnAccent`
+text when selected, the badge inverted on a selected row, as `SourceList`'s is.
+
+**Names wrap.** A row's label and detail wrap rather than being cut; the rows are of different heights, which the
+virtualising panel handles.
+
+**Tests** (`GroupedListTests`, 7): headings on the first row of each group with their counts, and without counts;
+detail lines only where given; `Refresh` keeping the selection by key and neither it nor `Select` raising `Chose`,
+while a direct selection does; the arrow keys moving the selection and raising `Chose`; the accent on the selected
+row, `LunaOnAccent` on its text, the heading muted and the container transparent; a badge only where given and a
+long name wrapping to more than two lines in a narrow window; the automation names; and 5,000 rows realising at most
+sixty containers, with a selected row far down scrolled into view. `TemplateOrderTests` runs `Refresh` and `Select`
+before and after the template, `PaletteReachTests` sweeps a populated, selected list with a badge.
+
+**Mutants.** `Refresh` without its suppression raises `Chose` (caught by the selection case); a heading on every row
+(caught by the heading case and the automation case); the theme file left out of `LunaTheme.axaml` (caught by the
+accent case, one red). **`PaletteReachTests` did not catch the missing file**, and that is correct rather than a gap
+in it: without the file the list paints FluentTheme's `ListBox` states through the bridged keys (§85.3), which are
+palette colours. What the file adds is *which* part is painted, and only a test that reads the row and the container
+separately can see that. It is the nineteenth file in the index; the index's comment says so.
+
+### 94.2 `SliderRow`
+
+One number: its label, its value, its default when the value differs ("default -8"), a slider over `Minimum` to
+`Maximum` moved by `Step`, and a Reset button. It is composed in code, as `OnScreenKeyboard` is, and has no template.
+`Value` set from code raises nothing; `ValueChanged` is raised by the slider moved by a person and by the Reset
+button.
+
+**Reset is above the slider's right end, on the label's line.** A pad driving a window by position (the consumer's
+§4.45.3) gives left and right to a focused slider, so a button beside it could never be reached from it. Above it, up
+from the slider reaches its own Reset and down from Reset reaches the slider, and a walk down a column of rows
+alternates the two.
+
+**The step.** `IsSnapToTickEnabled` with `TickFrequency` equal to the step, and the step as `SmallChange`. A step of
+zero or less, which a slang parameter may declare, is a hundredth of the range: a choice, not RetroArch's rule, which
+was not read. The value is written to as many places as the step, the minimum or the default need, up to four, so a
+default of 0.031 with a step of 0.01 reads 0.031 rather than 0.03.
+
+**A default the guard caught.** The first version's summary said `Maximum` was 1 by default and the row never set it,
+so it was Avalonia's `Slider` default, 100. `DocumentedDefaultTests` failed on it (§81). The row now sets its range to
+0 to 1 itself.
+
+**Tests** (`SliderRowTests`, 7): the arrow keys move by the step and raise the event, a value set in code does not;
+the default is shown only while the value differs and Reset returns to it, raising once; the value's places for four
+steps; a range with no width disabling the slider, and the slider and button named for a reader after the label.
+
+**Mutants.** The value setter raising the event (two cases red); Reset doing nothing (one); and the step. **Setting
+`SmallChange` wrong survived, and so did setting `TickFrequency` wrong**: with snapping on, either property alone
+carried a step of 1 through an arrow key in Avalonia 12.1 (observed; how its `Slider` combines them was not read).
+Both wrong together is caught. The row keeps both.
+
+### 94.3 `FilterBar.MatchesWords`
+
+`Matches` looks for the whole search in one string. A preset called `crt-royale-kurozumi` in the folder `crt` is not
+found by "royale kuro" that way, and a search that must be typed exactly as the file is named is the defect the
+consumer reported. `MatchesWords(search, params fields)` splits the search at white space and requires each word, in
+any case, in at least one field; an empty search matches everything, as `Matches` does. A mutant that takes the
+search whole fails three cases of `Every_word_of_a_search_is_matched_in_some_field`.
+
+### 94.4 What this does not do
+
+- The headings do not fold. A group of 1,494 is passed by the consumer's facet (a `FilterBar` facet of groups), or
+  by searching.
+- There is no type-ahead: a letter typed on the list does not jump to a row.
+- A `SliderRow` cannot be typed into. A value between steps is reached only by setting `Value`.
+- The value is written with the invariant culture, since the numbers it shows are the ones a shader file holds.

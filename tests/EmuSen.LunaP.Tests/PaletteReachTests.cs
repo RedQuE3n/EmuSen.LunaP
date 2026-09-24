@@ -121,6 +121,7 @@ namespace EmuSen.LunaP.Tests
             nameof(ActionToggle) => new ActionToggle(new LunaAction("Wrap", () => { })),
             nameof(ActionMenuItem) => new ActionMenuItem(new LunaAction("Quit", () => { })),
             "LunaList<T>" => new LunaList<string> { ItemsSource = new[] { "alpha", "beta" } },
+            "GroupedList<T>" => BuildGrouped(),
             "LunaTable<T>" => BuildTable(),
             "TileGrid<T>" => BuildTiles(),
             nameof(OnScreenKeyboard) => new OnScreenKeyboard(new TextBox(), new[] { KeyboardLayout.Code }),
@@ -137,6 +138,15 @@ namespace EmuSen.LunaP.Tests
             table.Column("Length", x => x.Length.ToString());
             table.Refresh(new[] { "alpha", "beta", "gamma" });
             return table;
+        }
+
+        // Two groups, a badge and a selected row, so a heading, a pill and the accent are all on screen to be swept.
+        private static Control BuildGrouped()
+        {
+            var list = new GroupedList<string> { Group = x => x.Length > 4 ? "Long" : "Short", Detail = x => x + " detail", Badge = x => x == "beta" ? "In use" : null };
+            list.Refresh(new[] { "beta", "gamma", "alpha" });
+            list.Select("beta");
+            return list;
         }
 
         // Populated and with a tile selected, so the selection ring is on screen to be swept.

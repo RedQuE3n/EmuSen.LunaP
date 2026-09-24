@@ -91,6 +91,11 @@ namespace EmuSen.LunaP.Tests
             ("P:EmuSen.LunaP.Windowing.SheetLayer.PresentsWindows", "False by default", () => new EmuSen.LunaP.Windowing.SheetLayer().PresentsWindows),
             ("P:EmuSen.LunaP.Controls.PathPickerRow.IsEditable", "False by default", () => new PathPickerRow().IsEditable),
             ("P:EmuSen.LunaP.Controls.OnScreenKeyboard.KeySize", "44 by default", () => new OnScreenKeyboard(new Avalonia.Controls.TextBox(), new[] { KeyboardLayout.Code }).KeySize),
+            ("P:EmuSen.LunaP.Controls.GroupedList`1.ShowGroupCounts", "True by default", () => new GroupedList<Row>().ShowGroupCounts),
+            ("P:EmuSen.LunaP.Controls.SliderRow.ResetText", "\"Reset\" by default", () => new SliderRow().ResetText),
+            ("P:EmuSen.LunaP.Controls.SliderRow.Minimum", "0 by default", () => new SliderRow().Minimum),
+            ("P:EmuSen.LunaP.Controls.SliderRow.Maximum", "1 by default", () => new SliderRow().Maximum),
+            ("P:EmuSen.LunaP.Controls.SliderRow.DefaultValue", "0 by default", () => new SliderRow().DefaultValue),
         };
 
         // What each claim's words mean, kept apart from the phrase so that neither can be quietly
@@ -119,6 +124,11 @@ namespace EmuSen.LunaP.Tests
             ["P:EmuSen.LunaP.Windowing.SheetLayer.PresentsWindows"] = false,
             ["P:EmuSen.LunaP.Controls.OnScreenKeyboard.KeySize"] = 44.0,
             ["P:EmuSen.LunaP.Controls.PathPickerRow.IsEditable"] = false,
+            ["P:EmuSen.LunaP.Controls.GroupedList`1.ShowGroupCounts"] = true,
+            ["P:EmuSen.LunaP.Controls.SliderRow.ResetText"] = "Reset",
+            ["P:EmuSen.LunaP.Controls.SliderRow.Minimum"] = 0.0,
+            ["P:EmuSen.LunaP.Controls.SliderRow.Maximum"] = 1.0,
+            ["P:EmuSen.LunaP.Controls.SliderRow.DefaultValue"] = 0.0,
         };
 
         // A claim the sweep finds and this file does not check, with the reason it cannot be.
