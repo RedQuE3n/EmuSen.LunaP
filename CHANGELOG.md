@@ -78,6 +78,11 @@ changed shape; these are new types, one new palette token, and nothing to migrat
 - **`GroupedList.Refresh` keeps the keyboard focus** on the row it keeps selected, or on the first row, unselected,
   when none is kept, if a row had the focus. Before, the focused container went with the old rows and the focus with
   it, so a keyboard or pad user's next arrow press did nothing (`§94.5`).
+- **`TileStrip<T>`** — one row of fixed-size tiles scrolling sideways, virtualised, with `TileGrid<T>`'s contract
+  (`TileWidth` 160, `TileHeight` 120, `Spacing` 12, `CreateTile`/`BindTile`, `Label`, `Key`, `Refresh`, `Select`,
+  `Selected`, `Chose`/`Activated`) plus `SelectedIndex` and `Move(by)`, a user's step for a host mapping its own
+  input. It reuses `TileGridItem`, so the grid's ring styles it; `TileStrip` is its non-generic base. The selected tile
+  is centred, and Left, Right and `Move` stop at the ends rather than wrapping (`§95`).
 
 As in `LunaList<T>`, `Chose` on both lists is raised only by a person — pointer, keyboard, or a
 screen reader's select — never by `Refresh`, `Select` or `Fill`.

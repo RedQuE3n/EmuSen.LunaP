@@ -96,7 +96,7 @@ them in the automation tree.
 |---|---|
 | **Text** | `SectionHeader`, `HintText`, `MonoText`, `ErrorText` — the four idioms the theme knows about |
 | **Fields** | `FieldRow` (label, hint, error), `PathPickerRow`, `LunaSwitch`, `Dropdown`, `Tabs`, `SliderRow` |
-| **Data** | `LunaList<T>`, `GroupedList<T>`, `LunaTable<T>`, `TileGrid<T>` (and its `TileGridItem`), `SourceList` |
+| **Data** | `LunaList<T>`, `GroupedList<T>`, `LunaTable<T>`, `TileGrid<T>` (and its `TileGridItem`), `TileStrip<T>`, `SourceList` |
 | **Readouts** | `MeterRow`, `MeterList`, `StatusBar`, `EmptyState`, `RgbaImageView` |
 | **Surfaces** | `Card`, `SplitPane`, `SidePanel`, `ConsolePane`, `FilterBar` |
 | **Over a picture** | `OverlayBar`, `NoticeLayer` |
@@ -936,7 +936,7 @@ not. First place to look if an image comes out sheared (§53.2).
     dotnet build
     dotnet test
 
-**1165 tests, all headless** — no window is ever put on a screen, including for
+**1179 tests, all headless** — no window is ever put on a screen, including for
 the render tests, which drive a real Avalonia control tree through a real Skia
 pass. That figure is checked by the suite itself, because a hand-written count
 of a thing the runner knows is a number that rots: this one said 207 for four

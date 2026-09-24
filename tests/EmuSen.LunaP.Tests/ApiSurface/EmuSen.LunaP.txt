@@ -670,6 +670,35 @@ public class EmuSen.LunaP.Controls.TileGridItem : Avalonia.Controls.ContentContr
     public bool IsSelected { get; }
     public const string SelectedClass = "selected"
 
+public abstract class EmuSen.LunaP.Controls.TileStrip : Avalonia.Controls.Primitives.TemplatedControl
+    protected TileStrip()
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public double Spacing { get; set; }
+    public double TileHeight { get; set; }
+    public double TileWidth { get; set; }
+    public static readonly Avalonia.StyledProperty<double> SpacingProperty = 12
+    public static readonly Avalonia.StyledProperty<double> TileHeightProperty = 120
+    public static readonly Avalonia.StyledProperty<double> TileWidthProperty = 160
+
+public class EmuSen.LunaP.Controls.TileStrip<T> : EmuSen.LunaP.Controls.TileStrip where T : class
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
+    protected override void OnPointerPressed(Avalonia.Input.PointerPressedEventArgs e)
+    public System.Action<Avalonia.Controls.Control, T> BindTile { get; set; }
+    public System.Func<Avalonia.Controls.Control> CreateTile { get; set; }
+    public System.Func<T, object?> Key { get; set; }
+    public System.Func<T, string> Label { get; set; }
+    public T? Selected { get; }
+    public TileStrip<T>()
+    public bool Move(int by)
+    public event System.Action<T> Activated
+    public event System.Action<T> Chose
+    public int SelectedIndex { get; }
+    public void Refresh(System.Collections.Generic.IReadOnlyList<T> items)
+    public void Select(T? item)
+
 public class EmuSen.LunaP.Controls.ToolBar : Avalonia.Controls.ItemsControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Commands.LunaAction> Actions { get; }

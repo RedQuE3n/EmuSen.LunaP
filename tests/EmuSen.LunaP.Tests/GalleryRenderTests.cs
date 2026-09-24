@@ -53,6 +53,8 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(1, window.CountParts<OverlayBar>());
             Assert.Equal(1, window.CountParts<NoticeLayer>());
             Assert.InRange(window.FindPart<TileGrid>()!.CountParts<TileGridItem>(), 1, 39);
+            Assert.Equal(1, window.CountParts<TileStrip>());
+            Assert.InRange(window.FindPart<TileStrip>()!.CountParts<TileGridItem>(), 1, 39);
 
             // The header proves the template applied - the whole risk with a generic control,
             // whose style selector has to be `:is(...)` or it silently matches nothing (§27.2).

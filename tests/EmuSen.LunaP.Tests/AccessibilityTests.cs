@@ -57,6 +57,7 @@ namespace EmuSen.LunaP.Tests
             // list item; the bar is a run of commands; a notice is text in a polite live region.
             { "TileGrid", AutomationControlType.List },
             { nameof(TileGridItem), AutomationControlType.ListItem },
+            { "TileStrip", AutomationControlType.List },
             { nameof(SourceList), AutomationControlType.List },
             { nameof(OverlayBar), AutomationControlType.ToolBar },
             { nameof(NoticeLayer), AutomationControlType.Text },
@@ -333,6 +334,9 @@ namespace EmuSen.LunaP.Tests
             TileGrid<string> tiles = Tiles();
             AutomationProperties.SetName(tiles, "Library");
             panel.Children.Add(tiles);
+            TileStrip<string> strip = Strip();
+            AutomationProperties.SetName(strip, "Moments");
+            panel.Children.Add(strip);
             SourceList sidebar = Sidebar();
             AutomationProperties.SetName(sidebar, "Sidebar");
             panel.Children.Add(sidebar);
@@ -408,6 +412,7 @@ namespace EmuSen.LunaP.Tests
             nameof(SplitPane) => new SplitPane { First = new TextBlock(), Second = new TextBlock() },
             nameof(SidePanel) => new SidePanel { Title = "Explorer", Content = new TextBlock() },
             "TileGrid" => Tiles(),
+            "TileStrip" => Strip(),
             nameof(TileGridItem) => new TileGridItem { Content = new TextBlock { Text = "cover" } },
             nameof(SourceList) => Sidebar(),
             nameof(OverlayBar) => new OverlayBar { Content = new Button { Content = "Pause" } },
@@ -420,6 +425,13 @@ namespace EmuSen.LunaP.Tests
             var grid = new TileGrid<string> { Height = 300 };
             grid.Refresh(new[] { "alpha", "beta" });
             return grid;
+        }
+
+        private static TileStrip<string> Strip()
+        {
+            var strip = new TileStrip<string> { Width = 400 };
+            strip.Refresh(new[] { "alpha", "beta" });
+            return strip;
         }
 
         private static SourceList Sidebar()

@@ -124,6 +124,7 @@ namespace EmuSen.LunaP.Tests
             "GroupedList<T>" => BuildGrouped(),
             "LunaTable<T>" => BuildTable(),
             "TileGrid<T>" => BuildTiles(),
+            "TileStrip<T>" => BuildStrip(),
             nameof(OnScreenKeyboard) => new OnScreenKeyboard(new TextBox(), new[] { KeyboardLayout.Code }),
             _ => (Control)Activator.CreateInstance(
                      StockControls().Concat(KitControls()).First(t => PaletteSweep.Readable(t) == name))!,
@@ -156,6 +157,15 @@ namespace EmuSen.LunaP.Tests
             grid.Refresh(new[] { "alpha", "beta", "gamma" });
             grid.Select("beta");
             return grid;
+        }
+
+        // The strip the same way, its ring on screen to be swept.
+        private static Control BuildStrip()
+        {
+            var strip = new TileStrip<string>();
+            strip.Refresh(new[] { "alpha", "beta", "gamma" });
+            strip.Select("beta");
+            return strip;
         }
 
         // Content, so that a container is not clean merely by being empty. Tabs is the case that
