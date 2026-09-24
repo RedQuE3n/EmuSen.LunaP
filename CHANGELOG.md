@@ -40,6 +40,14 @@ changed shape; these are new types, one new palette token, and nothing to migrat
   waits for text, so a caller has no blank answer to handle. The fourth small modal beside Confirm,
   Error and Message (`§89`).
 
+- **`SheetLayer`** shows a window's content on a sheet inside its owner, for a session that shows one
+  window at a time (a handheld's game mode, a television). `SheetLayer.Show(window, owner)` presents when
+  the owner is presented or hosts a layer with `PresentsWindows` set, and shows an ordinary owned window
+  otherwise; `WindowSlot.Show` and the four `Dialogs` modals now go through it, so **nothing changes for a
+  consumer that places no layer**. `ToolWindow` gains `DialogResult` and a `Close(object?)` that records
+  it, which hides `Window.Close(object?)`: a call through a reference typed as `Window` reaches the base
+  and records nothing (`§90`).
+
 As in `LunaList<T>`, `Chose` on both lists is raised only by a person — pointer, keyboard, or a
 screen reader's select — never by `Refresh`, `Select` or `Fill`.
 
