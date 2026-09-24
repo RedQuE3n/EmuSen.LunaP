@@ -10822,3 +10822,65 @@ and asserts nothing is bound by `Configure` alone or with `embed` false, and tha
 The mutant that ignores `embed` and binds nothing is caught. What the test cannot show is gamescope's behaviour; that
 is the device's (EmuSen's `EmuSen_Settings_Reference.md` §4.45.8). The reflection is a hazard: a later Avalonia that
 renames the field fails the test's `Assert.NotNull` rather than passing silently.
+
+### 92.5 `EmbeddedPopups`: the same request, per element and on any platform
+
+`EmbedPopups` is a platform option: it is read once at startup, and only the X11 backend reads it. Avalonia also
+offers the request per popup, `Popup.ShouldUseOverlayLayer`, which any backend honours. `EmbeddedPopups.IsEnabled`
+is that request for a whole subtree: an attached property that puts the class `luna-embedded-popups` on the
+element, and a rule in `Theme/Controls/EmbeddedPopups.axaml` that sets `ShouldUseOverlayLayer` on every `Popup`
+under an element carrying it, template parts included (a `ComboBox`'s list is a `Popup` in its template).
+
+**`SheetLayer` sets it on every sheet.** A sheet exists because the session shows one window (§90); a popup opened
+from it as a window of its own is the defect of §92.1 again. With the sheet asking, the dropdowns on it stay inside
+the owner whether or not the consumer called `EmbedPopups`, and on a platform where that call does nothing.
+
+**The first version did not turn off.** It added a `Style` to the element's own `Styles` and removed it again; a
+test showed the `Popup` in a `ComboBox`'s template still set after the removal, since Avalonia did not re-evaluate
+it. A class is what a selector is re-evaluated against when it changes, and the rule is now a theme file for that
+reason. The file is listed in `LunaTheme.axaml`, whose count of omissions that turn the suite red is now eighteen.
+
+### 92.6 What a headless test can show
+
+**Avalonia's headless platform draws every popup in the overlay layer**, whether it was asked to or not: a plain
+`ComboBox` in a `ToolWindow` opened its list under an `OverlayPopupHost` in the window's own `PopupOverlayLayer`, with
+`ShouldUseOverlayLayer` false (measured 2026-09-24). So no headless test can show a popup *becoming* embedded, and
+one that checks where the list was drawn passes with the feature removed. The tests read the request instead:
+`SheetLayerTests.A_dropdown_on_a_sheet_opens_its_list_inside_the_owner` and
+`Embedded_popups_is_scoped_to_the_element_and_can_be_turned_off` assert `ShouldUseOverlayLayer` on the list's `Popup`,
+on a sheet, inside and outside a scope, and after the scope turns it off. A sheet that does not ask, a property
+that never turns off, and the theme file left out of the index are each caught. That Avalonia's X11 backend honours
+the request is Avalonia's; the device showed it does (EmuSen's `EmuSen_Settings_Reference.md` §4.45.8).
+
+## 93. An open dropdown's accent follows the focus
+
+### 93.1 The defect
+
+FluentTheme paints a `ComboBoxItem` in the accent when it is *selected* and marks the *focused* one with a
+one-pixel focus ring. While a list is open those are different items as soon as the arrow keys move: the blue
+stays on the item that was chosen before the list opened, and the one Enter would choose is outlined. On a desktop
+the pointer's hover fill makes the difference small. From a pad on a handheld, at arm's length, the ring was not
+seen at all: the player reported (2026-09-24, EmuSen's Mistress on a Legion Go S) that the highlight did not move,
+although the focus did.
+
+### 93.2 The rule
+
+Two styles in `Theme/Controls/FormControls.axaml`, both scoped to `ComboBox:dropdownopen`:
+
+- the focused item takes `LunaAccent` behind `LunaOnAccent` text;
+- the selected item, while it is not the focused one, takes `LunaInputSurface` behind `LunaText`.
+
+Opening a list focuses its selected item, so the list opens looking as it did before; the accent leaves the
+selection only once the focus does. Closed, nothing changes. A pointer that opens the list and hovers without
+moving the focus sees FluentTheme's hover fill as before. The selector reaches the items through the logical tree
+(the list's containers are the `ComboBox`'s logical children), so it applies whether the list is drawn in a window of
+its own or in the owner's overlay layer (§92).
+
+### 93.3 Tests
+
+`FormControlTests.An_open_dropdowns_accent_follows_the_focus_not_the_selection` opens a list drawn in the overlay
+layer, focuses the selected item and reads the accent off its content presenter, then focuses the next and reads
+the accent there and the input surface on the selected one. Deleting either style turns it red. Whether Avalonia
+focuses the selected item on opening is not asserted: it does so only for a `ComboBox` that already holds the focus,
+which is Avalonia's behaviour and not this rule's.
+

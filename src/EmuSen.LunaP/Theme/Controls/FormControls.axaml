@@ -29,4 +29,16 @@
         <Setter Property="Background" Value="{DynamicResource LunaBorder}" />
     </Style>
 
+    <!-- An open dropdown's blue follows the focus, not the selection, so arrows or a pad show which item A or Enter
+         will choose; the selected item keeps a quieter surface meanwhile. Closed, or opened by a pointer, nothing
+         changes: opening focuses the selected item. docs/LunaP.md §93. -->
+    <Style Selector="ComboBox:dropdownopen ComboBoxItem:focus /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource LunaAccent}" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaOnAccent}" />
+    </Style>
+    <Style Selector="ComboBox:dropdownopen ComboBoxItem:selected:not(:focus) /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource LunaInputSurface}" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
+    </Style>
+
 </Styles>

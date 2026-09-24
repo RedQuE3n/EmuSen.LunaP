@@ -58,6 +58,13 @@ changed shape; these are new types, one new palette token, and nothing to migrat
   `OverlayPopups` set, so dropdown lists, menus and tooltips are drawn inside their window rather than as windows
   of their own; `EmbedPopups(false)` leaves the builder as it was. For a compositor that scales every new window
   to fill the screen, such as gamescope (`§92`).
+- **An open dropdown's accent follows the focus.** While a `ComboBox` is open, the focused item is painted in the
+  accent and the selected one in the input surface, so the arrow keys or a pad show which item Enter will choose.
+  Closed, or opened by a pointer, nothing looks different (`§93`).
+- **`EmbeddedPopups.IsEnabled`**, an attached property: every popup under an element that sets it is drawn in the
+  window's overlay layer (`Popup.ShouldUseOverlayLayer`), on any platform, through the new theme class
+  `luna-embedded-popups`. **`SheetLayer` sets it on every sheet**, so a presented window's dropdowns no longer open
+  windows of their own (`§92.5`).
 
 As in `LunaList<T>`, `Chose` on both lists is raised only by a person — pointer, keyboard, or a
 screen reader's select — never by `Refresh`, `Select` or `Fill`.
