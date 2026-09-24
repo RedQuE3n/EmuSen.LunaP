@@ -32,7 +32,7 @@
          now reachable by forgetting a line here rather than by mistyping a
          selector.
 
-         ALL EIGHTEEN OMISSIONS TURN THE SUITE RED, by four different guards
+         ALL NINETEEN OMISSIONS TURN THE SUITE RED, by four different guards
          and for four different reasons. It said SIXTEEN until §79.7, which is
          the count from before §48 added FormControls.axaml - the comment was
          not moved with the line. Corrected rather than quietly renumbered
@@ -49,7 +49,10 @@
          is how the defect in §30 was found. Each was measured by deleting the
          line and running the suite: 11, 13 and 1 red respectively. §29.2 has
          the table. The eighteenth, EmbeddedPopups.axaml (§92.5), is caught
-         by SheetLayerTests, 2 red, measured the same way.
+         by SheetLayerTests, 2 red, measured the same way. The nineteenth,
+         GroupedList.axaml (§94.1), is caught by GroupedListTests' accent
+         case, 1 red; PaletteReachTests does not see it, for the reason §94.1
+         gives.
 
          Order is the order the single file had, which is not load-bearing -
          every style below names a distinct control type, so none overrides
@@ -101,6 +104,9 @@
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/SourceList.axaml" />
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/OverlayBar.axaml" />
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/NoticeLayer.axaml" />
+
+    <!-- A long list under group headings, for a browser of many named things. §94.1. -->
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/GroupedList.axaml" />
 
     <!-- The form controls a stock Avalonia application is mostly made of. Almost
          all of that work is resource overrides in Theme/FluentBridge.axaml; this

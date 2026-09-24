@@ -233,5 +233,23 @@ namespace EmuSen.LunaP.Controls
         public static bool Matches(string? search, string? candidate) =>
             string.IsNullOrWhiteSpace(search)
             || (candidate ?? "").Contains(search.Trim(), StringComparison.OrdinalIgnoreCase);
+
+        // Word by word, each in any field, so "royale kuro" finds "crt-royale-kurozumi" - see docs/LunaP.md §94.3.
+        /// <summary>The match for a search over several fields: every word of the search, case-insensitive, appears in at least one of them. An empty search matches everything.</summary>
+        /// <param name="search">What was typed, split into words at white space. Null or empty matches everything.</param>
+        /// <param name="candidates">The fields to look in, such as a name, a group and a path. Null fields are skipped.</param>
+        /// <returns>True if every word was found in some field.</returns>
+        public static bool MatchesWords(string? search, params string?[] candidates)
+        {
+            if (string.IsNullOrWhiteSpace(search)) return true;
+            foreach (string word in search.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+            {
+                bool found = false;
+                foreach (string? candidate in candidates)
+                    if (candidate is not null && candidate.Contains(word, StringComparison.OrdinalIgnoreCase)) { found = true; break; }
+                if (!found) return false;
+            }
+            return true;
+        }
     }
 }

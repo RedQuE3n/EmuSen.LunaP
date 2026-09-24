@@ -147,6 +147,18 @@ namespace EmuSen.LunaP.Tests
         public void The_match_is_case_insensitive_and_empty_matches_everything(string search, string candidate, bool expected) =>
             Assert.Equal(expected, FilterBar.Matches(search, candidate));
 
+        // §94.3: every word somewhere, so words need not be adjacent or in one field.
+        [Theory]
+        [InlineData("", true)]
+        [InlineData("royale kuro", true)]
+        [InlineData("KURO royale", true)]
+        [InlineData("crt kurozumi", true)]
+        [InlineData("royale lottes", false)]
+        [InlineData("royale-kuro", true)]
+        [InlineData("royale_kuro", false)]
+        public void Every_word_of_a_search_is_matched_in_some_field(string search, bool expected) =>
+            Assert.Equal(expected, FilterBar.MatchesWords(search, "crt-royale-kurozumi", "CRT", null, "crt/crt-royale-kurozumi.slangp"));
+
         [Fact]
         public Task Enter_in_the_search_box_is_a_submit() =>
             Realised(() => new FilterBar(), bar =>

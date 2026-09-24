@@ -155,6 +155,7 @@ public class EmuSen.LunaP.Controls.FilterBar : Avalonia.Controls.Primitives.Temp
     public event System.Action Submitted
     public object? Facet { get; }
     public static bool Matches(string? search, string? candidate)
+    public static bool MatchesWords(string? search, string?[] candidates)
     public static readonly Avalonia.StyledProperty<System.TimeSpan> SearchDelayProperty = 00:00:00
     public static readonly Avalonia.StyledProperty<bool> ShowFacetProperty = false
     public static readonly Avalonia.StyledProperty<string> FacetLabelProperty = ""
@@ -165,6 +166,23 @@ public class EmuSen.LunaP.Controls.FilterBar : Avalonia.Controls.Primitives.Temp
     public string SearchText { get; set; }
     public void FocusSearch()
     public void SetFacets(System.Collections.IEnumerable items, object? selected)
+
+public class EmuSen.LunaP.Controls.GroupedList<T> : Avalonia.Controls.ListBox where T : class
+    protected override System.Type StyleKeyOverride { get; }
+    protected override void PrepareContainerForItemOverride(Avalonia.Controls.Control container, object? item, int index)
+    public GroupedList<T>()
+    public System.Collections.Generic.IReadOnlyList<T> Models { get; }
+    public System.Func<T, object?> Key { get; set; }
+    public System.Func<T, string> Group { get; set; }
+    public System.Func<T, string> Label { get; set; }
+    public System.Func<T, string?> Badge { get; set; }
+    public System.Func<T, string?> Detail { get; set; }
+    public T? Selected { get; }
+    public bool ShowGroupCounts { get; set; }
+    public const string StyleClass = "luna-grouped-list"
+    public event System.Action<T> Chose
+    public void Refresh(System.Collections.Generic.IEnumerable<T> items)
+    public void Select(T? item)
 
 public class EmuSen.LunaP.Controls.HintText : Avalonia.Controls.TextBlock
     public HintText()
@@ -513,6 +531,18 @@ public class EmuSen.LunaP.Controls.SidePanel : Avalonia.Controls.ContentControl
     public static readonly Avalonia.StyledProperty<string> TitleProperty = ""
     public string Title { get; set; }
     public string? PanelKey { get; set; }
+
+public class EmuSen.LunaP.Controls.SliderRow : Avalonia.Controls.Border
+    public SliderRow()
+    public bool IsDefault { get; }
+    public double DefaultValue { get; set; }
+    public double Maximum { get; set; }
+    public double Minimum { get; set; }
+    public double Step { get; set; }
+    public double Value { get; set; }
+    public event System.Action<double> ValueChanged
+    public string Label { get; set; }
+    public string ResetText { get; set; }
 
 public class EmuSen.LunaP.Controls.SourceList : Avalonia.Controls.Primitives.TemplatedControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()

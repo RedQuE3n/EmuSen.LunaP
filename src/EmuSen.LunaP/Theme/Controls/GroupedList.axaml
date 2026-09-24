@@ -1,0 +1,99 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- GroupedList<T>: a ListBox whose rows are built in code (§94.1). The
+         container paints nothing, so a heading riding on a row is never drawn
+         as part of the selection; the row's own Border takes the hover and
+         the accent instead. `:is(Border)` for the row, as SourceList learned. -->
+    <Style Selector="ListBox.luna-grouped-list">
+        <Setter Property="Background" Value="{DynamicResource LunaSurface}" />
+    </Style>
+
+    <Style Selector="ListBox.luna-grouped-list ListBoxItem">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+
+    <Style Selector="ListBox.luna-grouped-list ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list ListBoxItem:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list ListBoxItem:selected:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list ListBoxItem:selected:focus /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="ListBox.luna-grouped-list DockPanel.grouped-header">
+        <Setter Property="Margin" Value="10,14,10,4" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list TextBlock.grouped-heading">
+        <Setter Property="Foreground" Value="{DynamicResource LunaMuted}" />
+        <Setter Property="FontSize" Value="{DynamicResource LunaHintFontSize}" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list TextBlock.grouped-count">
+        <Setter Property="Foreground" Value="{DynamicResource LunaMuted}" />
+        <Setter Property="FontSize" Value="{DynamicResource LunaHintFontSize}" />
+        <Setter Property="Margin" Value="8,0,0,0" />
+    </Style>
+
+    <Style Selector="ListBox.luna-grouped-list :is(Border).grouped-row">
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="Margin" Value="4,1" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list ListBoxItem:pointerover :is(Border).grouped-row">
+        <Setter Property="Background" Value="{DynamicResource LunaInputSurface}" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list TextBlock.grouped-text">
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list TextBlock.grouped-detail">
+        <Setter Property="Foreground" Value="{DynamicResource LunaMuted}" />
+    </Style>
+
+    <!-- The selected row in the accent with the text that goes on it, the
+         pairing SourceList and an open dropdown use (§88.3, §93). -->
+    <Style Selector="ListBox.luna-grouped-list ListBoxItem:selected :is(Border).grouped-row">
+        <Setter Property="Background" Value="{DynamicResource LunaAccent}" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list ListBoxItem:selected :is(Border).grouped-row TextBlock.grouped-text">
+        <Setter Property="Foreground" Value="{DynamicResource LunaOnAccent}" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list ListBoxItem:selected :is(Border).grouped-row TextBlock.grouped-detail">
+        <Setter Property="Foreground" Value="{DynamicResource LunaOnAccent}" />
+    </Style>
+
+    <Style Selector="ListBox.luna-grouped-list Border.grouped-badge">
+        <Setter Property="Background" Value="{DynamicResource LunaInputSurface}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="8,1" />
+        <Setter Property="Margin" Value="8,0,0,0" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list TextBlock.grouped-badge-text">
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
+        <Setter Property="FontSize" Value="{DynamicResource LunaHintFontSize}" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list ListBoxItem:selected Border.grouped-badge">
+        <Setter Property="Background" Value="{DynamicResource LunaOnAccent}" />
+    </Style>
+    <Style Selector="ListBox.luna-grouped-list ListBoxItem:selected TextBlock.grouped-badge-text">
+        <Setter Property="Foreground" Value="{DynamicResource LunaAccent}" />
+    </Style>
+
+</Styles>
