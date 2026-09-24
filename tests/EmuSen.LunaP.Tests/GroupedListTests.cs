@@ -128,6 +128,36 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // A refresh while a row has the focus, as a consumer's badge update does, keeps the focus on the kept row, or the first row unselected when none is kept - see docs/LunaP.md §94.5.
+        [Fact]
+        public Task Refresh_keeps_the_keyboard_focus_on_the_row_it_keeps_selected() => UiTest.Run(() =>
+        {
+            GroupedList<Shader> list = List();
+            list.Refresh(Shaders());
+            list.Select(Shaders()[3]);
+            ToolWindow window = Show(list);
+            ((ListBoxItem)list.ContainerFromIndex(3)!).Focus(NavigationMethod.Directional);
+
+            list.Refresh(Shaders().Prepend(new Shader("Recent", "crt-royale-recent")));
+            Settle(window);
+            Assert.Equal(4, list.SelectedIndex);
+            Assert.Same(list.ContainerFromIndex(4), window.FocusManager!.GetFocusedElement());
+
+            window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, string.Empty);
+            window.KeyRelease(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, string.Empty);
+            Settle(window);
+            Assert.Equal("lcd-grid-v2", list.Selected?.Name);
+
+            var chose = new List<Shader?>();
+            list.Chose += s => chose.Add(s);
+            list.Refresh(Shaders().Take(2));
+            Settle(window);
+            Assert.Null(list.Selected);
+            Assert.Same(list.ContainerFromIndex(0), window.FocusManager!.GetFocusedElement());
+            Assert.Empty(chose);
+            window.Close();
+        });
+
         // The container paints nothing, so the heading on a selected row keeps the surface; the row takes the accent.
         [Fact]
         public Task The_selected_row_is_painted_in_the_accent_and_its_heading_is_not() => UiTest.Run(() =>
