@@ -89,6 +89,8 @@ namespace EmuSen.LunaP.Tests
             ("P:EmuSen.LunaP.Controls.OverlayBar.HideAfter", "1.5 seconds by default", () => new OverlayBar().HideAfter),
             ("P:EmuSen.LunaP.Controls.NoticeLayer.Duration", "1.75 seconds by default", () => new NoticeLayer().Duration),
             ("P:EmuSen.LunaP.Windowing.SheetLayer.PresentsWindows", "False by default", () => new EmuSen.LunaP.Windowing.SheetLayer().PresentsWindows),
+            ("P:EmuSen.LunaP.Controls.PathPickerRow.IsEditable", "False by default", () => new PathPickerRow().IsEditable),
+            ("P:EmuSen.LunaP.Controls.OnScreenKeyboard.KeySize", "44 by default", () => new OnScreenKeyboard(new Avalonia.Controls.TextBox(), new[] { KeyboardLayout.Code }).KeySize),
         };
 
         // What each claim's words mean, kept apart from the phrase so that neither can be quietly
@@ -115,6 +117,8 @@ namespace EmuSen.LunaP.Tests
             ["P:EmuSen.LunaP.Controls.OverlayBar.HideAfter"] = TimeSpan.FromSeconds(1.5),
             ["P:EmuSen.LunaP.Controls.NoticeLayer.Duration"] = TimeSpan.FromSeconds(1.75),
             ["P:EmuSen.LunaP.Windowing.SheetLayer.PresentsWindows"] = false,
+            ["P:EmuSen.LunaP.Controls.OnScreenKeyboard.KeySize"] = 44.0,
+            ["P:EmuSen.LunaP.Controls.PathPickerRow.IsEditable"] = false,
         };
 
         // A claim the sweep finds and this file does not check, with the reason it cannot be.

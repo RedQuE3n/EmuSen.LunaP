@@ -453,6 +453,14 @@ namespace EmuSen.LunaP.Tests
         // checkable as an assertion.
         private static readonly Dictionary<(Type Type, string Method), string> Exempt = new()
         {
+            [(typeof(OnScreenKeyboard), nameof(OnScreenKeyboard.Move))] =
+                "OnScreenKeyboard has no template: its keys are built in the constructor, so every method acts on keys that exist.",
+            [(typeof(OnScreenKeyboard), nameof(OnScreenKeyboard.Press))] = "as OnScreenKeyboard.Move.",
+            [(typeof(OnScreenKeyboard), nameof(OnScreenKeyboard.Type))] = "as OnScreenKeyboard.Move.",
+            [(typeof(OnScreenKeyboard), nameof(OnScreenKeyboard.Erase))] = "as OnScreenKeyboard.Move.",
+            [(typeof(OnScreenKeyboard), nameof(OnScreenKeyboard.NextLayout))] = "as OnScreenKeyboard.Move.",
+            [(typeof(OnScreenKeyboard), nameof(OnScreenKeyboard.Finish))] = "as OnScreenKeyboard.Move; closing a keyboard that is not open does nothing.",
+            [(typeof(OnScreenKeyboard), nameof(OnScreenKeyboard.Cancel))] = "as OnScreenKeyboard.Finish.",
             [(typeof(ConsolePane), nameof(ConsolePane.FocusInput))] =
                 "moves focus, which is an act rather than state; there is nothing to be dropped and nothing to read back.",
             [(typeof(FilterBar), nameof(FilterBar.FocusSearch))] =

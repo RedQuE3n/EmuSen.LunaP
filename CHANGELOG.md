@@ -48,6 +48,13 @@ changed shape; these are new types, one new palette token, and nothing to migrat
   it, which hides `Window.Close(object?)`: a call through a reference typed as `Window` reaches the base
   and records nothing (`§90`).
 
+- **`OnScreenKeyboard`** and **`KeyboardLayout`** — a keyboard drawn over a window and steered one key at a
+  time (`Move`, `Press`, `Type`, `Erase`, `NextLayout`, `Finish`, `Cancel`, or the arrow keys), typing into a
+  text box at its caret, with three layouts: `Code` (hexadecimal and separators), `GameGenie` and `Letters`
+  (`§91`).
+- **`PathPickerRow.IsEditable`**, false by default: when set, a path can be typed into the box as well as
+  picked, committed on Enter or on leaving the box, and raises `PathPicked` like a pick (`§91.4`).
+
 As in `LunaList<T>`, `Chose` on both lists is raised only by a person — pointer, keyboard, or a
 screen reader's select — never by `Refresh`, `Select` or `Fill`.
 

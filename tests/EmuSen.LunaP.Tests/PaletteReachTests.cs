@@ -123,6 +123,7 @@ namespace EmuSen.LunaP.Tests
             "LunaList<T>" => new LunaList<string> { ItemsSource = new[] { "alpha", "beta" } },
             "LunaTable<T>" => BuildTable(),
             "TileGrid<T>" => BuildTiles(),
+            nameof(OnScreenKeyboard) => new OnScreenKeyboard(new TextBox(), new[] { KeyboardLayout.Code }),
             _ => (Control)Activator.CreateInstance(
                      StockControls().Concat(KitControls()).First(t => PaletteSweep.Readable(t) == name))!,
         };
