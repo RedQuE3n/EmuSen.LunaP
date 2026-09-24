@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using EmuSen.LunaP.Threading;
@@ -68,13 +69,14 @@ namespace EmuSen.LunaP.Controls
             }
         }
 
-        /// <summary>Replaces every row, keeping the selection if Key still matches something.</summary>
+        /// <summary>Replaces every row, keeping the selection if Key still matches something, and the keyboard focus on that row if a row had it.</summary>
         /// <param name="items">The new models, in display order, grouped. Safe to call before the control has a template.</param>
         /// <exception cref="ArgumentNullException"><paramref name="items"/> is null.</exception>
         public void Refresh(IEnumerable<T> items)
         {
             if (items is null) throw new ArgumentNullException(nameof(items));
 
+            bool focused = IsKeyboardFocusWithin;
             object? wasSelected = Selected is { } previous ? Key(previous) : null;
             _items = items.ToList();
 
@@ -94,6 +96,17 @@ namespace EmuSen.LunaP.Controls
                 ItemsSource = entries;
                 SelectedIndex = wasSelected is null ? -1 : _items.FindIndex(item => Equals(Key(item), wasSelected));
             }
+            if (focused) KeepFocus();
+        }
+
+        // The focused row's container went with the old rows, which left the focus nowhere; it goes to the kept row, else the first, unselected - see docs/LunaP.md §94.5.
+        private void KeepFocus()
+        {
+            int index = SelectedIndex >= 0 ? SelectedIndex : _items.Count > 0 ? 0 : -1;
+            if (index < 0) { Focus(NavigationMethod.Unspecified); return; }
+            ScrollIntoView(index);
+            UpdateLayout();
+            ContainerFromIndex(index)?.Focus(NavigationMethod.Unspecified);
         }
 
         /// <summary>Selects a model without raising Chose, and scrolls it into view once there is a view.</summary>

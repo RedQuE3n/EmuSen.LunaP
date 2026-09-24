@@ -75,6 +75,9 @@ changed shape; these are new types, one new palette token, and nothing to migrat
   nothing; `ValueChanged` is a person's move or Reset (`§94.2`).
 - **`FilterBar.MatchesWords(search, fields)`** — every word of a search, in any case, in at least one of several
   fields, so "royale kuro" finds `crt-royale-kurozumi` (`§94.3`).
+- **`GroupedList.Refresh` keeps the keyboard focus** on the row it keeps selected, or on the first row, unselected,
+  when none is kept, if a row had the focus. Before, the focused container went with the old rows and the focus with
+  it, so a keyboard or pad user's next arrow press did nothing (`§94.5`).
 
 As in `LunaList<T>`, `Chose` on both lists is raised only by a person — pointer, keyboard, or a
 screen reader's select — never by `Refresh`, `Select` or `Fill`.

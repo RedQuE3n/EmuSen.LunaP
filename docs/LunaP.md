@@ -10984,3 +10984,23 @@ search whole fails three cases of `Every_word_of_a_search_is_matched_in_some_fie
 - There is no type-ahead: a letter typed on the list does not jump to a row.
 - A `SliderRow` cannot be typed into. A value between steps is reached only by setting `Value`.
 - The value is written with the invariant culture, since the numbers it shows are the ones a shader file holds.
+
+### 94.5 A refresh keeps the focus where it was
+
+**The defect.** The consumer refreshes its list when a shader is applied, to move the "In use" badge to the new row.
+`Refresh` gives the `ListBox` a new `ItemsSource`, every container is replaced, and the one holding the keyboard focus
+went with the rest: the focus was left on nothing, and the next arrow key or d-pad press did nothing at all. A mouse
+never notices, because a click puts the focus back. The consumer's pad test found it, as a walk that could not start
+(`EmuSen_Settings_Reference.md` §4.48.5).
+
+**The rule.** If the focus was within the list when `Refresh` was called, it is put back afterwards: on the container
+of the row `Refresh` kept selected by `Key`, scrolled into view and laid out first so that the container exists, or,
+when no row is kept, on the first row, **without selecting it**, so that `Refresh` still never raises `Chose` (§94.1).
+The focus is given as `NavigationMethod.Unspecified`, which Avalonia's list does not take as a request to select.
+A list with no rows keeps the focus on itself if it can take it. A refresh while the focus is elsewhere does not move
+it.
+
+**Test** (`GroupedListTests.Refresh_keeps_the_keyboard_focus_on_the_row_it_keeps_selected`): a row focused, a refresh
+that inserts a row above it, the focus on the kept row at its new index and the next Down moving from it; then a
+refresh that drops the selected row, the focus on the first row with nothing selected and `Chose` not raised. A mutant
+that skips the rule fails it.
