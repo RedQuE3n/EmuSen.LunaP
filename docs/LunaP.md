@@ -11004,3 +11004,67 @@ it.
 that inserts a row above it, the focus on the kept row at its new index and the next Down moving from it; then a
 refresh that drops the selected row, the focus on the first row with nothing selected and `Chose` not raised. A mutant
 that skips the rule fails it.
+
+## 95. A tile strip: one row of tiles scrolling sideways
+
+*2026-09-24.* EmuSen's Mistress asked for a reel of rewind moments: a row of small pictures, newest at the right, stepped
+through from a pad and chosen with a press, with a large picture of the chosen one above. §88.2's grid is the nearest
+thing the kit had, and it does not serve: it wraps into as many rows as the width holds and scrolls down, and its
+template disables sideways scrolling on purpose. `TileStrip<T>` is the same control turned on its side.
+
+### 95.1 `TileStrip<T>`
+
+**Why not a `TileGrid` with an orientation.** The grid's layout, keyboard and scroll arithmetic are all
+two-dimensional: `TileLayout` shares leftover width among columns, Up and Down move by `Columns`, and the scroll into
+view reasons about rows. An orientation property would put a second set of every one of those behind a switch, which
+is CLAUDE.md's "a control doing two things". The strip has none of them: one row, one axis, no leftover to share.
+
+**Why not a `ListBox` over a horizontal `VirtualizingStackPanel`.** That one does virtualise — §88.2's objection to the
+stock parts was a *wrapping* panel, and a strip does not wrap — and was not measured against, so its cost is not the
+reason. The reason is the contract: a host of both controls would have learnt `CreateTile`/`BindTile`, `Chose` raised
+only by a person, `Activated`, and `Refresh` keeping the selection by `Key` (§88.2, §78), and a `ListBox` answers each of
+those differently. The strip reuses the grid's container, `TileGridItem`, so the ring, its style and its automation peer
+are the grid's, and a host restyling `luna|TileGridItem.selected` restyles both.
+
+**Layout.** Tile *n* sits at `Spacing + n × (TileWidth + Spacing)`, `Spacing` from the top; the panel reports the whole
+row's width, so the scroll bar is honest, and a height of `TileHeight + 2 × Spacing`. Defaults 160 × 120 with 12 between:
+a 4:3 picture, and room for the ring (outset 6) inside the spacing.
+
+**Virtualisation.** The panel holds containers for the tiles the viewport crosses and two either side, hides and pools
+the rest, and prefers a pooled container that last showed the same item, all as the grid does. The viewport comes from
+the scroll viewer once it has one, else the width the strip was offered; with neither, every tile is realised, which is
+§88.2's defeating configuration on the other axis — a strip in a horizontal `StackPanel`.
+
+**The selection is centred.** `Select`, a key, a press or `Move` scrolls so the selected tile's centre is the viewport's,
+clamped to the extent, so a step shows the neighbours on both sides. The grid scrolls only as far as needed, which suits
+a page of covers; a reel is read around the tile chosen. At either end the clamp shows the end.
+
+### 95.2 Input, and `Move`
+
+With the strip focused: Left and Right step one tile and stop at the ends (no wrap — a reel of history has a first and a
+last and a wrap would jump from the oldest to the present); Home and End; PageUp and PageDown by the whole tiles in view;
+Enter and Space raise `Activated`. A press of either button selects the tile under it and a double-tap activates it. A
+press in a gap changes nothing.
+
+**`Move(by)`** is the keyboard's step as a public method, for a host that maps its own input — a pad's shoulders, a
+stride in seconds — onto the strip. It is a user's change: it raises `Chose`, clamps, with nothing selected picks the
+first tile (or the last, for a negative step), and returns whether the selection moved. `SelectedIndex` is the
+selection's position, so such a host can compute a stride without a second copy of the list.
+
+### 95.3 Tests, and the guards made to fail
+
+`TileStripTests`, ten cases: the virtualisation bound over 5,000 items, recycling on a scroll to tile 1,000, `Select` and
+`Refresh` not raising `Chose` and `Refresh` keeping the selection by key, centring and the clamp at the end, the ring's
+pixels, keys without wrap, `Move`, pointer and double-tap, automation, and the host's factory. The strip is also in
+`AccessibilityTests` (a `List`, and a named tab stop), `PaletteReachTests`, `TemplateOrderTests` (`Refresh`, `Select`,
+`Move` before and after the template), `DocumentedDefaultTests` and the gallery, as a filmstrip under the viewer.
+
+Seven mutants, each alone, against those files: realising every tile, `Move` wrapping, `Select` raising `Chose`, scrolling
+to the tile's left edge instead of centring it, a double-tap that does not activate, the theme file left out of
+`LunaTheme.axaml`, and `Refresh` forgetting the selection. Every one was caught, the theme file by eleven cases.
+
+### 95.4 Not built
+
+No vertical twin (a column scrolling down is `LunaList`'s job), no multiple selection, no drag to scroll, and no
+momentum. The width of the strip's own tiles is fixed: a host that wants pictures of different shapes letterboxes them
+inside the tile, as Mistress does.

@@ -101,6 +101,7 @@
     <!-- A library window and the game in front of it: OpenEmu's cover grid and
          sidebar, and its in-game bar and notice. §88. -->
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/TileGrid.axaml" />
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/TileStrip.axaml" />
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/SourceList.axaml" />
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/OverlayBar.axaml" />
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/NoticeLayer.axaml" />

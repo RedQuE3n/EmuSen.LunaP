@@ -326,6 +326,13 @@ namespace EmuSen.LunaP.Gallery
                     Ui.Button("Next", () => { }),
                     new Slider { Minimum = 0, Maximum = 100, Value = 30, Width = 120 }),
             };
+            // §95: the viewer's filmstrip, the same photos in one row, its height given for §88.2's reason turned on its side.
+            var filmstrip = new TileStrip<string> { TileWidth = 96, TileHeight = 72, Spacing = 12, Height = 100 };
+            filmstrip.Refresh(shots);
+            filmstrip.Select("IMG_4002.JPG");
+            Avalonia.Automation.AutomationProperties.SetName(filmstrip, "Filmstrip");
+            filmstrip.Activated += shot => Status = $"Opened {shot}.";
+
             var stage = new Grid();
             stage.Children.Add(viewer);
             stage.Children.Add(hud);
@@ -413,7 +420,8 @@ namespace EmuSen.LunaP.Gallery
                 Ui.Section("Library and viewer", Ui.Stack(8,
                     library,
                     Ui.Hint("Move the pointer over the picture for its bar; Pause puts up a notice."),
-                    stage)),
+                    stage,
+                    filmstrip)),
 
                 Ui.Section("Split pane", split)).Margin(12));
 

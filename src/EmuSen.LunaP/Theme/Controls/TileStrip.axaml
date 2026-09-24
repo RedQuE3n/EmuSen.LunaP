@@ -1,0 +1,21 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- TileGrid's template turned on its side: a scroll viewer the strip
+         fills with its own panel, scrolling across and never down. The tiles
+         are TileGridItems, so TileGrid.axaml's ring styles them. §95.1. -->
+    <Style Selector=":is(luna|TileStrip)">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}">
+                    <ScrollViewer Name="PART_Scroll"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Disabled" />
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+</Styles>

@@ -281,6 +281,24 @@ namespace EmuSen.LunaP.Tests
                         + $"model {grid.Selected}, columns {grid.Columns}";
                 }),
 
+            // §95. A strip refreshed, selected and moved from a constructor comes up with the moved-to tile ringed.
+            new("TileStrip.Refresh/Select/Move",
+                () => new TileStrip<string>(),
+                c =>
+                {
+                    var strip = (TileStrip<string>)c;
+                    strip.Refresh(new[] { "alpha", "beta", "gamma", "delta" });
+                    strip.Select("beta");
+                    strip.Move(2);
+                },
+                c =>
+                {
+                    var strip = (TileStrip<string>)c;
+                    var tiles = c.GetVisualDescendants().OfType<TileGridItem>().Where(t => t.IsVisible).ToList();
+                    return $"{tiles.Count} tiles, ringed {string.Join("/", tiles.Where(t => t.IsSelected).Select(t => ((TextBlock)t.Content!).Text))}, "
+                        + $"model {strip.Selected} at {strip.SelectedIndex}";
+                }),
+
             new("SourceList.Fill",
                 () => new SourceList(),
                 c => ((SourceList)c).Fill(new[]
@@ -455,6 +473,9 @@ namespace EmuSen.LunaP.Tests
             (typeof(RgbaImageView), nameof(RgbaImageView.Clear)),
             (typeof(TileGrid<>), "Refresh"),
             (typeof(TileGrid<>), "Select"),
+            (typeof(TileStrip<>), "Refresh"),
+            (typeof(TileStrip<>), "Select"),
+            (typeof(TileStrip<>), "Move"),
             (typeof(SourceList), nameof(SourceList.Fill)),
             (typeof(OverlayBar), nameof(OverlayBar.Reveal)),
             (typeof(OverlayBar), nameof(OverlayBar.Conceal)),
