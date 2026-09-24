@@ -6,6 +6,7 @@ public static class EmuSen.LunaP.LunaApp
     public static Avalonia.AppBuilder Configure<TApp>(EmuSen.LunaP.Platform.IWindowingBackend windowing) where TApp : Avalonia.Application, new()
     public static Avalonia.AppBuilder Configure<TApp>(System.Func<TApp> factory) where TApp : Avalonia.Application
     public static Avalonia.AppBuilder Configure<TApp>(System.Func<TApp> factory, EmuSen.LunaP.Platform.IWindowingBackend windowing) where TApp : Avalonia.Application
+    public static Avalonia.AppBuilder EmbedPopups(this Avalonia.AppBuilder builder, bool embed = true)
 
 public class EmuSen.LunaP.Automation.LunaAutomationPeer : Avalonia.Automation.Peers.ControlAutomationPeer
     protected override Avalonia.Automation.Peers.AutomationControlType GetAutomationControlTypeCore()

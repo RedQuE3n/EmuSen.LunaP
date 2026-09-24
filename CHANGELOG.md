@@ -54,6 +54,10 @@ changed shape; these are new types, one new palette token, and nothing to migrat
   (`§91`).
 - **`PathPickerRow.IsEditable`**, false by default: when set, a path can be typed into the box as well as
   picked, committed on Enter or on leaving the box, and raises `PathPicked` like a pick (`§91.4`).
+- **`LunaApp.EmbedPopups(embed)`**, an `AppBuilder` extension: on Linux it binds `X11PlatformOptions` with
+  `OverlayPopups` set, so dropdown lists, menus and tooltips are drawn inside their window rather than as windows
+  of their own; `EmbedPopups(false)` leaves the builder as it was. For a compositor that scales every new window
+  to fill the screen, such as gamescope (`§92`).
 
 As in `LunaList<T>`, `Chose` on both lists is raised only by a person — pointer, keyboard, or a
 screen reader's select — never by `Refresh`, `Select` or `Fill`.

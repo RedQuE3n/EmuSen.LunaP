@@ -43,6 +43,14 @@ namespace EmuSen.LunaP
         public static AppBuilder Configure<TApp>(Func<TApp> factory, IWindowingBackend windowing) where TApp : Application =>
             Finish(AppBuilder.Configure(factory), windowing ?? throw new ArgumentNullException(nameof(windowing)));
 
+        // gamescope scales every new top-level window to fill the screen, a dropdown's list included - see docs/LunaP.md §92.
+        /// <summary>Draws popups (dropdown lists, menus, tooltips) inside their owning window rather than as windows of their own.</summary>
+        /// <param name="builder">The builder from <see cref="Configure{TApp}()"/>.</param>
+        /// <param name="embed">False leaves the builder as it was, so a caller can pass a session test straight in.</param>
+        /// <returns>The same builder.</returns>
+        public static AppBuilder EmbedPopups(this AppBuilder builder, bool embed = true) =>
+            embed && OperatingSystem.IsLinux() ? builder.With(new X11PlatformOptions { OverlayPopups = true }) : builder;
+
         private static AppBuilder Finish(AppBuilder builder, IWindowingBackend? windowing)
         {
             // AfterSetup, because the saved theme merges into Application.Current.Resources and needs the instance to exist.

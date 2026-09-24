@@ -10783,3 +10783,42 @@ on leaving the box and on Enter, and blank text not; a row that is not editable 
 each caught by one case: a row change keeping the column index, Cancel keeping what was typed, and a typed path
 committed when the row is not editable.
 
+## 92. Popups drawn inside their window, for a compositor that fills the screen with each new one
+
+### 92.1 The defect
+
+§90's sheets moved every *window* of a one-window session inside its owner. They did not move popups. On Linux,
+Avalonia 12.1's X11 backend opens a `ComboBox`'s list, a menu, a flyout or a tooltip as an override-redirect
+top-level window of its own. gamescope, the compositor of SteamOS's Game Mode, scales a new top-level window up to
+the screen; on a Legion Go S the list of an eight-item dropdown filled the 1280×800 panel (reported 2026-09-24, on a
+sheet in EmuSen's Mistress). The source reading behind §90 had already said that a window is rescaled when a
+dropdown sticks out past it; what it did not say, and what the device showed, is that the dropdown itself is a window
+and so is scaled in its own right.
+
+### 92.2 The option
+
+`AppBuilder.EmbedPopups(bool embed = true)` binds `X11PlatformOptions { OverlayPopups = true }`, Avalonia's switch for
+drawing a popup in its top level's overlay layer instead of in a window. It is an extension on the builder rather
+than a parameter of `Configure`, because whether a session is a one-window session is the consumer's to decide
+(a setting, a command-line flag, the environment) and `Configure` has four overloads that would each have to carry
+it. `embed` is there so a consumer passes its decision straight in rather than branching around the call.
+
+It is Linux only. It binds a fresh `X11PlatformOptions`, which replaces rather than amends any the consumer bound
+before it; a consumer that binds its own should set `OverlayPopups` there instead. Windows and macOS have the same
+switch on their own options types; no compositor there is known to need it, and it is not bound.
+
+### 92.3 What an embedded popup gives up
+
+A popup in the overlay layer cannot extend past its window's edges, so a long list near the bottom of a small window
+is cut short and scrolls instead. In a full-screen session there is nothing past the edges to extend into. The overlay
+layer is not inside a sheet's `LayoutTransform` (§90); whether a list opened from a scaled sheet is drawn at the
+sheet's scale or the window's has not been measured.
+
+### 92.4 Tests
+
+`BootstrapTests.Embedded_popups_bind_x11_options_that_draw_popups_inside_the_window` reads what `With` would bind at
+`Setup` out of the builder's private `_optionsInitializers` closure, so the session's own locator is never touched,
+and asserts nothing is bound by `Configure` alone or with `embed` false, and that `OverlayPopups` is set with it true.
+The mutant that ignores `embed` and binds nothing is caught. What the test cannot show is gamescope's behaviour; that
+is the device's (EmuSen's `EmuSen_Settings_Reference.md` §4.45.8). The reflection is a hazard: a later Avalonia that
+renames the field fails the test's `Assert.NotNull` rather than passing silently.

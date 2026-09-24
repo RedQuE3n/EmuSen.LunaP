@@ -34,6 +34,27 @@ namespace EmuSen.LunaP.Tests
         // UsePlatformDetect is in the chain, proven through what it installs rather than through its
         // own name: it is what brings Skia and HarfBuzz, and a builder missing it would come up with
         // no renderer and no text shaping. Dropping the call turns this red.
+        // What With() would bind at Setup, read from its closure so the session's own locator is never touched - §92.
+        private static X11PlatformOptions? BoundX11Options(AppBuilder builder)
+        {
+            var field = typeof(AppBuilder).GetField("_optionsInitializers", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(field);
+            if (field!.GetValue(builder) is not Delegate initializers) return null;
+            foreach (Delegate d in initializers.GetInvocationList())
+                foreach (var captured in d.Target?.GetType().GetFields() ?? [])
+                    if (captured.GetValue(d.Target) is X11PlatformOptions options) return options;
+            return null;
+        }
+
+        [Fact]
+        public void Embedded_popups_bind_x11_options_that_draw_popups_inside_the_window()
+        {
+            if (!OperatingSystem.IsLinux()) return;
+            Assert.Null(BoundX11Options(LunaApp.Configure<SampleApp>()));
+            Assert.Null(BoundX11Options(LunaApp.Configure<SampleApp>().EmbedPopups(false)));
+            Assert.True(BoundX11Options(LunaApp.Configure<SampleApp>().EmbedPopups())?.OverlayPopups);
+        }
+
         [Fact]
         public void The_bootstrap_selects_the_platform_renderer_and_text_shaper()
         {
