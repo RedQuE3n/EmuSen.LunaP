@@ -10643,7 +10643,9 @@ its fields and handlers, and still closes itself with `Close()`; only where its 
   the Tab cycle to one sheet.
 - **Tab cycles on the sheet** (`KeyboardNavigationMode.Cycle` on its root), because the host's controls underneath
   are not what anybody is working on.
-- **Focus starts on the default button if there is one, else the first control that takes it**, and goes back to
+- **Focus starts on the default button if there is one, else on the control nearest the top left**, by position
+  rather than by the order controls were declared in (a window that docks its buttons at the bottom declares them
+  first), passing over tab headers, which would switch the tab if something moved along them. It goes back to
   whatever had it before the first sheet when the last one closes.
 - **A desk-sized window keeps its width.** A sheet's content is capped at the window's `Width` and centred, and
   `Scale` enlarges it as a layout transform, so text stays sharp on a television rather than a small window
@@ -10683,15 +10685,17 @@ forward with `SheetLayer.Activate` rather than `Window.Activate`, which a never-
 
 ### 90.5 Tests, and the guard that was made to fail
 
-`SheetLayerTests`, eight cases: the content moves onto the sheet and everything (content, focus, visibility) comes
+`SheetLayerTests`, nine cases: the content moves onto the sheet and everything (content, focus, visibility) comes
 back on close; a layer that does not present leaves the window a window; a child of a presented window goes on top and
 the one beneath returns; Tab stays on the sheet and Escape closes; a dialog's answer, and Escape's default, come back
 through `DialogResult`; a window slot presents once and brings the sheet forward; a shown window cannot also be
-presented. Three mutants: keeping no `DialogResult` (caught by the dialog case), not presenting a presented window's
+presented; focus starts at the top control, not the first declared and not a tab header. Four mutants: keeping no `DialogResult` (caught by the dialog case), not presenting a presented window's
 child (caught by the nesting case), and dropping the Tab cycle. **The third survived the first version of its
 test**, which tabbed four times and looked only at where the focus ended; with two buttons on the sheet and one
 under it, four presses ended on the sheet either way. The test now checks after every press, and fails without the
-cycle.
+cycle. The fourth, starting at the first control in declaration order, is caught by the focus case: the first
+consumer's settings window docked its Close button at the bottom and declared it first, and its sheets opened on
+Close.
 
 ### 90.6 What does not carry over
 

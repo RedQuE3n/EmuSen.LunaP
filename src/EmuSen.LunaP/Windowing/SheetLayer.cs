@@ -280,14 +280,17 @@ namespace EmuSen.LunaP.Windowing
                 Window.Close();
             }
 
-            // The default button if there is one, as a dialog starts, else the first control that takes focus.
+            // The default button if there is one, as a dialog starts, else the control nearest the top left that is not a tab header - §90.1.
             public void FocusFirst()
             {
                 if (TopLevel.GetTopLevel(Root) is not { } top) return;
                 top.UpdateLayout();
 
                 var candidates = Root.GetVisualDescendants().OfType<InputElement>()
-                    .Where(e => e.Focusable && e.IsEffectivelyEnabled && e.IsEffectivelyVisible)
+                    .Where(e => e.Focusable && e.IsEffectivelyEnabled && e.IsEffectivelyVisible && e is not ScrollViewer)
+                    .Select(e => (Element: e, At: e.TranslatePoint(default, Root) ?? default))
+                    .OrderBy(c => c.Element is TabItem).ThenBy(c => Math.Round(c.At.Y)).ThenBy(c => c.At.X)
+                    .Select(c => c.Element)
                     .ToList();
                 InputElement? first = candidates.OfType<Button>().FirstOrDefault(b => b.IsDefault) ?? candidates.FirstOrDefault();
                 first?.Focus(NavigationMethod.Directional);

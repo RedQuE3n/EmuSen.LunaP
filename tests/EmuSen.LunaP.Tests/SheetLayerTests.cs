@@ -195,5 +195,24 @@ namespace EmuSen.LunaP.Tests
             child.Close();
             host.Close();
         }, default);
+
+        // A window that docks its buttons at the bottom declares them first; the sheet starts at the top all the same.
+        [Fact]
+        public Task Focus_starts_at_the_top_control_not_the_first_declared_nor_a_tab_header() => Session.Dispatch(() =>
+        {
+            var (host, _, _) = Host();
+            var close = new Button { Content = "Close" };
+            var top = new Button { Content = "Top" };
+            DockPanel.SetDock(close, Dock.Bottom);
+            var tabs = new TabControl { Items = { new TabItem { Header = "One", Content = top }, new TabItem { Header = "Two", Content = new Button { Content = "Other" } } } };
+            var child = new ToolWindow { Title = "Docked", Width = 400, Content = new DockPanel { Children = { close, tabs } } };
+
+            SheetLayer.Show(child, host);
+
+            Assert.Same(top, host.FocusManager!.GetFocusedElement());
+            Assert.Equal(0, tabs.SelectedIndex);
+            child.Close();
+            host.Close();
+        }, default);
     }
 }
