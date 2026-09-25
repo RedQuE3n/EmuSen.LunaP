@@ -20,8 +20,11 @@ namespace EmuSen.LunaP.Motion
     /// <param name="Gap">Horizontal: the distance, in pixels, between the end of one copy and the start of the next.</param>
     /// <param name="EndPause">Vertical: how long the last lines stay shown before the text starts again.</param>
     /// <param name="FadeIn">Vertical: how long the text takes to fade in at the top after each pass; the delay counts from its end.</param>
-    public readonly record struct TextScroll(TimeSpan Delay, double Speed, double Gap = 0, TimeSpan EndPause = default, TimeSpan FadeIn = default)
+    /// <param name="WholePixels">Vertical: whether the column moves in whole-pixel steps rather than smoothly.</param>
+    public readonly record struct TextScroll(TimeSpan Delay, double Speed, double Gap = 0, TimeSpan EndPause = default, TimeSpan FadeIn = default, bool WholePixels = false)
     {
+        private double Step(double offset) => WholePixels ? Math.Floor(offset + 1e-9) : offset;
+
         /// <summary>A line's leftward offset at a time: still for Delay, then moving at Speed until one copy has replaced the other, then still again for Delay.</summary>
         /// <param name="elapsed">Time since the text was shown.</param>
         /// <param name="width">The line's own width in pixels.</param>
@@ -44,12 +47,12 @@ namespace EmuSen.LunaP.Motion
             if (Speed <= 0 || travel <= 0 || elapsed <= Delay) return (0, 1);
             double delay = Delay.TotalSeconds, fade = Math.Max(0, FadeIn.TotalSeconds), moving = travel / Speed, pause = Math.Max(0, EndPause.TotalSeconds);
             double t = elapsed.TotalSeconds, first = delay + moving + pause;
-            if (t < first) return (Math.Min(travel, Math.Max(0, t - delay) * Speed), 1);
+            if (t < first) return (Step(Math.Min(travel, Math.Max(0, t - delay) * Speed)), 1);
             double cycle = fade + delay + moving + pause, into = (t - first) % cycle;
             if (into < fade) return (0, into / fade);
             into -= fade;
             if (into <= delay) return (0, 1);
-            return (Math.Min(travel, (into - delay) * Speed), 1);
+            return (Step(Math.Min(travel, (into - delay) * Speed)), 1);
         }
     }
 }
