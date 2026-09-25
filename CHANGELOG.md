@@ -14,6 +14,11 @@ answer.
 
 ## Unreleased
 
+- **`SliderList` and `SliderItem`, new and additive.** A scrolling column of `SliderRow`s under headings that builds
+  only the rows in view: give it `SliderItem`s (a row each) and strings (a heading each) as `ItemsSource`, listen to
+  `ValueChanged(item)`, and read or set each item's `Value`, which is kept while no row shows it. A thousand numbers
+  cost what the dozen in view do. Two things to know: a row is rebuilt whenever it comes back into view, so hold
+  values in the items and not in rows; and new items put the list back at the top (`§97`).
 - **`GroupedList`'s scroll bar stays usable on a long list.** It no longer auto-hides, and its thumb never goes under
   40 points; before, a list of thousands of rows had a thumb a point or two tall behind a hairline bar (`§96`).
 

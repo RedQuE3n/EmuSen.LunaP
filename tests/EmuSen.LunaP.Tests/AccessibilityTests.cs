@@ -61,6 +61,9 @@ namespace EmuSen.LunaP.Tests
             { nameof(SourceList), AutomationControlType.List },
             { nameof(OverlayBar), AutomationControlType.ToolBar },
             { nameof(NoticeLayer), AutomationControlType.Text },
+
+            // §97. A column of numbers is a list of them, as an ItemsControl reports itself.
+            { nameof(SliderList), AutomationControlType.List },
         };
 
         [Theory]
@@ -417,6 +420,7 @@ namespace EmuSen.LunaP.Tests
             nameof(SourceList) => Sidebar(),
             nameof(OverlayBar) => new OverlayBar { Content = new Button { Content = "Pause" } },
             nameof(NoticeLayer) => new NoticeLayer(),
+            nameof(SliderList) => new SliderList { ItemsSource = new object[] { "Tone", new SliderItem("Highlights", -100, 100, 1, 0, 0) } },
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, "No builder for this control."),
         };
 

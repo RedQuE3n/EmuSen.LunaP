@@ -532,6 +532,30 @@ public class EmuSen.LunaP.Controls.SidePanel : Avalonia.Controls.ContentControl
     public string Title { get; set; }
     public string? PanelKey { get; set; }
 
+public sealed class EmuSen.LunaP.Controls.SliderItem
+    public SliderItem(string label, double minimum, double maximum, double step, double defaultValue, double value)
+    public bool IsDefault { get; }
+    public double DefaultValue { get; }
+    public double Maximum { get; }
+    public double Minimum { get; }
+    public double Step { get; }
+    public double Value { get; set; }
+    public object? Tag { get; init; }
+    public string Label { get; }
+    public string? Name { get; init; }
+
+public class EmuSen.LunaP.Controls.SliderList : Avalonia.Controls.ItemsControl
+    protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
+    protected override void OnGotFocus(Avalonia.Input.FocusChangedEventArgs e)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public EmuSen.LunaP.Controls.SliderRow? Reveal(EmuSen.LunaP.Controls.SliderItem item)
+    public EmuSen.LunaP.Controls.SliderRow? RowFor(EmuSen.LunaP.Controls.SliderItem item)
+    public SliderList()
+    public System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.SliderItem> Sliders { get; }
+    public System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.SliderRow> Realized { get; }
+    public const string StyleClass = "luna-slider-list"
+    public event System.Action<EmuSen.LunaP.Controls.SliderItem> ValueChanged
+
 public class EmuSen.LunaP.Controls.SliderRow : Avalonia.Controls.Border
     public SliderRow()
     public bool IsDefault { get; }

@@ -125,6 +125,7 @@ namespace EmuSen.LunaP.Tests
             "LunaTable<T>" => BuildTable(),
             "TileGrid<T>" => BuildTiles(),
             "TileStrip<T>" => BuildStrip(),
+            nameof(SliderList) => BuildSliders(),
             nameof(OnScreenKeyboard) => new OnScreenKeyboard(new TextBox(), new[] { KeyboardLayout.Code }),
             _ => (Control)Activator.CreateInstance(
                      StockControls().Concat(KitControls()).First(t => PaletteSweep.Readable(t) == name))!,
@@ -158,6 +159,9 @@ namespace EmuSen.LunaP.Tests
             grid.Select("beta");
             return grid;
         }
+
+        // A heading and two rows, one away from its default, so the heading, a slider and the default beside a value are all swept.
+        private static Control BuildSliders() => new SliderList { ItemsSource = new object[] { "Tone", new SliderItem("Highlights", -100, 100, 1, 0, -20), new SliderItem("Shadows", -100, 100, 1, 0, 0) } };
 
         // The strip the same way, its ring on screen to be swept.
         private static Control BuildStrip()

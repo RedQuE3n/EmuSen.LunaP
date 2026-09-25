@@ -285,6 +285,20 @@ namespace EmuSen.LunaP.Gallery
             lenses.Select(new[] { "Primes", "35mm f/1.4", "" });
             Avalonia.Automation.AutomationProperties.SetName(lenses, "Lenses");
             var exposure = new SliderRow { Label = "Exposure compensation", Minimum = -3, Maximum = 3, Step = 0.3, DefaultValue = 0, Value = 0.6 };
+            // A long column of them under headings, only the rows in view built - §97.
+            var grading = new SliderList
+            {
+                ItemsSource = new object[]
+                {
+                    "Tone",
+                    new SliderItem("Highlights", -100, 100, 1, 0, -20),
+                    new SliderItem("Shadows", -100, 100, 1, 0, 35),
+                    "Colour",
+                    new SliderItem("Temperature", 2000, 10000, 50, 5500, 5500),
+                    new SliderItem("Saturation", -100, 100, 1, 0, 0),
+                },
+            };
+            Avalonia.Automation.AutomationProperties.SetName(grading, "Grading");
 
             var albumList = new SourceList { Width = 180 };
             albumList.Fill(new[]
@@ -399,6 +413,7 @@ namespace EmuSen.LunaP.Gallery
                     albums,
                     lenses.Height(180),
                     exposure,
+                    grading.Height(180),
                     new EmptyState
                     {
                         Message = "No photos in the library.",

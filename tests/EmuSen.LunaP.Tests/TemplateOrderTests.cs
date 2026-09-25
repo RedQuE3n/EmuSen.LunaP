@@ -501,6 +501,14 @@ namespace EmuSen.LunaP.Tests
                 "as ConsolePane.FocusInput.",
             [(typeof(ConsolePane), nameof(ConsolePane.ResetHistoryRecall))] =
                 "sets one private field the template never sees; history recall is keyboard state, not display.",
+            // As LunaTable's navigation three below: each asks about a row that exists only once the list is shown.
+            [(typeof(SliderList), nameof(SliderList.RowFor))] =
+                "answers the row realised for an item, which before the template does not exist; null is the answer it "
+                + "also gives for an item scrolled away, and nothing is held. Pinned by "
+                + "SliderListTests.Asking_for_a_row_before_the_list_is_shown_answers_null_and_holds_nothing.",
+            [(typeof(SliderList), nameof(SliderList.Reveal))] =
+                "as SliderList.RowFor: it scrolls a shown list and answers its row; before the template there is nothing "
+                + "to scroll, and an item's value lives in the item, not in a row, so nothing is lost.",
             [(typeof(SplitPane), nameof(SplitPane.SaveNow))] =
                 "writes the divider position to the settings store; nothing about the control's own appearance.",
             [(typeof(LunaTable<>), "SaveNow")] =
