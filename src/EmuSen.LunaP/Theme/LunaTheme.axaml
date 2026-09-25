@@ -109,6 +109,9 @@
     <!-- A long list under group headings, for a browser of many named things. §94.1. -->
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/GroupedList.axaml" />
 
+    <!-- A long column of sliders under headings, only the rows in view built. §97. -->
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/SliderList.axaml" />
+
     <!-- The form controls a stock Avalonia application is mostly made of. Almost
          all of that work is resource overrides in Theme/FluentBridge.axaml; this
          file is only the handful whose colours no resource key can reach. §48. -->

@@ -1,0 +1,30 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- SliderList: an ItemsControl whose template is a scroll viewer round the
+         virtualising panel, so the panel knows its viewport and builds only the
+         rows in it. Its bar stays wide and its thumb 40 points at least, as a
+         GroupedList's does, since a thousand rows make the same hairline. §97. -->
+    <Style Selector=":is(luna|SliderList)">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ScrollViewer Name="PART_ScrollViewer"
+                              Background="{TemplateBinding Background}"
+                              Padding="{TemplateBinding Padding}"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto"
+                              AllowAutoHide="False">
+                    <ItemsPresenter Name="PART_ItemsPresenter"
+                                    ItemsPanel="{TemplateBinding ItemsPanel}" />
+                </ScrollViewer>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector=":is(luna|SliderList) ScrollBar:vertical /template/ Thumb">
+        <Setter Property="MinHeight" Value="40" />
+    </Style>
+
+</Styles>

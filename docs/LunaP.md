@@ -11092,3 +11092,98 @@ kit keep FluentTheme's behaviour.
 expanded and not auto-hiding, the thumb at least 40 points, and the list long enough (extent over a hundred viewports)
 that the thumb would otherwise have shrunk. Setting the minimum back to 0, and auto-hide back on, each turn it red.
 
+
+## 97. A long column of sliders, only the rows in view built
+
+*2026-09-24.* EmuSen's Shaders window showed a preset's parameters as one `SliderRow` (§94.2) per parameter in a plain
+`StackPanel` inside a `ScrollViewer`. A Mega Bezel preset declares 944 of them, and building 944 rows took 1.0 to 1.5 s
+on the UI thread every time the player moved onto one, while the read of the preset's files took 0.1 to 0.2 s (the
+consumer's measurement, `EmuSen_Settings_Reference.md` §4.48.9). Nearly all of those rows were below the window.
+`SliderList` is the column with only the rows in view built.
+
+### 97.1 `SliderList` and `SliderItem`
+
+An `ItemsControl` over a `VirtualizingStackPanel`, whose items are plain values: **a `SliderItem` is a row and a
+`string` is a heading** (a `SectionHeader`). Two kinds of item, no interface to implement and no template to write,
+which is the whole of what a column of numbers under headings needs.
+
+**The value lives in the item, not the row.** A row exists only while its item is near the view, so a value that lived
+in the row would be lost with it. `SliderItem` holds the declaration (`Label`, `Minimum`, `Maximum`, `Step`,
+`DefaultValue`), an optional `Name` given to its row, a `Tag` for the host, and `Value`. A person's move on a row
+writes the item and raises the list's `ValueChanged(item)`; setting `Value` from code moves the row showing it, if one
+does, and raises nothing, as `SliderRow.Value` does. `IsDefault` is reckoned as `SliderRow.IsDefault` is, so a host
+can tell what to store without a row. A reset of everything is the host setting each item's `Value` to its
+`DefaultValue`; the rows that exist follow, and the ones that do not are built with it.
+
+**A row is built for its item every time a container takes it, never rebound.** The data template does not support
+recycling, so the panel reuses its `ContentPresenter` containers but each gets a new `SliderRow`. Rebinding a recycled
+row was the cheaper design and was not taken, for two reasons: a `SliderRow`'s `Name` cannot be changed once it is
+styled, and the consumer names each row after its parameter so a test can find it; and a row rebound to another item
+carries whatever the previous item left in it unless every property is set, in the right order, every time, which is
+§88.2's `BindTile` hazard. A scroll builds only the few rows that come into view.
+
+**Queries.** `Sliders` is every item that is a row; `Realized` the rows that exist now; `RowFor(item)` the row showing
+an item, or null; `Reveal(item)` scrolls the item into view, lays out and returns its row. New items start at the top:
+setting `ItemsSource` puts the offset back to zero, because the old offset belonged to other rows.
+
+### 97.2 The buffer
+
+`CacheLength` is half a viewport, so the panel builds rows half a view above and below what is seen. That is for
+directional focus, which is how the consumer's pad moves (its §4.45.3): Avalonia's search finds only controls that
+exist, and with no buffer the row below the last visible one does not, so down from the last visible slider would
+have left the list. With the buffer, down reaches the next row, the focus scrolls it into view (the scroll viewer's
+own `BringIntoViewOnFocusChange`), and the panel builds the next. The consumer's test walks sixty rows down a
+944-parameter list that way with at most nine rows realised at any time. A buffer of zero was not measured.
+
+### 97.3 A defect found: the focused row's container was recycled
+
+The first version lost the keyboard focus when the panel re-measured with the focused row outside its range: the
+consumer's pad audit reported the focus on nothing after changing tab onto a list scrolled part way down, and the next
+press did nothing. Traced (a `DetachedFromVisualTree` handler on the focused button, fired from
+`VirtualizingStackPanel.MeasureOverride`), the cause is how Avalonia 12.1 keeps a focused container alive: the panel's
+`RecycleElement` keeps a container only while it is `KeyboardNavigation.GetTabOnceActiveElement(itemsControl)`, and
+`ItemsControl.OnGotFocus` sets that to **the element that took the focus**, not its container (read in Avalonia's
+source, `VirtualizingStackPanel.RecycleElement` and `ItemsControl.OnGotFocus`). A `ListBox` never meets this, because
+its container is what takes the focus; a plain `ItemsControl` whose containers hold focusable controls always does.
+
+`SliderList.OnGotFocus` sets the tab-once element to the container holding the focused control. `TabNavigation` is
+`Continue`, so Tab still visits every row's slider and Reset in turn and the tab-once element is used for nothing else.
+`A_focused_slider_keeps_the_focus_when_its_row_is_scrolled_away` focuses the first slider, scrolls half the list away
+and requires the same slider to hold the focus and still move; removing the override turns it red.
+
+### 97.4 The scroll bar
+
+The template is `Theme/Controls/SliderList.axaml`: a `ScrollViewer` round the `ItemsPresenter`, horizontal scrolling
+disabled, `AllowAutoHide` false and the vertical thumb 40 points at least, which is §96's rule for `GroupedList`
+applied for the same reason: a thousand rows make the same hairline.
+
+**Observed, not changed.** The rows' heights are estimated until built, so the extent is an estimate too. In the
+consumer's test, setting the offset to the end of a 944-row list reached the last row only on the third attempt, as
+each layout refined the extent (86,723 points at the end). A thumb dragged to the bottom converges the same way; a
+list whose rows were all one height would not need to. Nothing was done about it.
+
+### 97.5 Tests, and the guards made to fail
+
+`SliderListTests`, seven cases: a thousand numbers under ten headings realising at most thirty rows at the top and
+half way down; a person's move raising `ValueChanged` with the item and a value set in code raising nothing, Reset
+raising once; an item's value kept while no row shows it and `Reveal` bringing its row; the focus kept through a
+scroll (§97.3); new items at the top; the scroll bar over 3,000 rows; and `RowFor` and `Reveal` before the list is
+shown answering null and dropping nothing. The list is also in `AccessibilityTests` (it reports a `List`, as an
+`ItemsControl` does), `PaletteReachTests`, the gallery, and `TemplateOrderTests`' exemptions, with `RowFor` and
+`Reveal` excused as `LunaTable`'s navigation methods are, since each asks about a row that exists only once shown.
+
+Six mutants, each alone, against `SliderListTests` (and, for the last, the reach, palette and accessibility sweeps):
+
+| Mutant | Result |
+|---|---|
+| every row realised (a `StackPanel` for the panel) | caught: the thousand-numbers case and the `Reveal` case |
+| the focused row's container not kept (§97.3) | caught: the focus case |
+| new items keep the old offset | caught: the new-items case |
+| a value set in code does not reach its row | caught: the move case |
+| the thumb may shrink to nothing | caught: the scroll bar case |
+| the theme file left out of `LunaTheme.axaml` | caught: `TemplateReachTests` and all seven `SliderListTests` |
+
+### 97.6 Not built
+
+No type-ahead and no filtering of the items; a host filters by giving it fewer. No folding headings (§94.4). A row
+cannot be typed into (§94.4). An item shown by two lists at once moves only the row built last.
