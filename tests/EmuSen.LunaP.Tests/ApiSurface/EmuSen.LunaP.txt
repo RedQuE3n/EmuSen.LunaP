@@ -322,6 +322,7 @@ public class EmuSen.LunaP.Controls.FontText : Avalonia.Controls.Control
     public FontText()
     public System.TimeSpan ScrollTime { get; set; }
     public bool IsTruncated { get; }
+    public bool ScrollWholeLines { get; set; }
     public bool Wrap { get; set; }
     public double BackgroundCornerRadius { get; set; }
     public double FontSize { get; set; }
@@ -339,6 +340,7 @@ public class EmuSen.LunaP.Controls.FontText : Avalonia.Controls.Control
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Motion.TextScroll> ScrollProperty = TextScroll { Delay = 00:00:00, Speed = 0, Gap = 0, EndPause = 00:00:00, FadeIn = 00:00:00 }
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Motion.TextScrollDirection> ScrollDirectionProperty = None
     public static readonly Avalonia.StyledProperty<System.TimeSpan> ScrollTimeProperty = 00:00:00
+    public static readonly Avalonia.StyledProperty<bool> ScrollWholeLinesProperty = false
     public static readonly Avalonia.StyledProperty<bool> WrapProperty = true
     public static readonly Avalonia.StyledProperty<double> BackgroundCornerRadiusProperty = 0
     public static readonly Avalonia.StyledProperty<double> FontSizeProperty = 16

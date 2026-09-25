@@ -31,13 +31,14 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<TextScrollDirection> ScrollDirectionProperty = AvaloniaProperty.Register<FontText, TextScrollDirection>(nameof(ScrollDirection));
         public static readonly StyledProperty<TextScroll> ScrollProperty = AvaloniaProperty.Register<FontText, TextScroll>(nameof(Scroll));
         public static readonly StyledProperty<TimeSpan> ScrollTimeProperty = AvaloniaProperty.Register<FontText, TimeSpan>(nameof(ScrollTime));
+        public static readonly StyledProperty<bool> ScrollWholeLinesProperty = AvaloniaProperty.Register<FontText, bool>(nameof(ScrollWholeLines));
 
         private FontLayout? _layout;
 
         static FontText()
         {
             AffectsMeasure<FontText>(TextProperty, FontPathProperty, FontSizeProperty, LineSpacingProperty, LetterCaseProperty, WrapProperty, EllipsisProperty, PaddingProperty, ScrollDirectionProperty);
-            AffectsRender<FontText>(ForegroundProperty, TextAlignmentProperty, TextVerticalAlignmentProperty, BackgroundProperty, BackgroundCornerRadiusProperty, ScrollProperty, ScrollTimeProperty);
+            AffectsRender<FontText>(ForegroundProperty, TextAlignmentProperty, TextVerticalAlignmentProperty, BackgroundProperty, BackgroundCornerRadiusProperty, ScrollProperty, ScrollTimeProperty, ScrollWholeLinesProperty);
         }
 
         /// <summary>Whether a text too long for its box moves by itself, and which way. None by default.</summary>
@@ -49,6 +50,17 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The time since the text was shown, on the host's clock; the scroll is a function of it.</summary>
         public TimeSpan ScrollTime { get => GetValue(ScrollTimeProperty); set => SetValue(ScrollTimeProperty, value); }
 
+        /// <summary>For a vertical scroll, whether the box shows only whole lines, its height cut down to a multiple of the line height. False by default.</summary>
+        public bool ScrollWholeLines { get => GetValue(ScrollWholeLinesProperty); set => SetValue(ScrollWholeLinesProperty, value); }
+
+        // The box the text scrolls in: inside the padding, and for whole lines no taller than the lines that fit.
+        private Rect ScrollBox()
+        {
+            Rect box = new Rect(Bounds.Size).Deflate(Padding);
+            if (ScrollDirection != TextScrollDirection.Vertical || !ScrollWholeLines || LineHeight <= 0) return box;
+            return box.WithHeight(Math.Max(LineHeight, Math.Floor((box.Height + 0.01) / LineHeight) * LineHeight));
+        }
+
         /// <summary>How far the text has scrolled at ScrollTime, in pixels, left or up; 0 when it fits or does not scroll.</summary>
         public double ScrollOffset => ScrollState().Offset;
 
@@ -56,7 +68,7 @@ namespace EmuSen.LunaP.Controls
         private (double Offset, double Opacity) ScrollState()
         {
             if (_layout is null || ScrollDirection == TextScrollDirection.None) return (0, 1);
-            Rect box = new Rect(Bounds.Size).Deflate(Padding);
+            Rect box = ScrollBox();
             return ScrollDirection == TextScrollDirection.Horizontal
                 ? (_layout.Width > box.Width + 0.01 ? Scroll.LoopOffset(ScrollTime, _layout.Width) : 0, 1)
                 : Scroll.RunAt(ScrollTime, _layout.Height - box.Height);
@@ -152,7 +164,7 @@ namespace EmuSen.LunaP.Controls
             var bounds = new Rect(Bounds.Size);
             if (Background is { } background) context.DrawRectangle(background, null, bounds, BackgroundCornerRadius, BackgroundCornerRadius);
             if (_layout is null || Foreground is not { } brush) return;
-            Rect box = bounds.Deflate(Padding);
+            Rect box = ScrollDirection == TextScrollDirection.None ? bounds.Deflate(Padding) : ScrollBox();
             using DrawingContext.PushedState clip = context.PushClip(ScrollDirection == TextScrollDirection.None ? bounds : box);
             double fraction = TextVerticalAlignment switch { VerticalAlignment.Center => 0.5, VerticalAlignment.Bottom => 1, _ => 0 };
             (double offset, double opacity) = ScrollState();
