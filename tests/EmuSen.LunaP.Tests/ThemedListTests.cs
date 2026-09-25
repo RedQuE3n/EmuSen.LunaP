@@ -69,6 +69,36 @@ namespace EmuSen.LunaP.Tests
         });
 
         [Fact]
+        public Task A_band_fitted_background_covers_the_mark_and_text_and_the_text_centres_in_the_band() => UiTest.Run(() =>
+        {
+            var list = new TextRowList
+            {
+                Items = new[] { new TextRow("Ab", Marker: TextRowMarker.Star), new TextRow("Ab") }, SelectedIndex = 0, FontSize = 20, LineSpacing = 3,
+                SelectorColor = Colors.Transparent, SelectedBackgroundColor = Colors.Blue, PrimaryColor = Colors.Red, SelectedColor = Colors.Red,
+                TextBandHeight = 30, SelectedBackgroundFitsText = true,
+            };
+            ToolWindow window = Fill(list, 300, 200);
+            RenderedFrame f = Frame(window);
+            Assert.Equal(Colors.Blue, At(f, 1, 2));
+            Assert.Equal(Colors.Black, At(f, 1, 35));
+            Assert.Equal(Colors.Black, At(f, 200, 15));
+            Assert.Equal(Colors.Red, At(f, 8, 16));
+            (double top, double bottom) = RedRows(f, 60, 120, 40);
+            Assert.InRange((top + bottom) / 2, 60 + 15 - 3, 60 + 15 + 3);
+
+            list.SelectedBackgroundFitsText = false;
+            Assert.Equal(Colors.Blue, At(Frame(window), 200, 15));
+            window.Close();
+        });
+
+        // The rows of red ink between two heights, within the first columns.
+        private static (double Top, double Bottom) RedRows(RenderedFrame f, int y0, int y1, int width)
+        {
+            var rows = Enumerable.Range(y0, y1 - y0).Where(y => Enumerable.Range(0, width).Any(x => At(f, x, y).R > 128)).ToList();
+            return (rows.Min(), rows.Max());
+        }
+
+        [Fact]
         public Task Selected_primary_and_secondary_rows_take_their_colours() => UiTest.Run(() =>
         {
             var list = new TextRowList

@@ -14,7 +14,19 @@ namespace EmuSen.LunaP.Controls
     /// <summary>One row of a TextRowList: its text, and whether it is drawn in the secondary colour.</summary>
     /// <param name="Text">The row's words.</param>
     /// <param name="Secondary">Whether the row takes the secondary colours, as a folder might.</param>
-    public sealed record TextRow(string Text, bool Secondary = false);
+    /// <param name="Marker">A mark drawn before the text, such as a favourite's star.</param>
+    public sealed record TextRow(string Text, bool Secondary = false, TextRowMarker Marker = TextRowMarker.None);
+
+    /// <summary>A mark a TextRowList draws before a row's text, in the row's colour.</summary>
+    public enum TextRowMarker
+    {
+        /// <summary>No mark, and no room kept for one.</summary>
+        None,
+        /// <summary>A five-pointed star, as for a favourite.</summary>
+        Star,
+        /// <summary>A folder, as for a row that opens more rows.</summary>
+        Folder,
+    }
 
     // Rows of one-line text at a fixed pitch, one selected with a selector bar and a rounded background, the window kept about it - see docs/LunaP.md §100.1.
     /// <summary>A list of one-line rows in a typeface from a file, drawn at a fixed pitch, with one row selected behind a selector bar and a rounded background, scrolled to keep the selection in view.</summary>
@@ -38,12 +50,16 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<TextAlignment> TextAlignmentProperty = AvaloniaProperty.Register<TextRowList, TextAlignment>(nameof(TextAlignment));
         public static readonly StyledProperty<double> HorizontalMarginProperty = AvaloniaProperty.Register<TextRowList, double>(nameof(HorizontalMargin));
         public static readonly StyledProperty<LetterCase> LetterCaseProperty = AvaloniaProperty.Register<TextRowList, LetterCase>(nameof(LetterCase));
+        public static readonly StyledProperty<double> TextBandHeightProperty = AvaloniaProperty.Register<TextRowList, double>(nameof(TextBandHeight), double.NaN);
+        public static readonly StyledProperty<bool> SelectedBackgroundFitsTextProperty = AvaloniaProperty.Register<TextRowList, bool>(nameof(SelectedBackgroundFitsText));
+        public static readonly StyledProperty<double> MarkerWidthProperty = AvaloniaProperty.Register<TextRowList, double>(nameof(MarkerWidth), 1.5);
 
         static TextRowList()
         {
             AffectsRender<TextRowList>(ItemsProperty, SelectedIndexProperty, FontPathProperty, FontSizeProperty, LineSpacingProperty, PrimaryColorProperty, SecondaryColorProperty,
                 SelectedColorProperty, SelectedSecondaryColorProperty, SelectorColorProperty, SelectorHeightProperty, SelectorOffsetYProperty, SelectedBackgroundColorProperty,
-                SelectedBackgroundMarginsProperty, SelectedBackgroundCornerRadiusProperty, TextAlignmentProperty, HorizontalMarginProperty, LetterCaseProperty);
+                SelectedBackgroundMarginsProperty, SelectedBackgroundCornerRadiusProperty, TextAlignmentProperty, HorizontalMarginProperty, LetterCaseProperty,
+                TextBandHeightProperty, SelectedBackgroundFitsTextProperty, MarkerWidthProperty);
         }
 
         /// <summary>The rows, top to bottom.</summary>
@@ -100,6 +116,15 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The casing applied to every row. None by default.</summary>
         public LetterCase LetterCase { get => GetValue(LetterCaseProperty); set => SetValue(LetterCaseProperty, value); }
 
+        /// <summary>The height, in pixels from the top of each row, that its text is centred in and the selected background fills. NaN, the default, is the whole pitch.</summary>
+        public double TextBandHeight { get => GetValue(TextBandHeightProperty); set => SetValue(TextBandHeightProperty, value); }
+
+        /// <summary>Whether the selected background covers only the row's mark and text, rather than the whole row. False by default.</summary>
+        public bool SelectedBackgroundFitsText { get => GetValue(SelectedBackgroundFitsTextProperty); set => SetValue(SelectedBackgroundFitsTextProperty, value); }
+
+        /// <summary>The room a row's mark takes before its text, as a multiple of FontSize; 1.5 by default.</summary>
+        public double MarkerWidth { get => GetValue(MarkerWidthProperty); set => SetValue(MarkerWidthProperty, value); }
+
         /// <summary>The distance from one row's top to the next, FontSize times LineSpacing to a hundredth.</summary>
         public double RowPitch => Math.Round(FontSize * LineSpacing * 100) / 100;
 
@@ -140,7 +165,9 @@ namespace EmuSen.LunaP.Controls
                 if (SelectedBackgroundColor.A > 0)
                 {
                     Thickness m = SelectedBackgroundMargins;
-                    var back = new Rect(row.X - m.Left, row.Y, row.Width + m.Left + m.Right, row.Height);
+                    (Rect ink, _, _) = Lay(typeface, items[SelectedIndex], row);
+                    Rect span = SelectedBackgroundFitsText ? new Rect(ink.X, row.Y, ink.Width, Band) : new Rect(row.X, row.Y, row.Width, Band);
+                    var back = new Rect(span.X - m.Left, span.Y, span.Width + m.Left + m.Right, span.Height);
                     context.DrawRectangle(new ImmutableSolidColorBrush(SelectedBackgroundColor), null, back, SelectedBackgroundCornerRadius, SelectedBackgroundCornerRadius);
                 }
             }
@@ -150,11 +177,52 @@ namespace EmuSen.LunaP.Controls
                 TextRow item = items[i];
                 bool selected = i == SelectedIndex;
                 Color colour = selected ? (item.Secondary ? SelectedSecondaryColor ?? SelectedColor : SelectedColor) : item.Secondary ? SecondaryColor : PrimaryColor;
-                Rect row = RowRect(i);
-                Rect box = new(row.X + HorizontalMargin, row.Y, Math.Max(0, row.Width - 2 * HorizontalMargin), row.Height);
-                FontLayout layout = FontLayout.Create(typeface, FontSize, FontLayout.Cased(item.Text, LetterCase), LineSpacing, box.Width, double.PositiveInfinity, false, "…");
-                layout.Draw(context, new ImmutableSolidColorBrush(colour), box, TextAlignment, 0.5);
+                var brush = new ImmutableSolidColorBrush(colour);
+                (Rect ink, Rect text, FontLayout layout) = Lay(typeface, item, RowRect(i));
+                if (item.Marker != TextRowMarker.None) DrawMarker(context, item.Marker, new Rect(ink.X, ink.Y, FontSize * MarkerWidth, ink.Height), brush);
+                layout.Draw(context, brush, text, TextAlignment.Left, 0.5);
             }
+        }
+
+        // The band text is centred in: TextBandHeight when set, else the whole pitch.
+        private double Band => double.IsNaN(TextBandHeight) ? RowPitch : TextBandHeight;
+
+        // A row's laid-out text, the box it is drawn in, and the span of mark and text together, aligned across the row.
+        private (Rect Ink, Rect Text, FontLayout Layout) Lay(GlyphTypeface typeface, TextRow item, Rect row)
+        {
+            double marker = item.Marker == TextRowMarker.None ? 0 : FontSize * MarkerWidth;
+            double room = Math.Max(0, row.Width - 2 * HorizontalMargin - marker);
+            FontLayout layout = FontLayout.Create(typeface, FontSize, FontLayout.Cased(item.Text, LetterCase), LineSpacing, room, double.PositiveInfinity, false, "\u2026");
+            double w = marker + layout.Width, left = row.X + HorizontalMargin, span = row.Width - 2 * HorizontalMargin;
+            double x = TextAlignment switch { TextAlignment.Center => left + (span - w) / 2, TextAlignment.Right or TextAlignment.End => left + span - w, _ => left };
+            return (new Rect(x, row.Y, w, Band), new Rect(x + marker, row.Y, layout.Width, Band), layout);
+        }
+
+        // A mark drawn before a row's text: a five-pointed star or a folder, 0.87 of the font size, centred in the band.
+        private void DrawMarker(DrawingContext context, TextRowMarker marker, Rect slot, IBrush brush)
+        {
+            double size = FontSize * 0.87;
+            var box = new Rect(slot.X, slot.Y + (slot.Height - size) / 2, size, size);
+            if (marker == TextRowMarker.Star)
+            {
+                context.DrawGeometry(brush, null, StarRating.StarGeometry(box));
+                return;
+            }
+
+            double tab = size * 0.3;
+            var g = new StreamGeometry();
+            using (StreamGeometryContext c = g.Open())
+            {
+                c.BeginFigure(new Point(box.X, box.Y + size * 0.15), true);
+                c.LineTo(new Point(box.X + tab, box.Y + size * 0.15));
+                c.LineTo(new Point(box.X + tab * 1.3, box.Y + size * 0.28));
+                c.LineTo(new Point(box.Right, box.Y + size * 0.28));
+                c.LineTo(new Point(box.Right, box.Bottom - size * 0.1));
+                c.LineTo(new Point(box.X, box.Bottom - size * 0.1));
+                c.EndFigure(true);
+            }
+
+            context.DrawGeometry(brush, null, g);
         }
 
         protected override AutomationPeer OnCreateAutomationPeer() =>
