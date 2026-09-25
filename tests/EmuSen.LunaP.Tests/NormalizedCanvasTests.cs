@@ -43,6 +43,19 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(new Rect(-50, 20, 100, 40), NormalizedCanvas.Place(new Size(1000, 400), new Point(0, 0.1), new Point(0.5, 0.5), new Size(100, 40)));
         });
 
+        // A fraction written to eight places and read as a float is 800.00064 of 1920; layout rounding would ceil that to 801.
+        [Fact]
+        public Task Float_noise_in_a_fraction_does_not_become_a_whole_pixel() => UiTest.Run(() =>
+        {
+            var canvas = new NormalizedCanvas();
+            Border panel = Put(canvas, Box(Colors.Red), new Point(0, 0), new Size((double)0.41666667f, 1));
+            Border icon = Put(canvas, new Border { Child = new Border { Width = 10, Height = 10 } }, new Point(0.5, 0.5), new Size(0, (double)0.05f));
+            ToolWindow window = Show(canvas, 1920, 800);
+            Assert.Equal(800, panel.Bounds.Width);
+            Assert.Equal(40, icon.Bounds.Height);
+            window.Close();
+        });
+
         // An axis of 0 takes what the child asks for, and MaxSize bounds that request.
         [Fact]
         public Task A_zero_axis_takes_the_childs_own_size_within_its_maximum() => UiTest.Run(() =>

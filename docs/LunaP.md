@@ -11431,7 +11431,7 @@ Tests: `ThemedListTests` and `IndicatorControlTests`, on bounds, cells and pixel
 
 ### 101.6 Mutants for §98 to §101
 
-Twenty-nine mutants, one rule each, applied one at a time to a copy of the repository outside it (the consumer's
+Twenty-nine mutants, one rule each (thirty-one with §101.7's two), applied one at a time to a copy of the repository outside it (the consumer's
 `~/.cache/emusen/probe/bigpicture/mutate_lunap.py`), each built and run against the six test classes of §98 to §101,
 the copy restored after each and deleted at the end.
 
@@ -11466,8 +11466,44 @@ the copy restored after each and deleted at the end.
 | L27 | badge group alignment ignored | caught |
 | L28 | the battery full from above 90% rather than from 90% | caught |
 | L29 | hint entries not spaced | caught |
+| L30 | computed pixels not kept to hundredths (§101.7) | caught |
+| L31 | the selected background clipped to the list's own box (§101.7) | caught |
 
 **The two survivors were weak tests, not correct mutants.** The cascade test wrote its rules in ascending specificity,
 so file order and specificity agreed on every element; it now writes the most specific rule first. The rating test used
 a value of 0.5 with four stars, a cut that falls exactly on a star's edge, so whole-star rounding drew the same picture;
 it now uses 0.45, a cut inside the second star. Both mutants were re-run against the changed tests and caught.
+
+### 101.7 Corrections from the consumer's first measurements
+
+The consumer's scene tests and its captures of ES-DE 3.4.1 on the same inputs (its `EmuSen_BigPicture.md` §13) found
+three things in §98 to §100 that were wrong or incomplete. Each is changed, and each has a test that fails without it.
+
+- **§100.2 said a wrapping carousel with fewer items than its row "shows each once". That was a choice, and it was the
+  wrong one.** ES-DE, given five systems in a row that holds about seven, repeats them: the item after the last is the
+  first again, at both ends, so the row is full. `ImageCarousel` now fills every slot from `−reach` to `reach` whenever
+  it wraps. `A_wrapping_row_repeats_its_items_to_fill_the_row_and_an_unwrapping_one_stops` pins it.
+- **§100.1's selected background was clipped to the list's own box, so `SelectedBackgroundMargins` could never show.**
+  The clip now reaches past the sides by the margins; rows are still cut at the top and bottom.
+  `The_selected_background_reaches_past_the_list_by_its_margins` pins it.
+- **Fractions read from text carry float noise that layout rounding turns into a whole pixel.** A theme's
+  `0.41666667`, read as a float and multiplied by 1920, is 800.00064, and Avalonia's layout rounding takes the ceiling
+  of a desired size, so the box was 801 wide; `0.05` of 800 became 41. `NormalizedCanvas` now keeps the positions and
+  sizes it computes to hundredths of a pixel, and `FontText.LineHeight`, `TextRowList.RowPitch` and the line box of
+  §98.3 do the same. A difference below a hundredth of a pixel cannot be anything but noise. Found by the consumer's
+  geometry test (every commented position and size in a real theme, 644 checks) and pinned here by
+  `Float_noise_in_a_fraction_does_not_become_a_whole_pixel`.
+
+Two mutants were added to §101.6's runner for the first two corrections, the fraction rounding (L30) and the clip
+(L31), and both were caught. The wrap correction changed an existing test instead.
+
+**A negative result on speed.** The consumer measured its carousel's full redraw at 43.6 ms at 1280×800 under
+`Avalonia.Headless`, against 6 ms for an empty window's full redraw. Nearly all of it is Skia's mipmapped sampling of
+the downscaled pictures. HighQuality and MediumQuality give identical pixels and times when shrinking, which shows that
+HighQuality already samples mipmapped there, and LowQuality takes 10.7 ms with different pixels. None of these gave a
+pixel-identical saving, so none was kept:
+- handing Skia an immutable `Bitmap` rather than a `WriteableBitmap`;
+- carrying unfocused opacity in the tint rather than a layer;
+- `BitmapCache` on the carousel, which also changed pixels by 1.
+
+An unchanged view is not redrawn at all, and a frame of it costs the harness's readback alone, 1.2 ms.

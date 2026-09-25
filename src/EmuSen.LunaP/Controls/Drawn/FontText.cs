@@ -81,8 +81,8 @@ namespace EmuSen.LunaP.Controls
         /// <summary>How many lines the last layout produced.</summary>
         public int LineCount => _layout?.Lines.Count ?? 0;
 
-        /// <summary>The height of one line in pixels, FontSize times LineSpacing.</summary>
-        public double LineHeight => FontSize * LineSpacing;
+        /// <summary>The height of one line in pixels, FontSize times LineSpacing to a hundredth.</summary>
+        public double LineHeight => Math.Round(FontSize * LineSpacing * 100) / 100;
 
         /// <summary>The lines as laid out, after casing, wrapping and truncation.</summary>
         /// <returns>Each line's text, top to bottom; empty before the first layout.</returns>

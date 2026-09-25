@@ -52,6 +52,23 @@ namespace EmuSen.LunaP.Tests
         });
 
         [Fact]
+        public Task The_selected_background_reaches_past_the_list_by_its_margins() => UiTest.Run(() =>
+        {
+            var list = new TextRowList { Items = Rows(3), SelectedIndex = 0, FontSize = 20, SelectorColor = Colors.Transparent, SelectedBackgroundColor = Colors.Blue, SelectedBackgroundMargins = new Thickness(20, 0, 10, 0) };
+            var canvas = new NormalizedCanvas();
+            NormalizedCanvas.SetPosition(list, new Point(0.25, 0));
+            NormalizedCanvas.SetSize(list, new Size(0.5, 1));
+            canvas.Children.Add(list);
+            ToolWindow window = Show(canvas, 400, 200);
+            RenderedFrame f = Frame(window);
+            Assert.Equal(Colors.Blue, At(f, 85, 15));
+            Assert.Equal(Colors.Black, At(f, 75, 15));
+            Assert.Equal(Colors.Blue, At(f, 305, 15));
+            Assert.Equal(Colors.Black, At(f, 315, 15));
+            window.Close();
+        });
+
+        [Fact]
         public Task Selected_primary_and_secondary_rows_take_their_colours() => UiTest.Run(() =>
         {
             var list = new TextRowList
@@ -125,7 +142,7 @@ namespace EmuSen.LunaP.Tests
         });
 
         [Fact]
-        public Task A_wrapping_row_shows_the_last_item_before_the_first_and_an_unwrapping_one_does_not() => UiTest.Run(() =>
+        public Task A_wrapping_row_repeats_its_items_to_fill_the_row_and_an_unwrapping_one_stops() => UiTest.Run(() =>
         {
             var carousel = new ImageCarousel { Items = Pictures(9), SelectedIndex = 0, MaxItemCount = 5 };
             ToolWindow window = Fill(carousel, 500, 200);
@@ -139,8 +156,9 @@ namespace EmuSen.LunaP.Tests
             carousel.Wraps = true;
             carousel.Items = Pictures(4);
             UiTest.Settle(carousel);
-            Assert.Equal(4, carousel.Shown.Count);
-            Assert.Equal(4, carousel.Shown.Select(s => (int)s.Child.Tag!).Distinct().Count());
+            Assert.Equal(9, carousel.Shown.Count);
+            Assert.Equal(3, carousel.Shown.Single(s => s.Offset == 3).Child.Tag);
+            Assert.Equal(3, carousel.Shown.Single(s => s.Offset == -1).Child.Tag);
             window.Close();
         });
 

@@ -55,7 +55,7 @@ namespace EmuSen.LunaP.Media
         // Lays out text within a width (infinite for one line per paragraph) and a height (infinite for every line).
         internal static FontLayout Create(GlyphTypeface typeface, double size, string text, double lineSpacing, double maxWidth, double maxHeight, bool wrap, string? ellipsis)
         {
-            double lineHeight = Math.Max(0, lineSpacing * size);
+            double lineHeight = Math.Max(0, Math.Round(lineSpacing * size * 100) / 100);
             var lines = new List<(string, double)>();
             bool truncated = false;
             if (size <= 0) return new FontLayout(typeface, size, lineHeight, lines, false);
