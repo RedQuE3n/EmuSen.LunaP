@@ -438,7 +438,10 @@ namespace EmuSen.LunaP.Gallery
                     stage,
                     filmstrip)),
 
-                Ui.Section("Split pane", split)).Margin(12));
+                Ui.Section("Split pane", split),
+
+                // Drawn controls on a positioned canvas: an image, a list, a carousel, text and the indicators - §98 to §101.
+                Ui.Section("Themed surface", DrawnSamples.Build())).Margin(12));
 
             // The shell's own status line, which is the arrangement five windows in one
             // application laid out by hand: a message on the left, a run of buttons on the right
