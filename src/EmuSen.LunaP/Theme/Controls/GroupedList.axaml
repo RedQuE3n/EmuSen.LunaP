@@ -9,6 +9,11 @@
         <Setter Property="Background" Value="{DynamicResource LunaSurface}" />
     </Style>
 
+    <!-- Thousands of rows make a thumb a pixel or two long; it never goes under 40 so it can be seen and dragged. §96. -->
+    <Style Selector="ListBox.luna-grouped-list ScrollBar:vertical /template/ Thumb">
+        <Setter Property="MinHeight" Value="40" />
+    </Style>
+
     <Style Selector="ListBox.luna-grouped-list ListBoxItem">
         <Setter Property="Padding" Value="0" />
         <Setter Property="MinHeight" Value="0" />

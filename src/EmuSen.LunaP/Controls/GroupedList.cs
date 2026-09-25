@@ -27,6 +27,8 @@ namespace EmuSen.LunaP.Controls
         public GroupedList()
         {
             Classes.Add(StyleClass);
+            // A long list's bar stays full width, so its thumb can be seen and taken - see docs/LunaP.md §96.
+            ScrollViewer.SetAllowAutoHide(this, false);
             ItemTemplate = new FuncDataTemplate<GroupedListEntry>((entry, _) => entry is null ? null : new GroupedListRow(entry), supportsRecycling: false);
             SelectionChanged += (_, _) =>
             {

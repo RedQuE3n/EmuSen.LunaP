@@ -11,6 +11,12 @@ answer.
 
 ---
 
+
+## Unreleased
+
+- **`GroupedList`'s scroll bar stays usable on a long list.** It no longer auto-hides, and its thumb never goes under
+  40 points; before, a list of thousands of rows had a thumb a point or two tall behind a hairline bar (`§96`).
+
 ## 0.11.0
 
 **Four new controls for a library window and the game it opens, all additive.** Nothing existing
