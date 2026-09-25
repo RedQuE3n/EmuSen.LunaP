@@ -317,13 +317,17 @@ public class EmuSen.LunaP.Controls.FontText : Avalonia.Controls.Control
     public Avalonia.Media.TextAlignment TextAlignment { get; set; }
     public Avalonia.Thickness Padding { get; set; }
     public EmuSen.LunaP.Media.LetterCase LetterCase { get; set; }
+    public EmuSen.LunaP.Motion.TextScroll Scroll { get; set; }
+    public EmuSen.LunaP.Motion.TextScrollDirection ScrollDirection { get; set; }
     public FontText()
+    public System.TimeSpan ScrollTime { get; set; }
     public bool IsTruncated { get; }
     public bool Wrap { get; set; }
     public double BackgroundCornerRadius { get; set; }
     public double FontSize { get; set; }
     public double LineHeight { get; }
     public double LineSpacing { get; set; }
+    public double ScrollOffset { get; }
     public int LineCount { get; }
     public override void Render(Avalonia.Media.DrawingContext context)
     public static readonly Avalonia.StyledProperty<Avalonia.Layout.VerticalAlignment> TextVerticalAlignmentProperty = Top
@@ -332,6 +336,9 @@ public class EmuSen.LunaP.Controls.FontText : Avalonia.Controls.Control
     public static readonly Avalonia.StyledProperty<Avalonia.Media.TextAlignment> TextAlignmentProperty = Left
     public static readonly Avalonia.StyledProperty<Avalonia.Thickness> PaddingProperty = 0,0,0,0
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = None
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Motion.TextScroll> ScrollProperty = TextScroll { Delay = 00:00:00, Speed = 0, Gap = 0, EndPause = 00:00:00, FadeIn = 00:00:00 }
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Motion.TextScrollDirection> ScrollDirectionProperty = None
+    public static readonly Avalonia.StyledProperty<System.TimeSpan> ScrollTimeProperty = 00:00:00
     public static readonly Avalonia.StyledProperty<bool> WrapProperty = true
     public static readonly Avalonia.StyledProperty<double> BackgroundCornerRadiusProperty = 0
     public static readonly Avalonia.StyledProperty<double> FontSizeProperty = 16
@@ -421,6 +428,7 @@ public class EmuSen.LunaP.Controls.ImageCarousel : Avalonia.Controls.Control
     public Avalonia.Media.Color TextColor { get; set; }
     public Avalonia.Media.Color? ImageSelectedTint { get; set; }
     public Avalonia.Media.IBrush? Background { get; set; }
+    public Avalonia.Rect ItemRect(double offset, Avalonia.Size bounds)
     public Avalonia.Rect ItemRect(int offset, Avalonia.Size bounds)
     public Avalonia.Size ItemSize { get; set; }
     public EmuSen.LunaP.Controls.ImageFit ImageFit { get; set; }
@@ -429,10 +437,12 @@ public class EmuSen.LunaP.Controls.ImageCarousel : Avalonia.Controls.Control
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.CarouselItem>? Items { get; set; }
     public System.Collections.Generic.IReadOnlyList<System.ValueTuple<int, Avalonia.Controls.Control>> Shown { get; }
     public bool Wraps { get; set; }
+    public double DrawnPosition { get; }
     public double FontSize { get; set; }
     public double ImageSaturation { get; set; }
     public double ItemScale { get; set; }
     public double MaxItemCount { get; set; }
+    public double Position { get; set; }
     public double Spacing { get; }
     public double UnfocusedItemDimming { get; set; }
     public double UnfocusedItemOpacity { get; set; }
@@ -456,6 +466,7 @@ public class EmuSen.LunaP.Controls.ImageCarousel : Avalonia.Controls.Control
     public static readonly Avalonia.StyledProperty<double> ImageSaturationProperty = 1
     public static readonly Avalonia.StyledProperty<double> ItemScaleProperty = 1.2
     public static readonly Avalonia.StyledProperty<double> MaxItemCountProperty = 3
+    public static readonly Avalonia.StyledProperty<double> PositionProperty = NaN
     public static readonly Avalonia.StyledProperty<double> UnfocusedItemDimmingProperty = 1
     public static readonly Avalonia.StyledProperty<double> UnfocusedItemOpacityProperty = 0.5
     public static readonly Avalonia.StyledProperty<double> UnfocusedItemSaturationProperty = 1
@@ -1028,13 +1039,16 @@ public class EmuSen.LunaP.Controls.TextRowList : Avalonia.Controls.Control
     public Avalonia.Rect RowRect(int index)
     public Avalonia.Thickness SelectedBackgroundMargins { get; set; }
     public EmuSen.LunaP.Media.LetterCase LetterCase { get; set; }
+    public EmuSen.LunaP.Motion.TextScroll Marquee { get; set; }
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.TextRow>? Items { get; set; }
+    public System.TimeSpan MarqueeTime { get; set; }
     public TextRowList()
     public bool SelectedBackgroundFitsText { get; set; }
     public double FontSize { get; set; }
     public double HorizontalMargin { get; set; }
     public double LineSpacing { get; set; }
     public double MarkerWidth { get; set; }
+    public double MarqueeOffset { get; }
     public double RowPitch { get; }
     public double SelectedBackgroundCornerRadius { get; set; }
     public double SelectorHeight { get; set; }
@@ -1053,7 +1067,9 @@ public class EmuSen.LunaP.Controls.TextRowList : Avalonia.Controls.Control
     public static readonly Avalonia.StyledProperty<Avalonia.Media.TextAlignment> TextAlignmentProperty = Left
     public static readonly Avalonia.StyledProperty<Avalonia.Thickness> SelectedBackgroundMarginsProperty = 0,0,0,0
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = None
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Motion.TextScroll> MarqueeProperty = TextScroll { Delay = 00:00:00, Speed = 0, Gap = 0, EndPause = 00:00:00, FadeIn = 00:00:00 }
     public static readonly Avalonia.StyledProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.TextRow>?> ItemsProperty = null
+    public static readonly Avalonia.StyledProperty<System.TimeSpan> MarqueeTimeProperty = 00:00:00
     public static readonly Avalonia.StyledProperty<bool> SelectedBackgroundFitsTextProperty = false
     public static readonly Avalonia.StyledProperty<double> FontSizeProperty = 16
     public static readonly Avalonia.StyledProperty<double> HorizontalMarginProperty = 0
@@ -1212,6 +1228,49 @@ public sealed class EmuSen.LunaP.Media.SvgDocument
     public static EmuSen.LunaP.Media.SvgDocument Load(string path)
     public static EmuSen.LunaP.Media.SvgDocument Parse(string markup)
     public void Draw(Avalonia.Media.DrawingContext context, Avalonia.Rect viewport)
+
+public struct EmuSen.LunaP.Motion.Glide : System.ValueType, System.IEquatable<EmuSen.LunaP.Motion.Glide>
+    public Avalonia.Animation.Easings.Easing? Easing { get; init; }
+    public EmuSen.LunaP.Motion.Glide Toward(double to, System.TimeSpan now, System.TimeSpan duration, Avalonia.Animation.Easings.Easing? easing = null)
+    public Glide(double From, double To, System.TimeSpan Start, System.TimeSpan Duration, Avalonia.Animation.Easings.Easing? Easing = null)
+    public System.TimeSpan Duration { get; init; }
+    public System.TimeSpan End { get; }
+    public System.TimeSpan Start { get; init; }
+    public bool Equals(EmuSen.LunaP.Motion.Glide other)
+    public bool IsSettledAt(System.TimeSpan now)
+    public double From { get; init; }
+    public double To { get; init; }
+    public double ValueAt(System.TimeSpan now)
+    public override bool Equals(object obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static EmuSen.LunaP.Motion.Glide At(double value)
+    public static bool op_Equality(EmuSen.LunaP.Motion.Glide left, EmuSen.LunaP.Motion.Glide right)
+    public static bool op_Inequality(EmuSen.LunaP.Motion.Glide left, EmuSen.LunaP.Motion.Glide right)
+    public void Deconstruct(out double From, out double To, out System.TimeSpan Start, out System.TimeSpan Duration, out Avalonia.Animation.Easings.Easing? Easing)
+
+public struct EmuSen.LunaP.Motion.TextScroll : System.ValueType, System.IEquatable<EmuSen.LunaP.Motion.TextScroll>
+    public System.TimeSpan Delay { get; init; }
+    public System.TimeSpan EndPause { get; init; }
+    public System.TimeSpan FadeIn { get; init; }
+    public System.ValueTuple<double, double> RunAt(System.TimeSpan elapsed, double travel)
+    public TextScroll(System.TimeSpan Delay, double Speed, double Gap = 0, System.TimeSpan EndPause = null, System.TimeSpan FadeIn = null)
+    public bool Equals(EmuSen.LunaP.Motion.TextScroll other)
+    public double Gap { get; init; }
+    public double LoopOffset(System.TimeSpan elapsed, double width)
+    public double Speed { get; init; }
+    public override bool Equals(object obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Motion.TextScroll left, EmuSen.LunaP.Motion.TextScroll right)
+    public static bool op_Inequality(EmuSen.LunaP.Motion.TextScroll left, EmuSen.LunaP.Motion.TextScroll right)
+    public void Deconstruct(out System.TimeSpan Delay, out double Speed, out double Gap, out System.TimeSpan EndPause, out System.TimeSpan FadeIn)
+
+public enum EmuSen.LunaP.Motion.TextScrollDirection
+    public const EmuSen.LunaP.Motion.TextScrollDirection Horizontal = 2
+    public const EmuSen.LunaP.Motion.TextScrollDirection None = 0
+    public const EmuSen.LunaP.Motion.TextScrollDirection Vertical = 1
+    public int value__
 
 public interface EmuSen.LunaP.Platform.IWindowingBackend
     public abstract Avalonia.AppBuilder Install(Avalonia.AppBuilder builder)

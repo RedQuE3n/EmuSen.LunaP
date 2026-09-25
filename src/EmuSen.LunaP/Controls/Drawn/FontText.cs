@@ -6,6 +6,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using EmuSen.LunaP.Automation;
 using EmuSen.LunaP.Media;
+using EmuSen.LunaP.Motion;
 using EmuSen.LunaP.Theme;
 
 namespace EmuSen.LunaP.Controls
@@ -27,13 +28,38 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<IBrush?> BackgroundProperty = AvaloniaProperty.Register<FontText, IBrush?>(nameof(Background));
         public static readonly StyledProperty<double> BackgroundCornerRadiusProperty = AvaloniaProperty.Register<FontText, double>(nameof(BackgroundCornerRadius));
         public static readonly StyledProperty<Thickness> PaddingProperty = AvaloniaProperty.Register<FontText, Thickness>(nameof(Padding));
+        public static readonly StyledProperty<TextScrollDirection> ScrollDirectionProperty = AvaloniaProperty.Register<FontText, TextScrollDirection>(nameof(ScrollDirection));
+        public static readonly StyledProperty<TextScroll> ScrollProperty = AvaloniaProperty.Register<FontText, TextScroll>(nameof(Scroll));
+        public static readonly StyledProperty<TimeSpan> ScrollTimeProperty = AvaloniaProperty.Register<FontText, TimeSpan>(nameof(ScrollTime));
 
         private FontLayout? _layout;
 
         static FontText()
         {
-            AffectsMeasure<FontText>(TextProperty, FontPathProperty, FontSizeProperty, LineSpacingProperty, LetterCaseProperty, WrapProperty, EllipsisProperty, PaddingProperty);
-            AffectsRender<FontText>(ForegroundProperty, TextAlignmentProperty, TextVerticalAlignmentProperty, BackgroundProperty, BackgroundCornerRadiusProperty);
+            AffectsMeasure<FontText>(TextProperty, FontPathProperty, FontSizeProperty, LineSpacingProperty, LetterCaseProperty, WrapProperty, EllipsisProperty, PaddingProperty, ScrollDirectionProperty);
+            AffectsRender<FontText>(ForegroundProperty, TextAlignmentProperty, TextVerticalAlignmentProperty, BackgroundProperty, BackgroundCornerRadiusProperty, ScrollProperty, ScrollTimeProperty);
+        }
+
+        /// <summary>Whether a text too long for its box moves by itself, and which way. None by default.</summary>
+        public TextScrollDirection ScrollDirection { get => GetValue(ScrollDirectionProperty); set => SetValue(ScrollDirectionProperty, value); }
+
+        /// <summary>How the text scrolls: its delay, speed, gap, end pause and fade-in. It does not move while Speed is 0, the default.</summary>
+        public TextScroll Scroll { get => GetValue(ScrollProperty); set => SetValue(ScrollProperty, value); }
+
+        /// <summary>The time since the text was shown, on the host's clock; the scroll is a function of it.</summary>
+        public TimeSpan ScrollTime { get => GetValue(ScrollTimeProperty); set => SetValue(ScrollTimeProperty, value); }
+
+        /// <summary>How far the text has scrolled at ScrollTime, in pixels, left or up; 0 when it fits or does not scroll.</summary>
+        public double ScrollOffset => ScrollState().Offset;
+
+        // The scroll's offset and opacity now, from the last layout and the box.
+        private (double Offset, double Opacity) ScrollState()
+        {
+            if (_layout is null || ScrollDirection == TextScrollDirection.None) return (0, 1);
+            Rect box = new Rect(Bounds.Size).Deflate(Padding);
+            return ScrollDirection == TextScrollDirection.Horizontal
+                ? (_layout.Width > box.Width + 0.01 ? Scroll.LoopOffset(ScrollTime, _layout.Width) : 0, 1)
+                : Scroll.RunAt(ScrollTime, _layout.Height - box.Height);
         }
 
         /// <summary>The text shown. Line breaks start new lines.</summary>
@@ -90,19 +116,34 @@ namespace EmuSen.LunaP.Controls
 
         private GlyphTypeface Typeface() => FontPath is { Length: > 0 } path && FontFiles.Load(path) is { } loaded ? loaded : FontFiles.Default;
 
+        // A scrolling text is laid out whole: one line with no end for a horizontal scroll, every wrapped line for a vertical one, and never cut.
+        private FontLayout Lay(double w, double h)
+        {
+            string text = FontLayout.Cased(Text ?? "", LetterCase);
+            return ScrollDirection switch
+            {
+                TextScrollDirection.Horizontal => FontLayout.Create(Typeface(), FontSize, text.Replace("\r\n", " ").Replace('\n', ' '), LineSpacing, double.PositiveInfinity, Math.Max(0, h), false, null),
+                TextScrollDirection.Vertical => FontLayout.Create(Typeface(), FontSize, text, LineSpacing, Math.Max(0, w), double.PositiveInfinity, true, null),
+                _ => FontLayout.Create(Typeface(), FontSize, text, LineSpacing, Math.Max(0, w), Math.Max(0, h), Wrap, Ellipsis),
+            };
+        }
+
         protected override Size MeasureOverride(Size availableSize)
         {
             Thickness p = Padding;
             double w = availableSize.Width - p.Left - p.Right, h = availableSize.Height - p.Top - p.Bottom;
-            _layout = FontLayout.Create(Typeface(), FontSize, FontLayout.Cased(Text ?? "", LetterCase), LineSpacing, Math.Max(0, w), Math.Max(0, h), Wrap, Ellipsis);
-            return new Size(_layout.Width + p.Left + p.Right, _layout.Height + p.Top + p.Bottom);
+            _layout = Lay(w, h);
+            double width = _layout.Width + p.Left + p.Right, height = _layout.Height + p.Top + p.Bottom;
+            if (ScrollDirection == TextScrollDirection.Horizontal && !double.IsInfinity(availableSize.Width)) width = Math.Min(width, availableSize.Width);
+            if (ScrollDirection == TextScrollDirection.Vertical && !double.IsInfinity(availableSize.Height)) height = Math.Min(height, availableSize.Height);
+            return new Size(width, height);
         }
 
         protected override Size ArrangeOverride(Size finalSize)
         {
             Thickness p = Padding;
             double w = finalSize.Width - p.Left - p.Right, h = finalSize.Height - p.Top - p.Bottom;
-            _layout = FontLayout.Create(Typeface(), FontSize, FontLayout.Cased(Text ?? "", LetterCase), LineSpacing, Math.Max(0, w), Math.Max(0, h), Wrap, Ellipsis);
+            _layout = Lay(w, h);
             return finalSize;
         }
 
@@ -112,8 +153,23 @@ namespace EmuSen.LunaP.Controls
             if (Background is { } background) context.DrawRectangle(background, null, bounds, BackgroundCornerRadius, BackgroundCornerRadius);
             if (_layout is null || Foreground is not { } brush) return;
             Rect box = bounds.Deflate(Padding);
-            using DrawingContext.PushedState clip = context.PushClip(bounds);
+            using DrawingContext.PushedState clip = context.PushClip(ScrollDirection == TextScrollDirection.None ? bounds : box);
             double fraction = TextVerticalAlignment switch { VerticalAlignment.Center => 0.5, VerticalAlignment.Bottom => 1, _ => 0 };
+            (double offset, double opacity) = ScrollState();
+            if (ScrollDirection == TextScrollDirection.Horizontal && _layout.Width > box.Width + 0.01)
+            {
+                _layout.Draw(context, brush, new Rect(box.X - offset, box.Y, _layout.Width, box.Height), TextAlignment.Left, fraction);
+                if (offset > 0) _layout.Draw(context, brush, new Rect(box.X - offset + _layout.Width + Math.Max(0, Scroll.Gap), box.Y, _layout.Width, box.Height), TextAlignment.Left, fraction);
+                return;
+            }
+
+            if (ScrollDirection == TextScrollDirection.Vertical && _layout.Height > box.Height + 0.01)
+            {
+                using DrawingContext.PushedState fade = context.PushOpacity(opacity);
+                _layout.Draw(context, brush, new Rect(box.X, box.Y - offset, box.Width, _layout.Height), TextAlignment, 0);
+                return;
+            }
+
             _layout.Draw(context, brush, box, TextAlignment, fraction);
         }
 

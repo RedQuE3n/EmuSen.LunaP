@@ -14,6 +14,14 @@ answer.
 
 ## Unreleased
 
+- **Motion for the drawn controls, new and additive (`§102`).** No control reads a clock: each takes its state from a
+  value the host steps. `Glide` is a number moving between two values over a span of the host's clock with an Avalonia
+  easing. `ImageCarousel.Position` draws the row between items, focus weighted by distance. `TextScroll` is the rule a
+  self-scrolling text follows; `FontText.ScrollDirection`, `Scroll` and `ScrollTime` scroll a text up or sideways in a
+  loop, and `TextRowList.Marquee` and `MarqueeTime` scroll the selected row's text when it is too wide. Nothing existing
+  changes at the defaults. One limit to know: the carousel's selected tint, dimming and saturation change hands half
+  way through a move rather than blending (`§102.2`).
+
 - **`SliderList.Search`, `Matching` and `SliderItem.Keywords`, additive.** Words the rows must match in their label or
   keywords, headings kept over matches; `Sliders` stays every row, `Matching` is what the search leaves (`§97.8`).
 - **A `SliderList` row the focus has left is recycled again** when scrolled away; before, the last focused row stayed

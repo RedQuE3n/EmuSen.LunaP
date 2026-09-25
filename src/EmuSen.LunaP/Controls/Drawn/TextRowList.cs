@@ -7,6 +7,7 @@ using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using EmuSen.LunaP.Automation;
 using EmuSen.LunaP.Media;
+using EmuSen.LunaP.Motion;
 using EmuSen.LunaP.Theme;
 
 namespace EmuSen.LunaP.Controls
@@ -53,13 +54,15 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<double> TextBandHeightProperty = AvaloniaProperty.Register<TextRowList, double>(nameof(TextBandHeight), double.NaN);
         public static readonly StyledProperty<bool> SelectedBackgroundFitsTextProperty = AvaloniaProperty.Register<TextRowList, bool>(nameof(SelectedBackgroundFitsText));
         public static readonly StyledProperty<double> MarkerWidthProperty = AvaloniaProperty.Register<TextRowList, double>(nameof(MarkerWidth), 1.5);
+        public static readonly StyledProperty<TextScroll> MarqueeProperty = AvaloniaProperty.Register<TextRowList, TextScroll>(nameof(Marquee));
+        public static readonly StyledProperty<TimeSpan> MarqueeTimeProperty = AvaloniaProperty.Register<TextRowList, TimeSpan>(nameof(MarqueeTime));
 
         static TextRowList()
         {
             AffectsRender<TextRowList>(ItemsProperty, SelectedIndexProperty, FontPathProperty, FontSizeProperty, LineSpacingProperty, PrimaryColorProperty, SecondaryColorProperty,
                 SelectedColorProperty, SelectedSecondaryColorProperty, SelectorColorProperty, SelectorHeightProperty, SelectorOffsetYProperty, SelectedBackgroundColorProperty,
                 SelectedBackgroundMarginsProperty, SelectedBackgroundCornerRadiusProperty, TextAlignmentProperty, HorizontalMarginProperty, LetterCaseProperty,
-                TextBandHeightProperty, SelectedBackgroundFitsTextProperty, MarkerWidthProperty);
+                TextBandHeightProperty, SelectedBackgroundFitsTextProperty, MarkerWidthProperty, MarqueeProperty, MarqueeTimeProperty);
         }
 
         /// <summary>The rows, top to bottom.</summary>
@@ -180,8 +183,51 @@ namespace EmuSen.LunaP.Controls
                 var brush = new ImmutableSolidColorBrush(colour);
                 (Rect ink, Rect text, FontLayout layout) = Lay(typeface, item, RowRect(i));
                 if (item.Marker != TextRowMarker.None) DrawMarker(context, item.Marker, new Rect(ink.X, ink.Y, FontSize * MarkerWidth, ink.Height), brush);
+                if (selected && Whole(typeface, item) is { } whole)
+                {
+                    DrawMarquee(context, brush, whole, text);
+                    continue;
+                }
+
                 layout.Draw(context, brush, text, TextAlignment.Left, 0.5);
             }
+        }
+
+        /// <summary>How the selected row's text scrolls sideways when it is wider than its room: delay, speed and gap. It does not scroll while Speed is 0, the default.</summary>
+        public TextScroll Marquee { get => GetValue(MarqueeProperty); set => SetValue(MarqueeProperty, value); }
+
+        /// <summary>The time since the selection was made, on the host's clock; the selected row's scroll is a function of it.</summary>
+        public TimeSpan MarqueeTime { get => GetValue(MarqueeTimeProperty); set => SetValue(MarqueeTimeProperty, value); }
+
+        /// <summary>How far the selected row's text has scrolled at MarqueeTime, in pixels; 0 when it fits or does not scroll.</summary>
+        public double MarqueeOffset
+        {
+            get
+            {
+                IReadOnlyList<TextRow> items = Items ?? Array.Empty<TextRow>();
+                if (SelectedIndex < 0 || SelectedIndex >= items.Count) return 0;
+                GlyphTypeface typeface = FontPath is { Length: > 0 } p && FontFiles.Load(p) is { } loaded ? loaded : FontFiles.Default;
+                return Whole(typeface, items[SelectedIndex]) is { } whole ? Marquee.LoopOffset(MarqueeTime, whole.Width) : 0;
+            }
+        }
+
+        // The selected row's whole line when it scrolls: the marquee is on and the line is wider than its room.
+        private FontLayout? Whole(GlyphTypeface typeface, TextRow item)
+        {
+            if (Marquee.Speed <= 0) return null;
+            double marker = item.Marker == TextRowMarker.None ? 0 : FontSize * MarkerWidth;
+            double room = Math.Max(0, Bounds.Width - 2 * HorizontalMargin - marker);
+            FontLayout whole = FontLayout.Create(typeface, FontSize, FontLayout.Cased(item.Text, LetterCase), LineSpacing, double.PositiveInfinity, double.PositiveInfinity, false, null);
+            return whole.Width > room + 0.01 ? whole : null;
+        }
+
+        // The whole line moved left by the marquee's offset within the row's room, a second copy following after the gap.
+        private void DrawMarquee(DrawingContext context, IBrush brush, FontLayout whole, Rect text)
+        {
+            double offset = Marquee.LoopOffset(MarqueeTime, whole.Width);
+            using DrawingContext.PushedState clip = context.PushClip(new Rect(text.X, text.Y, Math.Max(0, Bounds.Width - HorizontalMargin - text.X), text.Height));
+            whole.Draw(context, brush, new Rect(text.X - offset, text.Y, whole.Width, text.Height), TextAlignment.Left, 0.5);
+            if (offset > 0) whole.Draw(context, brush, new Rect(text.X - offset + whole.Width + Math.Max(0, Marquee.Gap), text.Y, whole.Width, text.Height), TextAlignment.Left, 0.5);
         }
 
         // The band text is centred in: TextBandHeight when set, else the whole pitch.
