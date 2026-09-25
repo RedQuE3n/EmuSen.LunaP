@@ -11185,5 +11185,42 @@ Six mutants, each alone, against `SliderListTests` (and, for the last, the reach
 
 ### 97.6 Not built
 
-No type-ahead and no filtering of the items; a host filters by giving it fewer. No folding headings (§94.4). A row
+No type-ahead and no filtering of the items; a host filters by giving it fewer. *(Filtering retired by §97.8.)* No folding headings (§94.4). A row
 cannot be typed into (§94.4). An item shown by two lists at once moves only the row built last.
+
+### 97.7 A correction to §97.3: the kept container is let go when the focus leaves
+
+*2026-09-24, later the same day.* §97.3's fix set the tab-once element to the focused row's container and never cleared
+it, so the container outlived the focus: after the focus had moved to a button outside the list, the panel still
+kept that one row built wherever the list was scrolled, out of view and a whole screen away. Nothing a person sees
+was wrong, but the consumer's pad audit counted that stray row as a control the window showed and could not reach
+(its `Parameter 0192`, `EmuSen_Settings_Reference.md` §4.48.10). `SliderList` now clears the tab-once element when
+`IsKeyboardFocusWithin` turns false, so the panel may recycle that container like any other.
+`A_row_the_focus_has_left_is_recycled_when_scrolled_away` focuses the first slider, moves the focus to a button
+beside the list, scrolls half the list away and requires the first row gone; without the clearing it stays.
+
+### 97.8 Searching the rows
+
+The consumer asked for a box that narrows a 944-parameter list by name. The filtering is the list's, so any host of
+a long column gets it; the box is the host's, a `FilterBar` like any other, since where it sits and what it is called
+belong to the window.
+
+`Search` is words, each of which a row's `Label` or `Keywords` must hold, in any case: `FilterBar.MatchesWords`
+(§94.3), so "gamma in" finds "Gamma In" and `Keywords` carries what the label does not say, such as a slang
+parameter's id. A heading that matches keeps every row under it, since a heading names what its rows are about. A
+heading over a matching row is kept above it; one with nothing matching under it goes. An empty search gives the
+host's own items back, the same object.
+
+**The host's items and the list's.** `SliderList` keeps the host's `ItemsSource` and shows a narrowed copy. So
+`Sliders` is every row the host gave, matching or not (a reset of everything must reach them all), and `Matching` is
+what the search leaves. Setting `ItemsSource` while a search is set searches the new items, so a search typed for
+one preset applies to the next. Each change of the search is a new `ItemsSource`, and new items start at the top
+(§97.1).
+
+**Tests.** `A_search_narrows_the_rows_and_keeps_their_headings`: two words over labels, a keyword, a heading match,
+a search that matches nothing, new items searched, and the host's object back when the search is emptied.
+`DocumentedDefaultTests` pins "Empty by default".
+
+**Mutants** (each alone against `SliderListTests`): the focused container kept after the focus leaves (§97.7) is
+caught by the recycling case; keywords not searched, a matching heading not keeping its rows, new items not searched,
+and an emptied search not giving the host's items back are each caught by the search case. The full suite is 1192.

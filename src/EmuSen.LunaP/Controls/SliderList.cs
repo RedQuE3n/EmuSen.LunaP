@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
@@ -33,8 +34,22 @@ namespace EmuSen.LunaP.Controls
         /// <summary>Raised when a person moves a row's slider or presses its Reset, with the item, whose Value is already the new one. Not raised by setting Value.</summary>
         public event Action<SliderItem>? ValueChanged;
 
-        /// <summary>The items that are rows, in order, whether or not a row shows them now.</summary>
-        public IEnumerable<SliderItem> Sliders => ItemsSource?.OfType<SliderItem>() ?? Enumerable.Empty<SliderItem>();
+        /// <summary>The items that are rows, in order, whether or not a row shows them now and whether or not Search passes them.</summary>
+        public IEnumerable<SliderItem> Sliders => (_whole ?? ItemsSource)?.OfType<SliderItem>() ?? Enumerable.Empty<SliderItem>();
+
+        /// <summary>The items that are rows and pass Search, in order: all of Sliders while Search is empty.</summary>
+        public IEnumerable<SliderItem> Matching => ItemsSource?.OfType<SliderItem>() ?? Enumerable.Empty<SliderItem>();
+
+        /// <summary>Words the rows must match, each in a row's label or keywords, in any case; a heading that matches keeps every row under it. Empty shows every row. Empty by default.</summary>
+        public string Search
+        {
+            get => _search;
+            set
+            {
+                _search = value?.Trim() ?? string.Empty;
+                Narrow();
+            }
+        }
 
         /// <summary>The rows that exist now: those in view and a few beyond, never one per item.</summary>
         public IEnumerable<SliderRow> Realized =>
@@ -58,6 +73,46 @@ namespace EmuSen.LunaP.Controls
         }
 
         private ScrollViewer? _scroll;
+        private IEnumerable? _whole;
+        private string _search = string.Empty;
+        private bool _narrowing;
+
+        // The host's items shown whole, or the rows that match with the headings over them - see §97.8.
+        private void Narrow()
+        {
+            if (_whole is null) return;
+            if (_search.Length == 0)
+            {
+                if (ReferenceEquals(ItemsSource, _whole)) return;
+                _narrowing = true;
+                try { ItemsSource = _whole; }
+                finally { _narrowing = false; }
+                return;
+            }
+            var shown = new List<object>();
+            string? heading = null;
+            bool headingMatches = false;
+            foreach (object? item in _whole)
+            {
+                if (item is null) continue;
+                if (item is string text)
+                {
+                    heading = text;
+                    headingMatches = FilterBar.MatchesWords(_search, text);
+                    continue;
+                }
+                if (!headingMatches && !(item is SliderItem slider && FilterBar.MatchesWords(_search, slider.Label, slider.Keywords))) continue;
+                if (heading is not null)
+                {
+                    shown.Add(heading);
+                    heading = null;
+                }
+                shown.Add(item);
+            }
+            _narrowing = true;
+            try { ItemsSource = shown; }
+            finally { _narrowing = false; }
+        }
 
         protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
         {
@@ -70,6 +125,13 @@ namespace EmuSen.LunaP.Controls
         {
             base.OnPropertyChanged(change);
             if (change.Property == ItemsSourceProperty && _scroll is { } scroll) scroll.Offset = default;
+            if (change.Property == ItemsSourceProperty && !_narrowing)
+            {
+                _whole = ItemsSource;
+                if (_search.Length > 0) Narrow();
+            }
+            // Once the focus has left the list its container may be recycled again, or a row scrolled far away would stay built unseen - see §97.7.
+            if (change.Property == IsKeyboardFocusWithinProperty && !IsKeyboardFocusWithin) KeyboardNavigation.SetTabOnceActiveElement(this, null);
         }
 
         // The panel keeps a container alive only while it is the tab-once element, and ItemsControl names the focused slider, not its container - see §97.3.
@@ -155,6 +217,9 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>The name given to the row that shows this item, for a test or an automation tool to find it by. Null for none.</summary>
         public string? Name { get; init; }
+
+        /// <summary>Further text a SliderList search matches besides the label, such as a parameter's id. Not shown. Null for none.</summary>
+        public string? Keywords { get; init; }
 
         /// <summary>Whatever the host knows this number by, such as a parameter's id. Not shown.</summary>
         public object? Tag { get; init; }

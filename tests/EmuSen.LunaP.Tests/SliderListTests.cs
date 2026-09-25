@@ -123,6 +123,64 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // Once the focus has gone elsewhere its row is recycled like any other, so a row scrolled far away is not left built - see docs/LunaP.md §97.7.
+        [Fact]
+        public Task A_row_the_focus_has_left_is_recycled_when_scrolled_away() => UiTest.Run(() =>
+        {
+            var list = new SliderList { ItemsSource = Numbers(1000) };
+            var elsewhere = new Button { Content = "Elsewhere" };
+            var panel = new DockPanel();
+            DockPanel.SetDock(elsewhere, Avalonia.Controls.Dock.Top);
+            panel.Children.Add(elsewhere);
+            panel.Children.Add(list);
+            var window = new ToolWindow { Width = 420, Height = 400, Content = panel };
+            window.Show();
+            UiTest.Capture(window);
+            Assert.True(SliderOf(list.RowFor(list.Sliders.First())!).Focus(NavigationMethod.Directional));
+            Assert.True(elsewhere.Focus(NavigationMethod.Directional));
+
+            Scroll(list).Offset = new Vector(0, Scroll(list).Extent.Height / 2);
+            UiTest.Capture(window);
+            Assert.Null(list.RowFor(list.Sliders.First()));
+            Assert.DoesNotContain(list.GetVisualDescendants().OfType<SliderRow>(), r => r.Name == "Number0" && r.IsEffectivelyVisible);
+            window.Close();
+        });
+
+        // A search keeps the rows whose label or keywords hold every word, the headings over them, and every row under a heading that matches; Sliders is still every row - see docs/LunaP.md §97.8.
+        [Fact]
+        public Task A_search_narrows_the_rows_and_keeps_their_headings() => UiTest.Run(() =>
+        {
+            var items = Numbers(300);
+            items[5] = new SliderItem("Number 4", 0, 1, 0.05, 0.5, 0.5) { Name = "Number4", Tag = 4, Keywords = "gamma_in" };
+            var (window, list) = Show(items);
+            System.Collections.IEnumerable whole = list.ItemsSource!;
+
+            list.Search = "number 12";
+            UiTest.Capture(window);
+            Assert.Equal(new object[] { "Section 0", "Section 1", "Section 2" }, list.ItemsSource!.Cast<object>().OfType<string>());
+            Assert.Equal(new[] { "Number 12", "Number 112", "Number 120", "Number 121", "Number 122", "Number 123", "Number 124", "Number 125", "Number 126", "Number 127", "Number 128", "Number 129", "Number 212" }, list.Matching.Select(s => s.Label));
+            Assert.Equal(300, list.Sliders.Count());
+            Assert.Equal("Number12", list.Realized.First().Name);
+
+            list.Search = "GAMMA";
+            Assert.Equal(new[] { "Number 4" }, list.Matching.Select(s => s.Label));
+            list.Search = "section 2";
+            Assert.Equal(100, list.Matching.Count());
+            Assert.Equal("Number 200", list.Matching.First().Label);
+            list.Search = "nowhere";
+            Assert.Empty(list.ItemsSource!.Cast<object>());
+
+            // A new list while a search is set is searched; an empty search gives back the host's own items.
+            list.ItemsSource = Numbers(50);
+            Assert.Empty(list.Matching);
+            Assert.Equal(50, list.Sliders.Count());
+            list.Search = "";
+            Assert.Equal(50, list.Matching.Count());
+            list.ItemsSource = whole;
+            Assert.Same(whole, list.ItemsSource);
+            window.Close();
+        });
+
         [Fact]
         public Task New_items_start_at_the_top() => UiTest.Run(() =>
         {
