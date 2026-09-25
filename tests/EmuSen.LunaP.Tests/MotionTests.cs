@@ -131,6 +131,8 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal((0, 1), scroll.RunAt(Ms(5400), 100));
             Assert.Equal(25, scroll.RunAt(Ms(6900), 100).Offset, 6);
             Assert.Equal((0, 1), scroll.RunAt(Ms(99999), 0));
+            Assert.Equal(26.5, new TextScroll(Ms(1000), 53).RunAt(Ms(1500), 100).Offset, 6);
+            Assert.Equal(26, new TextScroll(Ms(1000), 53, WholePixels: true).RunAt(Ms(1500), 100).Offset, 6);
         }
 
         private static (int Left, int Top) Ink(RenderedFrame f, int x0, int y0, int x1, int y1)

@@ -11634,7 +11634,8 @@ It answers two questions as functions of the time since the text was shown:
 - **`RunAt(elapsed, travel)`, for a column of lines moving up.** The column is still for `Delay`, moves at `Speed`
   until it has travelled `travel` (its height less the box's, so the last line shows), holds for `EndPause`, and then
   starts again from the top: it fades in over `FadeIn` and is then still for `Delay` before moving. The first pass
-  has no fade, because the text was already showing.
+  has no fade, because the text was already showing. With `WholePixels` the column moves in whole-pixel steps, the
+  offset rounded down, as the consumer measured its reference doing.
 
 `FontText` takes the rule as `Scroll`, the way as `ScrollDirection` (`None`, the default, `Vertical` or `Horizontal`)
 and the time as `ScrollTime`. A horizontal scroll lays the text out as one line with line breaks turned to spaces; a
