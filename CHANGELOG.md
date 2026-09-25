@@ -25,6 +25,9 @@ answer.
   and effect, not through a Skia lease. Two things to know: the processed-image cache is unbounded (`§98.2`), and an
   `ImageBrush` in `TileMode.Tile` with an absolute `DestinationRect` offset draws its tiles at twice the offset in
   Avalonia 12.1.0, which `FittedImage` works round and your own brushes may not (`§98.2`).
+  Corrected before release (`§101.7`): a wrapping `ImageCarousel` repeats its items to fill the row; `TextRowList`'s
+  selected background reaches past the list by its margins; `NormalizedCanvas`, `FontText` and `TextRowList` keep
+  computed pixels to hundredths, so float noise in a fraction no longer becomes a whole extra pixel.
 - **`SliderList` and `SliderItem`, new and additive.** A scrolling column of `SliderRow`s under headings that builds
   only the rows in view: give it `SliderItem`s (a row each) and strings (a heading each) as `ItemsSource`, listen to
   `ValueChanged(item)`, and read or set each item's `Value`, which is kept while no row shows it. A thousand numbers

@@ -162,7 +162,6 @@ namespace EmuSen.LunaP.Controls
                 int index = selected + k;
                 if (wraps) index = ((index % count) + count) % count;
                 else if (index < 0 || index >= count) continue;
-                if (wraps && count <= 2 * reach && (k < -(count - 1) / 2 || k > count / 2)) continue;
                 yield return (k, index);
             }
         }

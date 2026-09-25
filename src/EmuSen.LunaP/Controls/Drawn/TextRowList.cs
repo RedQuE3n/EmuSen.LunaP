@@ -100,8 +100,8 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The casing applied to every row. None by default.</summary>
         public LetterCase LetterCase { get => GetValue(LetterCaseProperty); set => SetValue(LetterCaseProperty, value); }
 
-        /// <summary>The distance from one row's top to the next, FontSize times LineSpacing.</summary>
-        public double RowPitch => FontSize * LineSpacing;
+        /// <summary>The distance from one row's top to the next, FontSize times LineSpacing to a hundredth.</summary>
+        public double RowPitch => Math.Round(FontSize * LineSpacing * 100) / 100;
 
         /// <summary>How many whole rows fit in the height.</summary>
         public int VisibleRows => RowPitch <= 0 ? 0 : Math.Max(1, (int)Math.Floor((Bounds.Height + 0.01) / RowPitch));
@@ -127,7 +127,8 @@ namespace EmuSen.LunaP.Controls
             IReadOnlyList<TextRow> items = Items ?? Array.Empty<TextRow>();
             if (items.Count == 0 || RowPitch <= 0) return;
             var bounds = new Rect(Bounds.Size);
-            using DrawingContext.PushedState clip = context.PushClip(bounds);
+            Thickness reach = SelectedBackgroundMargins;
+            using DrawingContext.PushedState clip = context.PushClip(new Rect(-reach.Left, 0, bounds.Width + reach.Left + reach.Right, bounds.Height));
             GlyphTypeface typeface = FontPath is { Length: > 0 } p && FontFiles.Load(p) is { } loaded ? loaded : FontFiles.Default;
             int first = FirstVisible, last = Math.Min(items.Count, first + VisibleRows);
 

@@ -112,7 +112,10 @@ namespace EmuSen.LunaP.Controls
         /// <param name="child">The child's size in pixels.</param>
         /// <returns>The child's rectangle.</returns>
         public static Rect Place(Size panel, Point position, Point origin, Size child) =>
-            new(position.X * panel.Width - origin.X * child.Width, position.Y * panel.Height - origin.Y * child.Height, child.Width, child.Height);
+            new(Hundredth(position.X * panel.Width - origin.X * child.Width), Hundredth(position.Y * panel.Height - origin.Y * child.Height), child.Width, child.Height);
+
+        // Fractions read from text carry float noise that layout rounding would ceil into a whole pixel, so products keep hundredths.
+        private static double Hundredth(double v) => double.IsInfinity(v) ? v : Math.Round(v * 100) / 100;
 
         // The box a child is measured in: its fraction of the panel, else its maximum, else unbounded.
         private static Size Available(Size panel, Control child)
@@ -120,15 +123,15 @@ namespace EmuSen.LunaP.Controls
             Size size = GetSize(child), max = GetMaxSize(child);
             double w = size.Width > 0 ? size.Width * panel.Width : max.Width > 0 ? max.Width * panel.Width : double.PositiveInfinity;
             double h = size.Height > 0 ? size.Height * panel.Height : max.Height > 0 ? max.Height * panel.Height : double.PositiveInfinity;
-            return new Size(w, h);
+            return new Size(Hundredth(w), Hundredth(h));
         }
 
         // The size a child is given: its fraction on an axis that has one, else what it asked for.
         private static Size Given(Size panel, Control child)
         {
             Size size = GetSize(child);
-            return new Size(size.Width > 0 ? size.Width * panel.Width : child.DesiredSize.Width,
-                size.Height > 0 ? size.Height * panel.Height : child.DesiredSize.Height);
+            return new Size(size.Width > 0 ? Hundredth(size.Width * panel.Width) : child.DesiredSize.Width,
+                size.Height > 0 ? Hundredth(size.Height * panel.Height) : child.DesiredSize.Height);
         }
 
         protected override void ChildrenChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
