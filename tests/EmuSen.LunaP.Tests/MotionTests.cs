@@ -191,6 +191,26 @@ namespace EmuSen.LunaP.Tests
         });
 
         [Fact]
+        public Task A_vertical_text_with_whole_lines_shows_no_part_line_at_the_bottom() => UiTest.Run(() =>
+        {
+            var text = new FontText
+            {
+                Text = string.Join("\n", Enumerable.Range(0, 8).Select(i => "HHHH")), FontSize = 20, LineSpacing = 1.5, Foreground = Brushes.White,
+                ScrollDirection = TextScrollDirection.Vertical, Scroll = new TextScroll(Ms(1000), 20),
+            };
+            var canvas = new NormalizedCanvas();
+            NormalizedCanvas.SetSize(text, new Size(1, 1));
+            canvas.Children.Add(text);
+            ToolWindow window = Show(canvas, 200, 100);
+            Assert.NotEqual(int.MaxValue, Ink(Frame(window), 0, 90, 200, 100).Top);
+            text.ScrollWholeLines = true;
+            Assert.Equal(int.MaxValue, Ink(Frame(window), 0, 90, 200, 100).Top);
+            text.ScrollTime = Ms(1000 + 7400);
+            Assert.Equal(8 * 30 - 90 - 2, text.ScrollOffset, 6);
+            window.Close();
+        });
+
+        [Fact]
         public Task Only_the_selected_row_scrolls_and_only_when_it_is_too_wide() => UiTest.Run(() =>
         {
             var list = new TextRowList

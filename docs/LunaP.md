@@ -11640,6 +11640,8 @@ It answers two questions as functions of the time since the text was shown:
 and the time as `ScrollTime`. A horizontal scroll lays the text out as one line with line breaks turned to spaces; a
 vertical one lays out every wrapped line. Neither is cut or given an ellipsis, and both are clipped to the box inside
 the padding. A text that fits does not move. `ScrollOffset` reports how far it has moved, for tests and hosts.
+`ScrollWholeLines` cuts a vertical scroll's box down to the lines that fit whole, so no part of a line shows at the
+bottom at the start or at the end; the control's own box, and so its placement, does not change.
 
 Which values a real design uses is the consumer's to measure; this section fixes only the shape of the two rules.
 They are the shapes EmulationStation-DE's documentation describes for its containers ("As horizontally scrolling text
