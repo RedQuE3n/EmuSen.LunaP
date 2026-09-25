@@ -14,6 +14,17 @@ answer.
 
 ## Unreleased
 
+- **Drawn controls for a themed surface, new and additive (`§98` to `§101`).** `NormalizedCanvas` places children by
+  fractions of itself, with an origin, a rotation and a real-valued depth. `FittedImage` shows a raster or SVG file
+  fitted, covered, stretched or tiled, tinted by a colour or a gradient, desaturated and rounded. `FontText` sets text in
+  a typeface read from a file by `FontFiles`, which caches one per path and never installs it in the font manager.
+  `SvgDocument` and `SvgPicture` draw a subset of SVG (paths, shapes, groups, transforms, fill rules, strokes, linear
+  gradients, clip paths, CSS classes) and refuse whole any file needing more. `TextRowList`, `ImageCarousel`,
+  `StarRating`, `BadgeStrip`, `HintBar`, `ClockLabel` and `DeviceStatusBar` complete the set. Nothing existing changed,
+  and LunaP still references Avalonia and nothing else: the image effects are done on the CPU once per picture, size
+  and effect, not through a Skia lease. Two things to know: the processed-image cache is unbounded (`§98.2`), and an
+  `ImageBrush` in `TileMode.Tile` with an absolute `DestinationRect` offset draws its tiles at twice the offset in
+  Avalonia 12.1.0, which `FittedImage` works round and your own brushes may not (`§98.2`).
 - **`SliderList` and `SliderItem`, new and additive.** A scrolling column of `SliderRow`s under headings that builds
   only the rows in view: give it `SliderItem`s (a row each) and strings (a heading each) as `ItemsSource`, listen to
   `ValueChanged(item)`, and read or set each item's `Value`, which is kept while no row shows it. A thousand numbers

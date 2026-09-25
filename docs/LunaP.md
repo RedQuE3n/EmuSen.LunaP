@@ -11187,3 +11187,287 @@ Six mutants, each alone, against `SliderListTests` (and, for the last, the reach
 
 No type-ahead and no filtering of the items; a host filters by giving it fewer. No folding headings (§94.4). A row
 cannot be typed into (§94.4). An item shown by two lists at once moves only the row built last.
+
+## 98. Drawn controls: a positioned canvas, a fitted image, and text in a font from a file
+
+*2026-09-24.* EmuSen's Mistress is to draw EmulationStation-DE themes (its `EmuSen_BigPicture.md`, §10.1 and §13). A
+theme places every element by fractions of the screen, fits and tints images, and sets text in fonts it carries as
+files. The consumer's first plan was one Skia-drawn control in Mistress; its author retired that plan before building
+it, in favour of "drawing this with LunaP and, if something is missing from LunaP, adding it". This section and the
+three after it are what was missing. **None of it knows about ES-DE.** Each control takes fractions, pixels, colours
+and file paths; the translation from a theme's properties to these lives in the consumer.
+
+### 98.1 `NormalizedCanvas`
+
+A `Panel` whose children are placed by attached properties, all fractions: `Position` of the panel, `Size` of the
+panel, `Origin` of the child (the point of the child that `Position` names), `MaxSize` of the panel, `Rotation` in
+degrees about `RotationOrigin` (a fraction of the child), and `Depth`.
+
+- **An axis of `Size` that is 0 takes the child's own desired size on that axis**, measured within `MaxSize` if one is
+  set. That is how "fit this image inside 0.5 by 0.3 of the screen, keeping its aspect ratio" is expressed: the image
+  measures to its fitted size, and `Origin` then applies to that size, not to the box it was fitted in. The layout pass
+  does this for free, which is one of the reasons a tree of controls was preferred to one drawn surface.
+- **`Depth` is a real number; Avalonia's `ZIndex` is an integer.** The panel ranks its children by depth, ties kept in
+  the order of `Children`, and writes each child's rank into its `ZIndex`. It does not sort `Children` itself, so a
+  consumer's indices into it stay valid.
+- `Place(panel, position, origin, child)` is the arithmetic, public so a consumer can predict a box without a layout.
+- A canvas measured with unbounded space takes no size, since it has nothing to take fractions of.
+
+### 98.2 `FittedImage`
+
+A raster (anything the platform decodes) or an SVG (§99) from a path, in one of four fits: `Fill` (stretched), `Contain`
+(the control measures to the fitted size), `Cover` (fills, cropped about `CropPosition`), and `Tile` (repeated at
+`TileSize`, from the edge the two tile alignments name). It multiplies every pixel, alpha included, by `Tint`, or by a
+gradient from `Tint` to `TintEnd` in `TintDirection`; desaturates by `Saturation`; clips to `CornerRadius` in pixels;
+and samples by `Interpolation`.
+
+**How the pixel effects are done without SkiaSharp.** Avalonia's `DrawingContext` has no colour matrix, so a tint or a
+saturation cannot be a draw-time operation. The picture is drawn once into a `RenderTargetBitmap`, its pixels are read
+back, the effects are applied on the CPU to the premultiplied values, and the result is kept as a `WriteableBitmap`
+keyed by path, pixel size and effects. A raster is processed at its own size and scaled when drawn; an SVG is
+rasterised at the size it is shown, so it stays sharp. An image with no effects is drawn from its decoded bitmap
+directly. The alternative, a custom draw operation leasing Skia's canvas, would have made this toolkit reference
+SkiaSharp, which `LayeringTests` forbids (§22.7): LunaP references Avalonia and nothing else. That rule was kept, and
+this is its cost: one CPU pass per distinct (picture, size, effect), paid once.
+
+- **Saturation mixes each channel towards Rec. 709 luma** (0.2126, 0.7152, 0.0722) on the stored, gamma-encoded values.
+  This is a choice, not a finding; the consumer checks it against ES-DE's output.
+- **The tint gradient runs across the rasterised picture**, not the control's box; a tiled image takes the solid `Tint`
+  only.
+- **A defect found in a dependency, Avalonia 12.1.0 with Skia.** An `ImageBrush` in `TileMode.Tile` whose absolute
+  `DestinationRect` has a non-zero X starts its tiles at twice that X: with tiles 30 wide and `DestinationRect.X` = 10,
+  a row read back from a render began its pattern at x = 20 (five `W` pixels, then alternating fifteen `R` and fifteen
+  `W` from x = 5). The same offset given as the brush's `Transform`, with `DestinationRect` at the origin, places the
+  tiles where asked. `FittedImage` does that; `Tile_repeats_from_the_aligned_corner` is the reproduction, and failed
+  with the first form.
+- The processed-bitmap cache is not bounded. A consumer showing thousands of distinct images at distinct sizes would
+  grow it without limit; the EmuSen consumer shows tens. Recorded as a hazard.
+
+A missing file draws nothing and reports `IsMissing`. A refused SVG draws a box crossed in `LunaPalette.Error`, so a
+gap is never mistaken for a design.
+
+### 98.3 `FontText`, `FontFiles` and `LetterCase`
+
+**`FontFiles.Load(path)` returns a `GlyphTypeface` read from a font file, once per full path, and never adds it to the
+application's font manager.** A theme's fonts are not the window's, and `FontManager.AddFontCollection` is global. The
+file is read into memory and handed to a private, unregistered `EmbeddedFontCollection`'s `TryAddGlyphTypeface(Stream)`;
+the collection is dropped and the typeface kept. `IFontManagerImpl.TryCreateGlyphTypeface(Stream, …)` would have been
+the direct route, but `FontManager.PlatformImpl` is not public in Avalonia 12.1. A test asserts that the same instance
+comes back for two spellings of one path and that the font manager cannot find the collection's key.
+
+Because a `Typeface` is resolved through the font manager, text in such a typeface cannot go through `TextLayout`.
+`FontText` shapes with `TextShaper.Current` and draws `GlyphRun`s itself:
+
+- **Wrapping** is greedy at spaces, from the advances of one shaping of the paragraph; a word longer than the line is
+  broken between characters.
+- **The line box is CSS's.** A line is `FontSize × LineSpacing` tall, and its glyphs are centred in it by half-leading:
+  the baseline sits at half of (line height − ascent − descent) plus the ascent. So the block's height is lines × line
+  height, whatever the font's own metrics.
+- **Truncation.** Lines that do not fit the height are dropped, and the last line kept ends in `Ellipsis` (a horizontal
+  ellipsis by default); a line wider than the box is cut to fit with the ellipsis after it.
+- **`LetterCase`** is applied before layout: upper, lower, or the first letter of each word.
+- A background colour with its own corner radius and `Padding` is drawn behind the text; the padding is part of the
+  control's size.
+
+What `fontSize` means in a theme (an em size, or the height of a capital S) is the consumer's question, and is answered
+there by measurement.
+
+### 98.4 Automation, palette and the gallery
+
+`NormalizedCanvas` reports a group; `FittedImage` and `SvgPicture` an image; `FontText` text, named by its text. Colours
+a theme does not set default to palette colours (`FontText.Foreground` is `LunaPalette.Text`). The gallery has a
+"Themed surface" section with every control of §98 to §101 on one canvas.
+
+### 98.5 What these controls do not do
+
+No rotation of the image's content apart from the canvas's rotation of the whole control; no flips; no brightness; no
+mip-maps. `FontText` does no bidirectional layout, no font fallback for characters its typeface lacks (they draw as its
+missing glyph), and no hyphenation.
+
+### 98.6 Tests
+
+`NormalizedCanvasTests`, `FittedImageTests` and `FontTextTests` write their own PNGs, SVGs and a copy of one of
+`Avalonia.Fonts.Inter`'s faces into a temporary folder (`DrawnSupport`), and assert on control bounds and on pixels read
+back from a real Skia render. The defaults the new summaries name are rows of `DocumentedDefaultTests` in a second
+partial file, `DocumentedDefaultTests.Drawn.cs`.
+
+## 99. An SVG renderer for the subset icons and logos use
+
+`SvgDocument` parses a file into shapes drawn through `DrawingContext`, and `SvgPicture` shows one. Written to the
+subset a theme's icons use, and refusing whole anything outside it.
+
+### 99.1 What is drawn
+
+- **Elements:** `svg`, `g`, `path`, `rect` (with `rx`/`ry`), `circle`, `ellipse`, `line`, `polyline`, `polygon`;
+  `defs`, `linearGradient` with `stop`, `clipPath`, `style`; `title`, `desc` and `metadata` are ignored, as is every
+  element in another namespace (an editor's `sodipodi:namedview`, say).
+- **Paint:** `fill`, `stroke` and their opacities, `fill-rule`, `stroke-width`, joins, caps, miter limit, dash arrays;
+  `opacity` as a group opacity; `display` and `visibility`; `currentColor`; colours as `#rgb`, `#rrggbb`, `#rrggbbaa`,
+  `rgb()`, `rgba()` and CSS names.
+- **Gradients:** linear, in `objectBoundingBox` or `userSpaceOnUse` units, with `gradientTransform`, `spreadMethod` and
+  attribute and stop inheritance along an `href` chain.
+- **Transforms:** `matrix`, `translate`, `scale`, `rotate` with or without a centre, `skewX`, `skewY`, composed so that
+  the first written is applied last.
+- **The viewport:** `viewBox` with `preserveAspectRatio` (all nine alignments, `meet`, `slice` and `none`), and the
+  root's `width` and `height` in `px`, `pt`, `pc`, `mm`, `cm` or `in` for the document's own size.
+- **Clip paths** in user space, the union of their shapes, each with its own transform and `clip-rule`.
+
+### 99.2 Path data and values
+
+Path data is parsed here, not by `StreamGeometry.Parse`: all twenty commands, implicit repeats (a moveto followed by
+coordinates continues as lineto), numbers packed as SVG allows (`1.5.5` is two numbers, `1-2` is two), exponents, and
+arc flags that are one character each (`a1 1 0 00 1 1`). Malformed data draws what came before the error, as SVG 1.1
+specifies. A zero-radius arc is a line.
+
+### 99.3 Style sheets and the cascade
+
+A computed style is built per element: the inherited properties of the parent, then presentation attributes, then the
+matching rules of every `<style>` in the document in order of specificity and then of appearance, then the `style`
+attribute. **Selectors are compound only**: a tag, an id and classes (`rect.a`, `.a.b`, `#b`), in comma lists. A
+descendant, child or sibling combinator, a pseudo-class or an attribute selector refuses the document rather than
+being guessed at.
+
+### 99.4 Refusal
+
+Anything outside §99.1 refuses the whole document, which then draws nothing, and `Refusals` lists each reason once:
+`text`, `image`, `use`, `symbol`, `pattern`, `radialGradient`, `mask`, `filter` and its primitives, `marker`, `script`,
+`foreignObject`, `switch`, nested `svg`; the properties `filter`, `mask` and `marker*`; a blend mode other than normal;
+percentages in shape geometry; a clip path in bounding-box units or itself clipped; an unreadable colour, transform or
+stroke width; a CSS at-rule other than `@font-face`. `FittedImage` and `SvgPicture` show a refused document as a box
+crossed in the palette's error colour. Drawing the rest of a document whose text or filter was dropped would show a
+picture its author never made, and one that looks deliberate.
+
+### 99.5 Measured against another renderer
+
+The consumer compared this renderer with `Svg.Skia` 5.1.1 (MS-PL, used only as a test oracle in the consumer's test
+project, never referenced here) on the 241 SVG files of one real theme, each drawn into a 256 by 256 viewport, taking
+the intersection-over-union of coverage (alpha), and the mean colour difference where both cover.
+
+| | Files |
+|---|---|
+| Refused | 7: three for `text`, two for `script`, one for `filter`, one for a `<g>` inside a `clipPath` (not allowed there by SVG 1.1) |
+| Drawn | 234 |
+| IoU, lowest | 0.9959 |
+| IoU, median | 1.0000 |
+| Below 0.98 | 0 |
+| Largest mean colour difference | 1.0 of 255 |
+
+**A negative result worth keeping.** The first run of that comparison put the oracle's picture in its own coordinate
+space and scaled it by the document's size, and reported IoUs of 0 on four files and under 0.98 on 24. Every one of
+those was the harness: `Svg.Skia` sizes a document written in `pt` without the CSS conversion, and places a viewBox with
+a non-zero origin differently. Giving both renderers the same explicit 256-pixel `width` and `height` in the markup, so
+that each maps the viewBox itself, left no file below 0.98. The comparison measures the renderers only once the
+viewport is not left for either to infer.
+
+### 99.6 Tests
+
+`SvgDocumentTests`: path data in absolute, relative, implicit and packed forms drawing the same square; arcs and curves
+by area; transform order; both fill rules; colours, opacities and inheritance; strokes; the cascade; gradients in both
+units with a transform and inherited stops; clip paths; `preserveAspectRatio`; ten refusals each named; unreadable input
+refused rather than thrown; `SvgPicture` sized by aspect and drawing its crossed box.
+
+## 100. A text list and a carousel, at rest
+
+### 100.1 `TextRowList` and `TextRow`
+
+Rows of one line each at a pitch of `FontSize × LineSpacing`, in a typeface from a file. The selected row gets a bar in
+`SelectorColor` (`SelectorHeight`, default one pitch, at `SelectorOffsetY`) and a rounded fill in
+`SelectedBackgroundColor` reaching `SelectedBackgroundMargins` beyond the row at the sides, and its text in
+`SelectedColor`; a row marked `Secondary` uses the secondary colours. **The window of visible rows keeps the selection
+on the middle row**, `(visible − 1) / 2` from the top, and stops at both ends of the list. Rows that do not fit the width
+end in an ellipsis. It draws; nothing is templated, and nothing scrolls over time.
+
+### 100.2 `ImageCarousel` and `CarouselItem`
+
+Items along one axis, **their centres `length / MaxItemCount` apart**, with the selected item centred and scaled by
+`ItemScale`. Every other item takes `UnfocusedItemOpacity`, has its tint multiplied by `UnfocusedItemDimming` and its
+saturation by `UnfocusedItemSaturation`. An item whose image is missing shows its text instead. Item boxes are
+`ItemSize`, or one spacing along the axis and the whole of the cross axis; an image is fitted inside and aligned by
+`ItemVerticalAlignment` (a horizontal row) or `ItemHorizontalAlignment` (a vertical one).
+
+**Wrapping.** With `Wraps` on and more items than fit, the row continues past the last item with the first, so the item
+before the first is the last. With fewer items than the row could show, each is shown once: offsets run from
+`−(count − 1) / 2` to `count / 2`. Items are child controls, `FittedImage` or `FontText`, rebuilt when a property
+changes; the selected one is added last so that it draws on top.
+
+At rest only; animation is the consumer's next stage.
+
+## 101. Indicators: a rating, badges, a hint bar, a clock and device status
+
+
+### 101.1 `StarRating`
+
+A row of `StarCount` stars sized from the height (each star's width from the unfilled
+image's aspect ratio), unfilled across the row and filled cut at `Value` of its width. With `Overlay` off, the
+unfilled stars are drawn only where the filled ones end. With no images it draws its own star in palette colours. A
+screen reader hears "3.5 of 5".
+
+### 101.2 `BadgeStrip`
+
+Icon files packed in order into `Lines` of `ItemsPerLine` equal cells (rows, or columns when
+`Direction` is vertical), with `ItemMargin` between, the used cells aligned as a group. Only the icons given are
+drawn; which badges apply is the host's business.
+
+### 101.3 `HintBar` and `HintEntry`
+
+Hints in a row, icon then label, `IconTextSpacing` and `EntrySpacing` apart, the
+whole scaled by `EntryScale`, on a rounded background with padding. An entry with no icon file draws its `Glyph` in a
+ring, so the host need ship no button art.
+
+### 101.4 `ClockLabel`
+
+A `FontText` whose text is `Time` (or now) in a .NET format; with `Live` it follows the clock
+once a second while shown. A format .NET cannot read shows the sortable form rather than throwing.
+
+### 101.5 `DeviceStatusBar`, `DeviceStatus` and `DeviceIndicators`
+
+Bluetooth, Wi-Fi and cellular when on, and the
+battery by level, with icons from files by key or drawn. **The control reads nothing from the system**: the host
+supplies a `DeviceStatus`, since how a machine reports its battery is platform business this toolkit does not take
+on. The battery's levels are a choice: full from 90%, high from 60%, medium from 30%, else low. A screen reader hears
+"Wi-Fi on, battery 75%".
+
+Tests: `ThemedListTests` and `IndicatorControlTests`, on bounds, cells and pixels.
+
+### 101.6 Mutants for §98 to §101
+
+Twenty-nine mutants, one rule each, applied one at a time to a copy of the repository outside it (the consumer's
+`~/.cache/emusen/probe/bigpicture/mutate_lunap.py`), each built and run against the six test classes of §98 to §101,
+the copy restored after each and deleted at the end.
+
+| # | Mutant | Result |
+|---|---|---|
+| L1 | the canvas ignores `Origin` | caught by 3 |
+| L2 | equal depths drawn in reverse order of `Children` | caught |
+| L3 | a zero axis of `Size` takes nothing rather than the child's own size | caught by 6 |
+| L4 | `Contain` measures to the whole box | caught by 2 |
+| L5 | `Cover` ignores `CropPosition` | caught |
+| L6 | the tint's alpha not applied to the colour channels | caught |
+| L7 | saturation towards the channel mean, not Rec. 709 luma | caught |
+| L8 | `CornerRadius` ignored | caught |
+| L9 | tile alignment ignored | caught |
+| L10 | the tile offset given as `DestinationRect`, the Avalonia defect of §98.2 | caught |
+| L11 | font files read again on every call | caught |
+| L12 | no ellipsis on the last line when the height cuts the text | caught |
+| L13 | `Capitalize` upper-cases everything | caught |
+| L14 | line height from a fixed 1.2 rather than `LineSpacing` | caught |
+| L15 | SVG transforms composed in written order | caught |
+| L16 | SVG `evenodd` ignored | caught |
+| L17 | CSS rules applied in file order, ignoring specificity | **survived the first run**; caught after the test was changed |
+| L18 | `objectBoundingBox` gradients drawn in user space | caught |
+| L19 | an unknown SVG element skipped silently rather than refused | caught by 3 |
+| L20 | relative path commands read as absolute | caught by 2 |
+| L21 | arc flags read as ordinary numbers | caught |
+| L22 | the list's window not clamped at the end | caught |
+| L23 | the carousel spaced by item width, not length over `MaxItemCount` | caught |
+| L24 | unfocused opacity applied to the selected item too | caught |
+| L25 | the carousel never wraps | caught |
+| L26 | the rating cut at whole stars | **survived the first run**; caught after the test was changed |
+| L27 | badge group alignment ignored | caught |
+| L28 | the battery full from above 90% rather than from 90% | caught |
+| L29 | hint entries not spaced | caught |
+
+**The two survivors were weak tests, not correct mutants.** The cascade test wrote its rules in ascending specificity,
+so file order and specificity agreed on every element; it now writes the most specific rule first. The rating test used
+a value of 0.5 with four stars, a cut that falls exactly on a star's edge, so whole-star rounding drew the same picture;
+it now uses 0.45, a cut inside the second star. Both mutants were re-run against the changed tests and caught.

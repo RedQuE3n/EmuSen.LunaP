@@ -64,6 +64,19 @@ namespace EmuSen.LunaP.Tests
 
             // §97. A column of numbers is a list of them, as an ItemsControl reports itself.
             { nameof(SliderList), AutomationControlType.List },
+
+            // §98 to §101. The drawn controls: a canvas groups, pictures are images, text is text, lists are lists.
+            { nameof(NormalizedCanvas), AutomationControlType.Group },
+            { nameof(FittedImage), AutomationControlType.Image },
+            { nameof(SvgPicture), AutomationControlType.Image },
+            { nameof(FontText), AutomationControlType.Text },
+            { nameof(ClockLabel), AutomationControlType.Text },
+            { nameof(TextRowList), AutomationControlType.List },
+            { nameof(ImageCarousel), AutomationControlType.List },
+            { nameof(StarRating), AutomationControlType.Text },
+            { nameof(BadgeStrip), AutomationControlType.Group },
+            { nameof(HintBar), AutomationControlType.Group },
+            { nameof(DeviceStatusBar), AutomationControlType.StatusBar },
         };
 
         [Theory]
@@ -92,6 +105,10 @@ namespace EmuSen.LunaP.Tests
         [InlineData(nameof(LunaSwitch), "Enable rewind")]
         [InlineData(nameof(Card), "Library")]
         [InlineData(nameof(SidePanel), "Explorer")]
+        [InlineData(nameof(FontText), "Game over")]
+        [InlineData(nameof(StarRating), "3.5 of 5")]
+        [InlineData(nameof(HintBar), "A Launch, B Back")]
+        [InlineData(nameof(DeviceStatusBar), "Wi-Fi on, battery 75%")]
         public Task A_control_names_itself_from_the_property_it_already_had(string name, string expected) =>
             Session.Dispatch(() =>
             {
@@ -421,6 +438,17 @@ namespace EmuSen.LunaP.Tests
             nameof(OverlayBar) => new OverlayBar { Content = new Button { Content = "Pause" } },
             nameof(NoticeLayer) => new NoticeLayer(),
             nameof(SliderList) => new SliderList { ItemsSource = new object[] { "Tone", new SliderItem("Highlights", -100, 100, 1, 0, 0) } },
+            nameof(NormalizedCanvas) => new NormalizedCanvas(),
+            nameof(FittedImage) => new FittedImage(),
+            nameof(SvgPicture) => new SvgPicture(),
+            nameof(FontText) => new FontText { Text = "Game over" },
+            nameof(ClockLabel) => new ClockLabel { Time = new DateTime(2026, 9, 24, 12, 0, 0) },
+            nameof(TextRowList) => new TextRowList { Items = new[] { new TextRow("Alpha"), new TextRow("Beta") }, SelectedIndex = 1 },
+            nameof(ImageCarousel) => new ImageCarousel { Items = new[] { new CarouselItem(null, "Alpha") } },
+            nameof(StarRating) => new StarRating { Value = 0.7 },
+            nameof(BadgeStrip) => new BadgeStrip(),
+            nameof(HintBar) => new HintBar { Entries = new[] { new HintEntry("Launch", Glyph: "A"), new HintEntry("Back", Glyph: "B") } },
+            nameof(DeviceStatusBar) => new DeviceStatusBar { Status = new DeviceStatus(Wifi: true, BatteryPercent: 75) },
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, "No builder for this control."),
         };
 
