@@ -542,6 +542,7 @@ public sealed class EmuSen.LunaP.Controls.SliderItem
     public double Value { get; set; }
     public object? Tag { get; init; }
     public string Label { get; }
+    public string? Keywords { get; init; }
     public string? Name { get; init; }
 
 public class EmuSen.LunaP.Controls.SliderList : Avalonia.Controls.ItemsControl
@@ -551,10 +552,12 @@ public class EmuSen.LunaP.Controls.SliderList : Avalonia.Controls.ItemsControl
     public EmuSen.LunaP.Controls.SliderRow? Reveal(EmuSen.LunaP.Controls.SliderItem item)
     public EmuSen.LunaP.Controls.SliderRow? RowFor(EmuSen.LunaP.Controls.SliderItem item)
     public SliderList()
+    public System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.SliderItem> Matching { get; }
     public System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.SliderItem> Sliders { get; }
     public System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.SliderRow> Realized { get; }
     public const string StyleClass = "luna-slider-list"
     public event System.Action<EmuSen.LunaP.Controls.SliderItem> ValueChanged
+    public string Search { get; set; }
 
 public class EmuSen.LunaP.Controls.SliderRow : Avalonia.Controls.Border
     public SliderRow()

@@ -14,6 +14,11 @@ answer.
 
 ## Unreleased
 
+- **`SliderList.Search`, `Matching` and `SliderItem.Keywords`, additive.** Words the rows must match in their label or
+  keywords, headings kept over matches; `Sliders` stays every row, `Matching` is what the search leaves (`§97.8`).
+- **A `SliderList` row the focus has left is recycled again** when scrolled away; before, the last focused row stayed
+  built out of view until the focus came back (`§97.7`).
+
 - **`SliderList` and `SliderItem`, new and additive.** A scrolling column of `SliderRow`s under headings that builds
   only the rows in view: give it `SliderItem`s (a row each) and strings (a heading each) as `ItemsSource`, listen to
   `ValueChanged(item)`, and read or set each item's `Value`, which is kept while no row shows it. A thousand numbers

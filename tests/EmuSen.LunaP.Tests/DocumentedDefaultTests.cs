@@ -99,6 +99,7 @@ namespace EmuSen.LunaP.Tests
             ("P:EmuSen.LunaP.Controls.SliderRow.Minimum", "0 by default", () => new SliderRow().Minimum),
             ("P:EmuSen.LunaP.Controls.SliderRow.Maximum", "1 by default", () => new SliderRow().Maximum),
             ("P:EmuSen.LunaP.Controls.SliderRow.DefaultValue", "0 by default", () => new SliderRow().DefaultValue),
+            ("P:EmuSen.LunaP.Controls.SliderList.Search", "Empty by default", () => new SliderList().Search),
         };
 
         // What each claim's words mean, kept apart from the phrase so that neither can be quietly
@@ -135,6 +136,7 @@ namespace EmuSen.LunaP.Tests
             ["P:EmuSen.LunaP.Controls.SliderRow.Minimum"] = 0.0,
             ["P:EmuSen.LunaP.Controls.SliderRow.Maximum"] = 1.0,
             ["P:EmuSen.LunaP.Controls.SliderRow.DefaultValue"] = 0.0,
+            ["P:EmuSen.LunaP.Controls.SliderList.Search"] = "",
         };
 
         // A claim the sweep finds and this file does not check, with the reason it cannot be.
