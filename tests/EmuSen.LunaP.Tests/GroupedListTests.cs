@@ -83,6 +83,23 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // Thousands of rows: the bar stays full width and its thumb stays big enough to take - §96.
+        [Fact]
+        public Task A_long_list_keeps_a_scroll_bar_that_can_be_seen_and_dragged() => UiTest.Run(() =>
+        {
+            GroupedList<Shader> list = List();
+            list.Refresh(Enumerable.Range(0, 3000).Select(i => new Shader($"Group {i / 40}", $"shader-{i}")).ToArray());
+            ToolWindow window = Show(list);
+
+            var bar = list.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ScrollBar>().Single(b => b.Orientation == Avalonia.Layout.Orientation.Vertical);
+            Assert.False(bar.AllowAutoHide);
+            Assert.True(bar.IsExpanded);
+            var thumb = bar.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Thumb>().Single();
+            Assert.True(thumb.Bounds.Height >= 40, $"a thumb {thumb.Bounds.Height} px tall");
+            Assert.True(bar.Maximum > 100 * bar.ViewportSize, "the list was not long enough to shrink the thumb");
+            window.Close();
+        });
+
         [Fact]
         public Task Refresh_keeps_the_selection_by_key_and_neither_it_nor_Select_raises_Chose() => UiTest.Run(() =>
         {

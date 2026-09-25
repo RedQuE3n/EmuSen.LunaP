@@ -11068,3 +11068,27 @@ to the tile's left edge instead of centring it, a double-tap that does not activ
 No vertical twin (a column scrolling down is `LunaList`'s job), no multiple selection, no drag to scroll, and no
 momentum. The width of the strip's own tiles is fixed: a host that wants pictures of different shapes letterboxes them
 inside the tile, as Mistress does.
+
+## 96. A long grouped list keeps a scroll bar that can be seen and taken
+
+### 96.1 The defect
+
+EmuSen's Shaders window lists RetroArch's whole slang pack in one `GroupedList` (§94.1): 2,658 presets, a list about
+178,000 points tall behind a 412-point window. FluentTheme sizes a scroll bar's thumb by viewport over extent, which
+there is a point or two, and its bars auto-hide to a hairline until a pointer hovers them. The player reported the
+list could not be scrolled (2026-09-24, the desktop, by the scroll bar): the bar was there, and could be neither seen
+nor dragged. The wheel and the keyboard still scrolled it, which is why no test had noticed.
+
+### 96.2 The fix
+
+`GroupedList` sets `ScrollViewer.AllowAutoHide` false on itself, so its bar is always at full width with its arrows,
+and `Theme/Controls/GroupedList.axaml` gives its vertical bar's `Thumb` a `MinHeight` of 40, which Avalonia's `Track`
+honours: the thumb stays 40 points however long the list. Both are scoped to `GroupedList`; other scroll bars in the
+kit keep FluentTheme's behaviour.
+
+### 96.3 Tests
+
+`GroupedListTests.A_long_list_keeps_a_scroll_bar_that_can_be_seen_and_dragged` fills 3,000 rows and asserts the bar is
+expanded and not auto-hiding, the thumb at least 40 points, and the list long enough (extent over a hundred viewports)
+that the thumb would otherwise have shrunk. Setting the minimum back to 0, and auto-hide back on, each turn it red.
+
