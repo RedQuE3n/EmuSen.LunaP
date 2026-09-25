@@ -96,6 +96,8 @@ namespace EmuSen.LunaP.Tests
             ("P:EmuSen.LunaP.Controls.TextRowList.SelectedBackgroundCornerRadius", "0 by default", () => new TextRowList().SelectedBackgroundCornerRadius),
             ("P:EmuSen.LunaP.Controls.TextRowList.TextAlignment", "Left by default", () => new TextRowList().TextAlignment),
             ("P:EmuSen.LunaP.Controls.TextRowList.HorizontalMargin", "0 by default", () => new TextRowList().HorizontalMargin),
+            ("P:EmuSen.LunaP.Controls.TextRowList.SelectedBackgroundFitsText", "False by default", () => new TextRowList().SelectedBackgroundFitsText),
+            ("P:EmuSen.LunaP.Controls.TextRowList.MarkerWidth", "1.5 by default", () => new TextRowList().MarkerWidth),
             ("P:EmuSen.LunaP.Controls.TextRowList.LetterCase", "None by default", () => new TextRowList().LetterCase),
         };
 
@@ -182,6 +184,8 @@ namespace EmuSen.LunaP.Tests
             ["P:EmuSen.LunaP.Controls.TextRowList.SelectedBackgroundCornerRadius"] = 0.0,
             ["P:EmuSen.LunaP.Controls.TextRowList.TextAlignment"] = TextAlignment.Left,
             ["P:EmuSen.LunaP.Controls.TextRowList.HorizontalMargin"] = 0.0,
+            ["P:EmuSen.LunaP.Controls.TextRowList.SelectedBackgroundFitsText"] = false,
+            ["P:EmuSen.LunaP.Controls.TextRowList.MarkerWidth"] = 1.5,
             ["P:EmuSen.LunaP.Controls.TextRowList.LetterCase"] = EmuSen.LunaP.Media.LetterCase.None,
         };
     }

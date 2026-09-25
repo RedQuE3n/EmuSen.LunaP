@@ -11507,3 +11507,24 @@ pixel-identical saving, so none was kept:
 - `BitmapCache` on the carousel, which also changed pixels by 1.
 
 An unchanged view is not redrawn at all, and a frame of it costs the harness's readback alone, 1.2 ms.
+
+### 101.8 A list row's band, a fitted selection and marks, from ES-DE's measured list
+
+The consumer's capture of ES-DE drawing a text list at 1280×800 (font size 30 px, pitch 58.33 px) showed three
+things `TextRowList` could not express:
+- **Text centred in a band at the top of each row, not in the whole pitch.** The selected background was 44 px tall.
+  The theme format's documented default for that height is 1.5 × the font size, 45 px. The name was centred in that
+  band. `TextBandHeight` is that band; left unset it is the pitch, the old behaviour.
+- **A selected background as wide as the name, not the row.** It ran from 12 px before the name to 12 px after it,
+  12 px being the theme's margins. That is `SelectedBackgroundFitsText`.
+- **A star before a favourite's name.** It was 26 px wide, about 0.87 em, and the name began about 44 px after it
+  (≈1.47 em). `TextRow.Marker` draws a star or a folder in the row's colour. `MarkerWidth`, 1.5 em by default, is the
+  room it takes. The marks are LunaP's own drawings.
+
+After these, Mistress's list and ES-DE's agree to 1 px:
+- **Selected background:** x 46–279 against 47–278; y 208–252 against 210–251. The 1 px of height is the documented
+  45 against the measured 44.
+- **Name ink:** x 105–300 against 104–298; y 278–299 against 278–298.
+
+The star is 22 × 20 against ES-DE's 26 × 25, because it is a different drawing. `A_band_fitted_background_covers_the_mark_and_text_and_the_text_centres_in_the_band`
+pins all three.

@@ -1001,7 +1001,8 @@ public class EmuSen.LunaP.Controls.Tabs : Avalonia.Controls.TabControl
     public void RemoveFrom(int index)
 
 public sealed class EmuSen.LunaP.Controls.TextRow : System.IEquatable<EmuSen.LunaP.Controls.TextRow>
-    public TextRow(string Text, bool Secondary = false)
+    public EmuSen.LunaP.Controls.TextRowMarker Marker { get; init; }
+    public TextRow(string Text, bool Secondary = false, EmuSen.LunaP.Controls.TextRowMarker Marker = 0)
     public bool Equals(EmuSen.LunaP.Controls.TextRow? other)
     public bool Secondary { get; init; }
     public override bool Equals(object? obj)
@@ -1010,7 +1011,7 @@ public sealed class EmuSen.LunaP.Controls.TextRow : System.IEquatable<EmuSen.Lun
     public static bool op_Equality(EmuSen.LunaP.Controls.TextRow? left, EmuSen.LunaP.Controls.TextRow? right)
     public static bool op_Inequality(EmuSen.LunaP.Controls.TextRow? left, EmuSen.LunaP.Controls.TextRow? right)
     public string Text { get; init; }
-    public void Deconstruct(out string Text, out bool Secondary)
+    public void Deconstruct(out string Text, out bool Secondary, out EmuSen.LunaP.Controls.TextRowMarker Marker)
 
 public class EmuSen.LunaP.Controls.TextRowList : Avalonia.Controls.Control
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
@@ -1026,13 +1027,16 @@ public class EmuSen.LunaP.Controls.TextRowList : Avalonia.Controls.Control
     public EmuSen.LunaP.Media.LetterCase LetterCase { get; set; }
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.TextRow>? Items { get; set; }
     public TextRowList()
+    public bool SelectedBackgroundFitsText { get; set; }
     public double FontSize { get; set; }
     public double HorizontalMargin { get; set; }
     public double LineSpacing { get; set; }
+    public double MarkerWidth { get; set; }
     public double RowPitch { get; }
     public double SelectedBackgroundCornerRadius { get; set; }
     public double SelectorHeight { get; set; }
     public double SelectorOffsetY { get; set; }
+    public double TextBandHeight { get; set; }
     public int FirstVisible { get; }
     public int SelectedIndex { get; set; }
     public int VisibleRows { get; }
@@ -1047,15 +1051,24 @@ public class EmuSen.LunaP.Controls.TextRowList : Avalonia.Controls.Control
     public static readonly Avalonia.StyledProperty<Avalonia.Thickness> SelectedBackgroundMarginsProperty = 0,0,0,0
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = None
     public static readonly Avalonia.StyledProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.TextRow>?> ItemsProperty = null
+    public static readonly Avalonia.StyledProperty<bool> SelectedBackgroundFitsTextProperty = false
     public static readonly Avalonia.StyledProperty<double> FontSizeProperty = 16
     public static readonly Avalonia.StyledProperty<double> HorizontalMarginProperty = 0
     public static readonly Avalonia.StyledProperty<double> LineSpacingProperty = 1.5
+    public static readonly Avalonia.StyledProperty<double> MarkerWidthProperty = 1.5
     public static readonly Avalonia.StyledProperty<double> SelectedBackgroundCornerRadiusProperty = 0
     public static readonly Avalonia.StyledProperty<double> SelectorHeightProperty = NaN
     public static readonly Avalonia.StyledProperty<double> SelectorOffsetYProperty = 0
+    public static readonly Avalonia.StyledProperty<double> TextBandHeightProperty = NaN
     public static readonly Avalonia.StyledProperty<int> SelectedIndexProperty = 0
     public static readonly Avalonia.StyledProperty<string?> FontPathProperty = null
     public string? FontPath { get; set; }
+
+public enum EmuSen.LunaP.Controls.TextRowMarker
+    public const EmuSen.LunaP.Controls.TextRowMarker Folder = 2
+    public const EmuSen.LunaP.Controls.TextRowMarker None = 0
+    public const EmuSen.LunaP.Controls.TextRowMarker Star = 1
+    public int value__
 
 public abstract class EmuSen.LunaP.Controls.TileGrid : Avalonia.Controls.Primitives.TemplatedControl
     protected TileGrid()
