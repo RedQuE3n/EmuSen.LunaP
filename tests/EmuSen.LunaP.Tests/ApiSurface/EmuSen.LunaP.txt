@@ -79,6 +79,28 @@ public class EmuSen.LunaP.Controls.ActionToggle : Avalonia.Controls.Primitives.T
     public EmuSen.LunaP.Commands.LunaAction Action { get; }
     public const string StyleClass = "luna-action-toggle"
 
+public class EmuSen.LunaP.Controls.BadgeStrip : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    public Avalonia.Layout.HorizontalAlignment ContentHorizontalAlignment { get; set; }
+    public Avalonia.Layout.Orientation Direction { get; set; }
+    public Avalonia.Layout.VerticalAlignment ContentVerticalAlignment { get; set; }
+    public Avalonia.Media.Color Tint { get; set; }
+    public Avalonia.Size ItemMargin { get; set; }
+    public BadgeStrip()
+    public System.Collections.Generic.IReadOnlyList<Avalonia.Rect> Cells(Avalonia.Size size)
+    public System.Collections.Generic.IReadOnlyList<string>? Icons { get; set; }
+    public int ItemsPerLine { get; set; }
+    public int Lines { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<Avalonia.Layout.HorizontalAlignment> ContentHorizontalAlignmentProperty = Left
+    public static readonly Avalonia.StyledProperty<Avalonia.Layout.Orientation> DirectionProperty = Horizontal
+    public static readonly Avalonia.StyledProperty<Avalonia.Layout.VerticalAlignment> ContentVerticalAlignmentProperty = Top
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TintProperty = White
+    public static readonly Avalonia.StyledProperty<Avalonia.Size> ItemMarginProperty = 0, 0
+    public static readonly Avalonia.StyledProperty<System.Collections.Generic.IReadOnlyList<string>?> IconsProperty = null
+    public static readonly Avalonia.StyledProperty<int> ItemsPerLineProperty = 4
+    public static readonly Avalonia.StyledProperty<int> LinesProperty = 1
+
 public class EmuSen.LunaP.Controls.ButtonBar : Avalonia.Controls.ItemsControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     public ButtonBar()
@@ -89,6 +111,31 @@ public class EmuSen.LunaP.Controls.Card : Avalonia.Controls.Primitives.HeaderedC
     public Card()
     public bool HasHeader { get; }
     public static readonly Avalonia.DirectProperty<EmuSen.LunaP.Controls.Card, bool> HasHeaderProperty
+
+public sealed class EmuSen.LunaP.Controls.CarouselItem : System.IEquatable<EmuSen.LunaP.Controls.CarouselItem>
+    public CarouselItem(string? ImagePath, string? Text = null)
+    public bool Equals(EmuSen.LunaP.Controls.CarouselItem? other)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.CarouselItem? left, EmuSen.LunaP.Controls.CarouselItem? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.CarouselItem? left, EmuSen.LunaP.Controls.CarouselItem? right)
+    public string? ImagePath { get; init; }
+    public string? Text { get; init; }
+    public void Deconstruct(out string? ImagePath, out string? Text)
+
+public class EmuSen.LunaP.Controls.ClockLabel : EmuSen.LunaP.Controls.FontText
+    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public ClockLabel()
+    public System.DateTime? Time { get; set; }
+    public bool Live { get; set; }
+    public static readonly Avalonia.StyledProperty<System.DateTime?> TimeProperty = null
+    public static readonly Avalonia.StyledProperty<bool> LiveProperty = false
+    public static readonly Avalonia.StyledProperty<string> FormatProperty = "HH:mm"
+    public string Format { get; set; }
+    public string Formatted(System.DateTime moment)
 
 public class EmuSen.LunaP.Controls.ConsolePane : Avalonia.Controls.Primitives.TemplatedControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
@@ -106,6 +153,62 @@ public class EmuSen.LunaP.Controls.ConsolePane : Avalonia.Controls.Primitives.Te
     public void Clear()
     public void FocusInput()
     public void ResetHistoryRecall()
+
+public enum EmuSen.LunaP.Controls.DeviceIndicators
+    public const EmuSen.LunaP.Controls.DeviceIndicators All = 31
+    public const EmuSen.LunaP.Controls.DeviceIndicators Battery = 8
+    public const EmuSen.LunaP.Controls.DeviceIndicators BatteryPercentage = 16
+    public const EmuSen.LunaP.Controls.DeviceIndicators Bluetooth = 1
+    public const EmuSen.LunaP.Controls.DeviceIndicators Cellular = 4
+    public const EmuSen.LunaP.Controls.DeviceIndicators None = 0
+    public const EmuSen.LunaP.Controls.DeviceIndicators Wifi = 2
+    public int value__
+
+public sealed class EmuSen.LunaP.Controls.DeviceStatus : System.IEquatable<EmuSen.LunaP.Controls.DeviceStatus>
+    public DeviceStatus(bool? Bluetooth = null, bool? Wifi = null, bool? Cellular = null, int? BatteryPercent = null, bool Charging = false)
+    public bool Charging { get; init; }
+    public bool Equals(EmuSen.LunaP.Controls.DeviceStatus? other)
+    public bool? Bluetooth { get; init; }
+    public bool? Cellular { get; init; }
+    public bool? Wifi { get; init; }
+    public int? BatteryPercent { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.DeviceStatus? left, EmuSen.LunaP.Controls.DeviceStatus? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.DeviceStatus? left, EmuSen.LunaP.Controls.DeviceStatus? right)
+    public void Deconstruct(out bool? Bluetooth, out bool? Wifi, out bool? Cellular, out int? BatteryPercent, out bool Charging)
+
+public class EmuSen.LunaP.Controls.DeviceStatusBar : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    public Avalonia.Media.Color BackgroundColor { get; set; }
+    public Avalonia.Media.Color Color { get; set; }
+    public Avalonia.Thickness Padding { get; set; }
+    public DeviceStatusBar()
+    public EmuSen.LunaP.Controls.DeviceIndicators Indicators { get; set; }
+    public EmuSen.LunaP.Controls.DeviceStatus? Status { get; set; }
+    public System.Collections.Generic.IReadOnlyDictionary<string, string>? Icons { get; set; }
+    public System.ValueTuple<System.Collections.Generic.IReadOnlyList<string>, string?> Shown()
+    public double BackgroundCornerRadius { get; set; }
+    public double EntrySpacing { get; set; }
+    public double IconHeight { get; set; }
+    public double TextScale { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> BackgroundColorProperty = Transparent
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> ColorProperty = #ffd4d4d4
+    public static readonly Avalonia.StyledProperty<Avalonia.Thickness> PaddingProperty = 0,0,0,0
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.DeviceIndicators> IndicatorsProperty = All
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.DeviceStatus?> StatusProperty = null
+    public static readonly Avalonia.StyledProperty<System.Collections.Generic.IReadOnlyDictionary<string, string>?> IconsProperty = null
+    public static readonly Avalonia.StyledProperty<double> BackgroundCornerRadiusProperty = 0
+    public static readonly Avalonia.StyledProperty<double> EntrySpacingProperty = 6
+    public static readonly Avalonia.StyledProperty<double> IconHeightProperty = 16
+    public static readonly Avalonia.StyledProperty<double> TextScaleProperty = 1
+    public static readonly Avalonia.StyledProperty<string?> FontPathProperty = null
+    public static readonly System.Collections.Generic.IReadOnlyList<string> IconKeys
+    public static string BatteryKey(int percent, bool charging)
+    public string? FontPath { get; set; }
 
 public class EmuSen.LunaP.Controls.Dropdown : Avalonia.Controls.ComboBox
     protected override System.Type StyleKeyOverride { get; }
@@ -167,6 +270,80 @@ public class EmuSen.LunaP.Controls.FilterBar : Avalonia.Controls.Primitives.Temp
     public void FocusSearch()
     public void SetFacets(System.Collections.IEnumerable items, object? selected)
 
+public class EmuSen.LunaP.Controls.FittedImage : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public Avalonia.Layout.HorizontalAlignment TileHorizontalAlignment { get; set; }
+    public Avalonia.Layout.Orientation TintDirection { get; set; }
+    public Avalonia.Layout.VerticalAlignment TileVerticalAlignment { get; set; }
+    public Avalonia.Media.Color Tint { get; set; }
+    public Avalonia.Media.Color? TintEnd { get; set; }
+    public Avalonia.Media.Imaging.BitmapInterpolationMode Interpolation { get; set; }
+    public Avalonia.Point CropPosition { get; set; }
+    public Avalonia.Rect DrawnRect { get; }
+    public Avalonia.Size IntrinsicSize { get; }
+    public Avalonia.Size TileSize { get; set; }
+    public EmuSen.LunaP.Controls.ImageFit Fit { get; set; }
+    public FittedImage()
+    public bool IsMissing { get; }
+    public bool IsRefused { get; }
+    public double CornerRadius { get; set; }
+    public double Saturation { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static Avalonia.Rect Contain(Avalonia.Rect box, Avalonia.Size image)
+    public static Avalonia.Rect Cover(Avalonia.Rect box, Avalonia.Size image, Avalonia.Point crop)
+    public static readonly Avalonia.StyledProperty<Avalonia.Layout.HorizontalAlignment> TileHorizontalAlignmentProperty = Left
+    public static readonly Avalonia.StyledProperty<Avalonia.Layout.Orientation> TintDirectionProperty = Horizontal
+    public static readonly Avalonia.StyledProperty<Avalonia.Layout.VerticalAlignment> TileVerticalAlignmentProperty = Top
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TintProperty = White
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color?> TintEndProperty = null
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Imaging.BitmapInterpolationMode> InterpolationProperty = HighQuality
+    public static readonly Avalonia.StyledProperty<Avalonia.Point> CropPositionProperty = 0.5, 0.5
+    public static readonly Avalonia.StyledProperty<Avalonia.Size> TileSizeProperty = 0, 0
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.ImageFit> FitProperty = Contain
+    public static readonly Avalonia.StyledProperty<double> CornerRadiusProperty = 0
+    public static readonly Avalonia.StyledProperty<double> SaturationProperty = 1
+    public static readonly Avalonia.StyledProperty<string?> SourceProperty = null
+    public string? Source { get; set; }
+
+public class EmuSen.LunaP.Controls.FontText : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size ArrangeOverride(Avalonia.Size finalSize)
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    public Avalonia.Layout.VerticalAlignment TextVerticalAlignment { get; set; }
+    public Avalonia.Media.IBrush? Background { get; set; }
+    public Avalonia.Media.IBrush? Foreground { get; set; }
+    public Avalonia.Media.TextAlignment TextAlignment { get; set; }
+    public Avalonia.Thickness Padding { get; set; }
+    public EmuSen.LunaP.Media.LetterCase LetterCase { get; set; }
+    public FontText()
+    public bool IsTruncated { get; }
+    public bool Wrap { get; set; }
+    public double BackgroundCornerRadius { get; set; }
+    public double FontSize { get; set; }
+    public double LineHeight { get; }
+    public double LineSpacing { get; set; }
+    public int LineCount { get; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<Avalonia.Layout.VerticalAlignment> TextVerticalAlignmentProperty = Top
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.IBrush?> BackgroundProperty = null
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.IBrush?> ForegroundProperty = #ffd4d4d4
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.TextAlignment> TextAlignmentProperty = Left
+    public static readonly Avalonia.StyledProperty<Avalonia.Thickness> PaddingProperty = 0,0,0,0
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = None
+    public static readonly Avalonia.StyledProperty<bool> WrapProperty = true
+    public static readonly Avalonia.StyledProperty<double> BackgroundCornerRadiusProperty = 0
+    public static readonly Avalonia.StyledProperty<double> FontSizeProperty = 16
+    public static readonly Avalonia.StyledProperty<double> LineSpacingProperty = 1.2
+    public static readonly Avalonia.StyledProperty<string?> EllipsisProperty = "…"
+    public static readonly Avalonia.StyledProperty<string?> FontPathProperty = null
+    public static readonly Avalonia.StyledProperty<string?> TextProperty = null
+    public string? Ellipsis { get; set; }
+    public string? FontPath { get; set; }
+    public string? Text { get; set; }
+    public string[] LaidOutLines()
+
 public class EmuSen.LunaP.Controls.GroupedList<T> : Avalonia.Controls.ListBox where T : class
     protected override System.Type StyleKeyOverride { get; }
     protected override void PrepareContainerForItemOverride(Avalonia.Controls.Control container, object? item, int index)
@@ -184,8 +361,114 @@ public class EmuSen.LunaP.Controls.GroupedList<T> : Avalonia.Controls.ListBox wh
     public void Refresh(System.Collections.Generic.IEnumerable<T> items)
     public void Select(T? item)
 
+public class EmuSen.LunaP.Controls.HintBar : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    public Avalonia.Media.Color BackgroundColor { get; set; }
+    public Avalonia.Media.Color IconColor { get; set; }
+    public Avalonia.Media.Color TextColor { get; set; }
+    public Avalonia.Thickness Padding { get; set; }
+    public EmuSen.LunaP.Media.LetterCase LetterCase { get; set; }
+    public HintBar()
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? Entries { get; set; }
+    public System.Collections.Generic.IReadOnlyList<System.ValueTuple<Avalonia.Rect, Avalonia.Rect>> Layout(Avalonia.Size bounds)
+    public double BackgroundCornerRadius { get; set; }
+    public double EntryScale { get; set; }
+    public double EntrySpacing { get; set; }
+    public double FontSize { get; set; }
+    public double IconTextSpacing { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> BackgroundColorProperty = Transparent
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> IconColorProperty = #ffd4d4d4
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TextColorProperty = #ffd4d4d4
+    public static readonly Avalonia.StyledProperty<Avalonia.Thickness> PaddingProperty = 0,0,0,0
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = None
+    public static readonly Avalonia.StyledProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>?> EntriesProperty = null
+    public static readonly Avalonia.StyledProperty<double> BackgroundCornerRadiusProperty = 0
+    public static readonly Avalonia.StyledProperty<double> EntryScaleProperty = 1
+    public static readonly Avalonia.StyledProperty<double> EntrySpacingProperty = 16
+    public static readonly Avalonia.StyledProperty<double> FontSizeProperty = 16
+    public static readonly Avalonia.StyledProperty<double> IconTextSpacingProperty = 6
+    public static readonly Avalonia.StyledProperty<string?> FontPathProperty = null
+    public string? FontPath { get; set; }
+
+public sealed class EmuSen.LunaP.Controls.HintEntry : System.IEquatable<EmuSen.LunaP.Controls.HintEntry>
+    public HintEntry(string Label, string? IconPath = null, string? Glyph = null)
+    public bool Equals(EmuSen.LunaP.Controls.HintEntry? other)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.HintEntry? left, EmuSen.LunaP.Controls.HintEntry? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.HintEntry? left, EmuSen.LunaP.Controls.HintEntry? right)
+    public string Label { get; init; }
+    public string? Glyph { get; init; }
+    public string? IconPath { get; init; }
+    public void Deconstruct(out string Label, out string? IconPath, out string? Glyph)
+
 public class EmuSen.LunaP.Controls.HintText : Avalonia.Controls.TextBlock
     public HintText()
+
+public class EmuSen.LunaP.Controls.ImageCarousel : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size ArrangeOverride(Avalonia.Size finalSize)
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public Avalonia.Layout.HorizontalAlignment ItemHorizontalAlignment { get; set; }
+    public Avalonia.Layout.Orientation Orientation { get; set; }
+    public Avalonia.Layout.VerticalAlignment ItemVerticalAlignment { get; set; }
+    public Avalonia.Media.Color ImageTint { get; set; }
+    public Avalonia.Media.Color TextBackground { get; set; }
+    public Avalonia.Media.Color TextColor { get; set; }
+    public Avalonia.Media.Color? ImageSelectedTint { get; set; }
+    public Avalonia.Media.IBrush? Background { get; set; }
+    public Avalonia.Rect ItemRect(int offset, Avalonia.Size bounds)
+    public Avalonia.Size ItemSize { get; set; }
+    public EmuSen.LunaP.Controls.ImageFit ImageFit { get; set; }
+    public EmuSen.LunaP.Media.LetterCase LetterCase { get; set; }
+    public ImageCarousel()
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.CarouselItem>? Items { get; set; }
+    public System.Collections.Generic.IReadOnlyList<System.ValueTuple<int, Avalonia.Controls.Control>> Shown { get; }
+    public bool Wraps { get; set; }
+    public double FontSize { get; set; }
+    public double ImageSaturation { get; set; }
+    public double ItemScale { get; set; }
+    public double MaxItemCount { get; set; }
+    public double Spacing { get; }
+    public double UnfocusedItemDimming { get; set; }
+    public double UnfocusedItemOpacity { get; set; }
+    public double UnfocusedItemSaturation { get; set; }
+    public int SelectedIndex { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<Avalonia.Layout.HorizontalAlignment> ItemHorizontalAlignmentProperty = Center
+    public static readonly Avalonia.StyledProperty<Avalonia.Layout.Orientation> OrientationProperty = Horizontal
+    public static readonly Avalonia.StyledProperty<Avalonia.Layout.VerticalAlignment> ItemVerticalAlignmentProperty = Center
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> ImageTintProperty = White
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TextBackgroundProperty = Transparent
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TextColorProperty = #ffd4d4d4
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color?> ImageSelectedTintProperty = null
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.IBrush?> BackgroundProperty = null
+    public static readonly Avalonia.StyledProperty<Avalonia.Size> ItemSizeProperty = 0, 0
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.ImageFit> ImageFitProperty = Contain
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = None
+    public static readonly Avalonia.StyledProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.CarouselItem>?> ItemsProperty = null
+    public static readonly Avalonia.StyledProperty<bool> WrapsProperty = true
+    public static readonly Avalonia.StyledProperty<double> FontSizeProperty = 24
+    public static readonly Avalonia.StyledProperty<double> ImageSaturationProperty = 1
+    public static readonly Avalonia.StyledProperty<double> ItemScaleProperty = 1.2
+    public static readonly Avalonia.StyledProperty<double> MaxItemCountProperty = 3
+    public static readonly Avalonia.StyledProperty<double> UnfocusedItemDimmingProperty = 1
+    public static readonly Avalonia.StyledProperty<double> UnfocusedItemOpacityProperty = 0.5
+    public static readonly Avalonia.StyledProperty<double> UnfocusedItemSaturationProperty = 1
+    public static readonly Avalonia.StyledProperty<int> SelectedIndexProperty = 0
+    public static readonly Avalonia.StyledProperty<string?> FontPathProperty = null
+    public string? FontPath { get; set; }
+
+public enum EmuSen.LunaP.Controls.ImageFit
+    public const EmuSen.LunaP.Controls.ImageFit Contain = 1
+    public const EmuSen.LunaP.Controls.ImageFit Cover = 2
+    public const EmuSen.LunaP.Controls.ImageFit Fill = 0
+    public const EmuSen.LunaP.Controls.ImageFit Tile = 3
+    public int value__
 
 public sealed class EmuSen.LunaP.Controls.KeyboardLayout
     public KeyboardLayout(string name, System.Collections.Generic.IEnumerable<System.Collections.Generic.IReadOnlyList<System.ValueTuple<string, int>>> rows)
@@ -414,6 +697,35 @@ public class EmuSen.LunaP.Controls.MeterRow : Avalonia.Controls.Primitives.Templ
 public class EmuSen.LunaP.Controls.MonoText : Avalonia.Controls.TextBlock
     public MonoText()
 
+public class EmuSen.LunaP.Controls.NormalizedCanvas : Avalonia.Controls.Panel
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size ArrangeOverride(Avalonia.Size finalSize)
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    protected override void ChildrenChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    public NormalizedCanvas()
+    public static Avalonia.Point GetOrigin(Avalonia.Controls.Control c)
+    public static Avalonia.Point GetPosition(Avalonia.Controls.Control c)
+    public static Avalonia.Point GetRotationOrigin(Avalonia.Controls.Control c)
+    public static Avalonia.Rect Place(Avalonia.Size panel, Avalonia.Point position, Avalonia.Point origin, Avalonia.Size child)
+    public static Avalonia.Size GetMaxSize(Avalonia.Controls.Control c)
+    public static Avalonia.Size GetSize(Avalonia.Controls.Control c)
+    public static double GetDepth(Avalonia.Controls.Control c)
+    public static double GetRotation(Avalonia.Controls.Control c)
+    public static readonly Avalonia.AttachedProperty<Avalonia.Point> OriginProperty = 0, 0
+    public static readonly Avalonia.AttachedProperty<Avalonia.Point> PositionProperty = 0, 0
+    public static readonly Avalonia.AttachedProperty<Avalonia.Point> RotationOriginProperty = 0.5, 0.5
+    public static readonly Avalonia.AttachedProperty<Avalonia.Size> MaxSizeProperty = 0, 0
+    public static readonly Avalonia.AttachedProperty<Avalonia.Size> SizeProperty = 0, 0
+    public static readonly Avalonia.AttachedProperty<double> DepthProperty = 0
+    public static readonly Avalonia.AttachedProperty<double> RotationProperty = 0
+    public static void SetDepth(Avalonia.Controls.Control c, double value)
+    public static void SetMaxSize(Avalonia.Controls.Control c, Avalonia.Size value)
+    public static void SetOrigin(Avalonia.Controls.Control c, Avalonia.Point value)
+    public static void SetPosition(Avalonia.Controls.Control c, Avalonia.Point value)
+    public static void SetRotation(Avalonia.Controls.Control c, double value)
+    public static void SetRotationOrigin(Avalonia.Controls.Control c, Avalonia.Point value)
+    public static void SetSize(Avalonia.Controls.Control c, Avalonia.Size value)
+
 public class EmuSen.LunaP.Controls.NoticeLayer : Avalonia.Controls.Primitives.TemplatedControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
@@ -636,11 +948,39 @@ public enum EmuSen.LunaP.Controls.SplitSide
     public const EmuSen.LunaP.Controls.SplitSide Second = 1
     public int value__
 
+public class EmuSen.LunaP.Controls.StarRating : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    public Avalonia.Media.Color Tint { get; set; }
+    public StarRating()
+    public bool Overlay { get; set; }
+    public double StarWidth(double height)
+    public double Value { get; set; }
+    public int StarCount { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TintProperty = White
+    public static readonly Avalonia.StyledProperty<bool> OverlayProperty = true
+    public static readonly Avalonia.StyledProperty<double> ValueProperty = 0
+    public static readonly Avalonia.StyledProperty<int> StarCountProperty = 5
+    public static readonly Avalonia.StyledProperty<string?> FilledPathProperty = null
+    public static readonly Avalonia.StyledProperty<string?> UnfilledPathProperty = null
+    public string? FilledPath { get; set; }
+    public string? UnfilledPath { get; set; }
+
 public class EmuSen.LunaP.Controls.StatusBar : Avalonia.Controls.ContentControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     public StatusBar()
     public static readonly Avalonia.StyledProperty<string> StatusProperty = ""
     public string Status { get; set; }
+
+public class EmuSen.LunaP.Controls.SvgPicture : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    public EmuSen.LunaP.Media.SvgDocument? Document { get; set; }
+    public SvgPicture()
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.SvgDocument?> DocumentProperty = null
+    public void Load(string path)
 
 public sealed class EmuSen.LunaP.Controls.TableLayout
     public System.Collections.Generic.List<string> Widths { get; set; }
@@ -659,6 +999,63 @@ public class EmuSen.LunaP.Controls.Tabs : Avalonia.Controls.TabControl
     public Tabs()
     public const string StyleClass = "luna-tabs"
     public void RemoveFrom(int index)
+
+public sealed class EmuSen.LunaP.Controls.TextRow : System.IEquatable<EmuSen.LunaP.Controls.TextRow>
+    public TextRow(string Text, bool Secondary = false)
+    public bool Equals(EmuSen.LunaP.Controls.TextRow? other)
+    public bool Secondary { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.TextRow? left, EmuSen.LunaP.Controls.TextRow? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.TextRow? left, EmuSen.LunaP.Controls.TextRow? right)
+    public string Text { get; init; }
+    public void Deconstruct(out string Text, out bool Secondary)
+
+public class EmuSen.LunaP.Controls.TextRowList : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    public Avalonia.Media.Color PrimaryColor { get; set; }
+    public Avalonia.Media.Color SecondaryColor { get; set; }
+    public Avalonia.Media.Color SelectedBackgroundColor { get; set; }
+    public Avalonia.Media.Color SelectedColor { get; set; }
+    public Avalonia.Media.Color SelectorColor { get; set; }
+    public Avalonia.Media.Color? SelectedSecondaryColor { get; set; }
+    public Avalonia.Media.TextAlignment TextAlignment { get; set; }
+    public Avalonia.Rect RowRect(int index)
+    public Avalonia.Thickness SelectedBackgroundMargins { get; set; }
+    public EmuSen.LunaP.Media.LetterCase LetterCase { get; set; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.TextRow>? Items { get; set; }
+    public TextRowList()
+    public double FontSize { get; set; }
+    public double HorizontalMargin { get; set; }
+    public double LineSpacing { get; set; }
+    public double RowPitch { get; }
+    public double SelectedBackgroundCornerRadius { get; set; }
+    public double SelectorHeight { get; set; }
+    public double SelectorOffsetY { get; set; }
+    public int FirstVisible { get; }
+    public int SelectedIndex { get; set; }
+    public int VisibleRows { get; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> PrimaryColorProperty = #ffd4d4d4
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> SecondaryColorProperty = Gray
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> SelectedBackgroundColorProperty = Transparent
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> SelectedColorProperty = White
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> SelectorColorProperty = #ff007acc
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color?> SelectedSecondaryColorProperty = null
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.TextAlignment> TextAlignmentProperty = Left
+    public static readonly Avalonia.StyledProperty<Avalonia.Thickness> SelectedBackgroundMarginsProperty = 0,0,0,0
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = None
+    public static readonly Avalonia.StyledProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.TextRow>?> ItemsProperty = null
+    public static readonly Avalonia.StyledProperty<double> FontSizeProperty = 16
+    public static readonly Avalonia.StyledProperty<double> HorizontalMarginProperty = 0
+    public static readonly Avalonia.StyledProperty<double> LineSpacingProperty = 1.5
+    public static readonly Avalonia.StyledProperty<double> SelectedBackgroundCornerRadiusProperty = 0
+    public static readonly Avalonia.StyledProperty<double> SelectorHeightProperty = NaN
+    public static readonly Avalonia.StyledProperty<double> SelectorOffsetYProperty = 0
+    public static readonly Avalonia.StyledProperty<int> SelectedIndexProperty = 0
+    public static readonly Avalonia.StyledProperty<string?> FontPathProperty = null
+    public string? FontPath { get; set; }
 
 public abstract class EmuSen.LunaP.Controls.TileGrid : Avalonia.Controls.Primitives.TemplatedControl
     protected TileGrid()
@@ -776,6 +1173,29 @@ public static class EmuSen.LunaP.Fluent.Ui
     public static EmuSen.LunaP.Controls.HintText Hint(string text)
     public static EmuSen.LunaP.Controls.MonoText Mono(string text = "")
     public static EmuSen.LunaP.Controls.SectionHeader Header(string text)
+
+public static class EmuSen.LunaP.Media.FontFiles
+    public static Avalonia.Media.GlyphTypeface Default { get; }
+    public static Avalonia.Media.GlyphTypeface? Load(string path)
+    public static int Count { get; }
+
+public enum EmuSen.LunaP.Media.LetterCase
+    public const EmuSen.LunaP.Media.LetterCase Capitalize = 3
+    public const EmuSen.LunaP.Media.LetterCase Lower = 2
+    public const EmuSen.LunaP.Media.LetterCase None = 0
+    public const EmuSen.LunaP.Media.LetterCase Upper = 1
+    public int value__
+
+public sealed class EmuSen.LunaP.Media.SvgDocument
+    public Avalonia.Matrix ViewportTransform(Avalonia.Rect viewport)
+    public Avalonia.Rect ViewBox { get; }
+    public Avalonia.Size Size { get; }
+    public System.Collections.Generic.IReadOnlyList<string> Refusals { get; }
+    public bool IsRefused { get; }
+    public int ShapeCount { get; }
+    public static EmuSen.LunaP.Media.SvgDocument Load(string path)
+    public static EmuSen.LunaP.Media.SvgDocument Parse(string markup)
+    public void Draw(Avalonia.Media.DrawingContext context, Avalonia.Rect viewport)
 
 public interface EmuSen.LunaP.Platform.IWindowingBackend
     public abstract Avalonia.AppBuilder Install(Avalonia.AppBuilder builder)

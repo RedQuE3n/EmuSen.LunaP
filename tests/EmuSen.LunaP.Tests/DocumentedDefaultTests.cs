@@ -41,7 +41,7 @@ namespace EmuSen.LunaP.Tests
     // live instance. Editing a summary without editing the table fails; changing a default without
     // editing the table fails. A table holding only values would drift from the prose it is about,
     // which is the defect being guarded reintroduced as the guard.
-    public class DocumentedDefaultTests
+    public partial class DocumentedDefaultTests
     {
         private static readonly HeadlessUnitTestSession Session =
             HeadlessUnitTestSession.GetOrStartForAssembly(typeof(DocumentedDefaultTests).GetTypeInfo().Assembly);
@@ -50,7 +50,7 @@ namespace EmuSen.LunaP.Tests
 
         // Member id as the compiler spells it, the phrase its summary uses, and how to read the real
         // thing. The reader runs on the UI thread, because most of these are on Avalonia controls.
-        private static readonly (string Member, string Claim, Func<object?> Read)[] Claims =
+        private static readonly (string Member, string Claim, Func<object?> Read)[] CoreClaims =
         {
             ("P:EmuSen.LunaP.Windowing.ToolWindow.ClosesOnEscape",
                 "False by default", () => new ToolWindow().ClosesOnEscape),
@@ -103,7 +103,7 @@ namespace EmuSen.LunaP.Tests
 
         // What each claim's words mean, kept apart from the phrase so that neither can be quietly
         // edited into agreement with the other.
-        private static readonly Dictionary<string, object?> Values = new()
+        private static readonly Dictionary<string, object?> CoreValues = new()
         {
             ["P:EmuSen.LunaP.Windowing.ToolWindow.ClosesOnEscape"] = false,
             ["P:EmuSen.LunaP.Controls.RgbaImageView.Stretch"] = Stretch.None,
