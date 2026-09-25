@@ -11564,3 +11564,99 @@ After these, Mistress's list and ES-DE's agree to 1 px:
 
 The star is 22 × 20 against ES-DE's 26 × 25, because it is a different drawing. `A_band_fitted_background_covers_the_mark_and_text_and_the_text_centres_in_the_band`
 pins all three.
+
+## 102. Motion: controls whose state is a function of a time value
+
+*2026-09-25.* §100 drew the list and the carousel at rest and left motion to the consumer's next stage. This section
+is that stage's toolkit half. The consumer (EmuSen's Mistress, drawing EmulationStation-DE themes) needs a carousel
+that slides, a selected name that scrolls sideways when it is too long, a description that scrolls up by itself, and
+fades. It measures how long each takes and how each accelerates from ES-DE itself, and those numbers stay in the
+consumer. Nothing here knows about ES-DE.
+
+**The rule: no control reads a clock.** Every control that moves takes its state from a value the host hands it,
+either a position (`ImageCarousel.Position`) or a time since something began (the scrolling text of §102.3 and
+§102.4). The host owns the clock and steps it. Three things follow:
+
+- **A test is exact.** It sets a time value and reads pixels. It never sleeps, never races a timer and never depends
+  on how fast the machine runs, as the consumer's pad navigator is tested (its settings reference §4.29).
+- **Two controls cannot drift apart.** A host that moves a carousel and fades a picture from the same time value
+  gets them in step, whatever the frame rate.
+- **A control is still a pure function of its properties,** as every drawn control of §98–§101 is. A frame at a
+  given time can be rebuilt from scratch and gives the same pixels. The consumer's tests rely on that: a settled
+  motion must equal a fresh render of the new state.
+
+Avalonia's own animation system (`Animation`, `Transitions`) was the obvious alternative and was not used. It runs
+on the compositor's clock, so a test can only reach a given moment by waiting for it, and in the headless platform it
+advances only when the test ticks its render timer. The host would also have no single clock for the several motions
+of one screen. Avalonia's easing classes (`Avalonia.Animation.Easings`) are used, because an easing is a plain
+function of a number and carries no clock.
+
+### 102.1 `Glide`
+
+A value moving from `From` to `To` between `Start` and `Start + Duration` on the host's clock, shaped by an Avalonia
+`Easing` (linear when null). `ValueAt(now)` reads it at any time: `From` before the start, `To` from `End` on.
+`Toward(to, now, duration, easing)` starts a new glide from wherever this one has got to at `now`, so a move
+interrupted by the next one continues without a jump. It is a value type with no events, and the host keeps as many
+as it has things moving.
+
+### 102.2 `ImageCarousel.Position`
+
+`Position` is the item index at the centre, and it may be fractional. NaN, the default, means `SelectedIndex`, which
+is §100.2's carousel at rest. A host that moves the row sets `Position` from a `Glide` each frame, and sets
+`SelectedIndex` to where the move is going.
+
+- **Items sit at their fractional distance from the centre.** An item at distance *d* (in spacings) is placed as §100.2
+  places offset *d*.
+- **Focus is weighted by distance.** With *f* = max(0, 1 − |*d*|), an item's opacity is
+  `UnfocusedItemOpacity + (1 − UnfocusedItemOpacity) · f` and its scale `1 + (ItemScale − 1) · f`. At rest this gives
+  exactly §100.2's two states. Half-way between two items, both are half focused.
+- **Drawing order follows distance.** The item nearest the centre is drawn last, so it is on top where items overlap.
+- **The selected tint, dimming and saturation go to the item nearest the centre,** and change hands half-way. They
+  are applied to the picture on the CPU (§98.2), so they cannot be blended per frame without preparing a new picture
+  for every frame. A cross-fade of the two prepared pictures would blend them, but it composites differently from a
+  tint applied at the blended value, and was not built. Recorded as a limit: a theme whose selected and unselected
+  items differ in tint, dimming or saturation shows the change as a step half-way through the move.
+- **The row is rebuilt only when the whole part of the position changes,** when it starts or stops being between
+  items, or when the nearest item changes. Between those, a new `Position` re-arranges the existing children.
+  Wrapping is as §101.7 corrected it: a wrapping row takes `Position` modulo the item count, so a host may let
+  `Position` run past the ends.
+- **A whole-number `Position` draws exactly what `SelectedIndex` at rest draws.**
+  `A_whole_position_draws_what_the_selection_at_rest_draws` compares the pixels, at 3 and at 10 on a row of seven.
+
+### 102.3 `TextScroll`, and `FontText` that scrolls by itself
+
+`TextScroll` is a rule, a value type: `Delay`, `Speed` in pixels a second, `Gap` in pixels, `EndPause` and `FadeIn`.
+It answers two questions as functions of the time since the text was shown:
+
+- **`LoopOffset(elapsed, width)`, for one line moving left.** The line is still for `Delay`, then moves at `Speed` until
+  it has travelled its own width plus `Gap`, at which point a second copy, drawn `Gap` after the first, stands where
+  the first began. The picture is then the starting one again, and the cycle repeats from its delay.
+- **`RunAt(elapsed, travel)`, for a column of lines moving up.** The column is still for `Delay`, moves at `Speed`
+  until it has travelled `travel` (its height less the box's, so the last line shows), holds for `EndPause`, and then
+  starts again from the top: it fades in over `FadeIn` and is then still for `Delay` before moving. The first pass
+  has no fade, because the text was already showing.
+
+`FontText` takes the rule as `Scroll`, the way as `ScrollDirection` (`None`, the default, `Vertical` or `Horizontal`)
+and the time as `ScrollTime`. A horizontal scroll lays the text out as one line with line breaks turned to spaces; a
+vertical one lays out every wrapped line. Neither is cut or given an ellipsis, and both are clipped to the box inside
+the padding. A text that fits does not move. `ScrollOffset` reports how far it has moved, for tests and hosts.
+
+Which values a real design uses is the consumer's to measure; this section fixes only the shape of the two rules.
+They are the shapes EmulationStation-DE's documentation describes for its containers ("As horizontally scrolling text
+is looped, a second copy is rendered after the first one"; the vertical container's "text fade-in animation that plays
+when resetting from the end position"), and the consumer's recordings are the check on them.
+
+### 102.4 `TextRowList.Marquee`
+
+The selected row of a `TextRowList` scrolls sideways by §102.3's loop when its text is wider than its room, the width
+less the margins and the mark. `Marquee` is the rule (off while its `Speed` is 0, the default) and `MarqueeTime` the
+time since the selection was made. The row's text is then laid out whole, moved left inside its room and followed by
+its copy; the mark before it stays put. Other rows keep their ellipsis. `MarqueeOffset` reports the offset.
+
+### 102.5 Tests
+
+`MotionTests`: a glide's ends, easing and turning; a fractional carousel position's boxes, opacities, scales and
+drawing order, and a whole position drawing §100.2's pixels; the loop and the column at the edges of each phase; a
+horizontal `FontText` still before its delay and moved after it, with nothing drawn outside its box; a vertical one
+moving up a whole line and fading back in; a list whose selected row moves by exactly the offset, pixel for pixel,
+while the row below it does not.

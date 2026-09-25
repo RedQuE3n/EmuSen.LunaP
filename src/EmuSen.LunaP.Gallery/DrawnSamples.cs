@@ -48,6 +48,12 @@ namespace EmuSen.LunaP.Gallery
                 0.35, 0.05, 0.63, 0.35);
             At(canvas, new FontText { Text = "A long description that wraps within its box and is cut short where it no longer fits.", FontSize = 13, LineSpacing = 1.3 },
                 0.35, 0.45, 0.4, 0.3);
+            At(canvas, new FontText
+            {
+                Text = "A line too long for its box, caught part of the way through its loop.", FontSize = 13,
+                ScrollDirection = EmuSen.LunaP.Motion.TextScrollDirection.Horizontal, Scroll = new EmuSen.LunaP.Motion.TextScroll(TimeSpan.FromSeconds(1), 40, 30),
+                ScrollTime = TimeSpan.FromSeconds(3),
+            }, 0.35, 0.78, 0.4, 0.06);
             At(canvas, new StarRating { Value = 0.7 }, 0.78, 0.47, 0, 0.1);
             At(canvas, new BadgeStrip { Icons = new[] { check, disc }, ItemsPerLine = 4, ItemMargin = new Size(4, 0) }, 0.78, 0.62, 0.2, 0.1);
             At(canvas, new HintBar { Entries = new[] { new HintEntry("Launch", Glyph: "A"), new HintEntry("Back", Glyph: "B") }, FontSize = 13, BackgroundColor = Color.FromArgb(160, 0, 0, 0), Padding = new Thickness(6), BackgroundCornerRadius = 6 },

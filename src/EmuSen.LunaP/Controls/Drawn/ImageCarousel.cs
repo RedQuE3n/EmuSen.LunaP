@@ -17,8 +17,8 @@ namespace EmuSen.LunaP.Controls
     /// <param name="Text">The words shown when there is no image, and read out by a screen reader.</param>
     public sealed record CarouselItem(string? ImagePath, string? Text = null);
 
-    // Items at equal spacing about a centred selection, the others faded, desaturated and dimmed, at rest - see docs/LunaP.md §100.2.
-    /// <summary>A horizontal or vertical row of images, or of text where an item has none, spaced evenly about the selected item, which is centred and scaled; the others are faded, desaturated and dimmed. It shows the row at rest and does not animate.</summary>
+    // Items at equal spacing about a centred position, faded and scaled by their distance from it - see docs/LunaP.md §100.2 and §102.2.
+    /// <summary>A horizontal or vertical row of images, or of text where an item has none, spaced evenly about the selected item, which is centred and scaled; the others are faded, desaturated and dimmed. A fractional Position draws the row between items; the control keeps no clock.</summary>
     public class ImageCarousel : Control
     {
         public static readonly StyledProperty<IReadOnlyList<CarouselItem>?> ItemsProperty = AvaloniaProperty.Register<ImageCarousel, IReadOnlyList<CarouselItem>?>(nameof(Items));
@@ -43,9 +43,12 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<Color> TextColorProperty = AvaloniaProperty.Register<ImageCarousel, Color>(nameof(TextColor), LunaPalette.Text.Color);
         public static readonly StyledProperty<Color> TextBackgroundProperty = AvaloniaProperty.Register<ImageCarousel, Color>(nameof(TextBackground), Colors.Transparent);
         public static readonly StyledProperty<LetterCase> LetterCaseProperty = AvaloniaProperty.Register<ImageCarousel, LetterCase>(nameof(LetterCase));
+        public static readonly StyledProperty<double> PositionProperty = AvaloniaProperty.Register<ImageCarousel, double>(nameof(Position), double.NaN);
 
         private readonly List<(int Offset, Control Child)> _shown = new();
         private bool _dirty = true;
+        private int _base = int.MinValue;
+        private int _nearest;
 
         static ImageCarousel()
         {
@@ -121,17 +124,29 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The casing of items shown as text. None by default.</summary>
         public LetterCase LetterCase { get => GetValue(LetterCaseProperty); set => SetValue(LetterCaseProperty, value); }
 
+        /// <summary>The item index at the centre, fractional while the row moves; NaN, the default, is SelectedIndex. A host moving the row sets it from its own clock.</summary>
+        public double Position { get => GetValue(PositionProperty); set => SetValue(PositionProperty, value); }
+
+        /// <summary>The position the row is drawn at: Position, or SelectedIndex while Position is NaN.</summary>
+        public double DrawnPosition => double.IsNaN(Position) || double.IsInfinity(Position) ? SelectedIndex : Position;
+
         /// <summary>The distance between neighbouring item centres, the length divided by MaxItemCount.</summary>
         public double Spacing => (Orientation == Orientation.Horizontal ? Bounds.Width : Bounds.Height) / Math.Max(0.01, MaxItemCount);
 
-        /// <summary>The controls standing for the items now shown, with each one's offset from the selection, selected last.</summary>
+        /// <summary>The controls standing for the items now shown, with each one's offset from the whole part of DrawnPosition, the selection at rest.</summary>
         public IReadOnlyList<(int Offset, Control Child)> Shown => _shown;
 
         /// <summary>The unscaled box of the item at an offset from the selection, in the control's coordinates.</summary>
         /// <param name="offset">Items from the selection: negative before it, positive after.</param>
         /// <param name="bounds">The control's size.</param>
         /// <returns>The item's box before the selected item's scale and before an image is fitted inside it.</returns>
-        public Rect ItemRect(int offset, Size bounds)
+        public Rect ItemRect(int offset, Size bounds) => ItemRect((double)offset, bounds);
+
+        /// <summary>The unscaled box of an item a fractional distance from the centre, as a moving row places it.</summary>
+        /// <param name="offset">Item spacings from the centre: negative before it, positive after.</param>
+        /// <param name="bounds">The control's size.</param>
+        /// <returns>The item's box before its scale and before an image is fitted inside it.</returns>
+        public Rect ItemRect(double offset, Size bounds)
         {
             bool across = Orientation == Orientation.Horizontal;
             double length = across ? bounds.Width : bounds.Height, cross = across ? bounds.Height : bounds.Width;
@@ -154,17 +169,36 @@ namespace EmuSen.LunaP.Controls
         {
             int count = Items?.Count ?? 0;
             if (count == 0) yield break;
-            int selected = Math.Clamp(SelectedIndex, 0, count - 1);
             int reach = (int)Math.Ceiling(Math.Max(1, MaxItemCount) / 2) + 1;
             bool wraps = Wraps && count > 1;
-            for (int k = -reach; k <= reach; k++)
+            for (int k = -reach; k <= reach + (Fraction() > 0 ? 1 : 0); k++)
             {
-                int index = selected + k;
+                int index = _base + k;
                 if (wraps) index = ((index % count) + count) % count;
                 else if (index < 0 || index >= count) continue;
                 yield return (k, index);
             }
         }
+
+        private static int BaseOf(double position) => (int)Math.Floor(position + 1e-9);
+
+        // How far the drawn position is past its whole part, in [0, 1); below a millionth is at rest.
+        private double Fraction()
+        {
+            double f = DrawnPosition - _base;
+            return f < 1e-6 ? 0 : f;
+        }
+
+        // The slots and the item nearest the centre depend on the whole part, whether the row is between items, and which neighbour is nearer.
+        private (int Base, bool Moving, int Nearest) Key()
+        {
+            double p = DrawnPosition;
+            int b = BaseOf(p);
+            double f = p - b < 1e-6 ? 0 : p - b;
+            return (b, f > 0, f < 0.5 ? 0 : 1);
+        }
+
+        private (int Base, bool Moving, int Nearest) _key = (int.MinValue, false, 0);
 
         private void Rebuild()
         {
@@ -175,11 +209,15 @@ namespace EmuSen.LunaP.Controls
             }
 
             _shown.Clear();
+            _key = Key();
+            _base = _key.Base;
+            _nearest = _key.Nearest;
+            double fraction = Fraction();
             IReadOnlyList<CarouselItem> items = Items ?? Array.Empty<CarouselItem>();
-            foreach ((int offset, int index) in Slots().OrderByDescending(s => Math.Abs(s.Offset)))
+            foreach ((int offset, int index) in Slots().OrderByDescending(s => Math.Abs(s.Offset - fraction)))
             {
                 CarouselItem item = items[index];
-                bool selected = offset == 0;
+                bool selected = offset == _nearest;
                 double dim = selected ? 1 : Math.Clamp(UnfocusedItemDimming, 0, 1);
                 Color tint = selected ? ImageSelectedTint ?? ImageTint : ImageTint;
                 tint = Color.FromArgb(tint.A, (byte)(tint.R * dim), (byte)(tint.G * dim), (byte)(tint.B * dim));
@@ -196,7 +234,6 @@ namespace EmuSen.LunaP.Controls
                         Background = TextBackground.A > 0 ? new SolidColorBrush(TextBackground) : null,
                         TextAlignment = TextAlignment.Center, TextVerticalAlignment = VerticalAlignment.Center,
                     };
-                child.Opacity = selected ? 1 : Math.Clamp(UnfocusedItemOpacity, 0, 1);
                 child.Tag = index;
                 _shown.Add((offset, child));
                 LogicalChildren.Add(child);
@@ -207,12 +244,20 @@ namespace EmuSen.LunaP.Controls
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);
+            if (change.Property == PositionProperty)
+            {
+                if (Key() != _key) _dirty = true;
+                if (_dirty) InvalidateMeasure();
+                else InvalidateArrange();
+                return;
+            }
+
             if (change.Property != BoundsProperty && change.Property.OwnerType == typeof(ImageCarousel)) _dirty = true;
         }
 
         protected override Size MeasureOverride(Size availableSize)
         {
-            if (_dirty) Rebuild();
+            if (_dirty || Key() != _key) Rebuild();
             _dirty = false;
             var size = new Size(double.IsInfinity(availableSize.Width) ? 0 : availableSize.Width, double.IsInfinity(availableSize.Height) ? 0 : availableSize.Height);
             foreach ((int offset, Control child) in _shown) child.Measure(ItemRect(offset, size).Size);
@@ -221,9 +266,12 @@ namespace EmuSen.LunaP.Controls
 
         protected override Size ArrangeOverride(Size finalSize)
         {
+            double fraction = Fraction();
             foreach ((int offset, Control child) in _shown)
             {
-                Rect box = ItemRect(offset, finalSize);
+                double distance = offset - fraction, focus = Math.Max(0, 1 - Math.Abs(distance));
+                double unfocused = Math.Clamp(UnfocusedItemOpacity, 0, 1), scale = 1 + (ItemScale - 1) * focus;
+                Rect box = ItemRect(distance, finalSize);
                 if (child is FittedImage { Fit: ImageFit.Contain } image && image.IntrinsicSize is { Width: > 0, Height: > 0 } own)
                 {
                     Rect fitted = FittedImage.Contain(new Rect(box.Size), own);
@@ -233,8 +281,9 @@ namespace EmuSen.LunaP.Controls
                 }
 
                 child.Arrange(box);
+                child.Opacity = unfocused + (1 - unfocused) * focus;
                 child.RenderTransformOrigin = RelativePoint.Center;
-                child.RenderTransform = offset == 0 && ItemScale != 1 ? new ScaleTransform(ItemScale, ItemScale) : null;
+                child.RenderTransform = focus > 0 && scale != 1 ? new ScaleTransform(scale, scale) : null;
             }
 
             return finalSize;
