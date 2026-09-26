@@ -11925,3 +11925,30 @@ it revealed in both places.
 types two keys into a masked box and requires the preview to read `**|` and no text in the keyboard to hold the typed
 characters; then, with the mask cleared, the same box's preview holds its text.
 
+
+## 111. A focused switch's outline no longer covers the end of its label
+
+*2026-09-26.* Found in EmuSen's Mistress, whose Scraping tab showed a focused "Use ScreenScraper" switch as "Use
+ScreenScrape": the last letter was under the white outline. The question was whether the label was clipped by its
+own box or covered by something drawn over it, and the two need different fixes.
+
+**Measured, headless, on Avalonia 12.1.0.** A `LunaSwitch` labelled "Use ScreenScraper" is 175 px wide. Fluent's
+template puts the label in `PART_OnContentPresenter` and `PART_OffContentPresenter` at x = 52, each 123 px wide,
+which is exactly the `TextBlock`'s desired width, so the text is not clipped by its box. The label therefore ends at
+175, the switch's own right edge, and the focus outline is drawn 2 px inside that edge: it covers the last 2 px of the
+last glyph. The same holds for any label, since the switch is always as wide as its label reaches. A zoomed capture
+showed the "r" cut in half by the outline.
+
+**The fix** is a 6 px right `Padding` on both content presenters of `ToggleSwitch.luna-switch`
+(`Theme/Controls/FormControls.axaml`). The switch grows by 6 px, and the label now ends 6 px short of the edge, 4 px
+clear of the outline. Padding on the presenter rather than a margin on the label keeps the label a plain string in
+`OnContent`/`OffContent`, which §24.1's automation peer reads. A stock `ToggleSwitch` is unchanged; the class
+selector reaches only LunaP's switch (§30).
+
+**Test and mutant.** `SwitchLabelClearanceTests` focuses a switch with three labels (a short one, the reported one,
+a long one) and requires the label's right edge to end at least the outline's 2 px plus 2 px short of the switch's
+right edge. With the padding set to 0 all three cases fail ("ends at 175 of 175"); with it they pass. No stored
+baseline picture changed, because none of them shows a focused switch.
+
+**Not done.** Other controls whose content reaches their right edge could meet the same outline. None was found in
+the gallery captures, but nothing checks them systematically.

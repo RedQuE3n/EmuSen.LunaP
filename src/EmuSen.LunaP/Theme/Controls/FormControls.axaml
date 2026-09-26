@@ -41,4 +41,12 @@
         <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
     </Style>
 
+    <!-- A focused switch's outline is drawn 2 px inside its bounds, where the label ends; the inset keeps the last letter clear - see docs/LunaP.md §111. -->
+    <Style Selector="ToggleSwitch.luna-switch /template/ ContentPresenter#PART_OnContentPresenter">
+        <Setter Property="Padding" Value="0,0,6,0" />
+    </Style>
+    <Style Selector="ToggleSwitch.luna-switch /template/ ContentPresenter#PART_OffContentPresenter">
+        <Setter Property="Padding" Value="0,0,6,0" />
+    </Style>
+
 </Styles>

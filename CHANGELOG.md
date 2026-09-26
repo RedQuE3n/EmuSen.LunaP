@@ -14,6 +14,8 @@ answer.
 
 ## Unreleased
 
+- **A focused `LunaSwitch`'s outline no longer covers the last letter of its label.** Both label presenters gain a 6 px right padding, so a switch is 6 px wider (`§111`).
+
 - **The on-screen keyboard masks a password box's preview (`§110`).** When the target `TextBox` has a `PasswordChar` and
   does not reveal it, the preview above the keys draws the mask, not the text. Only what is shown changes.
 
