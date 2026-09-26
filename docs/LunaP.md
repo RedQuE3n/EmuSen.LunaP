@@ -11952,3 +11952,77 @@ baseline picture changed, because none of them shows a focused switch.
 
 **Not done.** Other controls whose content reaches their right edge could meet the same outline. None was found in
 the gallery captures, but nothing checks them systematically.
+
+
+## 160. Two pickers a pad can set: a rating in half stars, and a date by its parts
+
+*2026-09-26.* The first consumer, EmuSen's Mistress, built a metadata editor for its big-picture mode, modelled on the
+one EmulationStation-DE documents in its user guide. Two of the fields that editor documents have no LunaP control a
+d-pad can set: the rating, "in half-star increments", and the release date, "in ISO 8601 format (YYYY-MM-DD)". Every
+other field is text, taken on §91's keyboard, or a flag, taken by `LunaSwitch`. The consumer's session is steered by a
+gamepad alone and shows one window, so a calendar popup, a text box for a date and a pointer-only star row were each
+ruled out for a different reason: the popup needs a pointer or dozens of presses to reach a year thirty years back, the
+text box needs a keyboard or a trip through the on-screen one for ten characters of which six are fixed, and a star row
+that only a click can set cannot be set at all.
+
+### 160.1 `ISidewaysAdjustable`
+
+**The problem it solves.** A host that steers a window by directions moves the focus on every arrow, except on the few
+controls that must be sent the arrow instead: a `Slider`, a closed `ComboBox`, a tab strip. The consumer's router names
+those three by type. A new toolkit control that takes Left and Right itself would otherwise have to be added to every
+such router by name, and a router that missed one would move the focus off it on the first press, leaving it
+unreachable in the only sense that matters to a player with a pad.
+
+**What it is.** An empty interface. A control that implements it says that Left and Right are its own. It carries no
+member because there is nothing for the host to call: the host sends the key it would have sent a `Slider`, and the
+control's own `OnKeyDown` does the rest. Up and Down stay the host's, for moving between rows, which is why the two
+pickers below take no vertical keys.
+
+**Why an interface and not a base class.** The two controls share no state and no drawing, and a consumer's router
+already tests `focused is Slider`; `or ISidewaysAdjustable` is one clause, and it reaches any later control without
+the router changing again.
+
+### 160.2 `RatingPicker`
+
+A row of `StarCount` stars (5), each `StarSize` pixels square (28), filled to `Value` exactly as §101.1's `StarRating`
+fills them, from the palette's warning colour over its muted colour. `Value` is on `StarRating`'s scale, 0 to 1, so a
+host that shows a rating with one and edits it with the other passes the same number, and a scraped rating of 0.8 is
+four stars in both.
+
+- **Keys.** Left and Right move one step, a step being one `StepsPerStar`-th of a star (2, half stars). A value between
+  steps, as a scraped 0.73 is, is snapped to the nearest step before the step is taken, so the first press from 0.73
+  gives 0.8 or 0.7 and never 0.83. Home and End give none and all. Nothing wraps: a pad held right stops at five stars.
+- **Pointer.** A press sets the step whose right edge is the first at or past the pointer, so pressing anywhere in a
+  star's right half gives the whole star and its left half gives the half star.
+- **`Chose`** is raised for a person's change, never for a value set from code, as §22.9's `LunaList.Chose` is.
+- **Reader.** A slider, named "3.5 of 5".
+
+### 160.3 `DateStepper`
+
+A date shown as `yyyy-MM-dd` and set one part at a time. `Segment` (year, month or day) is the part Left and Right
+change; Enter moves to the next part, from the day back round to the year. While the control has the focus the part
+being changed is drawn on the palette's accent.
+
+- **The day stays in its month.** Changing the month or the year keeps the day where it exists and otherwise takes the
+  month's last day: 31 January stepped a month is 29 February 2000, and that stepped a year is 28 February 2001.
+  Stepping the day wraps within its month; stepping the month wraps within its year and leaves the year alone.
+- **No date is a value.** `Value` is `DateTime?`. With no date the control shows `NoDateText` ("No date") in the muted
+  colour, and the first step either way gives `StartDate` (1 January 1990), which a host sets to whatever date is the
+  natural start, such as a date a scraper found. The year steps down to `MinimumYear` (1950) and one step further to no
+  date; it steps up to `MaximumYear` (2099) and stops. Delete and Backspace give no date directly, for a keyboard.
+- **Pointer.** A press chooses the part under it: the left four tenths are the year, the next three the month, the rest
+  the day. The value is changed only by keys, since a click that both chose a part and changed it would change the
+  wrong part half the time.
+- **`Chose`**, as for the rating. **Reader:** a spinner named "1991-08-23, year", or "No date".
+
+**What it does not do.** It holds whole dates only. A scraper that returns a year alone is stored by its consumer as
+that year's first of January, which is how Mistress's ScreenScraper reader already keeps it, and the stepper shows that
+date. A picker for partial dates, with a month or day marked unknown, was considered and not built: the frontend whose
+editor this serves documents only the full form.
+
+### 160.4 Tests
+
+`PickerTests`, six cases: the rating's steps, bounds, events and name, including a value set from code raising
+nothing; the rating's pixels either side of a half star; the date's parts and Enter; the day kept within February
+across a leap year and wrapped within its month; no date, the start date and the year's bounds; and the accent under
+the year and then under the day. Mutants are §160.5.
