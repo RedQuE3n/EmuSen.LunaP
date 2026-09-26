@@ -81,7 +81,7 @@ namespace EmuSen.LunaP.Controls
             if (!ScaleInwards) return RelativePoint.Center;
             int column = ColumnOf(index), row = RowOf(index);
             double x = Columns > 1 && column == 0 ? 0 : Columns > 1 && column == Columns - 1 ? 1 : 0.5;
-            double y = row == 0 && scroll < 1e-6 ? 0 : scroll > 1e-6 && row - scroll >= ShownRows - 1 - 1e-6 ? 1 : 0.5;
+            double y = row == 0 && scroll < 1e-6 ? 0 : scroll > 1e-6 && row - scroll >= ShownRows - 1 - 1e-3 ? 1 : 0.5;
             return new RelativePoint(x, y, RelativeUnit.Relative);
         }
     }

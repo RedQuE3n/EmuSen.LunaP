@@ -64,6 +64,7 @@ namespace EmuSen.LunaP.Tests
             GridGeometry abn = GridGeometry.Of(new Size(1280, 706.67), new Size(317.5, 238.33), new Size(3.0, 3.33), 1.2, true, true, 12);
             Assert.Equal(15.0, abn.ScrollFor(8) * abn.Pitch.Height, 1);
             Assert.Equal(0, abn.ScrollFor(7));
+            Assert.Equal(new RelativePoint(0, 1, RelativeUnit.Relative), abn.Anchor(8, abn.ScrollFor(8)));
         }
 
         [Fact]

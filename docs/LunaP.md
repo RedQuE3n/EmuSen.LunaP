@@ -11858,6 +11858,14 @@ since few of the test covers held blue. The weights are now Rec. 601 for every `
 `Saturation_zero_is_Rec601_grey` replaces `Saturation_zero_is_Rec709_grey`: a red at saturation 0 is now 76 rather
 than 54. This changes the pixels of every desaturated picture, the carousel's included, and the changelog says so.
 
+### 104.4a A defect the consumer's comparison found
+
+The first version of `GridGeometry.Anchor` asked whether a scrolled row was the bottom one by comparing `row − scroll`
+with `ShownRows − 1` to a millionth. With fractional rows the scroll is itself `row − (ShownRows − 1)`, so the two are
+equal by construction and differ only by float noise, which fell on the wrong side: Art Book Next's selected cover on
+the bottom row scaled about its centre, and ran 22 px lower than the reference drew it. The tolerance is now a
+thousandth of a row, and `The_selection_scrolls_only_past_the_last_row_shown_and_then_stays_on_it` pins the case.
+
 ### 104.5 Tests
 
 `ImageGridTests`: the column rule on the six measured layouts and the consumer's real theme (4 columns inwards, 3
