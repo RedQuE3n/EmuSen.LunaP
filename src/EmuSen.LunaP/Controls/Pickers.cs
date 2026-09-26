@@ -109,6 +109,8 @@ namespace EmuSen.LunaP.Controls
             double cut = Math.Clamp(Value, 0, 1) * Bounds.Width;
             var unfilled = new ImmutableSolidColorBrush(LunaPalette.Muted.Color);
             var filled = new ImmutableSolidColorBrush(LunaPalette.Warning.Color);
+            // Transparent over the whole row, so a click between two stars' points is the control's and not the window's (§160.4).
+            context.FillRectangle(Brushes.Transparent, new Rect(Bounds.Size));
             using (context.PushClip(new Rect(cut, 0, Math.Max(0, Bounds.Width - cut), h)))
                 for (int i = 0; i < n; i++) context.DrawGeometry(unfilled, null, StarRating.StarGeometry(new Rect(i * w, 0, w, h)));
             using (context.PushClip(new Rect(0, 0, cut, h)))

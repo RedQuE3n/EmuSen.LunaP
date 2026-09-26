@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -47,6 +48,11 @@ namespace EmuSen.LunaP.Tests
             Press(picker, Key.Left);
             Assert.Equal(0, picker.Value, 6);
             Assert.Equal(new[] { 0.7, 0.6, 0.5, 1, 0 }, chosen.ConvertAll(v => Math.Round(v, 6)));
+
+            // A value between steps is snapped before it is stepped, so 0.73 goes to 0.8, not 0.83.
+            picker.Value = 0.73;
+            Press(picker, Key.Right);
+            Assert.Equal(0.8, picker.Value, 6);
 
             picker.StepsPerStar = 1;
             picker.Value = 0.5;
@@ -160,6 +166,44 @@ namespace EmuSen.LunaP.Tests
             Assert.True(Accents(day, stepper.Bounds.Width * 0.7, stepper.Bounds.Width, h) > Accents(day, 4, stepper.Bounds.Width * 0.45, h));
             window.Close();
         });
+
+        // One click on a fresh control, at a point between stars' points as well as on one, since the row must take a click anywhere (§160.4).
+        private static double ClickRating(double x)
+        {
+            var picker = new RatingPicker { StarSize = 40 };
+            ToolWindow window = Host(picker, 400, 100);
+            Point p = picker.TranslatePoint(new Point(x, 20), window)!.Value;
+            window.MouseDown(p, MouseButton.Left);
+            window.MouseUp(p, MouseButton.Left);
+            window.Close();
+            return picker.Value;
+        }
+
+        private static DateSegment ClickDate(double fraction)
+        {
+            var stepper = new DateStepper { Value = new DateTime(1991, 8, 23), FontSize = 20 };
+            ToolWindow window = Host(stepper, 400, 100);
+            Point p = stepper.TranslatePoint(new Point(stepper.Bounds.Width * fraction, 10), window)!.Value;
+            window.MouseDown(p, MouseButton.Left);
+            window.MouseUp(p, MouseButton.Left);
+            window.Close();
+            Assert.Equal(new DateTime(1991, 8, 23), stepper.Value);
+            return stepper.Segment;
+        }
+
+        [Theory]
+        [InlineData(110, 0.6)]
+        [InlineData(85, 0.5)]
+        [InlineData(5, 0.1)]
+        public Task A_click_sets_the_rating_on_the_step_whose_right_edge_is_first_past_the_pointer(double x, double value) => UiTest.Run(() =>
+            Assert.Equal(value, ClickRating(x), 6));
+
+        [Theory]
+        [InlineData(0.1, DateSegment.Year)]
+        [InlineData(0.5, DateSegment.Month)]
+        [InlineData(0.9, DateSegment.Day)]
+        public Task A_click_chooses_the_part_of_the_date_under_the_pointer_and_leaves_the_date(double fraction, DateSegment segment) => UiTest.Run(() =>
+            Assert.Equal(segment, ClickDate(fraction)));
 
         private static int Accents(RenderedFrame f, double from, double to, double y)
         {

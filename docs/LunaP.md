@@ -12023,7 +12023,16 @@ editor this serves documents only the full form.
 
 ### 160.4 Tests
 
-`PickerTests`, six cases: the rating's steps, bounds, events and name, including a value set from code raising
-nothing; the rating's pixels either side of a half star; the date's parts and Enter; the day kept within February
+`PickerTests`, twelve cases: the rating's steps, bounds, events and name, including a value between steps snapped
+before it is stepped and a value set from code raising nothing; the rating's pixels either side of a half star; a click
+on the rating at three points, and on each part of the date; the date's parts and Enter; the day kept within February
 across a leap year and wrapped within its month; no date, the start date and the year's bounds; and the accent under
 the year and then under the day. Mutants are §160.5.
+
+**A defect the click test found.** The rating drew only its stars, and Avalonia hit-tests a control by what it drew, so a
+click between two stars' points (x = 85 of a 200-pixel row, the gap beside the third star) reached nothing and the value
+stayed where it was; a click on a star's body worked. The first version of the test clicked twice in one window and
+failed on the second click, which was first read as a headless pointer that kept its capture; three clicks each on a
+fresh control showed the real cause, since the one at a star's centre passed and the two in gaps failed. The row now
+fills its bounds with a transparent brush before drawing the stars. The date stepper, drawn on a filled field, never had
+the defect.
