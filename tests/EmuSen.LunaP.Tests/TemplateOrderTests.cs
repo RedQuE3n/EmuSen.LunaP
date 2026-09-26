@@ -517,6 +517,8 @@ namespace EmuSen.LunaP.Tests
             [(typeof(StarRating), nameof(StarRating.StarWidth))] = "StarRating has no template; the answer is arithmetic on the height passed in and an image's size.",
             [(typeof(BadgeStrip), nameof(BadgeStrip.Cells))] = "BadgeStrip has no template; the answer is arithmetic on its properties and the size passed in.",
             [(typeof(HintBar), nameof(HintBar.Layout))] = "HintBar has no template; the answer is arithmetic on its entries and its font.",
+            [(typeof(FontText), nameof(FontText.NextScrollChange))] = "FontText has no template; it answers from its last measure, null before one, and holds nothing.",
+            [(typeof(TextRowList), nameof(TextRowList.NextMarqueeChange))] = "TextRowList has no template; the answer is arithmetic on its properties, its font and its bounds.",
             [(typeof(ClockLabel), nameof(ClockLabel.Formatted))] = "ClockLabel has no template; formatting a moment reads only Format.",
             [(typeof(DeviceStatusBar), nameof(DeviceStatusBar.Shown))] = "DeviceStatusBar has no template; the answer reads only Status and Indicators.",
             [(typeof(SplitPane), nameof(SplitPane.SaveNow))] =

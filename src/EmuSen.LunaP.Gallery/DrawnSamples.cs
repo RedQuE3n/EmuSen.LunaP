@@ -58,6 +58,19 @@ namespace EmuSen.LunaP.Gallery
             At(canvas, new BadgeStrip { Icons = new[] { check, disc }, ItemsPerLine = 4, ItemMargin = new Size(4, 0) }, 0.78, 0.62, 0.2, 0.1);
             At(canvas, new HintBar { Entries = new[] { new HintEntry("Launch", Glyph: "A"), new HintEntry("Back", Glyph: "B") }, FontSize = 13, BackgroundColor = Color.FromArgb(160, 0, 0, 0), Padding = new Thickness(6), BackgroundCornerRadius = 6 },
                 0.5, 0.97, 0, 0, 0.5, 1);
+            // §103: the same hints drawn from the toolkit's own button set, and one face button and shoulder per family.
+            At(canvas, new HintBar
+            {
+                Entries = new[] { new HintEntry("Choose") { Button = PadGlyphButton.DPadUpDown }, new HintEntry("Launch") { Button = PadGlyphButton.South }, new HintEntry("Back") { Button = PadGlyphButton.East }, new HintEntry("Menu") { Button = PadGlyphButton.Start } },
+                PadFamily = PadFamily.PlayStation, FontSize = 13,
+            }, 0.02, 0.88, 0, 0, 0, 1);
+            double x = 0.5;
+            foreach (PadFamily family in Enum.GetValues<PadFamily>())
+            {
+                At(canvas, new PadGlyph { Family = family, Button = PadGlyphButton.South, GlyphSize = 18 }, x, 0.88, 0, 0, 0, 1);
+                At(canvas, new PadGlyph { Family = family, Button = PadGlyphButton.LeftShoulder, GlyphSize = 18 }, x + 0.03, 0.88, 0, 0, 0, 1);
+                x += 0.07;
+            }
             At(canvas, new ClockLabel { Live = true, FontSize = 13 }, 0.02, 0.97, 0, 0, 0, 1);
             At(canvas, new DeviceStatusBar { Status = new DeviceStatus(Wifi: true, BatteryPercent: 64), IconHeight = 13 }, 0.98, 0.97, 0, 0, 1, 1);
             Avalonia.Automation.AutomationProperties.SetName(canvas, "Themed surface");

@@ -14,6 +14,14 @@ answer.
 
 ## Unreleased
 
+- **A gamepad's buttons drawn by the toolkit, new and additive (`§103`).** `PadGlyph` draws one button of a family of
+  pads (`PadFamily`: Generic, Xbox, PlayStation, Nintendo) in one colour as the toolkit's own geometry;
+  `HintEntry.Button` names one for a hint, and `HintBar.PadFamily` picks the set. An entry's image file still wins, and
+  an entry with neither keeps its glyph in a ring, so nothing existing changes at the defaults.
+- **When a self-scrolling text next changes, additive (`§103.3`).** `TextScroll.NextLoopChange` and `NextRunChange`,
+  `FontText.NextScrollChange` and `TextRowList.NextMarqueeChange` answer the earliest time the drawing changes, or null
+  when it never will, so a host can stop redrawing a still screen.
+
 - **Motion for the drawn controls, new and additive (`§102`).** No control reads a clock: each takes its state from a
   value the host steps. `Glide` is a number moving between two values over a span of the host's clock with an Avalonia
   easing. `ImageCarousel.Position` draws the row between items, focus weighted by distance. `TextScroll` is the rule a

@@ -11691,3 +11691,80 @@ strengthened.**
 passed, so a missing second copy drew the same picture; it now also reads the frame where the copy has come into the
 box. The list test compared the unselected row's leftmost ink, and a row scrolled by 20 pixels and clipped at its
 margin happened to start its first stroke on the same column; it now requires every pixel of that row to be unchanged.
+
+## 103. A gamepad's buttons, drawn; and when a still screen next changes
+
+*2026-09-25.* The consumer (EmuSen's Mistress) now shows its themed view as the library of a session driven by a pad.
+Two things were missing from the toolkit for that, and both are general: a hint bar whose icons match the pad in the
+player's hands, and a way for a host that redraws only while something moves to know when a still screen will next
+look different. Nothing here knows about the consumer's theme format.
+
+### 103.1 `PadGlyph`, `PadFamily` and `PadGlyphButton`
+
+`PadGlyph` draws one button in one colour, a square `GlyphSize` on a side. `PadGlyphButton` names the four face
+buttons **by position** (South is the bottom one, as SDL names them), the d-pad whole or by axis, the shoulders and
+triggers, the two middle buttons and the guide button. `PadFamily` says what the pad prints on them:
+
+| Family | Face buttons, South / East / West / North | Shoulders, triggers | Start, Select |
+|---|---|---|---|
+| Generic | four dots in a diamond, the button's own filled | the outline with its own side filled | a pill with a play mark, a pill with a square |
+| Xbox | A / B / X / Y in a ring | LB RB, LT RT | a ring with three lines, a ring with two squares |
+| PlayStation | a cross / a circle / a square / a triangle in a ring | L1 R1, L2 R2 | a pill with three lines across, a pill with three lines down |
+| Nintendo | B / A / Y / X cut out of a disc | L R, ZL ZR | a ring with a plus, a ring with a minus |
+
+**The drawings are the toolkit's own.** Every shape is plain geometry (a ring, a disc, a cross, a pill, a plus) or a
+letter from the application's default typeface. None is traced from a vendor's artwork or another frontend's icons,
+and none carries a vendor's colours; what tells the families apart is what a player reads off the pad: the letters and
+their positions, the four shapes, the names of the shoulders, the middle buttons' marks. A host that wants a vendor's
+own look supplies image files through `HintEntry.IconPath`, which always wins (§103.2). The two lettered families are
+told apart at a glance by a ring round the letter (Xbox) against a letter cut out of a disc (Nintendo), which is a
+choice made for legibility, not a copy of either.
+
+`PadGlyph.Describe` gives the name a screen reader hears: the printed name where the family prints one ("A", "Cross",
+"LB", "ZL", "Options"), else the position ("South button").
+
+**A defect in the first version, recorded.** The letters are glyph geometry, so that Nintendo's can be cut out of its
+disc with a `CombinedGeometry`. The first version built each letter's `GlyphRun` at the origin that would centre its
+ink, and no letter appeared at all: every lettered glyph drew its ring alone, and `Face_buttons_are_named_and_drawn_by_position`
+failed on the Xbox A against the Xbox B. The letter is now built at the origin and moved by a `TranslateTransform` from
+its own bounds. Why the origin given to the run was not honoured by `BuildGeometry` was not established; the
+transform does not depend on it.
+
+### 103.2 `HintEntry.Button` and `HintBar.PadFamily`
+
+`HintEntry` gains `Button`, an init-only property, so the record's constructor is unchanged. `HintBar` draws each
+entry's icon from the first of: its image file; its `Button`, in the bar's `PadFamily`; its glyph in a ring (§101.3).
+**A change of family moves nothing.** Every glyph fills the same square the ring did, so the layout is the same and
+only the icons' pixels change; `A_hint_bar_draws_a_named_button_in_its_family_and_a_change_moves_nothing` compares the
+two frames outside the icon boxes and requires them equal. The bar's automation name reads each button by
+`Describe`: "A Launch, B Back" on an Xbox pad, "Cross Launch, Circle Back" on a PlayStation one.
+
+Which family a pad is is the host's business: the toolkit reads no device (the rule of §101.5).
+
+### 103.3 When a self-scrolling text next changes
+
+§102's rule is that no control reads a clock. A host that follows it and wants to draw nothing while nothing moves
+must know, at each settled moment, when the next change is due. For a glide it knows already (`Glide.End`). For the
+self-scrolling texts of §102.3 and §102.4 it could only ask for a frame every vsync, forever, since a loop never ends.
+
+- `TextScroll.NextLoopChange(elapsed, width)`: the earliest time, from `elapsed` on, at which a looping line's offset
+  changes. `elapsed` itself while it moves; the end of the pause while it is still; null when it never moves (no speed,
+  nothing to travel).
+- `TextScroll.NextRunChange(elapsed, travel)`: the same for a column: moving and fading answer `elapsed`; the start
+  delay, the end pause and the delay after a fade answer their ends.
+- `FontText.NextScrollChange(from)` and `TextRowList.NextMarqueeChange(from)` apply those to what the control laid
+  out: null when the text fits its box (it never moves), or when scrolling is off.
+
+The answers are conservative in one way: a column moving in whole-pixel steps answers `elapsed` for the whole of its
+moving phase, although its picture changes only at each pixel. `A_loop_and_a_column_say_when_they_next_change` walks
+thirty seconds in steps of 0.37 s and requires the offset just before each answered time to equal the offset at the
+asking time, so an answer can never be later than a change.
+
+### 103.4 Tests
+
+`PadGlyphTests`: every button of every family draws inside its square; the four families differ pairwise on the face
+buttons, a shoulder, a trigger and both middle buttons; positions and names (the generic dot filled at its place, a
+cross through the centre, a circle and a square leaving it empty, Nintendo's disc against Xbox's ring); the hint bar's
+family change, its automation name and the image file winning; the scroll queries at the edges of every phase; a text
+that fits answering null. `DocumentedDefaultTests` gains the five new defaults, and `TemplateOrderTests` exempts the
+two new methods as arithmetic on controls with no template.
