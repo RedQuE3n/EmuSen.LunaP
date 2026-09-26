@@ -17,6 +17,11 @@ answer.
 - **A notice's fade can be set in time, new and additive (`§170`).** `NoticeLayer.FadeTime` fades in and out over a
   fixed time rather than 15% of `Duration`. Null, the default, keeps the old curve exactly.
 
+- **Two pickers a pad can set, new and additive (`§160`).** `RatingPicker` is an editable star row in half stars on
+  `StarRating`'s 0-to-1 scale; `DateStepper` sets a date one part at a time with Left, Right and Enter, and holds no date
+  as null. `ISidewaysAdjustable` marks a control whose Left and Right keys are its own, so a host steering by directions
+  sends it those keys instead of moving the focus.
+
 - **A focused `LunaSwitch`'s outline no longer covers the last letter of its label.** Both label presenters gain a 6 px right padding, so a switch is 6 px wider (`§111`).
 
 - **The on-screen keyboard masks a password box's preview (`§110`).** When the target `TextBox` has a `PasswordChar` and

@@ -154,6 +154,37 @@ public class EmuSen.LunaP.Controls.ConsolePane : Avalonia.Controls.Primitives.Te
     public void FocusInput()
     public void ResetHistoryRecall()
 
+public enum EmuSen.LunaP.Controls.DateSegment
+    public const EmuSen.LunaP.Controls.DateSegment Day = 2
+    public const EmuSen.LunaP.Controls.DateSegment Month = 1
+    public const EmuSen.LunaP.Controls.DateSegment Year = 0
+    public int value__
+
+public class EmuSen.LunaP.Controls.DateStepper : Avalonia.Controls.Control, EmuSen.LunaP.Controls.ISidewaysAdjustable
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
+    protected override void OnPointerPressed(Avalonia.Input.PointerPressedEventArgs e)
+    public DateStepper()
+    public EmuSen.LunaP.Controls.DateSegment Segment { get; set; }
+    public System.DateTime StartDate { get; set; }
+    public System.DateTime? Stepped(EmuSen.LunaP.Controls.DateSegment segment, int by)
+    public System.DateTime? Value { get; set; }
+    public double FontSize { get; set; }
+    public event System.Action<System.DateTime?> Chose
+    public int MaximumYear { get; set; }
+    public int MinimumYear { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.DateSegment> SegmentProperty = Year
+    public static readonly Avalonia.StyledProperty<System.DateTime> StartDateProperty = 01/01/1990 00:00:00
+    public static readonly Avalonia.StyledProperty<System.DateTime?> ValueProperty = null
+    public static readonly Avalonia.StyledProperty<double> FontSizeProperty = 12
+    public static readonly Avalonia.StyledProperty<int> MaximumYearProperty = 2099
+    public static readonly Avalonia.StyledProperty<int> MinimumYearProperty = 1950
+    public static readonly Avalonia.StyledProperty<string> NoDateTextProperty = "No date"
+    public string NoDateText { get; set; }
+    public string Text { get; }
+
 public enum EmuSen.LunaP.Controls.DeviceIndicators
     public const EmuSen.LunaP.Controls.DeviceIndicators All = 31
     public const EmuSen.LunaP.Controls.DeviceIndicators Battery = 8
@@ -457,6 +488,8 @@ public sealed class EmuSen.LunaP.Controls.HintEntry : System.IEquatable<EmuSen.L
 
 public class EmuSen.LunaP.Controls.HintText : Avalonia.Controls.TextBlock
     public HintText()
+
+public interface EmuSen.LunaP.Controls.ISidewaysAdjustable
 
 public class EmuSen.LunaP.Controls.ImageCarousel : Avalonia.Controls.Control
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
@@ -994,6 +1027,24 @@ public class EmuSen.LunaP.Controls.PathPickerRow : Avalonia.Controls.Primitives.
     public string BrowseTitle { get; set; }
     public string Path { get; set; }
     public string Placeholder { get; set; }
+
+public class EmuSen.LunaP.Controls.RatingPicker : Avalonia.Controls.Control, EmuSen.LunaP.Controls.ISidewaysAdjustable
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
+    protected override void OnPointerPressed(Avalonia.Input.PointerPressedEventArgs e)
+    public RatingPicker()
+    public double StarSize { get; set; }
+    public double Stepped(int by)
+    public double Value { get; set; }
+    public event System.Action<double> Chose
+    public int StarCount { get; set; }
+    public int StepsPerStar { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<double> StarSizeProperty = 28
+    public static readonly Avalonia.StyledProperty<double> ValueProperty = 0
+    public static readonly Avalonia.StyledProperty<int> StarCountProperty = 5
+    public static readonly Avalonia.StyledProperty<int> StepsPerStarProperty = 2
 
 public class EmuSen.LunaP.Controls.RgbaImageView : Avalonia.Controls.Primitives.TemplatedControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
