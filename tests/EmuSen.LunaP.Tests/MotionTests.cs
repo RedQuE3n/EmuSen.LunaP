@@ -164,8 +164,21 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(10, text.ScrollOffset, 6);
             Assert.Equal(40, Ink(Frame(window), 0, 0, 400, 100).Left);
             Assert.Equal(0, Ink(Frame(window), 0, 0, 40, 100).Left == int.MaxValue ? 0 : 1);
+            text.ScrollTime = Ms(1000 + 350.0 / 40 * 1000);
+            RenderedFrame late = Frame(window);
+            double copy = 40 - 350 + LaidWidth(text) + 30;
+            Assert.True(copy > 60 && copy < 200);
+            Assert.NotEqual(int.MaxValue, Ink(late, (int)copy + 2, 0, 240, 100).Left);
             window.Close();
         });
+
+        // A text's one-line width, measured by a FontText that neither wraps nor scrolls.
+        private static double LaidWidth(FontText text)
+        {
+            var probe = new FontText { Text = text.Text, FontSize = text.FontSize, FontPath = text.FontPath, Wrap = false };
+            probe.Measure(Size.Infinity);
+            return probe.DesiredSize.Width;
+        }
 
         [Fact]
         public Task A_vertical_text_moves_up_and_fades_back_in() => UiTest.Run(() =>
@@ -233,7 +246,9 @@ namespace EmuSen.LunaP.Tests
                 for (int y = 0; y < 30; y++)
                     Assert.Equal(At(still, x + 20, y), At(f, x, y));
             Assert.True(Ink(f, 0, 0, 200, 30).Left >= 10);
-            Assert.Equal(restLeft, Ink(f, 0, 30, 200, 60).Left);
+            for (int x = 0; x < 200; x++)
+                for (int y = 30; y < 60; y++)
+                    Assert.Equal(At(still, x, y), At(f, x, y));
             list.SelectedIndex = 2;
             Assert.Equal(0, list.MarqueeOffset);
             window.Close();

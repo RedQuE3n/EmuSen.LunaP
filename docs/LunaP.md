@@ -11663,3 +11663,31 @@ drawing order, and a whole position drawing §100.2's pixels; the loop and the c
 horizontal `FontText` still before its delay and moved after it, with nothing drawn outside its box; a vertical one
 moving up a whole line and fading back in; a list whose selected row moves by exactly the offset, pixel for pixel,
 while the row below it does not.
+
+### 102.6 Mutants for §102
+
+Thirteen mutants, one rule each, applied one at a time to a copy of the repository by the consumer's
+`~/.cache/emusen/probe/bigpicture/mutate_motion_lunap.py`, each built and run against `MotionTests`,
+`ThemedListTests` and `FontTextTests`. **All thirteen were caught, two of them only after their test was
+strengthened.**
+
+| # | Mutant | Result |
+|---|---|---|
+| LM1 | a glide ignores its easing | caught |
+| LM2 | a turned glide restarts from its old start | caught |
+| LM3 | focus not weighted by distance | caught |
+| LM4 | items placed at whole slots while moving | caught |
+| LM5 | the nearest item not drawn last | caught |
+| LM6 | a loop does not pause again after each pass | caught |
+| LM7 | a column does not fade in after a pass | caught by 2 |
+| LM8 | a column ignores its end pause | caught by 2 |
+| LM9 | whole pixels ignored | caught |
+| LM10 | a horizontal text draws no second copy | **survived the first run**; caught after the test was changed |
+| LM11 | whole lines ignored | caught |
+| LM12 | the marquee scrolls every row that is too wide | **survived the first run**; caught after the test was changed |
+| LM13 | the marquee moves a row that fits | caught |
+
+**Both survivors were weak tests.** The horizontal test looked at the text only before the first copy's end had
+passed, so a missing second copy drew the same picture; it now also reads the frame where the copy has come into the
+box. The list test compared the unselected row's leftmost ink, and a row scrolled by 20 pixels and clipped at its
+margin happened to start its first stroke on the same column; it now requires every pixel of that row to be unchanged.
