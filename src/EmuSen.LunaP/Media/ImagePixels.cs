@@ -54,8 +54,8 @@ namespace EmuSen.LunaP.Media
     {
         internal bool IsIdentity => Tint == Colors.White && TintEnd == Colors.White && Saturation >= 1;
 
-        // Rec. 709 luma weights; the saturation mix is done on the stored (gamma-encoded) values.
-        internal const double Red = 0.2126, Green = 0.7152, Blue = 0.0722;
+        // Rec. 601 luma weights, as the consumer measured its reference desaturating (§104.4, correcting §98.2's Rec. 709); mixed on the stored values.
+        internal const double Red = 0.299, Green = 0.587, Blue = 0.114;
     }
 
     internal static class ImagePixels

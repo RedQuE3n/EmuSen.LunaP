@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -55,6 +56,12 @@ namespace EmuSen.LunaP.Gallery
                 ScrollTime = TimeSpan.FromSeconds(3),
             }, 0.35, 0.78, 0.4, 0.06);
             At(canvas, new StarRating { Value = 0.7 }, 0.78, 0.47, 0, 0.1);
+            // §104: a grid of text items, the second selected and scaled inwards from the top row.
+            At(canvas, new ImageGrid
+            {
+                Items = Enumerable.Range(1, 8).Select(i => new CarouselItem(null, $"Game {i}")).ToArray(), SelectedIndex = 1, ItemSize = new Size(44, 30), ItemSpacing = new Size(4, 4),
+                ItemScale = 1.2, ScaleInwards = true, FontSize = 10, TextBackground = Color.FromArgb(90, 255, 255, 255), UnfocusedItemOpacity = 0.6,
+            }, 0.78, 0.22, 0.2, 0.22);
             At(canvas, new BadgeStrip { Icons = new[] { check, disc }, ItemsPerLine = 4, ItemMargin = new Size(4, 0) }, 0.78, 0.62, 0.2, 0.1);
             At(canvas, new HintBar { Entries = new[] { new HintEntry("Launch", Glyph: "A"), new HintEntry("Back", Glyph: "B") }, FontSize = 13, BackgroundColor = Color.FromArgb(160, 0, 0, 0), Padding = new Thickness(6), BackgroundCornerRadius = 6 },
                 0.5, 0.97, 0, 0, 0.5, 1);

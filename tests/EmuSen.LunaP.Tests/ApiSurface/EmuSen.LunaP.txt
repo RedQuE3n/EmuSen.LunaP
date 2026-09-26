@@ -354,6 +354,43 @@ public class EmuSen.LunaP.Controls.FontText : Avalonia.Controls.Control
     public string? Text { get; set; }
     public string[] LaidOutLines()
 
+public struct EmuSen.LunaP.Controls.GridGeometry : System.ValueType, System.IEquatable<EmuSen.LunaP.Controls.GridGeometry>
+    public Avalonia.Rect CellRect(int index, double scroll)
+    public Avalonia.RelativePoint Anchor(int index, double scroll)
+    public Avalonia.Size Box { get; init; }
+    public Avalonia.Size Item { get; init; }
+    public Avalonia.Size Margin { get; }
+    public Avalonia.Size Pitch { get; }
+    public Avalonia.Size Spacing { get; init; }
+    public GridGeometry(Avalonia.Size Box, Avalonia.Size Item, Avalonia.Size Spacing, double Scale, bool ScaleInwards, bool FractionalRows, int Count)
+    public bool Equals(EmuSen.LunaP.Controls.GridGeometry other)
+    public bool FractionalRows { get; init; }
+    public bool ScaleInwards { get; init; }
+    public double ClipHeight { get; }
+    public double Scale { get; init; }
+    public double ScrollFor(int index)
+    public double ShownRows { get; }
+    public double VisibleRows { get; }
+    public int ColumnOf(int index)
+    public int Columns { get; }
+    public int Count { get; init; }
+    public int RowOf(int index)
+    public int Rows { get; }
+    public int WholeRows { get; }
+    public override bool Equals(object obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static EmuSen.LunaP.Controls.GridGeometry Of(Avalonia.Size box, Avalonia.Size item, Avalonia.Size? spacing, double scale, bool scaleInwards, bool fractionalRows, int count)
+    public static bool op_Equality(EmuSen.LunaP.Controls.GridGeometry left, EmuSen.LunaP.Controls.GridGeometry right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.GridGeometry left, EmuSen.LunaP.Controls.GridGeometry right)
+    public void Deconstruct(out Avalonia.Size Box, out Avalonia.Size Item, out Avalonia.Size Spacing, out double Scale, out bool ScaleInwards, out bool FractionalRows, out int Count)
+
+public enum EmuSen.LunaP.Controls.GridSelectorLayer
+    public const EmuSen.LunaP.Controls.GridSelectorLayer Bottom = 0
+    public const EmuSen.LunaP.Controls.GridSelectorLayer Middle = 1
+    public const EmuSen.LunaP.Controls.GridSelectorLayer Top = 2
+    public int value__
+
 public class EmuSen.LunaP.Controls.GroupedList<T> : Avalonia.Controls.ListBox where T : class
     protected override System.Type StyleKeyOverride { get; }
     protected override void PrepareContainerForItemOverride(Avalonia.Controls.Control container, object? item, int index)
@@ -486,6 +523,102 @@ public enum EmuSen.LunaP.Controls.ImageFit
     public const EmuSen.LunaP.Controls.ImageFit Fill = 0
     public const EmuSen.LunaP.Controls.ImageFit Tile = 3
     public int value__
+
+public class EmuSen.LunaP.Controls.ImageGrid : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size ArrangeOverride(Avalonia.Size finalSize)
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public Avalonia.Layout.Orientation ImageTintDirection { get; set; }
+    public Avalonia.Media.Color ImageTint { get; set; }
+    public Avalonia.Media.Color TextBackground { get; set; }
+    public Avalonia.Media.Color TextColor { get; set; }
+    public Avalonia.Media.Color? ImageSelectedTint { get; set; }
+    public Avalonia.Media.Color? ImageTintEnd { get; set; }
+    public Avalonia.Media.Color? ItemBackground { get; set; }
+    public Avalonia.Media.Color? SelectorColor { get; set; }
+    public Avalonia.Media.Color? TextSelectedBackground { get; set; }
+    public Avalonia.Media.Color? TextSelectedColor { get; set; }
+    public Avalonia.Media.Imaging.BitmapInterpolationMode ImageInterpolation { get; set; }
+    public Avalonia.Point ImageCropPosition { get; set; }
+    public Avalonia.Size ItemSize { get; set; }
+    public Avalonia.Size? ItemSpacing { get; set; }
+    public EmuSen.LunaP.Controls.GridGeometry GeometryFor(Avalonia.Size bounds)
+    public EmuSen.LunaP.Controls.GridSelectorLayer SelectorLayer { get; set; }
+    public EmuSen.LunaP.Controls.ImageFit ImageFit { get; set; }
+    public EmuSen.LunaP.Media.LetterCase LetterCase { get; set; }
+    public ImageGrid()
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.CarouselItem>? Items { get; set; }
+    public System.Collections.Generic.IReadOnlyList<System.ValueTuple<int, Avalonia.Controls.Control>> Shown { get; }
+    public bool FractionalRows { get; set; }
+    public bool ScaleInwards { get; set; }
+    public double DrawnScrollRow { get; }
+    public double FocusFromLevel { get; set; }
+    public double FocusProgress { get; set; }
+    public double FocusToLevel { get; set; }
+    public double FontSize { get; set; }
+    public double ImageCornerRadius { get; set; }
+    public double ImageRelativeScale { get; set; }
+    public double ImageSaturation { get; set; }
+    public double ItemBackgroundCornerRadius { get; set; }
+    public double ItemBackgroundRelativeScale { get; set; }
+    public double ItemScale { get; set; }
+    public double LineSpacing { get; set; }
+    public double ScrollRow { get; set; }
+    public double SelectorCornerRadius { get; set; }
+    public double SelectorRelativeScale { get; set; }
+    public double TextBackgroundCornerRadius { get; set; }
+    public double UnfocusedItemDimming { get; set; }
+    public double UnfocusedItemOpacity { get; set; }
+    public double UnfocusedItemSaturation { get; set; }
+    public int FocusFrom { get; set; }
+    public int SelectedIndex { get; set; }
+    public static readonly Avalonia.StyledProperty<Avalonia.Layout.Orientation> ImageTintDirectionProperty = Horizontal
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> ImageTintProperty = White
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TextBackgroundProperty = Transparent
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TextColorProperty = #ffd4d4d4
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color?> ImageSelectedTintProperty = null
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color?> ImageTintEndProperty = null
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color?> ItemBackgroundProperty = null
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color?> SelectorColorProperty = null
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color?> TextSelectedBackgroundProperty = null
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color?> TextSelectedColorProperty = null
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Imaging.BitmapInterpolationMode> ImageInterpolationProperty = HighQuality
+    public static readonly Avalonia.StyledProperty<Avalonia.Point> ImageCropPositionProperty = 0.5, 0.5
+    public static readonly Avalonia.StyledProperty<Avalonia.Size> ItemSizeProperty = 120, 160
+    public static readonly Avalonia.StyledProperty<Avalonia.Size?> ItemSpacingProperty = null
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.GridSelectorLayer> SelectorLayerProperty = Top
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.ImageFit> ImageFitProperty = Contain
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = None
+    public static readonly Avalonia.StyledProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.CarouselItem>?> ItemsProperty = null
+    public static readonly Avalonia.StyledProperty<bool> FractionalRowsProperty = false
+    public static readonly Avalonia.StyledProperty<bool> ScaleInwardsProperty = false
+    public static readonly Avalonia.StyledProperty<double> FocusFromLevelProperty = 1
+    public static readonly Avalonia.StyledProperty<double> FocusProgressProperty = 1
+    public static readonly Avalonia.StyledProperty<double> FocusToLevelProperty = 0
+    public static readonly Avalonia.StyledProperty<double> FontSizeProperty = 24
+    public static readonly Avalonia.StyledProperty<double> ImageCornerRadiusProperty = 0
+    public static readonly Avalonia.StyledProperty<double> ImageRelativeScaleProperty = 1
+    public static readonly Avalonia.StyledProperty<double> ImageSaturationProperty = 1
+    public static readonly Avalonia.StyledProperty<double> ItemBackgroundCornerRadiusProperty = 0
+    public static readonly Avalonia.StyledProperty<double> ItemBackgroundRelativeScaleProperty = 1
+    public static readonly Avalonia.StyledProperty<double> ItemScaleProperty = 1.05
+    public static readonly Avalonia.StyledProperty<double> LineSpacingProperty = 1.5
+    public static readonly Avalonia.StyledProperty<double> ScrollRowProperty = NaN
+    public static readonly Avalonia.StyledProperty<double> SelectorCornerRadiusProperty = 0
+    public static readonly Avalonia.StyledProperty<double> SelectorRelativeScaleProperty = 1
+    public static readonly Avalonia.StyledProperty<double> TextBackgroundCornerRadiusProperty = 0
+    public static readonly Avalonia.StyledProperty<double> UnfocusedItemDimmingProperty = 1
+    public static readonly Avalonia.StyledProperty<double> UnfocusedItemOpacityProperty = 1
+    public static readonly Avalonia.StyledProperty<double> UnfocusedItemSaturationProperty = 1
+    public static readonly Avalonia.StyledProperty<int> FocusFromProperty = -1
+    public static readonly Avalonia.StyledProperty<int> SelectedIndexProperty = 0
+    public static readonly Avalonia.StyledProperty<string?> FontPathProperty = null
+    public static readonly Avalonia.StyledProperty<string?> ItemBackgroundImageProperty = null
+    public static readonly Avalonia.StyledProperty<string?> SelectorImageProperty = null
+    public string? FontPath { get; set; }
+    public string? ItemBackgroundImage { get; set; }
+    public string? SelectorImage { get; set; }
 
 public sealed class EmuSen.LunaP.Controls.KeyboardLayout
     public KeyboardLayout(string name, System.Collections.Generic.IEnumerable<System.Collections.Generic.IReadOnlyList<System.ValueTuple<string, int>>> rows)

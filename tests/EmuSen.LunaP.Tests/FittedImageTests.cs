@@ -120,15 +120,15 @@ namespace EmuSen.LunaP.Tests
         });
 
         [Fact]
-        public Task Saturation_zero_is_Rec709_grey() => UiTest.Run(() =>
+        public Task Saturation_zero_is_Rec601_grey() => UiTest.Run(() =>
         {
             string red = Flat("red", 10, 10, Colors.Red);
             var image = new FittedImage { Source = red, Fit = ImageFit.Fill, Saturation = 0 };
             ToolWindow window = Host(image, 50, 50);
-            Assert.True(Near(Color.FromRgb(54, 54, 54), At(Frame(window), 25, 25), 2));
+            Assert.True(Near(Color.FromRgb(76, 76, 76), At(Frame(window), 25, 25), 2));
             image.Saturation = 0.5;
             Color half = At(Frame(window), 25, 25);
-            Assert.True(Near(Color.FromRgb(155, 27, 27), half, 3), half.ToString());
+            Assert.True(Near(Color.FromRgb(166, 38, 38), half, 3), half.ToString());
             window.Close();
         });
 
