@@ -11875,3 +11875,32 @@ saturation to the dimmed Rec. 601 grey; inward scaling at both ends of a row; cu
 move half-way, both items on one progress; an item with no image; the selector's layers against the background.
 `DocumentedDefaultTests` gains the grid's 31 defaults, `TemplateOrderTests` excuses `GeometryFor` as arithmetic,
 `AccessibilityTests` lists the grid as a list, and the gallery shows one.
+
+### 104.6 Mutants for §104
+
+Sixteen mutants, one rule each, applied one at a time to a copy of this repository by the consumer's
+`~/.cache/emusen/probe/bigpicture/mutate_grid_lunap.py`, each built and run under `nice` against `ImageGridTests` and
+`FittedImageTests`, the copy deleted at the end. **All sixteen were caught on the first run.**
+
+| # | Mutant | Caught by |
+|---|---|---|
+| LG1 | columns counted without room for the scaled item | 1 |
+| LG2 | the columns centred rather than left-aligned | 6 |
+| LG3 | omitted spacing the whole growth, not half | 1 |
+| LG4 | no scroll at all | 2 |
+| LG5 | the selected row kept at the top | 2 |
+| LG6 | fractional rows scrolled by whole rows | 1 |
+| LG7 | inward items scaled about their centre | 3 |
+| LG8 | whole rows not clipped | 1 |
+| LG9 | the item left keeps its focus during a move | 1 |
+| LG10 | unfocused items not faded | 1 |
+| LG11 | unfocused items not dimmed | 1 |
+| LG12 | the selector drawn on every item | 1 |
+| LG13 | a text item's fill only behind its text | 1 |
+| LG14 | a layer's relative scale ignored | 1 |
+| LG15 | desaturation back to Rec. 709 | 2 |
+| LG16 | the scrolled bottom row anchored at its centre (§104.4a) | 2 |
+
+That none survived is weak evidence in one respect: the tests were written after the measurements, with each rule's
+rival in view, which is what the measurements were built to separate. The consumer's own mutants of its use of the grid
+(its §16) found two defects of its own that no LunaP test could have seen.
