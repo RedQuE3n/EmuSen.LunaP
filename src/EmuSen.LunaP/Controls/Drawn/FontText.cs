@@ -64,6 +64,18 @@ namespace EmuSen.LunaP.Controls
         /// <summary>How far the text has scrolled at ScrollTime, in pixels, left or up; 0 when it fits or does not scroll.</summary>
         public double ScrollOffset => ScrollState().Offset;
 
+        /// <summary>The earliest scroll time, from a time on, at which the drawn text changes; null when it fits its box or does not scroll.</summary>
+        /// <param name="from">A time on the same clock as ScrollTime.</param>
+        /// <returns>from itself while the text moves, the end of a pause while it is still, or null.</returns>
+        public TimeSpan? NextScrollChange(TimeSpan from)
+        {
+            if (_layout is null || ScrollDirection == TextScrollDirection.None) return null;
+            Rect box = ScrollBox();
+            return ScrollDirection == TextScrollDirection.Horizontal
+                ? (_layout.Width > box.Width + 0.01 ? Scroll.NextLoopChange(from, _layout.Width) : null)
+                : Scroll.NextRunChange(from, _layout.Height - box.Height);
+        }
+
         // The scroll's offset and opacity now, from the last layout and the box.
         private (double Offset, double Opacity) ScrollState()
         {

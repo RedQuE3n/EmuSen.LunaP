@@ -211,6 +211,17 @@ namespace EmuSen.LunaP.Controls
             }
         }
 
+        /// <summary>The earliest marquee time, from a time on, at which the selected row's text moves; null when it fits its room or the marquee is off.</summary>
+        /// <param name="from">A time on the same clock as MarqueeTime.</param>
+        /// <returns>from itself while the text moves, the end of the pause while it is still, or null.</returns>
+        public TimeSpan? NextMarqueeChange(TimeSpan from)
+        {
+            IReadOnlyList<TextRow> items = Items ?? Array.Empty<TextRow>();
+            if (SelectedIndex < 0 || SelectedIndex >= items.Count) return null;
+            GlyphTypeface typeface = FontPath is { Length: > 0 } p && FontFiles.Load(p) is { } loaded ? loaded : FontFiles.Default;
+            return Whole(typeface, items[SelectedIndex]) is { } whole ? Marquee.NextLoopChange(from, whole.Width) : null;
+        }
+
         // The selected row's whole line when it scrolls: the marquee is on and the line is wider than its room.
         private FontLayout? Whole(GlyphTypeface typeface, TextRow item)
         {

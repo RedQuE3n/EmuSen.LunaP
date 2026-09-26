@@ -38,6 +38,40 @@ namespace EmuSen.LunaP.Motion
             return into <= Delay.TotalSeconds ? 0 : Math.Min(period, (into - Delay.TotalSeconds) * Speed) % period;
         }
 
+        // A host that redraws only while something moves asks these when a text will next look different, and sleeps until then (§103.3).
+        /// <summary>The earliest time, from elapsed on, at which a looping line's offset changes: elapsed itself while it moves, the end of the pause while it is still, null when it never moves.</summary>
+        /// <param name="elapsed">Time since the text was shown.</param>
+        /// <param name="width">The line's own width in pixels.</param>
+        /// <returns>A time on the same clock as elapsed, or null.</returns>
+        public TimeSpan? NextLoopChange(TimeSpan elapsed, double width)
+        {
+            double period = width + Math.Max(0, Gap);
+            if (Speed <= 0 || period <= 0) return null;
+            double delay = Delay.TotalSeconds, cycle = delay + period / Speed;
+            double into = Math.Max(0, elapsed.TotalSeconds) % cycle;
+            return into < delay ? elapsed + TimeSpan.FromSeconds(delay - into) : elapsed;
+        }
+
+        /// <summary>The earliest time, from elapsed on, at which a column's offset or opacity changes: elapsed itself while it moves or fades, the end of a pause while it is still, null when it never moves.</summary>
+        /// <param name="elapsed">Time since the text was shown.</param>
+        /// <param name="travel">How far the column must move for its last line to show.</param>
+        /// <returns>A time on the same clock as elapsed, or null.</returns>
+        public TimeSpan? NextRunChange(TimeSpan elapsed, double travel)
+        {
+            if (Speed <= 0 || travel <= 0) return null;
+            double delay = Delay.TotalSeconds, fade = Math.Max(0, FadeIn.TotalSeconds), moving = travel / Speed, pause = Math.Max(0, EndPause.TotalSeconds);
+            double t = Math.Max(0, elapsed.TotalSeconds), first = delay + moving + pause;
+            TimeSpan After(double seconds) => elapsed + TimeSpan.FromSeconds(seconds);
+            if (t < delay) return After(delay - t);
+            if (t < delay + moving) return elapsed;
+            if (t < first) return After(first - t);
+            double cycle = fade + delay + moving + pause, into = (t - first) % cycle;
+            if (into < fade) return elapsed;
+            if (into < fade + delay) return After(fade + delay - into);
+            if (into < fade + delay + moving) return elapsed;
+            return After(cycle - into);
+        }
+
         /// <summary>A column's upward offset and opacity at a time: fading in (after the first pass), still for Delay, moving at Speed until the last line shows, then still for EndPause.</summary>
         /// <param name="elapsed">Time since the text was shown.</param>
         /// <param name="travel">How far the column must move for its last line to show: its height less the box's.</param>

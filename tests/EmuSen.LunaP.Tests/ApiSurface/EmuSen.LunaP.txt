@@ -321,6 +321,7 @@ public class EmuSen.LunaP.Controls.FontText : Avalonia.Controls.Control
     public EmuSen.LunaP.Motion.TextScrollDirection ScrollDirection { get; set; }
     public FontText()
     public System.TimeSpan ScrollTime { get; set; }
+    public System.TimeSpan? NextScrollChange(System.TimeSpan from)
     public bool IsTruncated { get; }
     public bool ScrollWholeLines { get; set; }
     public bool Wrap { get; set; }
@@ -377,6 +378,7 @@ public class EmuSen.LunaP.Controls.HintBar : Avalonia.Controls.Control
     public Avalonia.Media.Color IconColor { get; set; }
     public Avalonia.Media.Color TextColor { get; set; }
     public Avalonia.Thickness Padding { get; set; }
+    public EmuSen.LunaP.Controls.PadFamily PadFamily { get; set; }
     public EmuSen.LunaP.Media.LetterCase LetterCase { get; set; }
     public HintBar()
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? Entries { get; set; }
@@ -391,6 +393,7 @@ public class EmuSen.LunaP.Controls.HintBar : Avalonia.Controls.Control
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> IconColorProperty = #ffd4d4d4
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TextColorProperty = #ffd4d4d4
     public static readonly Avalonia.StyledProperty<Avalonia.Thickness> PaddingProperty = 0,0,0,0
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadFamily> PadFamilyProperty = Generic
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = None
     public static readonly Avalonia.StyledProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>?> EntriesProperty = null
     public static readonly Avalonia.StyledProperty<double> BackgroundCornerRadiusProperty = 0
@@ -402,6 +405,7 @@ public class EmuSen.LunaP.Controls.HintBar : Avalonia.Controls.Control
     public string? FontPath { get; set; }
 
 public sealed class EmuSen.LunaP.Controls.HintEntry : System.IEquatable<EmuSen.LunaP.Controls.HintEntry>
+    public EmuSen.LunaP.Controls.PadGlyphButton? Button { get; init; }
     public HintEntry(string Label, string? IconPath = null, string? Glyph = null)
     public bool Equals(EmuSen.LunaP.Controls.HintEntry? other)
     public override bool Equals(object? obj)
@@ -790,6 +794,45 @@ public class EmuSen.LunaP.Controls.OverlayBar : Avalonia.Controls.ContentControl
     public void Conceal()
     public void Reveal()
 
+public enum EmuSen.LunaP.Controls.PadFamily
+    public const EmuSen.LunaP.Controls.PadFamily Generic = 0
+    public const EmuSen.LunaP.Controls.PadFamily Nintendo = 3
+    public const EmuSen.LunaP.Controls.PadFamily PlayStation = 2
+    public const EmuSen.LunaP.Controls.PadFamily Xbox = 1
+    public int value__
+
+public class EmuSen.LunaP.Controls.PadGlyph : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    public Avalonia.Media.Color Color { get; set; }
+    public EmuSen.LunaP.Controls.PadFamily Family { get; set; }
+    public EmuSen.LunaP.Controls.PadGlyphButton Button { get; set; }
+    public PadGlyph()
+    public double GlyphSize { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> ColorProperty = #ffd4d4d4
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadFamily> FamilyProperty = Generic
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadGlyphButton> ButtonProperty = South
+    public static readonly Avalonia.StyledProperty<double> GlyphSizeProperty = 24
+    public static string Describe(EmuSen.LunaP.Controls.PadFamily family, EmuSen.LunaP.Controls.PadGlyphButton button)
+
+public enum EmuSen.LunaP.Controls.PadGlyphButton
+    public const EmuSen.LunaP.Controls.PadGlyphButton DPad = 4
+    public const EmuSen.LunaP.Controls.PadGlyphButton DPadLeftRight = 6
+    public const EmuSen.LunaP.Controls.PadGlyphButton DPadUpDown = 5
+    public const EmuSen.LunaP.Controls.PadGlyphButton East = 1
+    public const EmuSen.LunaP.Controls.PadGlyphButton Guide = 13
+    public const EmuSen.LunaP.Controls.PadGlyphButton LeftShoulder = 7
+    public const EmuSen.LunaP.Controls.PadGlyphButton LeftTrigger = 9
+    public const EmuSen.LunaP.Controls.PadGlyphButton North = 3
+    public const EmuSen.LunaP.Controls.PadGlyphButton RightShoulder = 8
+    public const EmuSen.LunaP.Controls.PadGlyphButton RightTrigger = 10
+    public const EmuSen.LunaP.Controls.PadGlyphButton Select = 12
+    public const EmuSen.LunaP.Controls.PadGlyphButton South = 0
+    public const EmuSen.LunaP.Controls.PadGlyphButton Start = 11
+    public const EmuSen.LunaP.Controls.PadGlyphButton West = 2
+    public int value__
+
 public enum EmuSen.LunaP.Controls.PanelSide
     public const EmuSen.LunaP.Controls.PanelSide Bottom = 2
     public const EmuSen.LunaP.Controls.PanelSide Left = 0
@@ -1044,6 +1087,7 @@ public class EmuSen.LunaP.Controls.TextRowList : Avalonia.Controls.Control
     public EmuSen.LunaP.Motion.TextScroll Marquee { get; set; }
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.TextRow>? Items { get; set; }
     public System.TimeSpan MarqueeTime { get; set; }
+    public System.TimeSpan? NextMarqueeChange(System.TimeSpan from)
     public TextRowList()
     public bool SelectedBackgroundFitsText { get; set; }
     public double FontSize { get; set; }
@@ -1255,6 +1299,8 @@ public struct EmuSen.LunaP.Motion.TextScroll : System.ValueType, System.IEquatab
     public System.TimeSpan Delay { get; init; }
     public System.TimeSpan EndPause { get; init; }
     public System.TimeSpan FadeIn { get; init; }
+    public System.TimeSpan? NextLoopChange(System.TimeSpan elapsed, double width)
+    public System.TimeSpan? NextRunChange(System.TimeSpan elapsed, double travel)
     public System.ValueTuple<double, double> RunAt(System.TimeSpan elapsed, double travel)
     public TextScroll(System.TimeSpan Delay, double Speed, double Gap = 0, System.TimeSpan EndPause = null, System.TimeSpan FadeIn = null, bool WholePixels = false)
     public bool Equals(EmuSen.LunaP.Motion.TextScroll other)
