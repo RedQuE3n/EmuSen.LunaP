@@ -14,6 +14,14 @@ answer.
 
 ## Unreleased
 
+- **A grid of items, new and additive (`§104`).** `ImageGrid` lays items out in columns and rows, scales the selected one
+  (about its centre, or inwards at the edges), fades, dims and desaturates the rest, and scrolls the rows so the selection
+  stays on the last row shown; `GridGeometry` is the same arithmetic without a control. `ScrollRow` and the `Focus*`
+  properties draw it between states from the host's clock.
+- **Desaturation now uses Rec. 601 weights (`§104.4`), a visible change.** Every `FittedImage` (and so every carousel
+  and grid) drawn with a saturation below 1 comes out with different greys: a pure red at saturation 0 is 76 rather than
+  54. Nothing else changes.
+
 - **A gamepad's buttons drawn by the toolkit, new and additive (`§103`).** `PadGlyph` draws one button of a family of
   pads (`PadFamily`: Generic, Xbox, PlayStation, Nintendo) in one colour as the toolkit's own geometry;
   `HintEntry.Button` names one for a hint, and `HintBar.PadFamily` picks the set. An entry's image file still wins, and

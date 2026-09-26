@@ -11794,3 +11794,76 @@ its square rather than nowhere, and the test only required an A and a B to diffe
 do. The test now requires each lettered glyph's ink to be centred on the glyph to a pixel and a half, and LP5 was
 re-run against it and caught.
 
+## 104. A grid of items, laid out and moved as the consumer measured its reference
+
+*2026-09-26.* The consumer's themed library has game lists drawn as a grid: covers in rows and columns, the selected
+one scaled, the rows scrolling to keep it in view. Its reference frontend documents the grid's properties but not its
+arithmetic, so the consumer measured it from the reference's behaviour at 165 frames a second (26 recorded runs of a
+synthetic theme built to separate the candidate rules), and the rules below are those measurements. The reference's
+source was not read. Nothing here knows about the consumer's theme format; the control takes pixels and colours.
+
+### 104.1 `GridGeometry`
+
+The arithmetic is a record struct of its own, so a host can ask it before layout: the consumer computes the scroll a
+selection settles at from the element's size, before any control is measured. For a box W×H, items w×h, spacing sx×sy
+and scale k:
+
+| Rule | As measured |
+|---|---|
+| Columns | `floor((W + sx − w(k−1)) / (w + sx))`: as many as fit **with the selected item scaled**; with `ScaleInwards` the `w(k−1)` term is dropped. Four layouts built to reject the rival rules (`(W+sx)/(w+sx)`, `W/(w+sx)`, `W/(wk)`) each drew what this rule predicts and not what the rival does |
+| Placement | left-aligned: the first column's unscaled left edge at `w(k−1)/2` (0 with `ScaleInwards`), pitch `w + sx`, everything left over on the right. Not centred |
+| Rows | the first row at `h(k−1)/2` (0 inwards), pitch `h + sy`; whole rows `floor((H + sy − h(k−1)) / (h + sy))` |
+| Omitted spacing | `w(k−1)/2` by `h(k−1)/2`: half the selected item's growth, so it never overlaps (19.2×16 at 1.2 and 48×40 at 1.5, as measured) |
+| Clip | without `FractionalRows`, rows are cut at `N(h + sy) − sy + h(k−1)`, the whole rows and their scaling room; with it, at the box |
+| Scroll | `max(0, row − (V − 1))` rows, V the rows shown (whole rows, or the unrounded count with `FractionalRows`): nothing scrolls until the selection passes the last row shown, and from then on **the selected row stays on the bottom row**, going down and going up. The rule "scroll only when the selection leaves the rows shown" was the obvious guess, and a six-row layout refutes it |
+| Inward anchors | with `ScaleInwards`, the first and last columns keep their outer edge, the first row its top, and the bottom row of a scrolled grid its bottom; the others scale about their centre |
+
+`ScrollFor`, `CellRect` and `Anchor` answer those for an index. Two measured cases are recorded and not modelled: a
+layout landing exactly on 3.000 rows drew 2 (n=1), and the reference centres and clips an inward bottom row when the
+grid has not scrolled, which this control reproduces only because its clip cuts the row there.
+
+### 104.2 `ImageGrid`
+
+`Items` (the carousel's `CarouselItem`: an image path and its text), `SelectedIndex`, and the reference's item
+properties: size, spacing, scale, inwards, fractional rows; unfocused opacity, saturation and dimming; the image's fit,
+crop, sampling, relative scale, corner radius, tint (with a second colour for a gradient, and a selected tint) and
+saturation; an item background and a selector, each a colour or a stretched image with its own relative scale and
+corner radius, the selector at the bottom, middle or top layer; and for an item with no image, its text in a font file
+on a fill covering the whole item, centred, as measured.
+
+Each item is a cell holding its layers, every layer in the box its relative scale gives, centred; a contained picture
+keeps its own shape inside that box. Only the cells of the rows in reach are built, and the selected one is drawn last,
+above its neighbours.
+
+**Motion is the host's clock, as in §102.** `ScrollRow` draws the rows at a fractional scroll (NaN: where the selection
+settles). `FocusFrom`, `FocusProgress`, `FocusFromLevel` and `FocusToLevel` draw a move between two items: the old
+item's focus falls from its level to 0 and the new one's rises from its level to 1 on the one progress, since the
+reference starts both on the same frame with the same curve. The levels exist because a step taken while the last is
+still moving starts from where the items are. Scale and opacity follow focus. Tint, dimming and saturation change hands
+half-way, as the carousel's do (§102.2), because a fractional saturation would reprocess the picture on the CPU every
+frame (§98.2).
+
+### 104.3 What the consumer measured about motion, for the record
+
+The reference's grid moves on a quadratic ease-out of 250 ms, for the items (251.2 ms, n=10, rms 0.0014) and for the
+rows (249.8 ms, n=5), whatever the distance. A held direction repeats at 497 ms and then every 200 ms, with no faster
+tier in 8 s. Those are the host's numbers: the control holds no durations.
+
+### 104.4 A correction to §98.2: desaturation uses Rec. 601 weights
+
+§98.2 mixed a desaturated picture with Rec. 709 luma weights (0.2126, 0.7152, 0.0722). The consumer measured its
+reference turning items grey with `unfocusedItemDimming 0.5` and saturation 0, and the greys fit `0.1494 R + 0.2932 G +
+0.0492 B` (rms 0.23 levels, n=14): half of Rec. 601 luma (0.299, 0.587, 0.114). The blue weight was poorly determined,
+since few of the test covers held blue. The weights are now Rec. 601 for every `FittedImage`.
+`Saturation_zero_is_Rec601_grey` replaces `Saturation_zero_is_Rec709_grey`: a red at saturation 0 is now 76 rather
+than 54. This changes the pixels of every desaturated picture, the carousel's included, and the changelog says so.
+
+### 104.5 Tests
+
+`ImageGridTests`: the column rule on the six measured layouts and the consumer's real theme (4 columns inwards, 3
+without); the placement; omitted spacing and the row count; the clip; the scroll rule on eight rows and on the real
+theme's fractional 15 px; the inward anchors; a scaled item's box and the others' true-alpha fade; dimming and
+saturation to the dimmed Rec. 601 grey; inward scaling at both ends of a row; cut and fractional rows and `ScrollRow`; a
+move half-way, both items on one progress; an item with no image; the selector's layers against the background.
+`DocumentedDefaultTests` gains the grid's 31 defaults, `TemplateOrderTests` excuses `GeometryFor` as arithmetic,
+`AccessibilityTests` lists the grid as a list, and the gallery shows one.
