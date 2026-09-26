@@ -92,6 +92,17 @@ namespace EmuSen.LunaP.Tests
             Assert.True(Inked(Glyph(PadFamily.Nintendo, PadGlyphButton.South), c - Side * 0.36, c), Ascii(Glyph(PadFamily.Nintendo, PadGlyphButton.South)));
             Assert.False(Inked(Glyph(PadFamily.Xbox, PadGlyphButton.South), c - Side * 0.34, c));
 
+            // The letters sit at the middle of their ring or disc: the ink's centre of mass is the glyph's centre, to a pixel and a half.
+            foreach (PadFamily family in new[] { PadFamily.Xbox, PadFamily.Nintendo })
+                foreach (PadGlyphButton button in new[] { PadGlyphButton.South, PadGlyphButton.East, PadGlyphButton.West, PadGlyphButton.North })
+                {
+                    byte[] g = Glyph(family, button);
+                    double sum = 0, sx = 0, sy = 0;
+                    for (int y = 0; y < Side; y++)
+                        for (int x = 0; x < Side; x++) { sum += g[y * Side + x]; sx += g[y * Side + x] * (x + 0.5); sy += g[y * Side + x] * (y + 0.5); }
+                    Assert.True(Math.Abs(sx / sum - c) < 1.5 && Math.Abs(sy / sum - c) < 1.5, $"{family} {button}: ink centred at ({sx / sum:F2}, {sy / sum:F2})\n{Ascii(g)}");
+                }
+
             // The Xbox A and the Nintendo A are one letter at different places.
             Assert.True(Differing(Glyph(PadFamily.Xbox, PadGlyphButton.South), Glyph(PadFamily.Xbox, PadGlyphButton.East)) > 20, Ascii(Glyph(PadFamily.Xbox, PadGlyphButton.South)));
         });

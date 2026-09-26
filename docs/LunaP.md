@@ -11768,3 +11768,29 @@ cross through the centre, a circle and a square leaving it empty, Nintendo's dis
 family change, its automation name and the image file winning; the scroll queries at the edges of every phase; a text
 that fits answering null. `DocumentedDefaultTests` gains the five new defaults, and `TemplateOrderTests` exempts the
 two new methods as arithmetic on controls with no template.
+
+### 103.5 Mutants for §103
+
+Ten mutants, one rule each, applied one at a time to a copy of this repository by the consumer's
+`~/.cache/emusen/probe/bigpicture/mutate_padglyph_lunap.py`, each built and run against `PadGlyphTests`,
+`IndicatorControlTests` and `MotionTests`, the copy deleted at the end. **All ten were caught, one only after its test was
+strengthened.**
+
+| # | Mutant | Result |
+|---|---|---|
+| LP1 | a named button drawn as the glyph in a ring | caught |
+| LP2 | a named button drawn over the image file | caught |
+| LP3 | Nintendo's letters at Xbox's places | caught |
+| LP4 | the generic set fills every dot | caught |
+| LP5 | the letter left at its run's own origin, with no transform | **survived the first run**; caught after the test was changed |
+| LP6 | the generic shoulders carry the PlayStation names | caught |
+| LP7 | a loop never sleeps | caught by 2 |
+| LP8 | a column's end pause answered as moving | caught |
+| LP9 | a text that fits answers a loop's change | caught |
+| LP10 | a list with nothing selected answers the last row's change | caught |
+
+**The survivor was a weak test.** LP5 is not quite §103.1's defect: with no transform the letter lands at the corner of
+its square rather than nowhere, and the test only required an A and a B to differ, which two letters in a corner still
+do. The test now requires each lettered glyph's ink to be centred on the glyph to a pixel and a half, and LP5 was
+re-run against it and caught.
+
