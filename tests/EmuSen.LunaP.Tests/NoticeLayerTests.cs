@@ -135,6 +135,35 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // §170: a fade time moves the curve's edges to that time, and never past the middle.
+        [Theory]
+        [InlineData(null, 0.15)]
+        [InlineData(0.5, 0.125)]
+        [InlineData(1.0, 0.25)]
+        [InlineData(3.0, 0.5)]
+        public void A_fade_time_puts_the_curve_s_edges_at_that_time(double? fadeSeconds, double edge)
+        {
+            var notice = new NoticeLayer { Duration = TimeSpan.FromSeconds(4), FadeTime = fadeSeconds is { } f ? TimeSpan.FromSeconds(f) : null };
+            Assert.Equal(new[] { (0.0, 0.0), (edge, 1.0), (1 - edge, 1.0), (1.0, 0.0) }, Keyframes(notice));
+        }
+
+        // 400 ms into a four-second notice: past a 100 ms fade, where OpenEmu's curve (600 ms) is still fading in.
+        [Fact]
+        public Task A_short_fade_time_reaches_full_opacity_sooner() => UiTest.Run(() =>
+        {
+            (NoticeLayer notice, ToolWindow window) = Show(TimeSpan.FromSeconds(4));
+            notice.FadeTime = TimeSpan.FromMilliseconds(100);
+
+            notice.Show("Controller connected");
+            RealTime.Wait(400);
+            Assert.Equal(1, Pill(notice).Opacity);
+
+            window.Close();
+        });
+
+        private static (double, double)[] Keyframes(NoticeLayer notice) =>
+            ((double Cue, double Opacity)[])typeof(NoticeLayer).GetMethod("Keyframes", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(notice, null)!;
+
         [Fact]
         public Task Show_refuses_null() => UiTest.Run(() =>
             Assert.Throws<ArgumentNullException>("text", () => new NoticeLayer().Show(null!)));

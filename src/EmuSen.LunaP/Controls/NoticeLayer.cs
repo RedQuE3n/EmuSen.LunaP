@@ -35,6 +35,10 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<TimeSpan> DurationProperty =
             AvaloniaProperty.Register<NoticeLayer, TimeSpan>(nameof(Duration), TimeSpan.FromSeconds(1.75));
 
+        // Null keeps the curve's fractions of Duration; a time fades in and out over that time instead - see docs/LunaP.md §170.
+        public static readonly StyledProperty<TimeSpan?> FadeTimeProperty =
+            AvaloniaProperty.Register<NoticeLayer, TimeSpan?>(nameof(FadeTime));
+
         public static readonly DirectProperty<NoticeLayer, string?> CurrentProperty =
             AvaloniaProperty.RegisterDirect<NoticeLayer, string?>(nameof(Current), o => o.Current);
 
@@ -56,6 +60,21 @@ namespace EmuSen.LunaP.Controls
         {
             get => GetValue(DurationProperty);
             set => SetValue(DurationProperty, value);
+        }
+
+        /// <summary>How long the fade in and the fade out each take, or null for 15% of Duration each (OpenEmu's curve); at most half of Duration.</summary>
+        public TimeSpan? FadeTime
+        {
+            get => GetValue(FadeTimeProperty);
+            set => SetValue(FadeTimeProperty, value);
+        }
+
+        // The keyframes this notice fades by: Curve, or the same shape with its edges at FadeTime (§170).
+        internal (double Cue, double Opacity)[] Keyframes()
+        {
+            if (FadeTime is not { } fade || Duration <= TimeSpan.Zero) return Curve;
+            double edge = Math.Clamp(fade.TotalMilliseconds / Duration.TotalMilliseconds, 0, 0.5);
+            return new[] { (0.0, 0.0), (edge, 1.0), (1 - edge, 1.0), (1.0, 0.0) };
         }
 
         /// <summary>The text showing now, or null when no notice is showing because none was shown or the last one has run its Duration.</summary>
@@ -118,7 +137,7 @@ namespace EmuSen.LunaP.Controls
                 FillMode = FillMode.Forward,
             };
 
-            foreach ((double cue, double opacity) in Curve)
+            foreach ((double cue, double opacity) in Keyframes())
             {
                 animation.Children.Add(new KeyFrame
                 {

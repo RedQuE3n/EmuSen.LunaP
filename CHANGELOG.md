@@ -14,6 +14,9 @@ answer.
 
 ## Unreleased
 
+- **A notice's fade can be set in time, new and additive (`§170`).** `NoticeLayer.FadeTime` fades in and out over a
+  fixed time rather than 15% of `Duration`. Null, the default, keeps the old curve exactly.
+
 - **Two pickers a pad can set, new and additive (`§160`).** `RatingPicker` is an editable star row in half stars on
   `StarRating`'s 0-to-1 scale; `DateStepper` sets a date one part at a time with Left, Right and Enter, and holds no date
   as null. `ISidewaysAdjustable` marks a control whose Left and Right keys are its own, so a host steering by directions

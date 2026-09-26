@@ -915,8 +915,10 @@ public class EmuSen.LunaP.Controls.NoticeLayer : Avalonia.Controls.Primitives.Te
     protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     public NoticeLayer()
     public System.TimeSpan Duration { get; set; }
+    public System.TimeSpan? FadeTime { get; set; }
     public static readonly Avalonia.DirectProperty<EmuSen.LunaP.Controls.NoticeLayer, string?> CurrentProperty
     public static readonly Avalonia.StyledProperty<System.TimeSpan> DurationProperty = 00:00:01.7500000
+    public static readonly Avalonia.StyledProperty<System.TimeSpan?> FadeTimeProperty = null
     public string? Current { get; }
     public void Show(string text)
 

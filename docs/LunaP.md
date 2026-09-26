@@ -12078,3 +12078,36 @@ failed on the second click, which was first read as a headless pointer that kept
 fresh control showed the real cause, since the one at a star's centre passed and the two in gaps failed. The row now
 fills its bounds with a transparent brush before drawing the stars. The date stepper, drawn on a filled field, never had
 the defect.
+
+## 170. A notice's fade time, for a consumer that measured its reference
+
+*2026-09-26.* The consumer (EmuSen's Mistress) shows a notice when a game controller is connected or disconnected,
+after the reference frontend it follows (ES-DE) does the same. §88.5's `NoticeLayer` fades by OpenEmu's curve, whose
+edges are fractions of `Duration`: 15% of it to fade in, 15% to fade out. The consumer's recording of ES-DE's popup
+(its `EmuSen_BigPicture.md` §24) found edges fixed in time rather than in proportion: about half a second in, about
+three seconds held, and about half a second out, four seconds in all. With OpenEmu's fractions a four-second notice
+fades over 0.6 s each way, which is near the measurement but is not it, and a notice of any other length would move
+further from it.
+
+**The property.** `FadeTime`, a nullable `TimeSpan`, null by default. Null keeps §88.5's curve exactly, so no consumer
+that sets nothing sees a change. A value puts the curve's two inner keyframes at `FadeTime / Duration` and at
+`1 - FadeTime / Duration`, clamped so that the two edges meet at most in the middle: a fade time longer than half the
+duration gives a notice that fades in to the midpoint and straight out again, rather than keyframes out of order.
+`Current`'s end is untouched; it is still the one `DispatcherTimer` of `Duration` (§88.5's two clocks).
+
+**Why a time and not a fraction.** A fraction is what the curve already had, and a consumer could have reached 0.125
+by choosing a duration. The reason for a time is that the quantity a reference exhibits, and that a measurement
+recovers, is a time: the fade does not lengthen when the notice is held longer. A fraction would have to be
+recomputed by every consumer from two measurements, and would be wrong the moment the duration changed.
+
+**Tests.** `NoticeLayerTests.A_fade_time_puts_the_curve_s_edges_at_that_time` (four cases: none, 0.5 s, 1 s, and 3 s
+clamped to the middle, each on a four-second notice) reads the keyframes the animation is built from.
+`A_short_fade_time_reaches_full_opacity_sooner` shows a four-second notice with a 100 ms fade and requires full opacity
+400 ms later, when OpenEmu's curve would still be fading in (it reaches full opacity at 600 ms); by §88.7's rule the
+assertion is of something that has happened by the end of a wait. `DocumentedDefaultTests` holds the null default, and
+the API baseline gains the property and its field.
+
+**Mutant.** Keyframes that ignore `FadeTime` fail both tests (run by the consumer beside its own mutants; its §24).
+
+**Not done.** The fade stays linear between keyframes, as §88.5's is. That the reference's fade is close to linear
+rests on one recording (the consumer's §24).
