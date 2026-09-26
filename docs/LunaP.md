@@ -11989,3 +11989,9 @@ click" for the others.
 checks, in every family, ink a quarter of the side out from the centre (the disc), none at 0.37 (the gap), ink at 0.44
 (the ring), and the difference from the guide; and the two names. `Every_button_of_every_family_draws_inside_its_square`
 covers it with the other buttons, since it enumerates the enum.
+
+**Mutants for §150 and §151**, run one at a time by the consumer's `mutate_collections_lunap.py`: the tick drawn as the
+star, as the folder, keeping no room, and with its lowest point raised; the thumbstick drawn as the guide, without its
+ring, with its disc filling the ring, and named as the guide. All eight were caught by the two tests above. The third was
+first written to match two lines (the marquee's measure repeats the room's expression) and was rewritten to the one in
+`Lay` before it ran.
