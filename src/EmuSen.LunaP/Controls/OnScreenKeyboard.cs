@@ -191,6 +191,8 @@ namespace EmuSen.LunaP.Controls
             }
 
             string text = Target.Text ?? string.Empty;
+            // A password box's preview is drawn in its mask, so the keyboard shows no more than the box does - see docs/LunaP.md §110.
+            if (Target.PasswordChar != default && !Target.RevealPassword) text = new string(Target.PasswordChar, text.Length);
             int caret = Math.Clamp(Target.CaretIndex, 0, text.Length);
             _preview.Text = text[..caret] + "|" + text[caret..];
         }

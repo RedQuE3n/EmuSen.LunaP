@@ -43,6 +43,31 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         }, default);
 
+        // A password box's typed text is masked in the keyboard's own preview as it is in the box - see docs/LunaP.md §110.
+        [Fact]
+        public Task A_password_box_s_preview_shows_its_mask_and_an_ordinary_box_s_shows_its_text() => Session.Dispatch(() =>
+        {
+            var (window, box) = Window();
+            box.PasswordChar = '*';
+            OnScreenKeyboard keyboard = OnScreenKeyboard.Show(box, new[] { KeyboardLayout.Code });
+            keyboard.Move(6, 0);
+            keyboard.Press();
+            keyboard.Move(0, 1);
+            keyboard.Press();
+            Assert.Equal("7E", box.Text);
+            string[] shown = keyboard.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text ?? "").ToArray();
+            Assert.Contains("**|", shown);
+            Assert.DoesNotContain(shown, t => t.Contains("7E"));
+            keyboard.Finish();
+
+            box.PasswordChar = default;
+            OnScreenKeyboard plain = OnScreenKeyboard.Show(box, new[] { KeyboardLayout.Code });
+            plain.Press();
+            Assert.Contains("7E1|", plain.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text ?? ""));
+            plain.Finish();
+            window.Close();
+        }, default);
+
         [Fact]
         public Task A_code_is_typed_by_moving_and_pressing_and_a_row_change_lands_under_the_key_left() => Session.Dispatch(() =>
         {

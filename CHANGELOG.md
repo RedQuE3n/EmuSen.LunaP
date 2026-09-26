@@ -14,6 +14,8 @@ answer.
 
 ## Unreleased
 
+- **The on-screen keyboard masks a password box's preview (`§110`).** When the target `TextBox` has a `PasswordChar` and
+  does not reveal it, the preview above the keys draws the mask, not the text. Only what is shown changes.
 - **A gamepad's buttons drawn by the toolkit, new and additive (`§103`).** `PadGlyph` draws one button of a family of
   pads (`PadFamily`: Generic, Xbox, PlayStation, Nintendo) in one colour as the toolkit's own geometry;
   `HintEntry.Button` names one for a hint, and `HintBar.PadFamily` picks the set. An entry's image file still wins, and

@@ -11794,3 +11794,23 @@ its square rather than nowhere, and the test only required an A and a B to diffe
 do. The test now requires each lettered glyph's ink to be centred on the glyph to a pixel and a half, and LP5 was
 re-run against it and caught.
 
+## 110. A password box's preview on the on-screen keyboard
+
+**What was missing.** §91's keyboard shows the text it is typing above its keys, with the caret, so a player can see what
+the box holds without looking away from the keys. For a `TextBox` whose `PasswordChar` is set, that preview showed the
+password in the clear while the box itself showed its mask. The first consumer to need it is a member account's
+password typed from a pad on a television (EmuSen's `EmuSen_BigPicture.md` §17), where the preview is the largest text
+on the screen.
+
+**The rule.** When the target's `PasswordChar` is set and its `RevealPassword` is false, the preview draws one mask
+character for each character of the text, with the caret where it is; otherwise it draws the text as before. Nothing
+else changes: the keys type the same characters into the box, and Done, Cancel and Escape keep or restore the same text.
+
+**Why the box's own mask and not a fixed one.** The preview should say what the box says. A consumer that chose a bullet
+gets bullets, one that chose an asterisk gets asterisks, and a consumer that reveals the password (`RevealPassword`) sees
+it revealed in both places.
+
+**Test and mutant.** `OnScreenKeyboardTests.A_password_box_s_preview_shows_its_mask_and_an_ordinary_box_s_shows_its_text`
+types two keys into a masked box and requires the preview to read `**|` and no text in the keyboard to hold the typed
+characters; then, with the mask cleared, the same box's preview holds its text.
+
