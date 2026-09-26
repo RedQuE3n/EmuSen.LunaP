@@ -11952,3 +11952,40 @@ baseline picture changed, because none of them shows a focused switch.
 
 **Not done.** Other controls whose content reaches their right edge could meet the same outline. None was found in
 the gallery captures, but nothing checks them systematically.
+
+
+## 150. A tick before a list row, for a set being edited
+
+*2026-09-26.* The consumer (EmuSen's Mistress) edits a named set of rows from inside a `TextRowList`: while the set is
+being edited, each row that belongs to it is marked, and the mark must be told apart from the favourite's star and the
+folder already drawn there (§101.8). `TextRowMarker` therefore gains a fourth value, **`Tick`**, appended after
+`Folder` so that the three existing values keep their numbers (the API baseline records `Tick = 3`).
+
+**The drawing.** A check mark stroked, not filled, in the row's own colour: a short arm from the left of the mark's box
+down to its lowest point at 0.38 of the box's width and 0.85 of its height, then a long arm up to the top right. The pen
+is a sixth of the box wide with round caps and joins. The box is the one the star and the folder use (0.87 of the font
+size, centred in the band), and the room kept before the text is the same `MarkerWidth`, so a list whose rows change
+between the three marks does not move its text. The shape is plain geometry and copies no icon set; it leaves the
+middle of its box empty, which is what tells it from the star, whose middle is filled.
+
+**Test.** `ThemedListTests.A_tick_marks_a_row_in_the_star_s_room_with_its_own_shape` draws a tick row, a star row and a
+plain row: the tick's lowest point and long arm are ink, the middle and the top-left corner of its box are not, the
+star's middle is ink, and the first column of text is the same after either mark.
+
+## 151. A thumbstick click in the hint bar
+
+*2026-09-26.* The same consumer maps a random choice to either thumbstick pressed in, as its reference frontend's
+help system names one entry for both sticks. `PadGlyphButton` gains **`ThumbstickClick`**, appended after `Guide`
+(`ThumbstickClick = 14` in the API baseline), so no existing value moves.
+
+**The drawing** is the same in every family, since no family prints anything on its sticks: a filled disc of 0.3 of
+the glyph's side in a thin ring of 0.44, a stick's cap seen from above in its well. The guide button keeps its thick
+ring round a small disc (0.16); the two are the same two shapes in reversed proportions, and the test requires them to
+differ by more than twenty pixels in every family. `PadGlyph.Describe` names it "L3 or R3" for the PlayStation family,
+in the numbering the toolkit already gives that family's shoulders and triggers (L1, L2; §103.1), and "Thumbstick
+click" for the others.
+
+**Test.** `PadGlyphTests.The_thumbstick_click_is_a_disc_in_a_ring_unlike_the_guide_and_is_named_for_both_sticks`
+checks, in every family, ink a quarter of the side out from the centre (the disc), none at 0.37 (the gap), ink at 0.44
+(the ring), and the difference from the guide; and the two names. `Every_button_of_every_family_draws_inside_its_square`
+covers it with the other buttons, since it enumerates the enum.

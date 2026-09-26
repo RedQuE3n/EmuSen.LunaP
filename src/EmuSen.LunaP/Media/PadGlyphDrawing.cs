@@ -44,6 +44,11 @@ namespace EmuSen.LunaP.Media
                 case PadGlyphButton.Start or PadGlyphButton.Select:
                     Middle(dc, c, s, family, button == PadGlyphButton.Start, brush, pen, thin);
                     break;
+                case PadGlyphButton.ThumbstickClick:
+                    // A stick's cap from above in its well, pressed: a large disc in a thin ring, the Guide's proportions reversed (§151).
+                    dc.DrawEllipse(null, thin, c, s * 0.44, s * 0.44);
+                    dc.DrawEllipse(brush, null, c, s * 0.3, s * 0.3);
+                    break;
                 default:
                     dc.DrawEllipse(null, pen, c, s * 0.42, s * 0.42);
                     dc.DrawEllipse(brush, null, c, s * 0.16, s * 0.16);

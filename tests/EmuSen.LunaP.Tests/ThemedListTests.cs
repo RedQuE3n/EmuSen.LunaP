@@ -91,6 +91,29 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        [Fact]
+        public Task A_tick_marks_a_row_in_the_star_s_room_with_its_own_shape() => UiTest.Run(() =>
+        {
+            var list = new TextRowList
+            {
+                Items = new[] { new TextRow("Ab", Marker: TextRowMarker.Tick), new TextRow("Ab", Marker: TextRowMarker.Star), new TextRow("Ab") },
+                SelectedIndex = 2, FontSize = 40, LineSpacing = 1.5, SelectorColor = Colors.Transparent, PrimaryColor = Colors.Red, SelectedColor = Colors.Red,
+            };
+            ToolWindow window = Fill(list, 300, 200);
+            RenderedFrame f = Frame(window);
+            double size = 40 * 0.87, top = (60 - size) / 2;
+            static bool Red(RenderedFrame f, double x, double y) => At(f, x, y).R > 128;
+            Assert.True(Red(f, size * 0.38, top + size * 0.8), "the tick's lowest point is ink");
+            Assert.True(Red(f, size * 0.85, top + size * 0.28), "the tick's long arm is ink");
+            Assert.False(Red(f, size * 0.5, 30), "the tick leaves the middle of its box empty");
+            Assert.False(Red(f, size * 0.12, top + size * 0.12), "and its top left corner");
+            Assert.True(Red(f, size * 0.5, 90), "the star fills the middle of its box");
+            // Both marks keep the same room, so the text starts at one column.
+            int FirstInk(int y0) => Enumerable.Range((int)(40 * 1.5), 200).First(x => Enumerable.Range(y0, 60).Any(y => Red(f, x, y)));
+            Assert.Equal(FirstInk(0), FirstInk(60));
+            window.Close();
+        });
+
         // The rows of red ink between two heights, within the first columns.
         private static (double Top, double Bottom) RedRows(RenderedFrame f, int y0, int y1, int width)
         {

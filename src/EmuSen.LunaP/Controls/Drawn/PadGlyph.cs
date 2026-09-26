@@ -52,6 +52,8 @@ namespace EmuSen.LunaP.Controls
         Select,
         /// <summary>The button in the middle of the pad that belongs to the system.</summary>
         Guide,
+        /// <summary>Either thumbstick pressed in (L3 or R3), as one help entry names both - see docs/LunaP.md §151.</summary>
+        ThumbstickClick,
     }
 
     // One gamepad button drawn in one colour as the toolkit's own geometry, in the set for a family of pads - see docs/LunaP.md §103.
@@ -109,6 +111,7 @@ namespace EmuSen.LunaP.Controls
             PadGlyphButton.DPadLeftRight => "D-pad left and right",
             PadGlyphButton.Start => family switch { PadFamily.Xbox => "Menu", PadFamily.PlayStation => "Options", PadFamily.Nintendo => "Plus", _ => "Start" },
             PadGlyphButton.Select => family switch { PadFamily.Xbox => "View", PadFamily.PlayStation => "Create", PadFamily.Nintendo => "Minus", _ => "Select" },
+            PadGlyphButton.ThumbstickClick => family == PadFamily.PlayStation ? "L3 or R3" : "Thumbstick click",
             _ => "Guide",
         };
     }

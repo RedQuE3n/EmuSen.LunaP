@@ -963,6 +963,7 @@ public enum EmuSen.LunaP.Controls.PadGlyphButton
     public const EmuSen.LunaP.Controls.PadGlyphButton Select = 12
     public const EmuSen.LunaP.Controls.PadGlyphButton South = 0
     public const EmuSen.LunaP.Controls.PadGlyphButton Start = 11
+    public const EmuSen.LunaP.Controls.PadGlyphButton ThumbstickClick = 14
     public const EmuSen.LunaP.Controls.PadGlyphButton West = 2
     public int value__
 
@@ -1266,6 +1267,7 @@ public enum EmuSen.LunaP.Controls.TextRowMarker
     public const EmuSen.LunaP.Controls.TextRowMarker Folder = 2
     public const EmuSen.LunaP.Controls.TextRowMarker None = 0
     public const EmuSen.LunaP.Controls.TextRowMarker Star = 1
+    public const EmuSen.LunaP.Controls.TextRowMarker Tick = 3
     public int value__
 
 public abstract class EmuSen.LunaP.Controls.TileGrid : Avalonia.Controls.Primitives.TemplatedControl

@@ -108,6 +108,22 @@ namespace EmuSen.LunaP.Tests
         });
 
         [Fact]
+        public Task The_thumbstick_click_is_a_disc_in_a_ring_unlike_the_guide_and_is_named_for_both_sticks() => UiTest.Run(() =>
+        {
+            double c = Side / 2.0;
+            foreach (PadFamily family in Enum.GetValues<PadFamily>())
+            {
+                byte[] stick = Glyph(family, PadGlyphButton.ThumbstickClick), guide = Glyph(family, PadGlyphButton.Guide);
+                Assert.True(Differing(stick, guide) > 20, $"{family}: the thumbstick looks like the guide\n{Ascii(stick)}");
+                Assert.True(Inked(stick, c + Side * 0.25, c), $"{family}: the cap's disc reaches a quarter out\n{Ascii(stick)}");
+                Assert.False(Inked(stick, c + Side * 0.37, c), $"{family}: a gap between the cap and its ring\n{Ascii(stick)}");
+                Assert.True(Inked(stick, c + Side * 0.44, c), $"{family}: the ring\n{Ascii(stick)}");
+            }
+            Assert.Equal("Thumbstick click", PadGlyph.Describe(PadFamily.Xbox, PadGlyphButton.ThumbstickClick));
+            Assert.Equal("L3 or R3", PadGlyph.Describe(PadFamily.PlayStation, PadGlyphButton.ThumbstickClick));
+        });
+
+        [Fact]
         public Task A_hint_bar_draws_a_named_button_in_its_family_and_a_change_moves_nothing() => UiTest.Run(() =>
         {
             var bar = new HintBar

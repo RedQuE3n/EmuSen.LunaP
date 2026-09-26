@@ -27,6 +27,8 @@ namespace EmuSen.LunaP.Controls
         Star,
         /// <summary>A folder, as for a row that opens more rows.</summary>
         Folder,
+        /// <summary>A tick, as for a row that belongs to a set being edited - see docs/LunaP.md §150.</summary>
+        Tick,
     }
 
     // Rows of one-line text at a fixed pitch, one selected with a selector bar and a rounded background, the window kept about it - see docs/LunaP.md §100.1.
@@ -255,7 +257,7 @@ namespace EmuSen.LunaP.Controls
             return (new Rect(x, row.Y, w, Band), new Rect(x + marker, row.Y, layout.Width, Band), layout);
         }
 
-        // A mark drawn before a row's text: a five-pointed star or a folder, 0.87 of the font size, centred in the band.
+        // A mark drawn before a row's text: a five-pointed star, a folder or a tick, 0.87 of the font size, centred in the band.
         private void DrawMarker(DrawingContext context, TextRowMarker marker, Rect slot, IBrush brush)
         {
             double size = FontSize * 0.87;
@@ -263,6 +265,22 @@ namespace EmuSen.LunaP.Controls
             if (marker == TextRowMarker.Star)
             {
                 context.DrawGeometry(brush, null, StarRating.StarGeometry(box));
+                return;
+            }
+
+            if (marker == TextRowMarker.Tick)
+            {
+                // A check mark stroked at a sixth of the box, short arm down to the lowest point and the long arm up to the top right (§150).
+                var tick = new StreamGeometry();
+                using (StreamGeometryContext c = tick.Open())
+                {
+                    c.BeginFigure(new Point(box.X + size * 0.08, box.Y + size * 0.55), false);
+                    c.LineTo(new Point(box.X + size * 0.38, box.Y + size * 0.85));
+                    c.LineTo(new Point(box.Right - size * 0.06, box.Y + size * 0.15));
+                    c.EndFigure(false);
+                }
+
+                context.DrawGeometry(null, new Pen(brush, size / 6, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round), tick);
                 return;
             }
 
