@@ -254,6 +254,8 @@ namespace EmuSen.LunaP.Controls
 
         public override void Render(DrawingContext context)
         {
+            // Drawn as a field, on the input surface inside a border, so it reads as something to set and not as a label.
+            context.DrawRectangle(LunaPalette.InputSurface, new Pen(LunaPalette.Border, 1), new Rect(Bounds.Size).Deflate(0.5), 4, 4);
             FormattedText text = Layout(Text, Value is null ? LunaPalette.Muted : LunaPalette.Text);
             var origin = new Point(8, (Bounds.Height - text.Height) / 2);
             if (Value is not null && IsFocused)

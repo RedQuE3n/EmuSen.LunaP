@@ -12001,7 +12001,8 @@ four stars in both.
 
 A date shown as `yyyy-MM-dd` and set one part at a time. `Segment` (year, month or day) is the part Left and Right
 change; Enter moves to the next part, from the day back round to the year. While the control has the focus the part
-being changed is drawn on the palette's accent.
+being changed is drawn on the palette's accent. It is drawn as a field, on the palette's input surface inside its border colour, since the
+consumer's first picture of it (a bare "No date" under a label) read as a caption rather than something to set.
 
 - **The day stays in its month.** Changing the month or the year keeps the day where it exists and otherwise takes the
   month's last day: 31 January stepped a month is 29 February 2000, and that stepped a year is 28 February 2001.
