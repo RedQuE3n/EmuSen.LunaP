@@ -12430,3 +12430,13 @@ offset, clipping and growth edge; a reflection's place and fade by pixels, and i
 `DocumentedDefaultTests` gained the twelve new defaults, `TemplateOrderTests` excuses `WheelTransform` as it excuses
 `ItemRect`, and the API baseline was approved with the new members. The consumer's own tests hold every rule against
 numbers read from the reference's captures.
+
+### 190.5 Mutants for §190
+
+Thirteen mutants of `ImageCarousel`, run by the consumer's runner (its `EmuSen_BigPicture.md` §36.7) against
+`CarouselWheelTests`, `ThemedListTests` and `MotionTests`, then against the consumer's tests that compare with its
+reference: **all 13 caught.** A horizontal wheel's origin read as a vertical one's; turned anticlockwise; upright items'
+arm through the origin; no side shift; no room for reflections; a reflection that never fades; a reflection that
+ignores its item's opacity; no clipping; a row grown from its centre; the vertical offset by the width; a wheel drawing
+the row's reach; a reflection not flipped; the hub not aligned. **One was caught only by the consumer:** a reflection
+that ignores its item's opacity, since this repository's reflection test draws its items at full opacity.
