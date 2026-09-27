@@ -1,15 +1,30 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
+using Avalonia.VisualTree;
 using EmuSen.LunaP.Automation;
 using EmuSen.LunaP.Media;
 
 namespace EmuSen.LunaP.Controls
 {
+    /// <summary>Which ways a menu's rows run past its panel, as its scroll indicator shows.</summary>
+    public enum MenuScrollIndicator
+    {
+        /// <summary>Every row shows, or there is no indicator.</summary>
+        None,
+        /// <summary>More rows below: the lower chevrons alone.</summary>
+        Down,
+        /// <summary>More rows above: the upper chevrons alone.</summary>
+        Up,
+        /// <summary>More rows above and below: both pairs.</summary>
+        Both,
+    }
+
     // A big-screen menu's panel: wide, centred, rounded, a large upper-case title, the rows, a footer line, and the help bar at the foot of the screen - see docs/LunaP.md §181.2.
     /// <summary>A big-screen menu: a wide rounded panel centred in its area, with a large title, the rows as its child, a footer line, and a help bar at the bottom of the area.</summary>
     public class MenuPanel : Decorator
@@ -44,6 +59,9 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<int> FooterMaxLinesProperty = AvaloniaProperty.Register<MenuPanel, int>(nameof(FooterMaxLines), 1);
         public static readonly StyledProperty<Control?> ButtonsProperty = AvaloniaProperty.Register<MenuPanel, Control?>(nameof(Buttons));
         public static readonly StyledProperty<Color> HintBackgroundProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(HintBackground), Color.FromArgb(0xF0, 0x16, 0x16, 0x18));
+        public static readonly StyledProperty<PadGlyphStyle> HintGlyphStyleProperty = AvaloniaProperty.Register<MenuPanel, PadGlyphStyle>(nameof(HintGlyphStyle), PadGlyphStyle.Filled);
+        public static readonly StyledProperty<bool> ShowsScrollIndicatorProperty = AvaloniaProperty.Register<MenuPanel, bool>(nameof(ShowsScrollIndicator), true);
+        public static readonly StyledProperty<Color> ScrollIndicatorColorProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(ScrollIndicatorColor), Color.FromRgb(0x74, 0x74, 0x78));
 
         // Design sizes before Scale: the title's band, the footer's band (or the padding under the rows without one), the margins, and the help bar's text.
         private const double TitleBand = 100, FooterBand = 78, BareFooter = 20, Edge = 24, HintText = 26, HintGap = 10;
@@ -51,14 +69,18 @@ namespace EmuSen.LunaP.Controls
         // With a subtitle: the title's centre, the first subtitle line's centre, the lines' pitch, and the space under the last; the buttons' band's padding.
         private const double SubtitledTitleCentre = 49, FirstSubtitleCentre = 107, SubtitlePitch = 32, UnderSubtitle = 32, ButtonsPad = 12, FooterPad = 14;
 
+        // The scroll indicator's design sizes: each chevron pair's square, the gap between the two pairs, and the inset from the panel's right edge (§195.2).
+        private const double IndicatorSide = 25, IndicatorGap = 7, IndicatorInset = 11;
+
         private readonly HintBar _hints = new() { LetterCase = LetterCase.Upper };
+        private ScrollViewer? _watched;
 
         static MenuPanel()
         {
             AffectsMeasure<MenuPanel>(ScaleProperty, TitleProperty, FooterProperty, WidthFractionProperty, MaxWidthToHeightProperty, HintsProperty, RowPitchProperty,
                 SubtitleProperty, ButtonsProperty, FooterMaxLinesProperty, FooterSizeProperty, ShowsTitleBandProperty);
             AffectsRender<MenuPanel>(FontPathProperty, TitleSizeProperty, FooterSizeProperty, PanelCornerRadiusProperty, PanelColorProperty, TitleColorProperty,
-                FooterColorProperty, RuleColorProperty, LetterCaseProperty, SubtitleSizeProperty, SubtitleLetterCaseProperty);
+                FooterColorProperty, RuleColorProperty, LetterCaseProperty, SubtitleSizeProperty, SubtitleLetterCaseProperty, ShowsScrollIndicatorProperty, ScrollIndicatorColorProperty);
         }
 
         /// <summary>An empty panel, its help bar hidden until Hints are given.</summary>
@@ -137,6 +159,40 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The help bar's fill. #F0161618, a near black grey almost opaque, by default.</summary>
         public Color HintBackground { get => GetValue(HintBackgroundProperty); set => SetValue(HintBackgroundProperty, value); }
 
+        /// <summary>How the help bar draws its buttons. Filled, the reference's lettered discs, by default.</summary>
+        public PadGlyphStyle HintGlyphStyle { get => GetValue(HintGlyphStyleProperty); set => SetValue(HintGlyphStyleProperty, value); }
+
+        /// <summary>Whether a pair of chevrons at the title's right shows that the rows run past the panel, above, below or both, while a ScrollViewer child has more rows than it shows. True by default.</summary>
+        public bool ShowsScrollIndicator { get => GetValue(ShowsScrollIndicatorProperty); set => SetValue(ShowsScrollIndicatorProperty, value); }
+
+        /// <summary>The scroll indicator's colour. #FF747478, a mid grey, by default.</summary>
+        public Color ScrollIndicatorColor { get => GetValue(ScrollIndicatorColorProperty); set => SetValue(ScrollIndicatorColorProperty, value); }
+
+        /// <summary>Which ways the rows run past the panel now, as the indicator draws it; None when they all show, when the child is not a ScrollViewer, or when the indicator is off.</summary>
+        public MenuScrollIndicator ScrollIndicator
+        {
+            get
+            {
+                if (!ShowsScrollIndicator || _watched is not { } sv) return MenuScrollIndicator.None;
+                double extent = sv.Extent.Height, viewport = sv.Viewport.Height, offset = sv.Offset.Y;
+                if (extent <= viewport + 0.5) return MenuScrollIndicator.None;
+                bool up = offset > 0.5, down = offset + viewport < extent - 0.5;
+                return up && down ? MenuScrollIndicator.Both : up ? MenuScrollIndicator.Up : down ? MenuScrollIndicator.Down : MenuScrollIndicator.None;
+            }
+        }
+
+        /// <summary>The squares the indicator's upper and lower chevron pairs are drawn in, in this control's coordinates, from the last arrange; each is there whether or not it is drawn now.</summary>
+        public (Rect Up, Rect Down) ScrollIndicatorBounds
+        {
+            get
+            {
+                if (TitleBounds.Height <= 0) return default;
+                double u = Unit, side = IndicatorSide * u, gap = IndicatorGap * u / 2, right = PanelBounds.Right - IndicatorInset * u;
+                double centre = TitleCentre();
+                return (new Rect(right - side, centre - gap - side, side, side), new Rect(right - side, centre + gap, side, side));
+            }
+        }
+
         /// <summary>The height of one row in design pixels before Scale; rows that do not all fit are shown in whole rows of it. 54 by default, MenuRow's own.</summary>
         public double RowPitch { get => GetValue(RowPitchProperty); set => SetValue(RowPitchProperty, value); }
 
@@ -186,6 +242,7 @@ namespace EmuSen.LunaP.Controls
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);
+            if (change.Property == ChildProperty) Watch(Scroller(change.NewValue as Control));
             if (change.Property == ButtonsProperty)
             {
                 if (change.OldValue is Control old)
@@ -204,7 +261,7 @@ namespace EmuSen.LunaP.Controls
                 ScaleChildren();
                 InvalidateVisual();
             }
-            if (change.Property == HintsProperty || change.Property == HintFamilyProperty || change.Property == HintColorProperty || change.Property == HintBackgroundProperty
+            if (change.Property == HintsProperty || change.Property == HintFamilyProperty || change.Property == HintGlyphStyleProperty || change.Property == HintColorProperty || change.Property == HintBackgroundProperty
                 || change.Property == ScaleProperty || change.Property == FontPathProperty || change.Property == Windowing.SheetLayer.IsCoveredProperty)
                 ConfigureHints();
         }
@@ -217,6 +274,7 @@ namespace EmuSen.LunaP.Controls
             // Under a message box the box's help bar is the one shown; this one keeps its place so the panel does not move.
             _hints.Opacity = GetValue(Windowing.SheetLayer.IsCoveredProperty) ? 0 : 1;
             _hints.PadFamily = HintFamily;
+            _hints.GlyphStyle = HintGlyphStyle;
             _hints.FontPath = GetValue(FontPathProperty);
             _hints.FontSize = HintText * u;
             _hints.IconColor = HintColor;
@@ -226,6 +284,46 @@ namespace EmuSen.LunaP.Controls
             _hints.Padding = new Thickness(14 * u, 8 * u);
             _hints.EntrySpacing = 18 * u;
             _hints.IconTextSpacing = 6 * u;
+        }
+
+        // The rows' scroller, redrawn as it scrolls or its rows change, so the indicator follows it.
+        private void Watch(ScrollViewer? scroller)
+        {
+            if (_watched is not null) _watched.PropertyChanged -= OnScrollerChanged;
+            _watched = scroller;
+            if (scroller is not null) scroller.PropertyChanged += OnScrollerChanged;
+            InvalidateVisual();
+        }
+
+        private void OnScrollerChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+        {
+            if (e.Property == ScrollViewer.OffsetProperty || e.Property == ScrollViewer.ExtentProperty || e.Property == ScrollViewer.ViewportProperty) InvalidateVisual();
+        }
+
+        // The child itself when it scrolls, else the first scroller its template holds, as a list's does.
+        private static ScrollViewer? Scroller(Control? child) =>
+            child as ScrollViewer ?? child?.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+
+        // The title's capitals' centre: the band's middle, or with a subtitle the title's own line.
+        private double TitleCentre() => SubtitleLines.Length > 0 ? TitleBounds.Top + SubtitledTitleCentre * Unit : TitleBounds.Center.Y;
+
+        // Two chevrons one above the other in a square, pointing up or down, as the reference's indicator is drawn (§195.2).
+        private static void DrawChevrons(DrawingContext context, Rect box, bool down, IPen pen)
+        {
+            double w = box.Width;
+            for (int i = 0; i < 2; i++)
+            {
+                double arms = (down ? 0.072 : 0.928) + (down ? 1 : -1) * i * 0.396, apex = arms + (down ? 1 : -1) * 0.38;
+                var chevron = new StreamGeometry();
+                using (StreamGeometryContext g = chevron.Open())
+                {
+                    g.BeginFigure(new Point(box.X + 0.072 * w, box.Y + arms * w), false);
+                    g.LineTo(new Point(box.X + 0.5 * w, box.Y + apex * w));
+                    g.LineTo(new Point(box.X + 0.928 * w, box.Y + arms * w));
+                    g.EndFigure(false);
+                }
+                context.DrawGeometry(null, pen, chevron);
+            }
         }
 
         // The panel's width and the most its rows may take, for an area of this size.
@@ -265,6 +363,7 @@ namespace EmuSen.LunaP.Controls
             PanelBounds = new Rect(left, top, width, height);
             TitleBounds = new Rect(left, top, width, TopBand);
             Child?.Arrange(new Rect(left, top + TopBand, width, rows));
+            if (Scroller(Child) is var scroller && !ReferenceEquals(scroller, _watched)) Watch(scroller);
             ButtonsBounds = Buttons is { IsVisible: true } ? new Rect(left, top + TopBand + rows, width, buttons) : default;
             if (Buttons is { } b)
             {
@@ -322,11 +421,18 @@ namespace EmuSen.LunaP.Controls
 
             GlyphTypeface typeface = GetValue(FontPathProperty) is { Length: > 0 } p && FontFiles.Load(p) is { } t ? t : FontFiles.Default;
             string[] lines = SubtitleLines;
+            if (ScrollIndicator is var scroll and not MenuScrollIndicator.None)
+            {
+                var pen = new ImmutablePen(new ImmutableSolidColorBrush(ScrollIndicatorColor), IndicatorSide * u * 0.136, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
+                (Rect upBox, Rect downBox) = ScrollIndicatorBounds;
+                if (scroll is MenuScrollIndicator.Up or MenuScrollIndicator.Both) DrawChevrons(context, upBox, down: false, pen);
+                if (scroll is MenuScrollIndicator.Down or MenuScrollIndicator.Both) DrawChevrons(context, downBox, down: true, pen);
+            }
             if (Title is { Length: > 0 } title)
             {
                 double size = TitleSize * u;
                 Rect band = TitleBounds.Deflate(new Thickness(24 * u, 0));
-                double centre = lines.Length > 0 ? TitleBounds.Top + SubtitledTitleCentre * u : band.Center.Y;
+                double centre = TitleCentre();
                 MenuRow.DrawLine(context, typeface, size, FontLayout.Cased(title, LetterCase), band, centre + MenuRow.CapHeight(typeface, size) / 2, TextAlignment.Center, new ImmutableSolidColorBrush(TitleColor));
             }
             for (int i = 0; i < lines.Length; i++)

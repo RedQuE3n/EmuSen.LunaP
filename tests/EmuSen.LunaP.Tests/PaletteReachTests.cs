@@ -127,6 +127,7 @@ namespace EmuSen.LunaP.Tests
             "TileStrip<T>" => BuildStrip(),
             nameof(SliderList) => BuildSliders(),
             nameof(OnScreenKeyboard) => new OnScreenKeyboard(new TextBox(), new[] { KeyboardLayout.Code }),
+            nameof(MenuTextPopup) => new MenuTextPopup(new TextBox { Text = "Aurora" }, "Enter Name"),
             _ => (Control)Activator.CreateInstance(
                      StockControls().Concat(KitControls()).First(t => PaletteSweep.Readable(t) == name))!,
         };

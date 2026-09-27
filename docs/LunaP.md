@@ -12814,6 +12814,101 @@ compared amounts of ink. The test now writes its own GIFs for each of the four, 
 for the fifth. The kept-canvas mutant survived that too, since the first test reached frame 16 from the canvas after
 frame 1 rather than from the kept one; the test now jumps so that it must use the kept one. All eleven are caught.
 
+## 195. Filled button glyphs, a menu's scroll indicator, and a text popup with a real field
+
+*2026-09-27.* Three pieces for the consumer's follow-ups to its big-screen menus (its `EmuSen_BigPicture.md` §40): the
+help bar's buttons drawn as its reference draws them, a letter in a solid disc; the chevrons that show a menu's rows run
+past its panel; and a text popup whose bar is a real text box, for a physical keyboard or the device's own on-screen
+keyboard to type into. All three are additive, with one behaviour change: `MenuPanel`'s help bar now draws its buttons
+filled (§195.1).
+
+### 195.1 `PadGlyphStyle`: outlined or filled
+
+`PadGlyph.Style`, `HintBar.GlyphStyle` and `MenuPanel.HintGlyphStyle` take a `PadGlyphStyle`. `Outline` is §103's set,
+and the default for a glyph and a hint bar. `Filled` draws each button as a solid shape with its letter, symbol or mark
+cut out of it:
+
+| Family | Face buttons | Shoulders, triggers | Start, Select | D-pad |
+|---|---|---|---|---|
+| Xbox | A / B / X / Y cut out of a disc | LB RB, LT RT cut out of the solid shape | three bars, two squares, cut out of a disc | a solid plus, an arrow cut into each arm the hint moves along |
+| PlayStation | a cross / circle / square / triangle stroke cut out of a disc | L1 R1, L2 R2 | three bars across, three bars down, cut out of a pill | the same |
+| Nintendo | B / A / Y / X cut out of a disc | L R, ZL ZR | a plus, a minus, cut out of a disc | the same |
+| Generic | as Xbox | as Xbox | as Xbox | the same |
+
+The guide button and a thumbstick click are drawn as the outlined set draws them in either style.
+
+**Why an unknown pad is lettered as an Xbox pad here.** The filled style is the consumer's reference's help bar, and
+its reference has no positional drawing: a controller type is always chosen, Xbox by default. The consumer's Generic,
+until now four dots with the pressed one filled, was the one set its reference never shows; its request was to replace
+it everywhere its big-screen help bars used it. `Describe` follows: `Describe(Generic, South, Filled)` is "A". The
+outlined set keeps the four dots, since a desktop host may still want a pad drawn by position.
+
+**Measured from the reference, not taken from it.** At 1280 by 800 the reference's help glyphs are 22 pixels across
+beside capitals 18 pixels high, its A to its label 7 pixels, a label to the next glyph 12 (the consumer's §40.1). The
+disc is 0.425 of the glyph's square, so beside a hint bar's text at a menu's 26 pixels it is 22 across. The letters are
+the default typeface's, thickened by a stroke of 0.035 of the square so that a cut-out reads at 22 pixels; the shapes,
+bars and arrows are plain geometry. No image of the reference was copied or traced, and its colours are not used: the
+glyph is one colour, the host's.
+
+**The d-pad's arrows are small.** At 22 pixels an up-and-down pad and a left-and-right one differ by a few pixels at the
+arms' tips, as the reference's do. Which one a hint names is legible from the arrows when looked for, not at a glance.
+
+### 195.2 `MenuPanel`'s scroll indicator
+
+While the panel's child scrolls and its rows run past the panel, a pair of chevrons is drawn at the title's right:
+pointing down while there are rows below, up while there are rows above, both while there are both.
+`MenuPanel.ScrollIndicator` says which (`MenuScrollIndicator.None`, `Down`, `Up`, `Both`); `ScrollIndicatorBounds`
+gives the two squares; `ShowsScrollIndicator` (true by default) turns it off; `ScrollIndicatorColor` is #FF747478.
+
+The child is watched when it is a `ScrollViewer`, else through the first `ScrollViewer` its template holds, as a
+`ListBox`'s, found again when the child changes. The panel redraws when the scroller's offset, extent or viewport
+changes; nothing is laid out again.
+
+**Where, measured from the reference** (the consumer's §40.4): each pair is 25 design pixels square, two chevrons 42
+degrees from level with a round-capped stroke of 0.136 of the square; the pair's right edge is 11 pixels in from the
+panel's; the upper and lower squares are 7 pixels apart and centred together on the title's capitals, whether or not
+there is a subtitle. The chevrons are drawn as two lines each, not traced.
+
+### 195.3 `MenuTextPopup`
+
+A big-screen menu's text popup, drawn as §182.10's is (a titled, rounded panel over the window shaded), whose bar is a
+real `TextBox` holding the keyboard focus. Nothing is typed by the toolkit: whatever the platform delivers as text to
+the focused window arrives, from a physical keyboard or from a system on-screen keyboard. `Show(target, title, hint)`
+copies the target's text into the field with the caret at its end; **Enter** (or `Finish`) writes it back and closes;
+**Escape** (or `Cancel`) closes and leaves the target as it was. `Closed` completes true or false, and `OpenOver` finds
+an open popup as `OnScreenKeyboard.OpenOver` finds a keyboard. The field copies the target's `MaxLength` and
+`PasswordChar`.
+
+Two things it does not do. It asks for no keyboard itself: which system keyboard to ask for, and how, is the host's (the
+rule of §101.5). The field is drawn in the application's typeface, since a `TextBox` takes a font family and the menus'
+typeface is a file; the title and the hint are in the menu's typeface.
+
+**A layer not yet laid out.** The first version sized its host from the overlay layer's bounds, as the keyboard does,
+and in a window that had not been through a layout pass since it was shown the layer had none, so the popup was placed
+at the origin with no size. It now falls back to the window's client size.
+
+### 195.4 Tests and mutants
+
+`MenuFollowupTests`, thirteen cases: every button of every family draws filled inside its square; a filled face button
+is a disc with something cut out of it, a cross cut through its middle and a circle leaving the middle solid; an
+unknown pad filled is pixel for pixel the Xbox set and is described so; the three printed families differ on every
+face, middle, shoulder and trigger button, and Start differs from Select in each; the d-pad's arrows are cut into the
+named arms alone; a hint bar draws its style and a menu panel's is filled by default; the indicator follows the
+scroller down, both and up, and draws nowhere but its squares; it sits where the reference's does at scale 1 and 1.5,
+with and without a subtitle; a list child is watched through its own scroller; the text popup's field is focused and
+Enter keeps what was typed; Escape drops it, and the popup is centred and shades the window; each chevron pair points
+the way its rows run; and scrolling redraws the indicator in a capture that repaints only what was invalidated.
+
+**Mutants.** Fifteen, run by the consumer's runner (its `EmuSen_BigPicture.md` §40.8): a filled Generic pad drawn by
+position; a menu's help bar outlined by default; the style not handed to the help bar; the disc too large;
+PlayStation's shapes cut out solid; arrows on every arm; no upper chevrons; the indicator 24 pixels in; the indicator
+on the band's middle under a subtitle; a list's scroller not found; no redraw on scrolling; the lower pair pointing
+up; Enter not writing back; Escape not cancelling; the field not focused. **Thirteen were caught at once and two
+survived**, as predicted before the round: with no redraw on scrolling the tests still passed, because `Frame` repaints
+every visual; and with the lower pair pointing up, because the pixel counts did not look at direction. The last two
+cases were added for them, one capturing with `UiTest.Capture`, which repaints only what was invalidated, and one
+reading the pixel at each pair's point; rerun alone, both mutants were caught.
+
 ## 196. A menu's look for stock controls, and a sheet framed as a menu
 
 *2026-09-27.* §181 and §182 drew the consumer's big-screen menus as its reference frontend's are, by changing how stock
@@ -12930,7 +13025,7 @@ setting does this yet; the consumer asked for the look to be one setting away an
 - **The content** is laid out at the menu's scale.
 - **A list at the foot of a sheet at scale 1.5** builds its three rows (§196.4).
 
-`DocumentedDefaultTests` gains three defaults and the API baseline the new members. The README's count is 1434.
+`DocumentedDefaultTests` gains three defaults and the API baseline the new members. The README's count is 1448, with §195's.
 
 Twelve mutants, one at a time, by the consumer's runner:
 

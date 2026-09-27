@@ -39,11 +39,12 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<double> IconTextSpacingProperty = AvaloniaProperty.Register<HintBar, double>(nameof(IconTextSpacing), 6);
         public static readonly StyledProperty<LetterCase> LetterCaseProperty = AvaloniaProperty.Register<HintBar, LetterCase>(nameof(LetterCase));
         public static readonly StyledProperty<PadFamily> PadFamilyProperty = AvaloniaProperty.Register<HintBar, PadFamily>(nameof(PadFamily));
+        public static readonly StyledProperty<PadGlyphStyle> GlyphStyleProperty = AvaloniaProperty.Register<HintBar, PadGlyphStyle>(nameof(GlyphStyle));
 
         static HintBar()
         {
             AffectsMeasure<HintBar>(EntriesProperty, FontPathProperty, FontSizeProperty, EntryScaleProperty, PaddingProperty, EntrySpacingProperty, IconTextSpacingProperty, LetterCaseProperty);
-            AffectsRender<HintBar>(IconColorProperty, TextColorProperty, BackgroundColorProperty, BackgroundCornerRadiusProperty, PadFamilyProperty);
+            AffectsRender<HintBar>(IconColorProperty, TextColorProperty, BackgroundColorProperty, BackgroundCornerRadiusProperty, PadFamilyProperty, GlyphStyleProperty);
         }
 
         /// <summary>The hints, left to right.</summary>
@@ -84,6 +85,9 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>The set an entry's Button is drawn from. Generic by default. A change redraws the icons and moves nothing: every glyph fills the same square.</summary>
         public PadFamily PadFamily { get => GetValue(PadFamilyProperty); set => SetValue(PadFamilyProperty, value); }
+
+        /// <summary>How an entry's Button is drawn: outlined, or filled with its letter cut out. Outline by default; like PadFamily, a change moves nothing.</summary>
+        public PadGlyphStyle GlyphStyle { get => GetValue(GlyphStyleProperty); set => SetValue(GlyphStyleProperty, value); }
 
         private double Size => FontSize * EntryScale;
 
@@ -134,7 +138,7 @@ namespace EmuSen.LunaP.Controls
                 HintEntry e = entries[i];
                 // An image file wins, then a named button in the bar's family, then the glyph in a ring (§103).
                 if (e.IconPath is { Length: > 0 }) PictureFiles.Draw(context, this, e.IconPath, boxes[i].Icon, IconColor);
-                else if (e.Button is { } button) PadGlyphDrawing.Draw(context, boxes[i].Icon, PadFamily, button, IconColor);
+                else if (e.Button is { } button) PadGlyphDrawing.Draw(context, boxes[i].Icon, PadFamily, button, IconColor, GlyphStyle);
                 else Ring(context, typeface, e.Glyph ?? "", boxes[i].Icon, IconColor);
                 FontLayout.Create(typeface, Size, FontLayout.Cased(e.Label, LetterCase), 1.2, double.PositiveInfinity, double.PositiveInfinity, false, null)
                     .Draw(context, text, boxes[i].Label, TextAlignment.Left, 0.5);
@@ -152,6 +156,6 @@ namespace EmuSen.LunaP.Controls
         }
 
         protected override AutomationPeer OnCreateAutomationPeer() =>
-            new LunaAutomationPeer(this, AutomationControlType.Group, () => string.Join(", ", (Entries ?? Array.Empty<HintEntry>()).Select(e => $"{(e.Button is { } b && e.IconPath is not { Length: > 0 } ? PadGlyph.Describe(PadFamily, b) : e.Glyph ?? "")} {e.Label}".Trim())));
+            new LunaAutomationPeer(this, AutomationControlType.Group, () => string.Join(", ", (Entries ?? Array.Empty<HintEntry>()).Select(e => $"{(e.Button is { } b && e.IconPath is not { Length: > 0 } ? PadGlyph.Describe(PadFamily, b, GlyphStyle) : e.Glyph ?? "")} {e.Label}".Trim())));
     }
 }
