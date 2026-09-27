@@ -12221,3 +12221,15 @@ the pen, touch the box's sides; the inner arcs keep their thirds of it. At a squ
 than before and its apex a little lower; at a box wider than it is high it is unchanged. The fan's shape was the
 toolkit's own and is still, so no consumer's image is affected; a consumer that compared pixels of the built-in fan
 against a stored picture will see the change.
+
+### 180.6 Mutants for §180
+
+Ten mutants, one rule each, applied one at a time by the consumer's `~/.cache/emusen/probe/pass4/mutate_pass4.py` (its
+`EmuSen_BigPicture.md` §29.7) and run against `BadgeGlyphTests` and `IndicatorControlTests`: the link drawn on a plate;
+a controller drawn over any badge; an entry's file not winning over the drawing; the overlay's size ignored; its
+position ignored; no knockout under a drawn link; `Icons` counted before `Entries`; the scroll overlay without its shade;
+the Wi-Fi fan's old radius; the completed badge drawn as the favourite. **Eight were caught on the first run; the size
+and position mutants survived** a test that moved the controller up and shrank it in one strip and asked only that ink
+leave the middle, which either change alone satisfies. The test now asserts each on its own against the default (at
+size 1 the pad reaches left of the half-size box; at a fifth of the height it sits high and the middle is empty), and both
+were caught when run again.
