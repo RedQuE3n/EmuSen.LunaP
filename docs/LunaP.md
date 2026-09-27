@@ -1128,7 +1128,7 @@ The four unnamed ones are unnamed **on purpose**, and it is the same judgement �
 
 **"Browse..." stays "Browse...".** The obvious fix — rename the button to "Choose a save folder" — is the wrong one: **an accessible name that does not contain the visible label breaks voice control**, because somebody saying "click browse" needs "Browse" to be in the name of the button that says Browse. So the name is untouched and `BrowseTitle` becomes the button's `HelpText`, which is announced after it. `BrowseTitle` needed no new property invented for it; it already held the one thing that distinguishes one picker row from another.
 
-**A placeholder is not a label.** `FilterBar`'s search box takes its name from `Placeholder` *as well as* using it as the placeholder, because a placeholder disappears the moment the player types — which is exactly when they might want reminding what they are searching.
+**A placeholder is not a label.** `FilterBar`'s search box takes its name from `Placeholder` *as well as* using it as the placeholder, because a placeholder disappears the moment someone types — which is exactly when they might want reminding what they are searching.
 
 **The status line is a live region**, `Polite`, set in the style rather than in code so a caller can turn it off. This is the one place in the toolkit where text arrives to be *read* rather than *found*: "Applied 12 cheats", "Save State failed". Polite and not Assertive because a status line carries far more that can wait than that cannot, and Assertive on anything that updates often makes an application unusable with a screen reader running — a failure mode worse than the silence it was meant to fix. A caller whose status updates twice a second should set it to `Off`, and it is an attached property precisely so that stays their decision.
 
@@ -1227,7 +1227,7 @@ Every dependency of the toolkit is MIT. The one non-MIT reference in either pack
 
 ### 25.2 What MIT was chosen over
 
-**LGPL-3.0 is the obvious step down and is wrong for .NET.** It is the answer for a library that wants to stay replaceable inside an application that is not open, and it gets there by requiring the player be able to relink against a modified version. A modern Avalonia desktop application ships trimmed, often AOT-compiled, sometimes single-file — deployment shapes in which "relink against a different LunaP" ranges from awkward to meaningless. A term whose central mechanism the target platform has quietly stopped supporting is a term that generates compliance anxiety and delivers no freedom, which is the worst trade available here.
+**LGPL-3.0 is the obvious step down and is wrong for .NET.** It is the answer for a library that wants to stay replaceable inside an application that is not open, and it gets there by requiring that the recipient be able to relink against a modified version. A modern Avalonia desktop application ships trimmed, often AOT-compiled, sometimes single-file — deployment shapes in which "relink against a different LunaP" ranges from awkward to meaningless. A term whose central mechanism the target platform has quietly stopped supporting is a term that generates compliance anxiety and delivers no freedom, which is the worst trade available here.
 
 **MPL-2.0 was the real alternative.** File-level copyleft: changes to LunaP's own files stay open, and it links into anything. If the goal were to keep improvements flowing back it would be the right answer, and it was not rejected because it is bad. It was rejected because it still asks a consumer's legal review a question, and this toolkit's entire premise is not asking. §17 and §24.7 both measure a release by *what it costs a consumer* — a consumer who, per §1, cannot patch this and can only take a version. Weak copyleft costs a reading; MIT costs a line in a notice file.
 
@@ -1371,7 +1371,7 @@ and a shortcut written once in a `KeyBinding` and once again as the grey text on
 menu, where nothing checks that the two agree.
 
 The failure mode is worth naming because it is quiet: **the menu item greys out and the toolbar
-button does not.** The button stays clickable and does nothing, and the player's evidence says the
+button does not.** The button stays clickable and does nothing, and everything on screen says the
 application is broken rather than that the command is unavailable.
 
 Three decisions inside it:
@@ -1381,7 +1381,7 @@ Three decisions inside it:
   only LunaP controls could consume would be §1's mistake in a new place.
 - **A checkable action flips before its handler runs**, which is Qt's order and the only one that
   makes a one-line handler possible. Setting `IsChecked` directly does *not* invoke the handler:
-  that is the difference between the application saying what is true and the player asking for a
+  that is the difference between the application saying what is true and someone asking for a
   change, and collapsing the two is how a settings dialog applies everything twice on open.
 - **A separator is an action with nothing to do**, not a second item type. One list type, one
   loop, and the divider is written where it goes.
@@ -1444,7 +1444,7 @@ ignore the message that catches the real collision.
 This one has §21's kind of evidence: a consumer faking a split pane with a spacer column, and no
 `GridSplitter` anywhere in three repositories. Not because nobody wanted a draggable divider, but
 because getting one means three column definitions, a splitter, two minimum widths and somewhere
-to keep the size the choice was — and at that point people write `2*,12,3*` instead.
+to keep the size that was chosen — and at that point people write `2*,12,3*` instead.
 
 **One pane is fixed and the other elastic**, which departs from `QSplitter`'s proportional model
 and is the more useful behaviour for what a splitter is used for: a sidebar next to a document
@@ -1453,7 +1453,7 @@ less directly with stretch factors. `Fixed` names which side, so a right-hand pa
 as a left-hand one.
 
 **The divider is remembered in pixels, not as a fraction.** A fraction survives a window resize by
-moving the divider, which is precisely what the player was being exact about when they dragged it:
+moving the divider, which is precisely what whoever dragged it was being exact about:
 they made the sidebar wide enough for the longest filename, not wide enough for 22% of a window
 they may never open at that size again.
 
@@ -1466,7 +1466,7 @@ Two implementation notes worth keeping:
 - **The write is debounced by 400ms and flushed on the way out of the visual tree.** A drag raises
   a property change per frame, and `panes.json` is a full read-modify-write; without the debounce
   that is the whole file rewritten sixty times a second. Without the flush, a drag followed
-  immediately by closing the window loses the last thing the player did.
+  immediately by closing the window loses the last change made.
 
 `PaneLayoutStore` exposes `Update(key, edit)` rather than a whole-record `Save`, and that is not
 tidiness. **One key has two writers**: the divider owns `Size` and the panel owns `Collapsed`, and
@@ -2104,7 +2104,7 @@ and after and never measured width at all, which is how a six-pixel improvement 
 three-hundred-pixel regression. **The question to ask of a layout fix is not "is the thing I fixed
 fixed" but "what else does this grid decide."**
 
-### 27.11 Columns the player can drag, and a layout worth remembering
+### 27.11 Columns that can be dragged, and a layout worth remembering
 
 `TableKey` is opt-in, on the same principle as `ToolWindow.WindowKey` and `SplitPane.PaneKey`: **no
 key, no file.** A `tables.json` appears next to `windows.json` and `panes.json` for any table given
@@ -2151,7 +2151,7 @@ a design.
 
 - **Widths in Avalonia's own notation** — `"2*"`, `"Auto"`, `"150"` — and not resolved pixels. A
   dragged column and an untouched one are different *kinds* of width, not two values of one. Saving
-  `404` for a star column would pin it at 404 in a window the player has since resized, which is the
+  `404` for a star column would pin it at 404 in a window that has since been resized, which is the
   mistake §26.6 records for saving a divider as a fraction, inverted.
 - **The sorted column by heading, not by index.** A caller who inserts a column at the front between
   two releases would otherwise come back sorted by its neighbour, with the arrow pointing
@@ -3249,7 +3249,7 @@ to 28, across seven sites:
 | `Windowing/PaneLayoutStore.cs:38,62` | remembered pane layout (§26.6) |
 | `Theme/LunaTheme.cs:176` | `.axaml` themes (pre-existing) |
 
-That is not an explosion, it is a **boundary**: every "remember what the player did" feature in the
+That is not an explosion, it is a **boundary**: every "remember what someone did" feature in the
 toolkit is reflection-JSON-backed, and all three are opt-in. Propagating the attributes further means
 annotating `ToolWindow`, `SplitPane.PaneKey` and `LunaTheme.ApplySaved` — public API a consumer sees.
 
@@ -3274,7 +3274,7 @@ consumer compiles against.
 **This section opens by saying §25 "rejected LGPL partly because this is a platform that ships
 trimmed and AOT'd", and that is an overstatement of what §25 says.** Read it back:
 
-> LGPL-3.0 … gets there by requiring the player be able to relink against a modified version. **A
+> LGPL-3.0 … gets there by requiring that the recipient be able to relink against a modified version. **A
 > modern Avalonia desktop application ships trimmed, often AOT-compiled, sometimes single-file** —
 > deployment shapes in which "relink against a different LunaP" ranges from awkward to meaningless.
 
@@ -4557,7 +4557,7 @@ new FieldRow { Label = "Save State Folder", Error = "That folder does not exist.
 ```
 
 There is no `IsValid`. **The message is the state**, so the two can never disagree — a control
-carrying both would eventually be set invalid with an empty message, and the player would be blocked
+carrying both would eventually be set invalid with an empty message, and whoever was filling it in would be blocked
 by a blank line with nothing to fix. Empty means valid, so the common case stays quiet and no caller
 ever writes "no error" out loud.
 
@@ -4612,7 +4612,7 @@ claimed, per §24.4's precedent.
 
 ### 49.4 Below the field, and that is an assertion
 
-The message sits under the content. Above it, a field going invalid would **push the control the player
+The message sits under the content. Above it, a field going invalid would **push the control someone
 is typing in downwards** at the exact moment they are told they got it wrong. That is the kind of
 decision that survives in a comment until somebody tidies the template, so
 `The_message_sits_below_the_field_it_is_about` compares the two translated Y positions instead.
@@ -5050,7 +5050,7 @@ name, virtualization, the remembered layout. That is what made this tractable ra
 
 **Sorted at every level, which is the only reading that keeps a tree a tree.** Sorting the flattened
 list interleaves children with strangers' parents; sorting only the roots leaves every child list in
-arrival order under a header the player just clicked. Sabotaged by sorting the flattened list, the
+arrival order under a header that was just clicked. Sabotaged by sorting the flattened list, the
 guard reported the tree turning into an alphabetical list of everything:
 
     Expected: ["roms", "nes", "metroid.nes", "snes", "smw.sfc", ...]
@@ -5075,7 +5075,7 @@ path check and running the loop test produced:
 without the guard the first consumer with a looping model loses the whole application rather than the
 table. That is why this is nine lines of guard rather than a documented caveat.
 
-### 55.4 Expansion belongs to the player, and is keyed by model
+### 55.4 Expansion belongs to the viewer, and is keyed by model
 
 `_expanded` holds `Key(item)` and not the object, so a `Refresh` handing back new instances for the
 same rows keeps the tree open. That matters more here than it does for selection (§27.6): a
@@ -5195,7 +5195,7 @@ uses `--no-incremental`.
 ## 57. A cell stops being a TextBlock
 
 Pass 3 of §54's parity arc: **cell kinds**. Every cell in this control was a `TextBlock` until now,
-which meant a boolean column rendered as `True`/`False` — a value the player has to *read* where every
+which meant a boolean column rendered as `True`/`False` — a value a person has to *read* where every
 other table in the world lets them *see* it. §54.3 lists "CheckBox and Template columns; LunaTable's
 cells are text" as one gap, and it is one idea rather than two: the table has to stop assuming what a
 cell is made of.
@@ -5815,7 +5815,7 @@ Pass 3. Two decisions and one thing that needed no code at all.
 
 ### 63.1 The boundary is drawn, and drawn at rest
 
-Frozen columns were invisible until the table was scrolled. The player was given a layout that behaves
+Frozen columns were invisible until the table was scrolled. Whoever used it was given a layout that behaves
 differently on the left and told nothing about it until they discovered it — so the edge is now drawn
 **whether or not anything has been scrolled yet**.
 
@@ -5916,7 +5916,7 @@ always the one the viewer has settled on.** Measured: a scroll caused by `BringI
 what Tab, F2 and `Edit` all provoke — raises `ScrollChanged` reporting **0 while the viewer is already
 at 612**, and no later event corrects it.
 
-The consequence was silent and not small: whenever a scroll was caused by anything other than the player
+The consequence was silent and not small: whenever a scroll was caused by anything other than someone
 dragging the bar, the header did not move, and every heading sat hundreds of pixels from its own
 cells. §59's own guards never saw it because every one of them scrolled by assigning `Offset`
 directly.
@@ -6045,17 +6045,17 @@ test, in a fixture where two different things happen to coincide.
 §27.11 remembers column widths and the sort order. It would be one line to remember the frozen count
 beside them, and it is deliberately not there.
 
-**What that file holds is what the player did** — dragged a column, clicked a heading. `FrozenColumns`
+**What that file holds is what was done by hand** — dragged a column, clicked a heading. `FrozenColumns`
 is what the *caller* declared, in the same class as `Children`, `ExpanderColumn`, `GridLines` and the
 column list itself. Remembering it would mean an application that ships "the first column is pinned"
 finds a user's stale `tables.json` overriding the next release's choice, with no way to push a new
 one.
 
 The case that looks like a counter-example is the one §63.4 built a test around: a **"Freeze first
-column" menu item**, where it *is* something the player did and they will expect it back. That
+column" menu item**, where it *is* something done by hand and it will be expected back. That
 application already has `ISettingsStore` (§19.1), and remembering its own menu item is one line on its
 side of the seam — where the decision belongs, because only that application knows whether the pin is
-its own choice or the player's.
+its own choice or one made by hand.
 
 ### 65.5 The parity table, re-measured against what is actually on the type
 
@@ -6260,7 +6260,7 @@ building hidden columns: *a control that cannot be seen still costs a measure pa
 ### 67.4 What the keyboard owns, and what it deliberately does not
 
 Left and Right walk the columns, Home and End go to the ends, and a hidden column is stepped over
-rather than landed on — a selection nobody can see is one the player cannot act on, and the key would
+rather than landed on — a selection nobody can see is one nobody can act on, and the key would
 look like it had done nothing.
 
 **Up and Down are not handled**, which is the more interesting half. The `ListBox` already moves its
@@ -6272,7 +6272,7 @@ nothing at all, so a range that grows upwards has to be built here — and once 
 
 A Shift range is a **rectangle**, not a reading-order run. `Shift` from (row 0, column 0) to
 (row 1, column 1) is four cells and not three; a spreadsheet's Shift has never meant "everything from
-here to there along the rows", and the difference is cells a caller would act on that the player never
+here to there along the rows", and the difference is cells a caller would act on that nobody ever
 saw highlighted.
 
 At the edge of the row nothing moves **and the key is still eaten**. Letting `Right` through on the
@@ -6289,7 +6289,7 @@ green**, every one of them for a different reason:
 | `ContainerPrepared` marks a recycled row | **The hook is wrong.** At that moment the container has no row grid inside it at all — `grid=False` on every prepare. The call was a no-op, and the sweep it replaced was doing the work. |
 | a sweep of realised containers marks every row | `GetRealizedContainers()` does not include the container being prepared — `listed=False`, measured — so with three rows each is marked when its *successor* arrives, and only the last is missed. A three-row fixture cannot see it; a **one-row table** can. |
 | a departed row's cell is dropped | Every reader resolves a key through the current view, so a departed row answers "not selected" whether or not anything was pruned. The difference only appears when a row with the **same key comes back** — unpruned, its old cell lights up again, selected by nobody. |
-| changing the unit clears the selection | `SelectedCell`, the boxes and the row all follow the *cursor*. A version that dropped the cursor and kept the set passed unchanged, and would have handed a caller a list of cells after the player switched the table to rows. `SelectedCells` is the assertion that bites. |
+| changing the unit clears the selection | `SelectedCell`, the boxes and the row all follow the *cursor*. A version that dropped the cursor and kept the set passed unchanged, and would have handed a caller a list of cells after the table was switched to rows. `SelectedCells` is the assertion that bites. |
 | F2 refuses a read-only cell | The test was right and **the sabotage was wrong**: the check it removed was a duplicate of one inside `Edit`. A duplicated rule cannot be sabotaged into failing, which is how the duplicate was found. It is gone — one rule, one owner. |
 | `Right` on the last column is handled | **Avalonia handles the arrow key itself** on the way up, so `e.Handled` is true inside a window whatever this control does. Measured: `handled=False` with no window, `handled=True` in one, with the window's own bubble handler seeing it already true. The assertion is asked of a parentless table now, which leaves exactly one handler in the chain. |
 
@@ -6300,7 +6300,7 @@ something else will.**
 
 ### 67.6 What it changes elsewhere
 
-- **F2 opens the cell the player is on**, where in a row unit it still opens the first editable column.
+- **F2 opens the current cell**, where in a row unit it still opens the first editable column.
   §50's comment saying this control *"has no concept of a focused cell"* was true and is what this
   section changed; it is amended in place rather than deleted, because the reasoning it gives is
   still the reasoning for the row half.
@@ -6597,7 +6597,7 @@ asserted, which is the rule for a behaviour with no guard.
 | the table stops flushing on detach | both §70.4 guards |
 | a sort no longer pokes the save | **nothing** — see §70.4 |
 
-## 71. Rows the player can drag, and three things that were not the feature
+## 71. Rows that can be dragged, and three things that were not the feature
 
 Pass 4 of finishing §54.3's parity: **row drag-and-drop**. The reference has `AutoDragDropRows` and
 `RowDragStarted` / `RowDragOver` / `RowDrop`, with a four-value position — `None`, `Before`, `After`,
@@ -6618,7 +6618,7 @@ handles leaves the rows where they were, for the same reason and with the same s
 the model is the truth and the control is a view of it.
 
 `CanDrop` is a `Func` rather than an event because **an event cannot answer a question**, and the
-indicator has to know before it promises the player anything. The line drawn mid-drag and the drop
+indicator has to know before it promises anything. The line drawn mid-drag and the drop
 raised on release read the same answer, so a refused drop cannot draw a line saying it will work.
 
 ### 71.2 Pointer capture, not the platform's drag-and-drop
@@ -6643,7 +6643,7 @@ called directly, which is how it was found.
 
 **And the `ListBox` collapses a multi-selection to the row that was pressed.** No opt-in fixes that
 one: read on the way back up, the selection is one row, and dragging a group of four would silently
-move only the row under the pointer. Read on the way *down*, it is still the four the choice was.
+move only the row under the pointer. Read on the way *down*, it is still the four that were picked.
 
 So the drag starts on the **tunnel** route. Once it does, opting into handled events is unnecessary
 everywhere — sabotage confirmed all three `handledEventsToo` flags were dead, and they are gone
@@ -6756,7 +6756,7 @@ Conflating them fails in both directions, and both were tried:
   `TableCell`, get null, and `Edit` silently refuse the expander column.
 - Reading ownership off `Grid.GetColumn` instead cannot tell a cell from a selection box or an open
   editor sitting in the same column — and a fill that removed those would take the caret out of a
-  cell the player was typing in.
+  cell someone was typing in.
 
 So there is `TableCells.Owner`, defaulting to −1 for the same reason `Column` does: the gutter, the
 frozen edge, a selection box and an editor must all read "not mine", and at a default of 0 all four
@@ -6767,7 +6767,7 @@ would be torn out the moment column 0 scrolled away.
 of the cells: the frozen edge, a cell-selection box and an open editor. `Row()` appends cells and
 then adds those, so the order is right by construction — but the fill runs *later* than `MarkCells`
 does, because a box goes on a selected cell of a realized row whether or not that column has ever
-been built. Appended instead, an arriving cell covers the outline and the player scrolls back to a cell
+been built. Appended instead, an arriving cell covers the outline and scrolling back reaches a cell
 that is selected and does not look it.
 
 ### 72.3 Only a fixed-width column may be left out, and neither reason was the obvious one
@@ -6784,7 +6784,7 @@ there takes its content's size rather than a share of the viewport. Measured on 
     scrolled past it       0px   extent 3,504
     scrolled back        175px   extent 3,679
 
-Every column to its right slides 175 pixels sideways while the player is dragging the scrollbar.
+Every column to its right slides 175 pixels sideways while the scrollbar is being dragged.
 
 **An Auto column collapses one refresh later**, which is why it was nearly missed. Its width is
 shared between the header and every row by a size group (§27.10), and **a shared size group does not
@@ -7728,11 +7728,11 @@ and nothing says why*, and it is the one worth spending a type on.
 **It hands back paths, not `IStorageItem`s**, to match `Dialogs`, which has returned `string?` since
 §6. A file with no local path — out of a remote share, or a virtual file from an archive viewer — has
 no path to give, so it is not offered, and **a drop carrying nothing else is refused rather than
-delivered empty.** Handing a caller a shorter list than the player dropped, with no way to tell, is the
+delivered empty.** Handing a caller a shorter list than was dropped, with no way to tell, is the
 kind of quiet lie this document exists to avoid.
 
 `Accept` is consulted on the way over as well as on the drop, so a refusal shows as the "no entry"
-pointer while the drag is still moving rather than as nothing happening after the player lets go. A
+pointer while the drag is still moving rather than as nothing happening after the drop. A
 refusal is left **unhandled**, so a `FileDrop` on an ancestor still gets to answer for itself.
 
 **There is no counted evidence for this one**, and that is stated rather than glossed. §47.3's test is
@@ -7750,14 +7750,14 @@ require.
 API. It needs three platform implementations (`SetThreadExecutionState`, an `IOPMAssertion`, and a
 `org.freedesktop.ScreenSaver` inhibit over DBus), none of which any test in this harness can observe,
 in a package a consumer cannot patch. §1 survives literally, since a P/Invoke is not a
-`PackageReference` — but three untested platform paths whose failure mode is *the player's machine never
+`PackageReference` — but three untested platform paths whose failure mode is *the machine never
 sleeps* is precisely what "untested claims are recorded as hazards, not behaviours" exists to stop.
 **This is the one on the list with real value for this toolkit's actual consumers**, and it is the one
 that most needs a named first consumer and a §1 argument in writing before anybody starts.
 
 **Single instance.** Not a window service at all — it is process coordination, and the window is only
 where the answer becomes visible. The easy half is a named `Mutex` and is five lines; the half that
-matters is handing the file the player just double-clicked to the instance that is already running,
+matters is handing the file just double-clicked to the instance that is already running,
 which needs an IPC channel per platform and a protocol for it. **A single-instance feature that
 answers "you are not the first, goodbye" is worse than none**, because every application that wants
 this wants the argument passed along, and the half-answer looks like the whole one until the day
@@ -7793,7 +7793,7 @@ found: by sabotaging a guard and watching it stay green.
 `FileDrop` has two defects it exists to prevent, and both got a guard. Then the guards were
 sabotaged. Four of six turned red. **The two that did not were the two that mattered** — the one
 asserting that `DragOver` says the drop will be taken, and the one asserting that `Accept` refuses
-before the player lets go. Removing the entire `DragEffects` assignment left them both green.
+before the pointer is released. Removing the entire `DragEffects` assignment left them both green.
 
 The first suspicion was a hollow assertion in the §22.6 sense — that `DragEffects` already defaults
 to `Copy`, so asserting it proved nothing. **That was measured and it is false:** `DragEventArgs`
@@ -7875,11 +7875,11 @@ So the mechanism was never missing; only the spelling was. **The setter is added
 
 - **Assigning `null` unchecks everything.** The alternative readings — throw, or do nothing — both break `group.Checked = group.Checked` for a group with nothing chosen yet, and a round trip that only works when something is selected is a trap.
 - **A non-member throws `ArgumentException`.** Adding it instead would make membership depend on assignment order and skip the checkable-and-exclusive setup `Add` performs.
-- **No handler runs**, matching `IsChecked`'s own setter and standing opposite `Invoke`. This is the same line §26.3 draws between the application stating what is true and the player asking for a change. A group is where getting it wrong is worst: a settings window showing the current theme would *apply* a theme merely by displaying it.
+- **No handler runs**, matching `IsChecked`'s own setter and standing opposite `Invoke`. This is the same line §26.3 draws between the application stating what is true and someone asking for a change. A group is where getting it wrong is worst: a settings window showing the current theme would *apply* a theme merely by displaying it.
 
 ### 78.2 `Chose` said "picks", which reads as both select and activate
 
-`LunaList<T>.Chose` and `LunaTable<T>.Chose` both read *"Raised when the player picks a row."* It is a selection change. "Picks" is equally good English for double-clicking, and a consumer read it that way.
+`LunaList<T>.Chose` and `LunaTable<T>.Chose` were both summarised as raised when a row is *picked*. It is a selection change. "Picks" is equally good English for double-clicking, and a consumer read it that way.
 
 The consequence was a modal ROM browser wired as:
 
@@ -8005,7 +8005,7 @@ That is a documentation defect on its own. What made it cost something is that *
 the bool**: `WindowPlacementStore`, `TableLayoutStore`, `PaneLayoutStore` and `LunaTheme` all discard
 it. So on a read-only configuration directory or a full disk, a window's geometry, a table's columns,
 a pane's divider and the chosen theme were all lost with no exception, no diagnostic and no return
-value anybody looked at. The player's report would be that their layout does not stick, and there would
+value anybody looked at. Anyone affected would report that their layout does not stick, and there would
 be nothing anywhere to explain it.
 
 Reproduced by rooting a store under a path blocked by a file: `Save` returned `false` and
@@ -8349,7 +8349,7 @@ tie, not the local prose.
 rate of roughly two defects per thirty. The four axes closed here were chosen because each could be
 finished; the remainder is a longer pass, not a harder one.
 
-## 81. A mode that refused the player and not the caller, and an assertion that proved nothing
+## 81. A mode that refused the pointer and not the caller, and an assertion that proved nothing
 
 The fourth axis of §80's pass: the 92 remaining summary claims that are neither promises of absence
 nor exception tags — defaults, "or null when", identity, and arithmetic. One defect, one lesson about
@@ -8631,8 +8631,8 @@ working copy and found nothing, which is the precise reason this one shells out 
 Written to fail first: it named `PLAN-table.md` in four files before either plan was staged.
 
 Two exclusions, and both are real rather than convenient. `CONTRIBUTING.md` is gitignored on purpose —
-local working configuration, and this project must not carry documentation about how an assistant
-should behave — so requiring it would produce a suite that is red on CI and green nowhere else.
+local working configuration rather than documentation the project carries —
+so requiring it would produce a suite that is red on CI and green nowhere else.
 `EmuSen_Project_Overview_v2.md` stayed behind when LunaP left EmuSen; `LunaApp.cs` names it while
 saying in the same sentence that the measurement behind it is unreachable, and spells it out rather
 than writing a `§` *precisely so it is not read as a live citation*. The guard's regex matched anyway.
@@ -9781,7 +9781,7 @@ the gate starts with two *empty* stores — the restore reads nothing from eithe
 and only the save is observable.
 
 A wrong save loses a preference. A wrong restore silently applies somebody
-else's, and the symptom is a window that opens at a size the player never chose and
+else's, and the symptom is a window that opens at a size nobody chose and
 cannot account for. It is guarded now:
 `A_window_restores_from_its_own_store_and_not_the_process_wide_one` seeds two
 different answers under one key — one in the process-wide store, one in the
@@ -10321,9 +10321,9 @@ text. §1's rule holds, and `LayeringTests` still passes unchanged.
 
 The suite went from 1,049 tests to 1,108.
 
-### 88.1 What was taken from OpenEmu, and what was only taken from the plan
+### 88.1 What was taken from OpenEmu, and what was only taken from the request
 
-The plan gave figures and said they were OpenEmu's. **Four of them were checked against OpenEmu's
+The request gave figures and said they were OpenEmu's. **Four of them were checked against OpenEmu's
 source**, fetched through the GitHub API at commit `1d205104640d8410659d321809889cbfd06b99a9`:
 
 | Figure | Where it is | Used for |
@@ -10333,7 +10333,7 @@ source**, fetched through the GitHub API at commit `1d205104640d8410659d32180988
 | Notice: `duration = 1.75`, `values = [0, 1, 1, 0]`, `keyTimes = [0, 0.15, 0.85, 1]` | `OEGameLayerNotificationView.swift`, lines 121–124 | `NoticeLayer.Duration` and its curve |
 | Sidebar rows: `heightOfRowByItem` returns `24` | `SidebarController.swift`, line 440 | `.source-row` height |
 
-**Three were not, and are the plan's**: the HUD plate (`#1C1C1C` at 90%, radius 10, padding
+**Three were not, and are the request's**: the HUD plate (`#1C1C1C` at 90%, radius 10, padding
 10,5), the notice pill's look and top-right placement, and the sidebar headings' small bold
 capitals. `GameControlsBarView.swift` names no colour — the bar is drawn from an image asset — and
 `SidebarHeaderView.swift` sets no font, the look living in `SidebarController.xib`, which was not
@@ -10342,7 +10342,7 @@ files say the same beside each value.
 
 One figure was checked and deliberately not followed. OpenEmu draws the ring in
 `unemphasizedSelectedContentBackgroundColor` when the window is inactive. The ring here stays the
-accent; the plan allowed it, and an inactive variant needs a window-activity pseudo-class this kit
+accent; the request allowed it, and an inactive variant needs a window-activity pseudo-class this kit
 does not yet have.
 
 ### 88.2 `TileGrid<T>`
@@ -10414,10 +10414,10 @@ activate. Each change raises `Chose`. **The right button selects on press**, bef
 opens on release, so a host's `ContextMenu` reads `Selected` and finds the tile under the pointer —
 pinned by a test that reads `Selected` from the menu's `Opening`.
 
-**Two public types beyond the plan.** `TileGrid` is an abstract non-generic base, for LunaTable's
+**Two public types beyond the request.** `TileGrid` is an abstract non-generic base, for LunaTable's
 reason (§27.2): a style selector cannot name a generic type, so the theme writes
 `:is(luna|TileGrid)`, and a test or gallery counting grids counts the base. `TileGridItem` is the
-container, public so a host restyling the ring can write `luna|TileGridItem.selected`. The plan's
+container, public so a host restyling the ring can write `luna|TileGridItem.selected`. The request's
 `TileGrid<T> : TemplatedControl` still holds — through the base.
 
 **One result from this harness that §22.6 would not predict.** §22.6 found a headless
@@ -10461,7 +10461,7 @@ focus is inside it**. OpenEmu's `timerDidFire` re-checks after another interval 
 this re-arms on the pointer leaving, `KeepOpen` clearing, or focus leaving instead, which is the
 same outcome with no timer running while somebody reads a tooltip.
 
-Three decisions beyond the plan:
+Three decisions beyond the request:
 
 - **`Conceal()` overrules the rule.** A host concealing the bar — a pause menu opening, a switch to
   full screen — means it, pointer or no pointer. The rule governs the timer, not the host.
@@ -12116,7 +12116,7 @@ rests on one recording (the consumer's §24).
 
 *2026-09-27.* The consumer (EmuSen's Mistress) draws its reference frontend's themes (ES-DE's), and those themes may
 place a `badges` element without naming an image for every badge. The reference then draws built-in pictures of its
-own. The consumer's rule, set by its user, is that such pictures are the consumer's own drawings and none of the
+own. The consumer's rule is that such pictures are the consumer's own drawings and none of the
 reference's (its `EmuSen_BigPicture.md` §10.1, Q9, and §29). This section adds the drawings, the strip's way of taking
 them, and one control for a list held down. Nothing here knows about the consumer's theme format; the kinds are named
 for what they mean to a player of a game list, as `PadFamily` (§103.1) names what a pad prints.
@@ -12236,7 +12236,7 @@ were caught when run again.
 
 ## 181. A big-screen menu: a wide panel of upper-case rows over the screen blurred
 
-*2026-09-27.* The consumer (EmuSen's Mistress) was asked by its user to make the menus of its big-screen session look
+*2026-09-27.* The consumer (EmuSen's Mistress) set out to make the menus of its big-screen session look
 like its reference frontend's (ES-DE's): a wide, centred panel with rounded corners over a blurred and darkened view,
 a large centred upper-case title, full-width rows in an upper-case condensed typeface separated by thin rules, a chevron
 on a row that opens another screen, the chosen row a bar across the whole width, a value at the right of a row and
@@ -12313,7 +12313,7 @@ Each clears the control's own background, border, padding and focus adorner, sin
 While shown, it sets a `BlurEffect` of `Radius` (16) on its `Target` and fills its own area with `Shade` (translucent
 black); hidden or detached, it takes that effect off again. The blur is Avalonia's own effect, which its Skia backend
 draws as a Gaussian image filter over the target's layer at full resolution: nothing is captured to a bitmap, scaled
-down or sampled at low quality, which the consumer's user requires of everything the big screen draws. A target that
+down or sampled at low quality, which the consumer requires of everything the big screen draws. A target that
 already has an effect is left with it, and the backdrop reports `IsBlurring` false; only the effect the backdrop put
 there is ever removed. It is not hit-testable.
 

@@ -238,7 +238,7 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
-        // The factor has to follow the control being resized, or a window the player drags wider keeps
+        // The factor has to follow the control being resized, or a window dragged wider keeps
         // whatever scale it happened to open at.
         [Fact]
         public Task The_factor_is_recomputed_when_the_control_is_resized() => UiTest.Run(() =>

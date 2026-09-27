@@ -56,7 +56,7 @@ For an office app or a game proper, not today, and the gaps are three.**
 
 ## 2. What was verified in the code (not recalled, not assumed)
 
-These were read or grepped during the session and are the factual basis for everything below.
+These were read or grepped while writing this plan and are the factual basis for everything below.
 
 | Finding | Where |
 |---|---|
@@ -284,7 +284,7 @@ Highest value. An office app is mostly form controls.
 
 ### §49 — The graphics door: two doors and one hazard
 
-**Correction made during the session.** `NativeControlHost` was first recommended as the primary
+**Correction made while planning.** `NativeControlHost` was first recommended as the primary
 door. That was wrong. It has an **airspace problem** — native content always renders *above*
 Avalonia's layer, so no LunaP control can sit on top of it: no pause overlay, no HUD, no menu
 dropping over the game area, no tooltip. Pointer events also do not reliably reach it

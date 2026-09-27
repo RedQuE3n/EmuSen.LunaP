@@ -109,7 +109,7 @@ namespace EmuSen.LunaP.Controls
         // being wired. Filing either under one feature would put the argument somewhere that could
         // not see the other two. §74.3.
         //
-        // "The selection is not the player's" - Refresh putting a row back, a cell unit moving the row
+        // "The selection is not a person's" - Refresh putting a row back, a cell unit moving the row
         // under the current cell, a mode switch clearing what was there. Every one of those assigns
         // Rows.SelectedItem, and without this each would raise Chose as though somebody had clicked.
         private readonly Suppressor _filling = new();
@@ -133,7 +133,7 @@ namespace EmuSen.LunaP.Controls
         public Func<T, object?> Key { get; set; } = item => item;
 
         // The DISPLAYED order, which is the arrival order until a header is clicked and the sorted
-        // order afterwards. A caller reading this back to write a report gets what the player is
+        // order afterwards. A caller reading this back to write a report gets what anyone is
         // looking at rather than what was handed in, which is the only reading of "currently shown"
         // that stays true once the table can sort.
         /// <summary>The models currently shown, in the order they are displayed in.</summary>
@@ -160,7 +160,7 @@ namespace EmuSen.LunaP.Controls
 
         // Puts _view in the ListBox and the selection back on top of it. Refresh and a header click
         // are the same operation from here down: both replace what is displayed and both have to
-        // leave the selection where the player put it.
+        // leave the selection where it was put.
         //
         // THE SORT IS RE-APPLIED, WHICH IS THE POINT. New rows arriving under an active sort land in
         // sorted order - a table that quietly reverted to arrival order on the next poll would be a

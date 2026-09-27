@@ -161,7 +161,7 @@ namespace EmuSen.LunaP.Tests
         });
 
         // PAST THE LAST ROW IS A REAL DROP, and it is reported with no target rather than by
-        // inventing the last row as one - "put it at the end" is what the player did.
+        // inventing the last row as one - "put it at the end" is what was done.
         [Fact]
         public Task Dropping_past_the_last_row_reports_the_end() => Realised(() => Table(), table =>
         {
@@ -310,7 +310,7 @@ namespace EmuSen.LunaP.Tests
                 Assert.Empty(Lines(table));
             });
 
-        // ---- what the player sees mid-drag ----
+        // ---- what the screen shows mid-drag ----
 
         [Fact]
         public Task A_drag_in_progress_draws_a_line_where_the_row_would_land() =>

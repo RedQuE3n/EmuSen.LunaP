@@ -10,7 +10,7 @@ namespace EmuSen.LunaP.Windowing
     {
         // The fixed pane's size in device-independent pixels. Not a fraction of the window, and
         // §26.6 carries the argument: a fraction re-applied at a different window size moves a
-        // divider the player put somewhere on purpose.
+        // divider somebody put somewhere on purpose.
         /// <summary>The fixed pane size in pixels, as the divider was last left.</summary>
         public double Size { get; set; }
 

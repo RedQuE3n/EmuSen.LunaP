@@ -8,10 +8,10 @@
          a dark plate would be dark text on dark. The plate itself is
          LunaHudSurface, the same in both columns for the same reason (§88.4).
 
-         The plate's look is the plan's (#1C1C1C at 90%, radius 10, padding
+         The plate's look is the request's (#1C1C1C at 90%, radius 10, padding
          10,5); OpenEmu draws its bar from an image and GameControlsBarView.swift
          names no colour, so those figures were not re-measured here. The
-         0.25 s fade is the transition the plan asks for.
+         0.25 s fade is the transition the request asks for.
 
          Set as styles on the control and bound into the template, so a host
          rule on `luna|OverlayBar` reaches them (§39.2). -->

@@ -68,7 +68,7 @@ namespace EmuSen.LunaP.Tests
 
         // THE MESSAGE IS THE STATE. Clearing the text is the only way to become valid again, so the
         // two can never disagree - a control carrying both a bool and a string would eventually be
-        // set invalid with an empty message, and the player would be blocked by a blank line.
+        // set invalid with an empty message, and whoever was filling it in would be blocked by a blank line.
         [Fact]
         public Task Clearing_the_message_is_what_makes_the_field_valid_again() => UiTest.Run(() =>
         {
@@ -113,7 +113,7 @@ namespace EmuSen.LunaP.Tests
         });
 
         // THE LAYOUT CLAIM, ASSERTED RATHER THAN WRITTEN DOWN. The message sits below the field so
-        // that a field going invalid does not shove the control the player is typing in downwards. A
+        // that a field going invalid does not shove the control someone is typing in downwards. A
         // template edit that moved it above would be invisible to every other test here.
         [Fact]
         public Task The_message_sits_below_the_field_it_is_about() => UiTest.Run(() =>
@@ -129,7 +129,7 @@ namespace EmuSen.LunaP.Tests
             Assert.True(messageTop.Y > contentTop.Y,
                 $"The error message is at y={messageTop.Y} and the field at y={contentTop.Y}, so the "
                 + "message is above the control it is about - which shoves that control down the "
-                + "page at the moment the player is told they got it wrong. See docs/LunaP.md §49.");
+                + "page at the moment someone is told they got it wrong. See docs/LunaP.md §49.");
 
             window.Close();
         });

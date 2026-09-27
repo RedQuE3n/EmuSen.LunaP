@@ -12,7 +12,7 @@ namespace EmuSen.LunaP.Controls
         // Widths as Avalonia writes them - "*", "2*", "Auto", "150" - rather than as numbers,
         // because a dragged column and an untouched one are different KINDS of width and not two
         // values of one. Saving 404 for a star column would pin it at 404 on the next launch in a
-        // window the player has since resized, which is the same class of mistake §26.6 records for
+        // window that has since been resized, which is the same class of mistake §26.6 records for
         // saving a divider as a fraction.
         /// <summary>Each column's width, in Avalonia's own notation, in column order.</summary>
         public List<string> Widths { get; set; } = new();

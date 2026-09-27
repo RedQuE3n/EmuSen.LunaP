@@ -44,7 +44,7 @@ namespace EmuSen.LunaP.Controls
                 .Where(c => c.IsVisible)
                 .Select(c => $"{c.Header}: {c.Text(item) ?? string.Empty}"));
 
-            // THE GUTTER GOES IN FRONT, because that is what a gutter is FOR: it is how the player
+            // THE GUTTER GOES IN FRONT, because that is what a gutter is FOR: it is how a person
             // refers to the row - "line 12", "address 8040" - and a reader that heard it last, after
             // every cell, would have to hold the whole sentence to find out which row it was about.
             // Prefixed with the caption when there is one, so "addr 8040: op: LDA" says what the

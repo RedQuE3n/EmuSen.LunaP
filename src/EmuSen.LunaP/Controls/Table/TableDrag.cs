@@ -26,7 +26,7 @@ namespace EmuSen.LunaP.Controls
     // file is what those handlers do once they fire. §74.3.
     public partial class LunaTable<T> where T : class
     {
-        // ROWS A PERSON CAN REORDER - see docs/LunaP.md §71.
+        // ROWS THAT CAN BE REORDERED - see docs/LunaP.md §71.
         //
         // Off by default, like every other item in this arc (§26.13). On, a row can be dragged with
         // the pointer or moved with Alt+Up/Down, and where it lands is reported rather than applied.
@@ -50,7 +50,7 @@ namespace EmuSen.LunaP.Controls
         // The veto, and it is a Func rather than an event for the reason Children and Key are: an
         // event cannot answer a question. A tree that refuses a folder dropped into its own child, a
         // table with a pinned first row, a drop that would break a caller's invariant - all of them
-        // need to say no BEFORE the indicator promises the player it will work.
+        // need to say no BEFORE the indicator promises it will work.
         //
         // Null means everything is allowed, which is what a caller who turned reordering on already
         // said.
@@ -63,7 +63,7 @@ namespace EmuSen.LunaP.Controls
 
         // WHAT IS MOVING, DECIDED WHEN THE DRAG STARTS AND NOT WHEN IT ENDS. Pressing a row collapses
         // a multi-selection to that row, so reading the selection at drop time always answers "one" -
-        // the group the choice was is gone by then. Captured on the way down (§71.3) and held.
+        // the group that was picked is gone by then. Captured on the way down (§71.3) and held.
         private IReadOnlyList<T> _draggingRows = Array.Empty<T>();
 
         private Control? _dropLine;

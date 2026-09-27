@@ -458,7 +458,7 @@ and probed by calling them (`§80`).
 
 - **`LunaSelectionMode.None` now refuses a programmatic `Select` too.** Its
   summary reads *"Rows cannot be selected at all"*, and it was implemented as a
-  hit-test — which stops the player and not the caller, so a table declared
+  hit-test — which stops the pointer and not the caller, so a table declared
   unselectable could be given a selection in code and would show one. The cell
   path had always refused it, and setting the mode already cleared any existing
   selection for the stated reason that it must not read as "no *new* selections";
@@ -533,7 +533,7 @@ day of a consumer adopting 0.8.0 (`§78`).
   window showing the current selection cannot apply it by displaying it
   (`§78.1`).
 - **`LunaList<T>.Chose` and `LunaTable<T>.Chose` say what they mean now.** Both
-  read *"Raised when the player picks a row"*, which is equally good English for
+  were summarised as raised when a row is *picked*, which is equally good English for
   double-clicking, and a consumer wired a modal dialog's close to it — turning a
   list that wanted a double-click into one that ended the dialog on a single
   click. **No behaviour changed**; the summaries now say *"This is a selection,

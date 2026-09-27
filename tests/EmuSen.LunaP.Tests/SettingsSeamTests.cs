@@ -228,7 +228,7 @@ namespace EmuSen.LunaP.Tests
         // A window restoring from the wrong store is the worse half of the two, not the lesser. A
         // wrong save loses a preference; a wrong restore silently applies somebody else's - and on
         // a machine where the process-wide store holds a 111pt window from another profile, the
-        // symptom is a window that opens at a size the player never chose and cannot account for.
+        // symptom is a window that opens at a size nobody chose and cannot account for.
         [Fact]
         public Task A_window_restores_from_its_own_store_and_not_the_process_wide_one() => UiTest.Run(() =>
         {

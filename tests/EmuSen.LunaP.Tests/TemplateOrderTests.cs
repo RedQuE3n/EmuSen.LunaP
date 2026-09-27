@@ -240,7 +240,7 @@ namespace EmuSen.LunaP.Tests
 
             // COVERED RATHER THAN EXEMPTED, and the distinction is the point. Edit and the
             // navigation three are exempt because they act on a realised row and there is nothing to
-            // queue. Expansion is not like that: it is state the player owns, it lives in a set keyed
+            // queue. Expansion is not like that: it is state the viewer owns, it lives in a set keyed
             // by model, and it is applied at the next flatten - so a tree expanded in a window's
             // constructor MUST come up expanded. That is a claim this file can test directly.
             new("LunaTable.Expand/Collapse/ExpandAll",
@@ -438,7 +438,7 @@ namespace EmuSen.LunaP.Tests
             (typeof(LunaTable<>), "Refresh"),
             (typeof(LunaTable<>), "Select"),
 
-            // Expansion is state the player owns, kept in a set keyed by model and applied at the next
+            // Expansion is state the viewer owns, kept in a set keyed by model and applied at the next
             // flatten - so a tree expanded in a window's constructor comes up expanded, and the
             // LunaTable.Expand/Collapse/ExpandAll case runs exactly that script in both orders.
             // IsExpanded is here because that case's read is what asks it.

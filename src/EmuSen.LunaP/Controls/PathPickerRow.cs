@@ -46,7 +46,7 @@ namespace EmuSen.LunaP.Controls
             set => SetValue(IsEditableProperty, value);
         }
 
-        // Raised only when the player actually picks something, never on a cancel.
+        // Raised only when something is actually picked, never on a cancel.
         /// <summary>Raised when a path is chosen through the browse button or typed into an editable box, with the new path. Not raised when Path is set in code.</summary>
         public event Action<string>? PathPicked;
 

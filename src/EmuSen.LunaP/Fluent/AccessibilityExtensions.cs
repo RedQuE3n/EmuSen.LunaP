@@ -68,7 +68,7 @@ namespace EmuSen.LunaP.Fluent
             return control;
         }
 
-        // AutomationProperties.LiveSetting: announce changes to this control without the player
+        // AutomationProperties.LiveSetting: announce changes to this control without anyone
         // having to go and look.
         //
         // Polite waits for a pause; Assertive interrupts. Reach for Polite - Assertive on anything

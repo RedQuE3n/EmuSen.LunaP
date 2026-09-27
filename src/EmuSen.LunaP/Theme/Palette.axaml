@@ -26,7 +26,7 @@
 
             <!-- The translucent plate a heads-up bar or a notice sits on, OVER
                  a picture rather than beside one: #1C1C1C at 90% (E6), the
-                 look the plan gives for OpenEmu's in-game bar. Not a surface
+                 look the request gives for OpenEmu's in-game bar. Not a surface
                  of the window, so it does not lighten with the theme - like
                  LunaVoid, what is under it is a game frame whatever the
                  desktop's variant, and a light plate over a dark game would

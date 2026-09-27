@@ -42,7 +42,7 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The key of the selected row, or null when nothing is selected.</summary>
         public string? SelectedKey => _selectedKey;
 
-        /// <summary>Raised with the row's key when the player selects a different row, by pointer, keyboard or assistive technology. Not raised by Fill.</summary>
+        /// <summary>Raised with the row's key when a different row is selected, by pointer, keyboard or assistive technology. Not raised by Fill.</summary>
         public event Action<string>? Chose;
 
         /// <summary>Replaces every group and row, and the selection, without raising Chose.</summary>

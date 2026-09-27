@@ -13,7 +13,7 @@ namespace EmuSen.LunaP.Theme
     /// <summary>Which theme is in use, as persisted alongside the rest of a host's configuration.</summary>
     public sealed class ThemeChoice
     {
-        /// <summary>The theme name the player last chose, as it appears in Available.</summary>
+        /// <summary>The theme name last chosen, as it appears in Available.</summary>
         public string Name { get; set; } = LunaTheme.BuiltIn;
     }
 

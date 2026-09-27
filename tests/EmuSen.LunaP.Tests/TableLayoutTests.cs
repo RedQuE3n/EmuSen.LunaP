@@ -145,7 +145,7 @@ namespace EmuSen.LunaP.Tests
         }, default);
 
         // The same for a sort nobody clicked, since SortBy is the programmatic door onto the same
-        // state (§70.3) and a menu item is as much "where the player left it" as a heading is.
+        // state (§70.3) and a menu item is as much "where it was left" as a heading is.
         [Fact]
         public Task A_sort_set_in_code_is_remembered_like_a_clicked_one() => Session.Dispatch(() =>
         {
@@ -300,7 +300,7 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         }, default);
 
-        // A width the player dragged comes back, and an untouched star column comes back as a star
+        // A dragged width comes back, and an untouched star column comes back as a star
         // column rather than as the pixels it happened to resolve to in yesterday's window.
         [Fact]
         public Task A_dragged_width_comes_back_and_an_untouched_one_stays_relative() => Session.Dispatch(() =>
@@ -330,7 +330,7 @@ namespace EmuSen.LunaP.Tests
 
         // A HAND-EDITED OR TRUNCATED FILE MUST NOT HALF-APPLY. There is no GridLength.TryParse, so a
         // width that does not parse throws, and applying the ones before it would leave a table in a
-        // state neither the caller nor the request was for.
+        // state neither the caller nor the person at the screen asked for.
         [Fact]
         public Task A_layout_with_an_unparseable_width_is_refused_whole() => Session.Dispatch(() =>
         {

@@ -185,7 +185,7 @@ namespace EmuSen.LunaP.Controls
 
         // Returns the PROBLEM, not a bool, for the same reason FieldRow.Error is a string and there
         // is no IsValid beside it (§49.1): a cell that refuses a value without saying why is a cell
-        // the player cannot fix. Null means valid, so the common case stays quiet.
+        // nobody can fix. Null means valid, so the common case stays quiet.
         //
         // Runs BEFORE Commit and can veto it. Parsing lives here in practice - a Validate that tries
         // int.TryParse and returns "Not a number." is the shape this is for - which keeps Commit free
@@ -210,7 +210,7 @@ namespace EmuSen.LunaP.Controls
 
         // BOUNDS ON A DRAG, and they only mean anything once a column can be dragged at all (§27.11).
         // A star column with no floor collapses to nothing the moment somebody pulls its neighbour
-        // across, and a heading that has been dragged to two pixels is a column the player cannot get
+        // across, and a heading that has been dragged to two pixels is a column nobody can get
         // back without knowing the layout is remembered and where the file is.
         //
         // Null means unbounded, which is what every column did before these existed - the Grid's own

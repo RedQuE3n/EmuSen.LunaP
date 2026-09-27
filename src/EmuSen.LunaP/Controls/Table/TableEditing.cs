@@ -137,7 +137,7 @@ namespace EmuSen.LunaP.Controls
             // content rebuilt for a different model - the editor is simply gone from the tree, and
             // an _editor field still pointing at it would leave the table believing it is editing.
             // Cancelling rather than committing: the value was never confirmed, and writing one
-            // because the player scrolled would be a change they did not ask for. Trap 1.
+            // because the table scrolled would be a change nobody asked for. Trap 1.
             // false, because the tree is ALREADY being torn down when this fires and taking the
             // editor out of its panel here mutates a children collection Avalonia is walking by
             // index - which throws ArgumentOutOfRange out of OnDetachedFromVisualTreeCore. The

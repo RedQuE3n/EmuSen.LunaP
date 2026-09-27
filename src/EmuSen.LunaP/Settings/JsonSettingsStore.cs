@@ -31,7 +31,7 @@ namespace EmuSen.LunaP.Settings
         // EXCEPT UNDER A TEST RUNNER, WHERE THE ENTRY ASSEMBLY IS NOT THE APPLICATION. Under
         // `dotnet test` with VSTest it is `testhost`, and that is not a guess that happens to be
         // wrong - it is the SAME wrong answer for every project on the machine. Two consumers' test
-        // suites then share one directory under the user's real config root, and they share it in
+        // suites then share one directory under the real per-user config root, and they share it in
         // both directions. The write is litter; the READ is a test restoring a window placement that
         // some other repository's suite saved last week, under a WindowKey they both happened to
         // call "main" - a failure that depends on what else has been built on that machine.
@@ -139,7 +139,7 @@ namespace EmuSen.LunaP.Settings
         // that NOT ONE CALLER READS THE BOOL. WindowPlacementStore, TableLayoutStore, PaneLayoutStore
         // and LunaTheme all call this and discard the result, so a read-only configuration directory
         // or a full disk lost a window's geometry, a table's columns and the chosen theme with no
-        // exception, no diagnostic and no return value anybody looked at - the player simply found that
+        // exception, no diagnostic and no return value anybody looked at - people simply found that
         // their layout never stuck.
         //
         // Load has reported since it was written; the asymmetry was an oversight rather than a

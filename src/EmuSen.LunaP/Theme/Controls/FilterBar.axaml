@@ -24,7 +24,7 @@
                                    IsVisible="{TemplateBinding ShowFacet}" />
                     <!-- Placeholder as the NAME as well as the placeholder. The
                          two are not the same thing: a placeholder disappears the
-                         moment the player types, which is exactly when they may
+                         moment someone types, which is exactly when they may
                          want reminding what they are searching. -->
                     <TextBox Grid.Column="2"
                              Name="PART_Search"

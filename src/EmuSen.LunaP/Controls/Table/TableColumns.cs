@@ -146,7 +146,7 @@ namespace EmuSen.LunaP.Controls
         // So both are expressible: `(_, i) => (i + 1).ToString()` numbers the rows, and
         // `(row, _) => row.Address.ToString("X4")` labels them. The index is the DISPLAYED one,
         // counted down the view after sorting and flattening, which is the only number that matches
-        // what the player is looking at and is not otherwise reachable from a caller's projection.
+        // what is on screen and is not otherwise reachable from a caller's projection.
         /// <summary>What to show in the gutter down the left, given a row and its displayed position. Null - the default - means no gutter.</summary>
         /// <remarks>
         /// The index is the row's position in what is currently DISPLAYED, so it counts down the screen

@@ -199,7 +199,7 @@ namespace EmuSen.LunaP.Controls
         public Func<T, object?> Key { get; set; } = item => item;
 
         // A selection change made by a person: a press on a tile, an arrow key, a reader's Select.
-        /// <summary>Raised when the player changes the selection, by pointer, keyboard or assistive technology. Not raised by Select or Refresh.</summary>
+        /// <summary>Raised when the selection is changed by pointer, keyboard or assistive technology. Not raised by Select or Refresh.</summary>
         public event Action<T>? Chose;
 
         // THE EVENT LunaList REFUSED, and the reason it refused does not hold here. LunaList is a
@@ -209,7 +209,7 @@ namespace EmuSen.LunaP.Controls
         // would be hooking whatever item that container shows next, and a host handling KeyDown on
         // the grid would have to repeat the grid's own idea of which tile is selected. The grid
         // is the only thing that knows which item a gesture landed on, so it has to say.
-        /// <summary>Raised when the player opens a tile: a double-tap on it, or Enter or Space while the grid has focus and a tile is selected.</summary>
+        /// <summary>Raised when a tile is opened: a double-tap on it, or Enter or Space while the grid has focus and a tile is selected.</summary>
         public event Action<T>? Activated;
 
         /// <summary>The selected model, or null when nothing is selected.</summary>
@@ -229,7 +229,7 @@ namespace EmuSen.LunaP.Controls
             _items = items.ToArray();
 
             // -1 when the item is gone rather than its neighbour: the tile it named no longer
-            // exists, and choosing a neighbour would be a guess made on the player's behalf.
+            // exists, and choosing a neighbour would be a guess made on someone's behalf.
             _selectedIndex = wasSelected is null ? -1 : _items.FindIndex(item => Equals(Key(item), wasSelected));
 
             // Indices have all moved, so every container goes back to the pool and is re-bound when

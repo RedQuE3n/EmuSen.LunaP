@@ -60,8 +60,8 @@ namespace EmuSen.LunaP.Controls
         // Raised only for a real user choice, never for the selection restored during a refresh -
         // the same distinction Dropdown.Chose draws, and for the same reason.
         //
-        // THIS IS A SELECTION CHANGE, NOT AN ACTIVATION, and the old summary - "raised when the player
-        // picks a row" - was ambiguous enough to be read the other way. A consumer did read it the
+        // THIS IS A SELECTION CHANGE, NOT AN ACTIVATION, and the old summary - raised when a row
+        // is picked - was ambiguous enough to be read the other way. A consumer did read it the
         // other way: a consumer's modal file browser wired `Chose` to close-and-return-the-path,
         // which turned a
         // list that had always wanted a double-click into one that ended the dialog on a single

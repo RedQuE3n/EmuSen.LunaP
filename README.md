@@ -178,9 +178,9 @@ peers.Refresh(await roster.All());   // selection survives the rebuild
 wrong for rows rebuilt on every poll. Give it a key when your models are
 replaced rather than mutated.
 
-### Setting a value is not the player doing something
+### Setting a value is not a person doing something
 
-Every control in the kit that raises a "the choice was this" event holds to one
+Every control in the kit that raises a "someone chose this" event holds to one
 rule: **writing the value from code does not raise it.** `Dropdown.Chose` is not
 raised by `Fill`, `LunaList.Chose` and `LunaTable.Chose` are not raised by
 `Refresh` or `Select`, `PathPickerRow.PathPicked` is not raised by setting

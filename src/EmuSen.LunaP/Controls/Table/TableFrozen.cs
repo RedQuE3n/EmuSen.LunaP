@@ -70,7 +70,7 @@ namespace EmuSen.LunaP.Controls
         //
         // A GUTTER IS ALWAYS FROZEN, EVEN AT FrozenColumns = 0 - see docs/LunaP.md §63. §59.4 pinned
         // the opposite as a decision on the record, because nothing could be frozen then; this is
-        // that decision being taken rather than reversed by accident. A row header is how the player
+        // that decision being taken rather than reversed by accident. A row header is how a person
         // refers to a row, and one that scrolls away leaves them reading a line of values with
         // nothing to say which row it is - which is the whole of what a gutter is for.
         private int FrozenGridColumns
@@ -123,7 +123,7 @@ namespace EmuSen.LunaP.Controls
             // BringIntoView - which is what Tab, F2 and Edit all provoke - raises ScrollChanged
             // reporting 0 while the viewer is already at 612, and no later event corrects it. The
             // header stayed put and every heading sat 612 pixels from its own cells, silently,
-            // whenever a scroll was caused by anything other than the player dragging the bar.
+            // whenever a scroll was caused by anything other than someone dragging the bar.
             //
             // Reading the live offset at layout time cannot be stale, because layout is what happens
             // after the offset settles. The event is kept for promptness and for catching the viewer
@@ -350,7 +350,7 @@ namespace EmuSen.LunaP.Controls
 
         // WHERE THE PINNED COLUMNS STOP, DRAWN SO SOMEBODY CAN SEE IT - see docs/LunaP.md §63.
         //
-        // Without this, frozen columns are invisible until the table is scrolled: the player is given
+        // Without this, frozen columns are invisible until the table is scrolled: anyone using it is given
         // a layout that behaves differently on the left and is told nothing about it until they
         // discover it. So the edge is drawn whether or not anything has been scrolled yet.
         //

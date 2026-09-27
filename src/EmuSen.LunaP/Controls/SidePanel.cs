@@ -91,7 +91,7 @@ namespace EmuSen.LunaP.Controls
         }
 
         // The width, or the height for a bottom panel. Only the starting value: once the panel is
-        // in an AppWindow the divider owns this number and remembers what the player dragged it to.
+        // in an AppWindow the divider owns this number and remembers where it was dragged to.
         /// <summary>The panel thickness in pixels: its width when docked left or right, its height when docked top or bottom.</summary>
         public double PanelSize
         {
@@ -142,7 +142,7 @@ namespace EmuSen.LunaP.Controls
         {
             base.OnAttachedToVisualTree(e);
 
-            // A panel the player shut last time stays shut. Done on attach rather than in the
+            // A panel shut last time stays shut. Done on attach rather than in the
             // constructor so the store a host installs at startup is the one that gets read.
             if (PanelKey is { } key && PaneLayoutStore.Load(key, LunaSettings.For(this)) is { } saved)
             {

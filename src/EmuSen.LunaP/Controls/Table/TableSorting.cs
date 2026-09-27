@@ -44,7 +44,7 @@ namespace EmuSen.LunaP.Controls
 
         // Sorting without a click, which is the half of §54.3's "programmatic SortDirection" this
         // control had no way to do. The obvious callers are a "Sort by size" menu item and an
-        // application restoring its own default before the player has touched anything.
+        // application restoring its own default before anyone has touched anything.
         //
         // REFUSES A COLUMN WITH NO COMPARISON rather than throwing or sorting by the projected text.
         // A column without a Sort is one the caller declared unsortable, and the reason Sort takes a

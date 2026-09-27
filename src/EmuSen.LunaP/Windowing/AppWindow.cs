@@ -184,7 +184,7 @@ namespace EmuSen.LunaP.Windowing
             // otherwise be three tab stops all called "Resize panes".
             if (!string.IsNullOrWhiteSpace(panel.Title)) split.DividerLabel = "Resize " + panel.Title;
 
-            // The divider takes the panel's key, so the width the player drags and the open/closed
+            // The divider takes the panel's key, so the width dragged by hand and the open/closed
             // state the panel saves end up as one record - see PaneLayoutStore.Update for why that
             // needs two writers of one entry rather than two entries.
             split.PaneKey = panel.PanelKey;

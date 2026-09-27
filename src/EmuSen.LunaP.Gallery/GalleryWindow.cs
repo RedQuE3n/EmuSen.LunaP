@@ -197,7 +197,7 @@ namespace EmuSen.LunaP.Gallery
 
             photos.Refresh(album);
 
-            // ROWS A PERSON CAN REORDER, AND THE HANDLER A CONSUMER ACTUALLY WRITES. The table
+            // ROWS THAT CAN BE REORDERED, AND THE HANDLER A CONSUMER ACTUALLY WRITES. The table
             // reports where the drop landed and changes nothing itself (§71.1), so this is not
             // ceremony the gallery is adding on top - it is the whole of what the feature asks of a
             // caller, and showing it with the collection missing would show half an idea.

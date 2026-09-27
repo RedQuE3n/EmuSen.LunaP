@@ -48,7 +48,7 @@ namespace EmuSen.LunaP.Windowing
         /// <summary>Shows a modal informational message with a single dismiss button, for something that is neither a question nor a fault.</summary>
         /// <param name="owner">The window to sit over.</param>
         /// <param name="title">The dialog title.</param>
-        /// <param name="message">What the player needs to know. A sentence or two; use MessageWindow for output long enough to scroll.</param>
+        /// <param name="message">What the reader needs to know. A sentence or two; use MessageWindow for output long enough to scroll.</param>
         /// <param name="acceptText">The caption of the dismiss button.</param>
         /// <returns>A task that completes when the dialog is dismissed.</returns>
         public static async Task MessageAsync(Window owner, string title, string message, string acceptText = "OK") =>
@@ -69,12 +69,12 @@ namespace EmuSen.LunaP.Windowing
             string acceptText = "OK", string cancelText = "Cancel") =>
             await SheetLayer.ShowDialog<string>(new PromptWindow(title, message, initial, acceptText, cancelText), owner);
 
-        // Null means the player cancelled, or the control is not in a window yet.
+        // Null means the dialog was cancelled, or the control is not in a window yet.
         /// <summary>Asks the platform for a folder.</summary>
         /// <param name="owner">Any visual in the window the picker should belong to.</param>
         /// <param name="title">The picker title.</param>
         /// <param name="startIn">The folder to open at. Ignored if it does not exist.</param>
-        /// <returns>The chosen path, or null if the player cancelled.</returns>
+        /// <returns>The chosen path, or null if the dialog was cancelled.</returns>
         public static async Task<string?> PickFolderAsync(Visual owner, string title, string? startIn = null)
         {
             if (TopLevel.GetTopLevel(owner) is not { } top) return null;
@@ -95,7 +95,7 @@ namespace EmuSen.LunaP.Windowing
         /// <param name="title">The picker title.</param>
         /// <param name="types">The file types to offer. Null offers everything.</param>
         /// <param name="startIn">The folder to open at. Ignored if it does not exist.</param>
-        /// <returns>The full path and the display name, or null if the player cancelled. The name is given separately because a platform may hand back a path that is not one a user would recognise.</returns>
+        /// <returns>The full path and the display name, or null if the dialog was cancelled. The name is given separately because a platform may hand back a path that is not one anybody would recognise.</returns>
         public static async Task<(string Path, string Name)?> PickFileAsync(Visual owner, string title,
             IReadOnlyList<FilePickerFileType>? types = null, string? startIn = null)
         {
@@ -120,8 +120,8 @@ namespace EmuSen.LunaP.Windowing
         /// <param name="suggestedName">The name to offer.</param>
         /// <param name="types">The file types to offer. Null offers everything.</param>
         /// <param name="startIn">The folder to open at.</param>
-        /// <param name="defaultExtension">Appended when the player types a name without one.</param>
-        /// <returns>The chosen path, or null if the player cancelled. Nothing is written: choosing a path is all this does.</returns>
+        /// <param name="defaultExtension">Appended when a name is typed without one.</param>
+        /// <returns>The chosen path, or null if the dialog was cancelled. Nothing is written: choosing a path is all this does.</returns>
         public static async Task<string?> SaveFileAsync(Visual owner, string title, string? suggestedName = null,
             IReadOnlyList<FilePickerFileType>? types = null, string? startIn = null, string? defaultExtension = null)
         {

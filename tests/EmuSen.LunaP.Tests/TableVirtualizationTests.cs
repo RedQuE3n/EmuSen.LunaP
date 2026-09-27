@@ -254,7 +254,7 @@ namespace EmuSen.LunaP.Tests
         // rather than a share of the viewport - and loses it the instant the cells go. Measured with
         // this clause removed: 175 pixels at rest, 0 while scrolled past, and the table's extent
         // moving 3,679 to 3,504 - which slides every column to its right 175 pixels sideways while
-        // the player is dragging the scrollbar. §72.3.
+        // the scrollbar is being dragged. §72.3.
         [Fact]
         public Task A_star_column_does_not_collapse_when_the_table_is_scrolled_past_it() =>
             Shown(Starred, (table, window) =>
@@ -439,7 +439,7 @@ namespace EmuSen.LunaP.Tests
         //
         // Every other guard here reads the range in the same terms the range was computed in, so a
         // range that is consistently wrong reads as consistently right. This one takes the arranged
-        // bounds of the cells that exist and asks whether they cover what the player is looking at,
+        // bounds of the cells that exist and asks whether they cover what is on screen,
         // which is the question the range is an answer to rather than a restatement of it.
         //
         // WHAT THIS DOES NOT PIN, said plainly. The range is measured from a ROW's definitions and
@@ -556,7 +556,7 @@ namespace EmuSen.LunaP.Tests
             });
 
         // AND A RENDER, because every property this file reads can be right while nothing is drawn.
-        // A cell built into a grid is not a cell the player can see: it can be clipped by the frozen
+        // A cell built into a grid is not a cell anyone can see: it can be clipped by the frozen
         // band (§61), or inserted after a selection box and cover it, or arrive with no bounds and
         // stay that way. Only pixels say otherwise.
         //
@@ -616,7 +616,7 @@ namespace EmuSen.LunaP.Tests
         // the overlays in, so the order is right by construction - but the fill runs LATER than the
         // box does, because MarkCells puts a box on a selected cell of a realized row whether or not
         // that column has ever been built. Append there instead of inserting at the front and the
-        // arriving cell covers the outline, and the player scrolls back to a cell that is selected and
+        // arriving cell covers the outline, and scrolling back reaches a cell that is selected and
         // does not look it.
         //
         // A RENDER, because this is a claim about draw order and nothing readable off a property

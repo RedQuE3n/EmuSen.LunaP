@@ -142,8 +142,8 @@ namespace EmuSen.LunaP.Tests
 
         // Named on purpose and deliberately absent, for two different reasons.
         //
-        // CONTRIBUTING.md is gitignored - local working configuration, and this project must not carry
-        // documentation about how an assistant should behave - so requiring it would turn a
+        // CONTRIBUTING.md is gitignored - local working configuration rather than documentation the
+        // project carries - so requiring it would turn a
         // deliberate absence into a suite that is red on CI and green nowhere else.
         //
         // EmuSen_Project_Overview_v2.md stayed behind when LunaP left EmuSen (§19, §20). LunaApp.cs

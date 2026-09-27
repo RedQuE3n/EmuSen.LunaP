@@ -441,7 +441,7 @@ namespace EmuSen.LunaP.Tests
         }, default);
 
         // EXPANSION IS KEYED BY MODEL, so a Refresh that hands back new objects for the same rows -
-        // which is every poll in a PollingWindow - does not collapse the tree the player just opened.
+        // which is every poll in a PollingWindow - does not collapse the tree just opened.
         [Fact]
         public Task Expansion_survives_a_refresh_that_rebuilds_the_models() =>
             Tree(() => TreeTable(Tree()), table =>
@@ -488,7 +488,7 @@ namespace EmuSen.LunaP.Tests
         // right. With the expander in column 1, the wrapper landed on top of column 0's cell.
         //
         // Asserted as POSITIONS and not only as attached properties: the property is what was wrong,
-        // but two cells sharing an x is what the player saw, and it is the second that says the row is
+        // but two cells sharing an x is what the screen showed, and it is the second that says the row is
         // laid out rather than merely annotated (§5.5's shape).
         [Fact]
         public Task An_expander_in_a_later_column_lands_in_that_column() => Session.Dispatch(() =>

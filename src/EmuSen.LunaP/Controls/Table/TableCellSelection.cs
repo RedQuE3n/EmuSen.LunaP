@@ -32,7 +32,7 @@ namespace EmuSen.LunaP.Controls
         // Changing it CLEARS what was selected, and that is the honest answer rather than a
         // convenience: a row selection and a cell selection are not translations of each other. A row
         // has no column to become, and turning a selected cell into its whole row would select more
-        // than the request was for. Nothing selected is the one state both units agree on.
+        // than was asked for. Nothing selected is the one state both units agree on.
         /// <summary>Whether selection is a row or a single cell. Row by default.</summary>
         public LunaSelectionUnit SelectionUnit
         {
@@ -63,7 +63,7 @@ namespace EmuSen.LunaP.Controls
 
         // Where a Shift range measures from, and where the arrows move. Two fields and not one: the
         // anchor stays put while Shift+arrow walks the current cell away from it, which is what makes
-        // an extended range shrink again when the player comes back.
+        // an extended range shrink again when the cursor comes back.
         private (object Key, int Column)? _anchor;
 
         private (object Key, int Column)? _current;
@@ -72,7 +72,7 @@ namespace EmuSen.LunaP.Controls
         public event Action<LunaCell<T>?>? CellChosen;
 
         // THE CURRENT CELL, which is the one the arrows move and the one F2 opens. Under a Shift
-        // range it is the far end rather than the anchor, because that is the end the player is moving.
+        // range it is the far end rather than the anchor, because that is the end being moved.
         /// <summary>The current cell, or null when no cell is selected or the unit is Row.</summary>
         public LunaCell<T>? SelectedCell
         {
@@ -85,7 +85,7 @@ namespace EmuSen.LunaP.Controls
         }
 
         // IN DISPLAY ORDER, ROW BY ROW AND THEN COLUMN BY COLUMN, for SelectedItems' reason (§54):
-        // a caller acting on a multi-selection wants it in the order the player is looking at, and the
+        // a caller acting on a multi-selection wants it in the order on screen, and the
         // order cells were clicked is not recoverable and not what anybody means by "these cells".
         //
         // Walked rather than stored, so a sort, an expand or a hidden column reorders this for free
@@ -171,7 +171,7 @@ namespace EmuSen.LunaP.Controls
         // a spreadsheet's Shift+click has never meant "everything from here to there along the rows".
         //
         // Hidden columns are skipped rather than included-and-not-drawn, so a range that spans one
-        // does not quietly select a cell the player cannot see and a later command cannot show them.
+        // does not quietly select a cell nobody can see and a later command cannot show.
         private void SelectRangeTo(T item, int column)
         {
             if (_anchor is not { } anchor || _selectionMode != LunaSelectionMode.Multiple)
@@ -203,7 +203,7 @@ namespace EmuSen.LunaP.Controls
 
         // Ctrl, which is the other half of what a multi-selection means: add this one, or take it
         // back off if it was already there. The anchor moves to it either way, so a Shift that
-        // follows measures from where the player last pointed rather than from wherever they began.
+        // follows measures from the last cell pointed at rather than from where the range began.
         private void ToggleCell(T item, int column)
         {
             if (_selectionMode != LunaSelectionMode.Multiple)
@@ -222,7 +222,7 @@ namespace EmuSen.LunaP.Controls
             Announce();
         }
 
-        // Both halves of "something changed": what the player sees, and what the caller hears. Every
+        // Both halves of "something changed": what the screen shows, and what the caller hears. Every
         // path that touches the selection ends here so neither can be forgotten.
         private void Announce()
         {
@@ -233,7 +233,7 @@ namespace EmuSen.LunaP.Controls
         // The visible half on its own, because OnPartsAttached needs it and must NOT raise the event.
         // A caller who selected a cell from its constructor - before this control had a template -
         // has already been told about that selection; telling them again when the template arrives
-        // would make CellChosen fire twice for one thing the player did, and the second one carries no
+        // would make CellChosen fire twice for one thing a person did, and the second one carries no
         // new information. §27.6 is the same trap for row selection, one layer down.
         private void Sync()
         {
@@ -241,7 +241,7 @@ namespace EmuSen.LunaP.Controls
 
             // The row under the current cell follows it, which is what keeps Selected, Chose and the
             // vertical scroll working in this unit without a second implementation of any of them.
-            // Suppressed so the ListBox's own event does not read as a row the choice was.
+            // Suppressed so the ListBox's own event does not read as a row chosen by hand.
             if (Rows is null || _selectionUnit != LunaSelectionUnit.Cell) return;
 
             using (_filling.Suppress())
@@ -454,7 +454,7 @@ namespace EmuSen.LunaP.Controls
 
             // AT THE EDGE, NOTHING MOVES AND THE KEY IS STILL EATEN. Letting it through would send
             // Right on the last column to the ListBox, which would move focus out of the table
-            // entirely - so the player would find that walking one column too far left the control.
+            // entirely - so walking one column too far would have left the control.
             if (column < 0 || row < 0 || row >= _view.Count)
             {
                 e.Handled = true;
@@ -464,13 +464,13 @@ namespace EmuSen.LunaP.Controls
             T target = _view[row];
             if (extend) SelectRangeTo(target, column); else SelectCell(target, column);
 
-            // The cell has to be somewhere the player can see, and the two directions need two
+            // The cell has to be somewhere on screen, and the two directions need two
             // mechanisms: a row scrolled away is the ListBox's business, and a column outside the
             // viewport is this control's (§64.4 measured the same problem for an editor).
             //
             // And since §72 there is a third thing that can be wrong with it: the column may not have
             // been built. Walking Right off the edge of the range would select a cell, find no visual
-            // to scroll to, and leave the player pressing a key that appears to do nothing - so the
+            // to scroll to, and leave a key press that appears to do nothing - so the
             // column is realized first and the existing BringIntoView then works unchanged. §72.4.
             BringRowIntoView(target);
             ShowColumn(column);
@@ -481,8 +481,8 @@ namespace EmuSen.LunaP.Controls
         }
 
         // The next column that is actually on screen, walking in one direction from where we are.
-        // A hidden column is stepped over rather than landed on, because a selection the player cannot
-        // see is one they cannot act on - and it would look like the arrow key had done nothing.
+        // A hidden column is stepped over rather than landed on, because a selection nobody can
+        // see is one nobody can act on - and it would look like the arrow key had done nothing.
         private int NextVisible(int from, int step)
         {
             for (int i = from + step; i >= 0 && i < _columns.Count; i += step)

@@ -150,9 +150,9 @@ namespace EmuSen.LunaP.Commands
         }
 
         // Setting this directly does NOT invoke the handler. That is the difference between the
-        // application telling the action what is true and the player asking for a change, and
+        // application telling the action what is true and a person asking for a change, and
         // collapsing the two is how a settings dialog ends up applying everything twice on open.
-        /// <summary>Whether a checkable action is on. Setting this directly does NOT run the handler - that is the difference between the application stating what is true and the player asking for a change.</summary>
+        /// <summary>Whether a checkable action is on. Setting this directly does NOT run the handler - that is the difference between the application stating what is true and a person asking for a change.</summary>
         public bool IsChecked
         {
             get => _isChecked;
@@ -209,10 +209,10 @@ namespace EmuSen.LunaP.Commands
         /// <remarks>This is about wiring and not about state: a disabled action still answers true, because disabled is temporary and a disabled placeholder is still a placeholder. A separator and a submenu owner answer false, having nothing to run; a caller sweeping a menu for items that do nothing skips both first.</remarks>
         public bool HasHandler => _triggered is not null || Invoked is not null;
 
-        // The player asking for it. A disabled action does nothing at all - not the handler, not the
+        // A person asking for it. A disabled action does nothing at all - not the handler, not the
         // state flip - so a stale toolbar button or a key binding that outlived its window cannot
         // reach a handler that was counting on being unreachable.
-        /// <summary>Invokes the action as the player would: flips a checkable one, runs the handler, then raises Invoked.</summary>
+        /// <summary>Invokes the action as a click or key press would: flips a checkable one, runs the handler, then raises Invoked.</summary>
         public void Invoke()
         {
             if (!_isEnabled || IsSeparator) return;
@@ -287,7 +287,7 @@ namespace EmuSen.LunaP.Commands
         // null that threw or did nothing would break that for a group with nothing chosen yet.
         //
         // NO HANDLER RUNS, matching IsChecked's own setter and standing opposite Invoke. That is the
-        // same line LunaAction draws between the application stating what is true and the player
+        // same line LunaAction draws between the application stating what is true and a person
         // asking for a change, and a group is where getting it wrong is worst: a settings window
         // showing the current theme would apply a theme merely by displaying it.
         /// <summary>The member currently checked, or null when none is. Setting it checks that one and unchecks the rest without running any handler.</summary>

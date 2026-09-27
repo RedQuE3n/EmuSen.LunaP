@@ -373,7 +373,7 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(325, first.FixedSize);
 
             // Closing the window is the case that matters: a drag followed straight away by a
-            // close would otherwise lose the last thing the player did.
+            // close would otherwise lose the last change made.
             window.Close();
 
             Assert.Equal(325, PaneLayoutStore.Load("explorer")!.Size);

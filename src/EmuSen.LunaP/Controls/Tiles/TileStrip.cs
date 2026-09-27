@@ -155,10 +155,10 @@ namespace EmuSen.LunaP.Controls
         /// <summary>How a tile is matched to a model across a Refresh, so a selection survives a rebuild. The item itself unless replaced, which is reference identity for a class.</summary>
         public Func<T, object?> Key { get; set; } = item => item;
 
-        /// <summary>Raised when the player changes the selection, by pointer, keyboard, Move or assistive technology. Not raised by Select or Refresh.</summary>
+        /// <summary>Raised when the selection is changed by pointer, keyboard, Move or assistive technology. Not raised by Select or Refresh.</summary>
         public event Action<T>? Chose;
 
-        /// <summary>Raised when the player opens a tile: a double-tap on it, or Enter or Space while the strip has focus and a tile is selected.</summary>
+        /// <summary>Raised when a tile is opened: a double-tap on it, or Enter or Space while the strip has focus and a tile is selected.</summary>
         public event Action<T>? Activated;
 
         /// <summary>The selected model, or null when nothing is selected.</summary>
@@ -197,7 +197,7 @@ namespace EmuSen.LunaP.Controls
         }
 
         // What a key or a pad's button does, for a host that maps its own input onto the strip - see §95.2.
-        /// <summary>Moves the selection by a number of tiles, clamped to the ends, as the player would, raising Chose if it moved. With nothing selected it selects the first tile, or the last for a negative step.</summary>
+        /// <summary>Moves the selection by a number of tiles, clamped to the ends, as a key press would, raising Chose if it moved. With nothing selected it selects the first tile, or the last for a negative step.</summary>
         /// <param name="by">Tiles to move: negative is left, positive is right. Safe to call before the control has a template.</param>
         /// <returns>Whether the selection changed.</returns>
         public bool Move(int by)

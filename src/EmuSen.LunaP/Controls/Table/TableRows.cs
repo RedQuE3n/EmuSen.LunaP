@@ -278,13 +278,13 @@ namespace EmuSen.LunaP.Controls
         }
 
         // Its own suppressor rather than _filling's, because the two guard different things: _filling
-        // says "this selection is not the player's" and gates Chose, and this says "this tick is the
+        // says "this selection is not a person's" and gates Chose, and this says "this tick is the
         // table putting the box back" and gates the caller's Toggle. Sharing one would mean a refresh
         // arriving mid-toggle swallowed the other's event.
         private readonly Suppressor _toggling = new();
 
         // THE MODEL IS THE TRUTH AND THE BOX IS A VIEW OF IT, which is why this writes and then reads
-        // back rather than trusting what the player just clicked. Two things fall out of that and both
+        // back rather than trusting what was just clicked. Two things fall out of that and both
         // are wanted: a Toggle that normalises - one that turns three flags on together - shows what
         // it actually did, and a Toggle that REFUSES leaves the model alone and the tick returns to
         // where it was, with no separate veto mechanism to build. It is the same rule as Close

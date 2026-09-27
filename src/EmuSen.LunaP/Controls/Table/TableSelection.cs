@@ -87,7 +87,7 @@ namespace EmuSen.LunaP.Controls
                 // IN A CELL UNIT, A ROW IS SELECTED WHEN ANY OF ITS CELLS IS. The ListBox is holding
                 // one row (the current cell's) whatever the mode, so reading it here would answer
                 // "one" for a selection spanning four rows. A caller asking which models are involved
-                // in what the player has picked gets the same answer in both units.
+                // in what has been picked gets the same answer in both units.
                 if (_selectionUnit == LunaSelectionUnit.Cell)
                 {
                     if (_cells.Count == 0) return Array.Empty<T>();
@@ -130,7 +130,7 @@ namespace EmuSen.LunaP.Controls
         // Raised only for a real user choice, never for the selection restored during a refresh.
         //
         // A SELECTION CHANGE, NOT AN ACTIVATION - the same correction LunaList's Chose carries, and
-        // for the same reason: the old summary said "when the player picks a row", which a consumer
+        // for the same reason: the old summary said it fired when a row is picked, which a consumer
         // read as double-click and wired an irreversible action to. §78. A table row's activation
         // gesture is DoubleTapped on the table, as it is for a list.
         /// <summary>Raised when the selection changes to a different row, with the model rather than the row. This is a selection, NOT an activation - for double-click or Enter, handle DoubleTapped or KeyDown. Not raised by Refresh or Select.</summary>
@@ -150,7 +150,7 @@ namespace EmuSen.LunaP.Controls
         public void Select(T? item)
         {
             // None REFUSES, and clearing still works. The mode is spelled as "single, and nothing
-            // can be hit" (ApplySelectionMode), which stopped the player and not the caller - so a
+            // can be hit" (ApplySelectionMode), which stopped the pointer and not the caller - so a
             // table declared unselectable could still be given a selection in code, and would show
             // one. The cell path has always refused it here (CanSelectCell), and switching to None
             // already clears what is selected for the stated reason that the mode must not read as

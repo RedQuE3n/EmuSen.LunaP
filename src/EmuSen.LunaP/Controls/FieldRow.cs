@@ -21,7 +21,7 @@ namespace EmuSen.LunaP.Controls
             AvaloniaProperty.RegisterDirect<FieldRow, bool>(nameof(HasHint), o => o.HasHint);
 
         // WHAT IS WRONG WITH THIS FIELD, AND A STRING RATHER THAN A BOOL, because a field that is
-        // invalid without saying why is a field the player cannot fix. There is no separate
+        // invalid without saying why is a field nobody can fix. There is no separate
         // IsValid: the message IS the state, so the two can never disagree - a control carrying
         // both would eventually be set invalid with an empty message, or valid with a stale one.
         //

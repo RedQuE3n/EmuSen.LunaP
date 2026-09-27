@@ -63,7 +63,7 @@ namespace EmuSen.LunaP.Settings
         // This started as null-means-discard, and that inverted the one rule this toolkit is
         // otherwise careful about. The common path is as quiet as a host wants it; the FAILURES
         // were the part that defaulted to silence. Everything arriving here is a recoverable
-        // problem whose defining quality is that the player's evidence says it should have worked -
+        // problem whose defining quality is that all the visible evidence says it should have worked -
         // a theme file that would not parse, a settings write that failed, two menu commands
         // claiming one keyboard shortcut (§26.5) - and a host that has not yet thought about
         // diagnostics is precisely the host that needs to see them.
@@ -90,7 +90,7 @@ namespace EmuSen.LunaP.Settings
         // carrying on does not happen in silence. §26.5 widened it to a second kind of thing -
         // two menu commands claiming one keyboard shortcut, where Avalonia runs the first and
         // ignores the second while the menu goes on showing the key beside both. That is the same
-        // shape of problem (recoverable, invisible, and the player's evidence says it should have
+        // shape of problem (recoverable, invisible, and the visible evidence says it should have
         // worked) and it goes to the same sink rather than to a second one nobody would install.
         /// <summary>Reports a diagnostic message to whatever Diagnostics is set to, or to standard error when nothing is installed.</summary>
         /// <param name="message">What happened. Written for somebody reading a log, not for a user.</param>

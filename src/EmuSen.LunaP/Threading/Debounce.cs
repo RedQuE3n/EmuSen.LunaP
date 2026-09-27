@@ -65,7 +65,7 @@ namespace EmuSen.LunaP.Threading
         /// <summary>Drops a pending action without running it.</summary>
         public void Cancel() => _timer.Stop();
 
-        // Runs now if something is pending, otherwise does nothing. For Enter, where the player has
+        // Runs now if something is pending, otherwise does nothing. For Enter, where someone has
         // said they are finished and waiting out the delay would just feel slow.
         /// <summary>Runs a pending action immediately instead of waiting out the delay. Does nothing when none is pending.</summary>
         public void Flush()

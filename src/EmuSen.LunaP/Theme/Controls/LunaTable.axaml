@@ -165,7 +165,7 @@
          grid rules do (§56.2): it is where one surface stops and the next
          begins, and that token is already held to 3:1 against both surfaces.
          Drawn whether or not the table has been scrolled yet, because a layout
-         that behaves differently on the left should say so before the player
+         that behaves differently on the left should say so before anyone
          discovers it rather than after. §63.
 
          Its own class rather than reusing column-rule, so a host that wants the
@@ -179,7 +179,7 @@
          LunaAccent rather than LunaBorder, because this is not a boundary
          between two surfaces the way a grid rule or the frozen seam is (§56.2) -
          it is a live answer to what the pointer is currently doing, and it has
-         to be findable at a glance while the player is moving. The same token the
+         to be findable at a glance while the pointer is moving. The same token the
          selected cell takes, for the same reason. -->
     <Style Selector=":is(luna|LunaTable) Border.drop-line">
         <Setter Property="Background" Value="{DynamicResource LunaAccent}" />

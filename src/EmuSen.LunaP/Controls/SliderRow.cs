@@ -110,7 +110,7 @@ namespace EmuSen.LunaP.Controls
         /// <summary>Whether the value is the default, to within a thousandth of the step.</summary>
         public bool IsDefault => Math.Abs(Value - _defaultValue) <= EffectiveStep / 1000;
 
-        /// <summary>Raised when the player moves the slider or presses the reset button, with the new value. Not raised by setting Value.</summary>
+        /// <summary>Raised when the slider is moved or the reset button pressed, with the new value. Not raised by setting Value.</summary>
         public event Action<double>? ValueChanged;
 
         private double EffectiveStep => _step > 0 ? _step : Math.Max((Maximum - Minimum) / 100, double.Epsilon);

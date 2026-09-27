@@ -8,7 +8,7 @@ using EmuSen.LunaP.Settings;
 
 namespace EmuSen.LunaP.Controls
 {
-    // WHERE A PERSON LEFT IT - see docs/LunaP.md §27.11, and §70.4 for the half that was missing.
+    // WHERE IT WAS LEFT - see docs/LunaP.md §27.11, and §70.4 for the half that was missing.
     //
     // Four methods and three fields, and the reason they are a file rather than an appendix to
     // TableColumns.cs is that they answer a different question. That file decides what a column IS;
@@ -48,7 +48,7 @@ namespace EmuSen.LunaP.Controls
         //
         // What is remembered is what a PERSON did - the widths they dragged and the sort they left
         // it in - and not what the caller declared. A column the caller widened in code between two
-        // releases should take effect; a column the player widened should survive it. That is why
+        // releases should take effect; a column widened by hand should survive it. That is why
         // Widths saves Avalonia's own notation rather than resolved pixels: an untouched star column
         // comes back as "2*" and re-resolves against whatever window it now finds itself in.
         /// <summary>An opt-in key under which this table's column widths and sort are remembered. Null, the default, means nothing is written down.</summary>

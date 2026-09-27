@@ -34,7 +34,7 @@ namespace EmuSen.LunaP.Tests
             });
 
         // The reason Fill exists: setting ItemsSource then SelectedItem raises SelectionChanged, and a naive
-        // wiring would treat that as the player picking something and write it straight back to config.
+        // wiring would treat that as a person picking something and write it straight back to config.
         [Fact]
         public Task Filling_a_dropdown_does_not_look_like_a_user_choice() =>
             Realised(() => new Dropdown(), drop =>

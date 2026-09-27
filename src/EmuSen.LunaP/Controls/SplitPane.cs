@@ -24,14 +24,14 @@ namespace EmuSen.LunaP.Controls
         Second,
     }
 
-    // Two panes and a divider the player can drag - see docs/LunaP.md §26.6.
+    // Two panes and a divider that can be dragged - see docs/LunaP.md §26.6.
     //
     // Qt's QSplitter, and the evidence that it was missing is unusually direct: §21.2 found
     // `CheatDatabaseWindow.axaml:52` faking one as `ColumnDefinitions="2*,12,3*"`, with the 12 as
     // a spacer column and no way to move it. There is no GridSplitter anywhere in any of the three
     // repositories surveyed - not because nobody wanted a draggable divider, but because getting
     // one means three column definitions, a GridSplitter, two minimum widths and somewhere to keep
-    // the size the choice was, and at that point people write `2*,12,3*` instead.
+    // the size that was chosen, and at that point people write `2*,12,3*` instead.
     //
     // ONE PANE IS FIXED AND THE OTHER IS ELASTIC, which is a departure from QSplitter's
     // proportional model and is the more useful behaviour for what a splitter is actually used
@@ -40,10 +40,10 @@ namespace EmuSen.LunaP.Controls
     // side that is, so a right-hand panel works as well as a left-hand one.
     //
     // THE DIVIDER IS REMEMBERED IN PIXELS, NOT AS A FRACTION, and that is deliberate. A fraction
-    // survives a window resize by moving the divider, which is exactly the thing the player was
-    // being precise about when they dragged it: they made the sidebar wide enough for the longest
+    // survives a window resize by moving the divider, which is exactly the thing whoever dragged
+    // it was being precise about: they made the sidebar wide enough for the longest
     // filename, not wide enough for 22% of a window they may never open at that size again.
-    /// <summary>Two panes and a divider the player can drag, with the position optionally remembered.</summary>
+    /// <summary>Two panes and a divider that can be dragged, with the position optionally remembered.</summary>
     public class SplitPane : TemplatedControl
     {
         public static readonly StyledProperty<Orientation> OrientationProperty =
@@ -210,7 +210,7 @@ namespace EmuSen.LunaP.Controls
 
         // Writes the divider's position now rather than waiting out the delay. Called on the way
         // out of the visual tree, because a window closed straight after a drag would otherwise
-        // lose the last thing the player did to it.
+        // lose the last change made to it.
         /// <summary>Writes the divider position immediately, rather than waiting for the drag to settle. Does nothing without a PaneKey.</summary>
         public void SaveNow()
         {
@@ -282,9 +282,9 @@ namespace EmuSen.LunaP.Controls
 
             ApplySize();
 
-            // Only a size the choice was is worth keeping. A caller assigning FixedSize during
+            // Only a size chosen by hand is worth keeping. A caller assigning FixedSize during
             // construction is describing a default, and saving that would overwrite the divider
-            // the player dragged last time with the one the programmer typed.
+            // dragged last time with the one the programmer typed.
             if (!_syncing.IsSuppressing) return;
 
             _save ??= new Debounce(TimeSpan.FromMilliseconds(400), SaveNow);
@@ -415,7 +415,7 @@ namespace EmuSen.LunaP.Controls
             }
         }
 
-        // The player moved the divider. GridSplitter writes the new length straight onto the
+        // The divider was moved by hand. GridSplitter writes the new length straight onto the
         // definition, so this is the only place a drag can be observed at all - there is no
         // "dragged" event on the splitter that reports where it ended up.
         private void OnDefinitionChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
@@ -426,7 +426,7 @@ namespace EmuSen.LunaP.Controls
             else return;
 
             // A star length here is the grid re-expressing a pane that is no longer fixed, not a
-            // position the choice was; taking its Value would record "1" as a pixel width.
+            // position anyone chose; taking its Value would record "1" as a pixel width.
             if (!length.IsAbsolute) return;
 
             using (_syncing.Suppress()) SetCurrentValue(FixedSizeProperty, length.Value);

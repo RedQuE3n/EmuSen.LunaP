@@ -27,9 +27,9 @@
         </Setter>
     </Style>
 
-    <!-- Small, bold, muted capitals: the plan's description of OpenEmu's group
+    <!-- Small, bold, muted capitals: the request's description of OpenEmu's group
          headings. Its SidebarHeaderView.swift sets no font - the look is in
-         SidebarController.xib, which was not read - so this is the plan's
+         SidebarController.xib, which was not read - so this is the request's
          measurement rather than one taken here (§88.1). -->
     <Style Selector="luna|SourceList TextBlock.source-header">
         <Setter Property="Foreground" Value="{DynamicResource LunaMuted}" />

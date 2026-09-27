@@ -361,7 +361,7 @@ namespace EmuSen.LunaP.Tests
         // "all of them" rather than an exception at layout time. What that then means is worth
         // stating, because the two bounds meet here: freezing EVERY column makes the band the whole
         // width of the table, so it can only leave room when the table already fits - and a table
-        // that fits does not scroll. Every other case is refused by §64.1, and what the player gets is
+        // that fits does not scroll. Every other case is refused by §64.1, and what anyone gets is
         // an ordinary scrolling table rather than one with columns it cannot reach.
         [Fact]
         public Task Freezing_more_columns_than_exist_is_harmless() =>
@@ -515,7 +515,7 @@ namespace EmuSen.LunaP.Tests
                     b => b.Classes.Contains("frozen-edge")));
 
         // DRAWN BEFORE ANYTHING IS SCROLLED, which is the point of it. A layout that behaves
-        // differently on the left should say so before the player discovers it, not after.
+        // differently on the left should say so before anyone discovers it, not after.
         [Fact]
         public Task The_seam_is_drawn_at_rest() =>
             Scrolled(frozen: 1, offset: 0, (table, _) =>

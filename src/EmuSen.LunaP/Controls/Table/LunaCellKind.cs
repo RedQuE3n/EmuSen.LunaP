@@ -4,7 +4,7 @@ namespace EmuSen.LunaP.Controls
     //
     // Until §57 a cell was a TextBlock and there was nothing to choose, so there was no enum: the
     // column had a Text projection and that was the whole of what a cell could be. A checkbox column
-    // is the case that breaks it - a boolean rendered as "True"/"False" is a value the player has to
+    // is the case that breaks it - a boolean rendered as "True"/"False" is a value a person has to
     // read instead of see, and it is the commonest column in an office table after a name.
     //
     // AN ENUM AND NOT A SUBCLASS HIERARCHY. LunaColumn<T> is sealed and stays sealed: a caller writes

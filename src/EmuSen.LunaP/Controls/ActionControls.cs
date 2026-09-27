@@ -117,7 +117,7 @@ namespace EmuSen.LunaP.Controls
             {
                 // NOT Command. A checkable MenuItem flips its own IsChecked when clicked, and a
                 // command that flips the action's state too would leave the two arguing about
-                // which of them just happened. Click is the one signal meaning "the player did
+                // which of them just happened. Click is the one signal meaning "a person did
                 // this"; everything else here is the action telling the control what is true.
                 Click += OnClicked;
             }
@@ -255,7 +255,7 @@ namespace EmuSen.LunaP.Controls
 
             // Same reasoning as ActionMenuItem: a ToggleButton flips itself on click, so binding
             // Command as well would invoke the action for a state change the action had not agreed
-            // to. Click means the player; everything else is the action reporting.
+            // to. Click means a person; everything else is the action reporting.
             Click += (_, _) =>
             {
                 Action.Invoke();

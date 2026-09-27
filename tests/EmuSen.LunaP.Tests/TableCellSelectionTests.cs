@@ -20,7 +20,7 @@ namespace EmuSen.LunaP.Tests
     // both are ways this can look finished and be wrong:
     //
     //   - A SELECTION NOTHING PAINTS. The set of selected cells is held by key, so every property
-    //     on the control can answer correctly while the player sees nothing at all - §5.5's shape,
+    //     on the control can answer correctly while the screen shows nothing at all - §5.5's shape,
     //     which this codebase has been caught by often enough to name. Most of these tests read the
     //     BOX out of the row's visual tree rather than asking the table what it thinks.
     //   - A GUARD THAT ONLY WORKS WITH SEVERAL ROWS. ContainerPrepared hands over a container that
@@ -292,7 +292,7 @@ namespace EmuSen.LunaP.Tests
         });
 
         // A hidden column keeps its INDEX (§54.3) but must not be landed on: a selection nobody can
-        // see is one the player cannot act on, and the arrow key would look like it had done nothing.
+        // see is one nobody can act on, and the arrow key would look like it had done nothing.
         [Fact]
         public Task A_hidden_column_is_stepped_over_rather_than_landed_on() =>
             Realised(() => Table(hideMiddle: true), table =>
@@ -320,8 +320,8 @@ namespace EmuSen.LunaP.Tests
 
         // A RECTANGLE AND NOT A READING ORDER. Shift from (row 0, column 0) to (row 1, column 1) is
         // four cells, not three - a spreadsheet's Shift has never meant "everything from here to
-        // there along the rows", and a caller acting on the selection would get a cell the player
-        // never saw highlighted.
+        // there along the rows", and a caller acting on the selection would get a cell nobody
+        // ever saw highlighted.
         [Fact]
         public Task Shift_down_extends_a_rectangle_and_not_a_run() =>
             Realised(() => Table(mode: LunaSelectionMode.Multiple), table =>
@@ -423,13 +423,13 @@ namespace EmuSen.LunaP.Tests
             });
 
         // Changing the unit CLEARS, and that is the decision rather than an oversight: a row has no
-        // column to become, and turning a selected cell into its whole row selects more than the
-        // user asked for. Nothing selected is the one state both units agree on.
+        // column to become, and turning a selected cell into its whole row selects more than
+        // was asked for. Nothing selected is the one state both units agree on.
         //
         // SelectedCells IS THE ASSERTION THAT BITES. SelectedCell, the boxes and the row all go when
         // the current cell is forgotten, so a version that dropped the cursor and kept the set passed
         // the first draft of this test unchanged - and would have handed a caller a list of cells
-        // after the player had switched the table to selecting rows.
+        // after the table had been switched to selecting rows.
         [Fact]
         public Task Changing_the_unit_clears_what_was_selected() => Realised(() => Table(), table =>
         {
@@ -463,7 +463,7 @@ namespace EmuSen.LunaP.Tests
             });
 
         // In DISPLAY order and not click order, for SelectedItems' reason (§54): a caller acting on
-        // a multi-selection wants it in the order the player is looking at.
+        // a multi-selection wants it in the order on screen.
         [Fact]
         public Task SelectedCells_come_back_in_display_order() =>
             Realised(() => Table(mode: LunaSelectionMode.Multiple), table =>

@@ -124,7 +124,7 @@ namespace EmuSen.LunaP.Windowing
 
         // A MOVE THAT DID NOT MOVE IS NOT ACTIVITY, and this is the guard that makes the feature
         // work at all rather than a refinement of it. PointerMoved arrives for reasons that are not
-        // the player moving the mouse - a window activating under a stationary pointer is the common
+        // a person moving the mouse - a window activating under a stationary pointer is the common
         // one - and treating those as activity means a cursor that can never quite reach its delay.
         private void OnPointerMoved(object? sender, PointerEventArgs e)
         {

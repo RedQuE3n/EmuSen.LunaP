@@ -100,7 +100,7 @@ namespace EmuSen.LunaP.Controls
         // of anything. Measured on Avalonia 12.1.0, one "*" among twenty-nine fixed columns: 175
         // pixels at rest, 0 the moment its cells were dropped, and 175 again on scrolling back - with
         // the extent moving 3,679 to 3,504 and every column to its right sliding 175 pixels sideways
-        // under the player's hand while they scrolled.
+        // under the pointer while the table scrolled.
         //
         // AN AUTO COLUMN COLLAPSES ONE REFRESH LATER, which is why it was nearly missed. Its width is
         // shared between the header and every row by a size group (§27.10), and a shared size group

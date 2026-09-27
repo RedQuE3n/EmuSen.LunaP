@@ -100,7 +100,7 @@ namespace EmuSen.LunaP.Tests
             });
 
         // -1 is a real answer, not a failure to restore: the row that was selected is gone, and
-        // picking its neighbour would be a guess about what the player meant.
+        // picking its neighbour would be a guess about what was meant.
         [Fact]
         public Task A_luna_list_clears_the_selection_when_the_selected_item_disappears() =>
             Realised(() => new LunaList<Peer> { Label = p => p.Handle, Key = p => p.Handle }, list =>

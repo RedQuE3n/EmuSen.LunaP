@@ -49,7 +49,7 @@ namespace EmuSen.LunaP.Controls
         // not the intent: the two sibling controls that raise a selection event both suppress the
         // programmatic case (Dropdown.Chose is not raised by Fill, LunaList.Chose not by Refresh or
         // Select), and SearchText's own summary has always promised the same thing here.
-        /// <summary>Raised when the player changes the search text or the facet. Deferred by SearchDelay, so typing raises it once the typing stops rather than per keystroke. Not raised by setting SearchText, so restoring a saved filter cannot look like a search.</summary>
+        /// <summary>Raised when someone changes the search text or the facet. Deferred by SearchDelay, so typing raises it once the typing stops rather than per keystroke. Not raised by setting SearchText, so restoring a saved filter cannot look like a search.</summary>
         public event Action? Changed;
 
         // Raised for Enter in the search box, which the library uses to launch the first match.
@@ -93,7 +93,7 @@ namespace EmuSen.LunaP.Controls
         // delaying the property would break anything binding to it.
         //
         // The FACET IS NEVER DEBOUNCED. Picking from a dropdown is a deliberate act that happens
-        // once, not a stream of half-formed input, and making the player wait after it would read as
+        // once, not a stream of half-formed input, and making anyone wait after it would read as
         // the application being slow.
         /// <summary>How long typing must pause before Changed is raised. Zero raises it on every keystroke, which suits an in-memory list and not a query.</summary>
         public TimeSpan SearchDelay
@@ -120,7 +120,7 @@ namespace EmuSen.LunaP.Controls
         // are what a reader interacts with, and the template names them from Placeholder and
         // FacetLabel - properties that already held exactly the words a label wants. A PLACEHOLDER
         // IS NOT A LABEL: it is announced separately where it is announced at all, and it vanishes
-        // the moment the player types, which is precisely when they might want reminding what the box
+        // the moment someone types, which is precisely when they might want reminding what the box
         // was for. See docs/LunaP.md §24.2.
         protected override AutomationPeer OnCreateAutomationPeer() =>
             new LunaAutomationPeer(this, AutomationControlType.Group);

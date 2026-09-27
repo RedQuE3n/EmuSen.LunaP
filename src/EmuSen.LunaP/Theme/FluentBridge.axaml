@@ -331,7 +331,7 @@
 
     <!-- Fluent's validation text is YELLOW (#fffff000). This palette has an
          error colour and it is not that, so a form that failed validation was
-         telling the player in a colour the rest of the application never uses. -->
+         saying so in a colour the rest of the application never uses. -->
     <SolidColorBrush x:Key="SystemControlErrorTextForegroundBrush" Color="{DynamicResource LunaErrorColor}" />
 
     <!-- ==================================================================

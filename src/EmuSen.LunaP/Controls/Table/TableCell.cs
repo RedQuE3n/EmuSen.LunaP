@@ -45,7 +45,7 @@ namespace EmuSen.LunaP.Controls
         // wrapper makes Cell() return the wrapper, so TextCellOf casts it to TableCell, gets null,
         // and Edit silently refuses the expander column. Reading Owner off Grid.GetColumn instead
         // cannot tell a cell from a selection box or an open editor sitting in the same column, and
-        // a fill that removed those would take the caret out of a cell the player was typing in.
+        // a fill that removed those would take the caret out of a cell someone was typing in.
         //
         // -1 for the same reason: everything else in a row grid - the gutter, the frozen edge, a
         // selection box, an editor - must read "not mine", and at a default of 0 all four would be

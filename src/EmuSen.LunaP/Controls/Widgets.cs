@@ -92,7 +92,7 @@ namespace EmuSen.LunaP.Controls
         public const string StyleClass = "luna-dropdown";
 
         // Raised only for a real user choice, never for the selection set while filling the list.
-        /// <summary>Raised when the player picks an item. NOT raised by Fill, so restoring a selection cannot be mistaken for a choice.</summary>
+        /// <summary>Raised when an item is picked. NOT raised by Fill, so restoring a selection cannot be mistaken for a choice.</summary>
         public event Action<object?>? Chose;
 
         // Was a bare bool, and is a Suppressor now that the general form of this guard exists in

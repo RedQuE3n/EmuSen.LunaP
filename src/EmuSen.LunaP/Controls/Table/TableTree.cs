@@ -19,14 +19,14 @@ namespace EmuSen.LunaP.Controls
     // THREE ENTRY POINTS AND NOTHING ELSE: Children turns it on, Flatten is called by Show, and
     // Expander is called by AddCell for one column. A fourth would be a leak.
     //
-    // EXPANSION IS A PERSON'S STATE AND IS KEYED, so it survives a Refresh that hands back new
+    // EXPANSION IS THE VIEWER'S STATE AND IS KEYED, so it survives a Refresh that hands back new
     // objects for the same rows - the same reason selection is keyed (§27.6), and it matters more
     // here because a polling window refreshes every second.
     public partial class LunaTable<T> where T : class
     {
         // THE THREE THINGS HIERARCHY NEEDS, and only the first of them is state.
         //
-        // _expanded is a PERSON'S and outlives any particular set of models. _depth and _expandable
+        // _expanded is the VIEWER'S and outlives any particular set of models. _depth and _expandable
         // are derived, rebuilt on every flatten, and exist only so that Row() can draw an indent and
         // a toggle without walking the tree again per row.
         private readonly HashSet<object> _expanded = new();
@@ -171,7 +171,7 @@ namespace EmuSen.LunaP.Controls
 
         // SORTED AT EVERY LEVEL, WHICH IS THE ONLY READING THAT MAKES SENSE. Sorting the flattened
         // list would interleave children with strangers' parents and destroy the tree; sorting only
-        // the roots would leave every child list in arrival order under a header the player just
+        // the roots would leave every child list in arrival order under a header that was just
         // clicked. Each level is ordered among its own siblings.
         //
         // `path` IS A CYCLE GUARD AND NOT AN OPTIMISATION. Children is a caller's delegate and

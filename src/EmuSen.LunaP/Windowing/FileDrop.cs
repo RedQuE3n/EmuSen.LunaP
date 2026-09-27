@@ -54,7 +54,7 @@ namespace EmuSen.LunaP.Windowing
         }
 
         // Optional, because most callers take anything. Consulted on the way over as well as on the
-        // drop, so a refusal shows as the "no entry" pointer BEFORE the player lets go rather than as
+        // drop, so a refusal shows as the "no entry" pointer BEFORE anyone lets go rather than as
         // nothing happening after they do.
         /// <summary>An optional filter on the paths. Return false to refuse the drop, which the pointer shows while the drag is still over the control. Null accepts everything.</summary>
         public Func<IReadOnlyList<string>, bool>? Accept { get; set; }
@@ -101,7 +101,7 @@ namespace EmuSen.LunaP.Windowing
         // than delivered empty. A drag can carry an item that does not exist on this disk - out of a
         // remote share on some platforms, or a virtual file out of an archive viewer - and there is
         // no path to give the caller for one. Refusing is the honest answer; handing over a shorter
-        // list than the player dropped, with no way to know, is not.
+        // list than was dropped, with no way to know, is not.
         private static IReadOnlyList<string> Paths(IDataTransfer? data)
         {
             if (data is null) return Array.Empty<string>();
