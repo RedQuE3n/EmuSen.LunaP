@@ -19,7 +19,7 @@ namespace EmuSen.LunaP.Controls
 
     // Items at equal spacing about a centred position, faded and scaled by their distance from it - see docs/LunaP.md §100.2 and §102.2.
     /// <summary>A horizontal or vertical row of images, or of text where an item has none, spaced evenly about the selected item, which is centred and scaled; the others are faded, desaturated and dimmed. A fractional Position draws the row between items; the control keeps no clock.</summary>
-    public class ImageCarousel : Control
+    public partial class ImageCarousel : Control
     {
         public static readonly StyledProperty<IReadOnlyList<CarouselItem>?> ItemsProperty = AvaloniaProperty.Register<ImageCarousel, IReadOnlyList<CarouselItem>?>(nameof(Items));
         public static readonly StyledProperty<int> SelectedIndexProperty = AvaloniaProperty.Register<ImageCarousel, int>(nameof(SelectedIndex));
@@ -54,7 +54,9 @@ namespace EmuSen.LunaP.Controls
         {
             AffectsMeasure<ImageCarousel>(ItemsProperty, SelectedIndexProperty, OrientationProperty, MaxItemCountProperty, ItemSizeProperty, ItemScaleProperty, WrapsProperty,
                 UnfocusedItemOpacityProperty, UnfocusedItemSaturationProperty, UnfocusedItemDimmingProperty, ImageTintProperty, ImageSelectedTintProperty, ImageSaturationProperty,
-                ImageFitProperty, ItemVerticalAlignmentProperty, ItemHorizontalAlignmentProperty, FontPathProperty, FontSizeProperty, TextColorProperty, TextBackgroundProperty, LetterCaseProperty);
+                ImageFitProperty, ItemVerticalAlignmentProperty, ItemHorizontalAlignmentProperty, FontPathProperty, FontSizeProperty, TextColorProperty, TextBackgroundProperty, LetterCaseProperty,
+                LayoutProperty, WheelRotationProperty, WheelOriginProperty, ItemsBeforeProperty, ItemsAfterProperty, ItemsUprightProperty, WheelHorizontalAlignmentProperty,
+                WheelVerticalAlignmentProperty, ContentOffsetProperty, ReflectionsProperty, ReflectionOpacityProperty, ReflectionFalloffProperty);
             AffectsRender<ImageCarousel>(BackgroundProperty);
         }
 
@@ -153,15 +155,18 @@ namespace EmuSen.LunaP.Controls
             double spacing = length / Math.Max(0.01, MaxItemCount);
             double w = ItemSize.Width > 0 ? ItemSize.Width : across ? spacing : cross;
             double h = ItemSize.Height > 0 ? ItemSize.Height : across ? cross : spacing;
+            if (Layout == CarouselLayout.Wheel) return HubRect(bounds);
             double centre = length / 2 + offset * spacing;
+            Vector shift = new(ContentOffset.X * bounds.Width, ContentOffset.Y * bounds.Height);
             if (across)
             {
-                double y = ItemVerticalAlignment switch { VerticalAlignment.Top => 0, VerticalAlignment.Bottom => cross - h, _ => (cross - h) / 2 };
-                return new Rect(centre - w / 2, y, w, h);
+                double unit = Reflects ? 2 * h : h;
+                double y = ItemVerticalAlignment switch { VerticalAlignment.Top => 0, VerticalAlignment.Bottom => cross - unit, _ => (cross - unit) / 2 };
+                return new Rect(centre - w / 2, y, w, h).Translate(shift);
             }
 
             double x = ItemHorizontalAlignment switch { HorizontalAlignment.Left => 0, HorizontalAlignment.Right => cross - w, _ => (cross - w) / 2 };
-            return new Rect(x, centre - h / 2, w, h);
+            return new Rect(x, centre - h / 2, w, h).Translate(shift);
         }
 
         // The offsets drawn, and which item each shows: a wrapped row repeats items, an unwrapped one stops at its ends.
@@ -170,8 +175,9 @@ namespace EmuSen.LunaP.Controls
             int count = Items?.Count ?? 0;
             if (count == 0) yield break;
             int reach = (int)Math.Ceiling(Math.Max(1, MaxItemCount) / 2) + 1;
+            (int before, int after) = Layout == CarouselLayout.Wheel ? (Math.Max(0, ItemsBefore), Math.Max(0, ItemsAfter)) : (reach, reach);
             bool wraps = Wraps && count > 1;
-            for (int k = -reach; k <= reach + (Fraction() > 0 ? 1 : 0); k++)
+            for (int k = -before; k <= after + (Fraction() > 0 ? 1 : 0); k++)
             {
                 int index = _base + k;
                 if (wraps) index = ((index % count) + count) % count;
@@ -202,13 +208,14 @@ namespace EmuSen.LunaP.Controls
 
         private void Rebuild()
         {
-            foreach ((_, Control old) in _shown)
+            foreach (Control old in _shown.Select(s => s.Child).Concat(_reflections.Select(r => r.Reflection)))
             {
                 VisualChildren.Remove(old);
                 LogicalChildren.Remove(old);
             }
 
             _shown.Clear();
+            _reflections.Clear();
             _key = Key();
             _base = _key.Base;
             _nearest = _key.Nearest;
@@ -235,6 +242,7 @@ namespace EmuSen.LunaP.Controls
                         TextAlignment = TextAlignment.Center, TextVerticalAlignment = VerticalAlignment.Center,
                     };
                 child.Tag = index;
+                if (Reflects && child is FittedImage image) AddReflection(offset, image);
                 _shown.Add((offset, child));
                 LogicalChildren.Add(child);
                 VisualChildren.Add(child);
@@ -271,22 +279,43 @@ namespace EmuSen.LunaP.Controls
             {
                 double distance = offset - fraction, focus = Math.Max(0, 1 - Math.Abs(distance));
                 double unfocused = Math.Clamp(UnfocusedItemOpacity, 0, 1), scale = 1 + (ItemScale - 1) * focus;
-                Rect box = ItemRect(distance, finalSize);
-                if (child is FittedImage { Fit: ImageFit.Contain } image && image.IntrinsicSize is { Width: > 0, Height: > 0 } own)
-                {
-                    Rect fitted = FittedImage.Contain(new Rect(box.Size), own);
-                    double x = Orientation == Orientation.Horizontal ? box.X + (box.Width - fitted.Width) / 2 : box.X + ItemHorizontalAlignment switch { HorizontalAlignment.Left => 0, HorizontalAlignment.Right => box.Width - fitted.Width, _ => (box.Width - fitted.Width) / 2 };
-                    double y = Orientation == Orientation.Vertical ? box.Y + (box.Height - fitted.Height) / 2 : box.Y + ItemVerticalAlignment switch { VerticalAlignment.Top => 0, VerticalAlignment.Bottom => box.Height - fitted.Height, _ => (box.Height - fitted.Height) / 2 };
-                    box = new Rect(x, y, fitted.Width, fitted.Height);
-                }
-
-                child.Arrange(box);
+                Rect box = ItemRect(distance, finalSize), shown = Fitted(child, box);
+                Matrix placed = Matrix.CreateTranslation(-GrowthPoint(box).X, -GrowthPoint(box).Y) * Matrix.CreateScale(scale, scale)
+                    * Matrix.CreateTranslation(GrowthPoint(box).X, GrowthPoint(box).Y) * WheelTransform(distance, finalSize)
+                    * Matrix.CreateTranslation(WheelAlignShift(box).X, WheelAlignShift(box).Y);
+                Place(child, shown, placed);
                 child.Opacity = unfocused + (1 - unfocused) * focus;
-                child.RenderTransformOrigin = RelativePoint.Center;
-                child.RenderTransform = focus > 0 && scale != 1 ? new ScaleTransform(scale, scale) : null;
+                if (_reflections.FirstOrDefault(r => r.Item == child).Reflection is { } reflection)
+                {
+                    Place(reflection, shown.Translate(new Vector(0, shown.Height)), placed, flipped: true);
+                    reflection.OpacityMask = ReflectionMask(child.Opacity);
+                }
             }
 
             return finalSize;
+        }
+
+        // An image contained in its item box is drawn at its fitted size, placed by the item alignments; anything else fills the box.
+        private Rect Fitted(Control child, Rect box)
+        {
+            if (child is not FittedImage { Fit: ImageFit.Contain } image || image.IntrinsicSize is not { Width: > 0, Height: > 0 } own) return box;
+            Rect fitted = FittedImage.Contain(new Rect(box.Size), own);
+            bool wheel = Layout == CarouselLayout.Wheel;
+            double x = Orientation == Orientation.Horizontal && !wheel ? box.X + (box.Width - fitted.Width) / 2
+                : box.X + ItemHorizontalAlignment switch { HorizontalAlignment.Left => 0, HorizontalAlignment.Right => box.Width - fitted.Width, _ => (box.Width - fitted.Width) / 2 };
+            double y = Orientation == Orientation.Vertical && !wheel ? box.Y + (box.Height - fitted.Height) / 2
+                : box.Y + ItemVerticalAlignment switch { VerticalAlignment.Top => 0, VerticalAlignment.Bottom => box.Height - fitted.Height, _ => (box.Height - fitted.Height) / 2 };
+            return new Rect(x, y, fitted.Width, fitted.Height);
+        }
+
+        // Arranges a child at its unscaled rectangle and gives it a transform in the carousel's coordinates, flipped top to bottom for a reflection.
+        private static void Place(Control child, Rect rect, Matrix placed, bool flipped = false)
+        {
+            child.Arrange(rect);
+            Matrix local = Matrix.CreateTranslation(rect.X, rect.Y) * placed * Matrix.CreateTranslation(-rect.X, -rect.Y);
+            if (flipped) local = Matrix.CreateTranslation(0, -rect.Height / 2) * Matrix.CreateScale(1, -1) * Matrix.CreateTranslation(0, rect.Height / 2) * local;
+            child.RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Absolute);
+            child.RenderTransform = local.IsIdentity ? null : new MatrixTransform(local);
         }
 
         public override void Render(DrawingContext context)
