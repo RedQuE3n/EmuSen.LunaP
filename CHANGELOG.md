@@ -14,6 +14,11 @@ answer.
 
 ## Unreleased
 
+- **`DeviceStatusBar`'s built-in icons are drawn, not lettered (`§191`).** Bluetooth is its rune and cellular four
+  bars, where they were the letters "B" and "C"; Wi-Fi gains a dot; the battery stands upright in a square box, where it
+  lay on its side 1.6 boxes wide; the percentage follows the battery with no spacing. A stored picture of any of them
+  will differ, and a bar showing the battery is narrower.
+
 - **`ImageCarousel` turns, offsets, clips and reflects (`§190`).** New: `Layout` (`CarouselLayout.Row` or `Wheel`),
   `WheelRotation`, `WheelOrigin`, `ItemsBefore`, `ItemsAfter`, `ItemsUpright`, `WheelHorizontalAlignment`,
   `WheelVerticalAlignment`, `ContentOffset`, `Reflections`, `ReflectionOpacity`, `ReflectionFalloff`,

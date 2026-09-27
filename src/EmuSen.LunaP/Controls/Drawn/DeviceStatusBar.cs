@@ -129,14 +129,14 @@ namespace EmuSen.LunaP.Controls
         private GlyphTypeface Typeface() => FontPath is { Length: > 0 } p && FontFiles.Load(p) is { } t ? t : FontFiles.Default;
 
         private double IconWidth(string key) =>
-            Icons?.GetValueOrDefault(key) is { } path && PictureFiles.Intrinsic(path) is { Width: > 0, Height: > 0 } own ? IconHeight * own.Width / own.Height : IconHeight * (key.StartsWith("battery", StringComparison.Ordinal) ? 1.6 : 1);
+            Icons?.GetValueOrDefault(key) is { } path && PictureFiles.Intrinsic(path) is { Width: > 0, Height: > 0 } own ? IconHeight * own.Width / own.Height : IconHeight;
 
         protected override Size MeasureOverride(Size availableSize)
         {
             (IReadOnlyList<string> keys, string? percentage) = Shown();
             if (keys.Count == 0 && percentage is null) return default;
             double w = keys.Sum(IconWidth) + Math.Max(0, keys.Count - 1) * EntrySpacing;
-            if (percentage is not null) w += EntrySpacing + FontLayout.Measure(Typeface(), IconHeight * TextScale, percentage);
+            if (percentage is not null) w += FontLayout.Measure(Typeface(), IconHeight * TextScale, percentage);
             return new Size(w + Padding.Left + Padding.Right, IconHeight + Padding.Top + Padding.Bottom);
         }
 
@@ -156,36 +156,44 @@ namespace EmuSen.LunaP.Controls
                 x += box.Width + EntrySpacing;
             }
 
+            if (keys.Count > 0) x -= EntrySpacing; // the percentage follows the battery's box directly, as the consumer measured (§191).
             if (percentage is not null)
                 FontLayout.Create(Typeface(), IconHeight * TextScale, percentage, 1.2, double.PositiveInfinity, double.PositiveInfinity, false, null)
                     .Draw(context, brush, new Rect(x, y, Math.Max(0, bounds.Width - x), IconHeight), TextAlignment.Left, 0.5);
         }
 
-        // Plain drawn icons for a key with no file: a battery filled to its level, a Wi-Fi fan, and a letter for the other radios.
+        // Plain drawn icons for a key with no file, each in a square box, in the proportions the consumer measured from its reference - see docs/LunaP.md §191.
         private void DrawBuiltIn(DrawingContext context, string key, Rect box, IBrush brush, int percent)
         {
-            var pen = new Pen(brush, Math.Max(1, box.Height / 10));
+            double h = box.Height;
+            Point At(double fx, double fy) => new(box.X + fx * h, box.Y + fy * h);
             if (key.StartsWith("battery", StringComparison.Ordinal))
             {
-                var body = new Rect(box.X, box.Y + box.Height * 0.2, box.Width * 0.9, box.Height * 0.6);
-                context.DrawRectangle(null, pen, body, 2, 2);
-                context.FillRectangle(brush, new Rect(body.Right, body.Y + body.Height * 0.3, box.Width * 0.1, body.Height * 0.4));
-                Rect inner = body.Deflate(pen.Thickness * 1.5);
-                context.FillRectangle(brush, new Rect(inner.X, inner.Y, inner.Width * Math.Clamp(percent, 0, 100) / 100.0, inner.Height));
+                // Upright: a terminal on top, a body with a thin outline, and a bar for each quarter of charge.
+                double stroke = Math.Max(1, h * 0.05);
+                context.FillRectangle(brush, new Rect(At(0.38, 0.0), At(0.62, 0.06)));
+                context.DrawRectangle(null, new Pen(brush, stroke), new Rect(At(0.26 + 0.025, 0.12 + 0.025), At(0.74 - 0.025, 0.84 - 0.025)), h * 0.04, h * 0.04);
+                int bars = (int)Math.Ceiling(Math.Clamp(percent, 0, 100) / 25.0);
+                for (int i = 0; i < bars; i++)
+                {
+                    double y = 0.71 - i * 0.14;
+                    context.FillRectangle(brush, new Rect(At(0.36, y), At(0.64, y + 0.05)));
+                }
+
                 return;
             }
 
             if (key == "wifi")
             {
-                // The outer arc's ends, at 45 degrees, reach the box's sides and no further - see docs/LunaP.md §180.5.
-                double outer = Math.Min(box.Height * 3 / 3.2, (box.Width / 2 - pen.Thickness / 2) / 0.7071);
-                for (int i = 1; i <= 3; i++)
+                // Three arcs of a quarter turn about a dot, the outer 0.62 of the height; the fan reaches 0.88 of the box across.
+                double stroke = Math.Max(1, h * 0.08);
+                var pen = new Pen(brush, stroke, lineCap: PenLineCap.Round);
+                Point c = At(0.5, 0.8);
+                foreach (double r in new[] { 0.62 * h - stroke / 2, 0.43 * h - stroke / 2, 0.26 * h - stroke / 2 })
                 {
-                    double r = outer * i / 3;
                     var arc = new StreamGeometry();
                     using (StreamGeometryContext g = arc.Open())
                     {
-                        var c = new Point(box.Center.X, box.Bottom);
                         g.BeginFigure(new Point(c.X - r * 0.7071, c.Y - r * 0.7071), false);
                         g.ArcTo(new Point(c.X + r * 0.7071, c.Y - r * 0.7071), new Size(r, r), 0, false, SweepDirection.Clockwise);
                         g.EndFigure(false);
@@ -194,11 +202,34 @@ namespace EmuSen.LunaP.Controls
                     context.DrawGeometry(null, pen, arc);
                 }
 
+                context.DrawEllipse(brush, null, c, h * 0.05, h * 0.05);
                 return;
             }
 
-            FontLayout.Create(Typeface(), box.Height, key == "bluetooth" ? "B" : "C", 1, double.PositiveInfinity, double.PositiveInfinity, false, null)
-                .Draw(context, brush, box, TextAlignment.Center, 0.5);
+            if (key == "bluetooth")
+            {
+                // The rune, 0.54 of the box across and 0.77 down, centred.
+                double stroke = Math.Max(1, h * 0.06);
+                Rect inner = new Rect(box.Center.X - h * 0.27, box.Center.Y - h * 0.385, h * 0.54, h * 0.77).Deflate(stroke / 2);
+                var rune = new StreamGeometry();
+                using (StreamGeometryContext g = rune.Open())
+                {
+                    Point P(double fx, double fy) => new(inner.X + fx * inner.Width, inner.Y + fy * inner.Height);
+                    g.BeginFigure(P(0.05, 0.25), false);
+                    foreach (Point p in new[] { P(0.95, 0.75), P(0.5, 1), P(0.5, 0), P(0.95, 0.25), P(0.05, 0.75) }) g.LineTo(p);
+                    g.EndFigure(false);
+                }
+
+                context.DrawGeometry(null, new Pen(brush, stroke, lineJoin: PenLineJoin.Bevel), rune);
+                return;
+            }
+
+            // Cellular: four bars rising to the right from 0.8 of the box down.
+            for (int i = 0; i < 4; i++)
+            {
+                double x = 0.14 + i * 0.214, top = 0.8 - 0.18 * (i + 1);
+                context.FillRectangle(brush, new Rect(At(x, top), At(x + 0.095, 0.8)));
+            }
         }
 
         protected override AutomationPeer OnCreateAutomationPeer() =>

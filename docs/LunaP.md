@@ -12612,3 +12612,35 @@ arm through the origin; no side shift; no room for reflections; a reflection tha
 ignores its item's opacity; no clipping; a row grown from its centre; the vertical offset by the width; a wheel drawing
 the row's reach; a reflection not flipped; the hub not aligned. **One was caught only by the consumer:** a reflection
 that ignores its item's opacity, since this repository's reflection test draws its items at full opacity.
+
+## 191. Status icons drawn as their reference draws them
+
+*2026-09-27.* `DeviceStatusBar` drew its built-in Bluetooth and cellular icons as the letters "B" and "C" from the
+typeface, and its battery lying on its side. The consumer's side-by-side pictures against its reference (ES-DE 3.4.1)
+showed the letter where the reference draws the Bluetooth rune. The reference was then run with every indicator forced
+on, and each icon's ink box read from its captures at 1280×800 and 1920×1200 (the consumer's `EmuSen_BigPicture.md`
+§38). All four built-in icons are now geometry, each in a **square** box `IconHeight` on a side, where the battery's
+used to be 1.6 times as wide:
+
+- **Bluetooth:** the rune, a stem and two crossing arms, 0.54 of the box across and 0.77 down, centred, stroked at
+  0.06 of the height with bevelled joins.
+- **Wi-Fi:** three quarter-turn arcs about a dot at 0.8 of the box down, radii 0.62, 0.43 and 0.26 of the height (to the
+  stroke's outside), stroke 0.08, and the dot 0.05 in radius. The fan of §180.5 had no dot and its arcs met the box's
+  bottom corner; this one is shorter.
+- **Cellular:** four bars 0.095 of the height wide at a pitch of 0.214, from 0.14 across, rising from 0.8 of the box down
+  by 0.18 of the height each.
+- **Battery:** upright: a terminal 0.24 wide on top, a body 0.48 wide from 0.12 to 0.84 down with a 0.05 outline, and
+  one bar inside for each quarter of charge, rounded up.
+
+**The percentage** now follows the battery's box directly, with no `EntrySpacing` before it, as in the reference; the
+control's measured width loses that spacing.
+
+**Against the reference.** Each icon's ink box lies within 2 px of the reference's at both sizes, and the gaps between
+icons agree to 1 px. The Bluetooth rune's coverage IoU is 0.79 at 1280×800 and 0.74 at 1920×1200: thin strokes, where
+a pixel of difference moves the figure, as §101's consumer found for its thin icons. The percentage's text is wider in
+the consumer's rendering, because the reference sets it in its own typeface, which the consumer does not ship; the
+icons are placed right to left from the same edge, so the row stands about 20 px further left there.
+
+**Tests.** `IndicatorControlTests.Bluetooth_is_drawn_as_its_rune` checks the stem, the arms' points and the openings
+between them by pixels; the file-icon test's widths were changed to the square battery, and the right-edge test holds
+for every indicator.

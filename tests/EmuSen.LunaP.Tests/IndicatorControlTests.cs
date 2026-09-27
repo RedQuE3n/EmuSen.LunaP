@@ -150,10 +150,29 @@ namespace EmuSen.LunaP.Tests
             var canvas = new NormalizedCanvas();
             canvas.Children.Add(bar);
             ToolWindow window = Show(canvas, 300, 100);
-            Assert.Equal(new Size(20 + 10 + 32, 20), bar.Bounds.Size);
+            Assert.Equal(new Size(20 + 10 + 20, 20), bar.Bounds.Size);
             RenderedFrame f = Frame(window);
             Assert.Equal(Colors.Lime, At(f, 10, 10));
-            Assert.Equal(Colors.Lime, At(f, 40, 10));
+            Assert.Equal(Colors.Lime, At(f, 40, 0));
+            window.Close();
+        });
+
+        // The Bluetooth rune, not a letter: a stem, arms that cross it, and the points that end at the box's sides (§191).
+        [Fact]
+        public Task Bluetooth_is_drawn_as_its_rune() => UiTest.Run(() =>
+        {
+            var bar = new DeviceStatusBar { Status = new DeviceStatus(Bluetooth: true), Indicators = DeviceIndicators.Bluetooth, IconHeight = 44, Color = Colors.White };
+            var canvas = new Canvas { Width = 100, Height = 60, Background = Brushes.Black, Children = { bar } };
+            Canvas.SetLeft(bar, 20);
+            Canvas.SetTop(bar, 8);
+            ToolWindow window = Show(canvas, 100, 60);
+            RenderedFrame f = Frame(window);
+            Assert.InRange(bar.Bounds.Width, 43, 45);
+            bool Ink(double fx, double fy) => At(f, 20 + fx * 44, 8 + fy * 44).G > 128;
+            Assert.True(Ink(0.5, 0.15) && Ink(0.5, 0.5) && Ink(0.5, 0.85), "the stem");
+            Assert.True(Ink(0.3, 0.335) && Ink(0.3, 0.665), "the left points");
+            Assert.True(Ink(0.7, 0.335) && Ink(0.7, 0.665), "the right points");
+            Assert.False(Ink(0.3, 0.5) || Ink(0.7, 0.5) || Ink(0.5, 0.05) || Ink(0.15, 0.3), "open between the points and outside the rune");
             window.Close();
         });
 
