@@ -14,6 +14,12 @@ answer.
 
 ## Unreleased
 
+- **A big-screen menu, new and additive (`§181`).** `MenuPanel` draws a wide centred panel with a large title, a
+  footer and a help bar; `MenuRow` draws an upper-case row with a value, option arrows, a chevron or a switch, and a
+  full-width bar when highlighted; `MenuRows` draws a `Button`, a `ComboBox` or a `ListBox`'s rows that way without
+  changing what they do; `BlurBackdrop` blurs a target with Avalonia's blur effect while shown. `SheetLayer` gains
+  `Chromeless`, which presents a window's content filling the layer with no sheet around it. Nothing existing changes.
+
 - **Badges and controllers drawn by the toolkit, new and additive (`§180`).** `BadgeGlyph` and `BadgeKind` draw a list
   entry's marks (favourite, completed, kids' game, broken, controller, alternative emulator, collection, folder,
   manual, folder link); `ControllerGlyph` and `ControllerShape` draw five controllers. `BadgeStrip.Entries` takes

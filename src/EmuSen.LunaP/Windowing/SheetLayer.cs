@@ -25,6 +25,10 @@ namespace EmuSen.LunaP.Windowing
         public static readonly StyledProperty<string?> HintProperty =
             AvaloniaProperty.Register<SheetLayer, string?>(nameof(Hint));
 
+        /// <summary>Whether a window's content is presented as it is, filling the layer, for content that draws its own chrome - see docs/LunaP.md §181.5.</summary>
+        public static readonly AttachedProperty<bool> ChromelessProperty =
+            AvaloniaProperty.RegisterAttached<SheetLayer, Window, bool>("Chromeless");
+
         private readonly List<Sheet> _sheets = new();
 
         // What had the focus before the first sheet, given back when the last one goes.
@@ -58,6 +62,16 @@ namespace EmuSen.LunaP.Windowing
             get => GetValue(HintProperty);
             set => SetValue(HintProperty, value);
         }
+
+        /// <summary>Reads whether a window is presented without a sheet's chrome.</summary>
+        /// <param name="window">The window to ask about.</param>
+        /// <returns>True when its content fills the layer as it is.</returns>
+        public static bool GetChromeless(Window window) => window.GetValue(ChromelessProperty);
+
+        /// <summary>Presents a window's content as it is, filling the layer: no title, hint line, surface, width cap or scale, and no fill behind it. Set before the window is presented.</summary>
+        /// <param name="window">A window not yet presented.</param>
+        /// <param name="value">True for content that draws its own chrome.</param>
+        public static void SetChromeless(Window window, bool value) => window.SetValue(ChromelessProperty, value);
 
         /// <summary>The windows presented here, oldest first. The last is the one on screen.</summary>
         public IReadOnlyList<Window> Presented => _sheets.Select(s => s.Window).ToList();
@@ -119,6 +133,9 @@ namespace EmuSen.LunaP.Windowing
         private void ShowOnly(Sheet shown)
         {
             foreach (Sheet other in _sheets) other.Root.IsVisible = ReferenceEquals(other, shown);
+            // A chromeless sheet's content draws what is behind it itself.
+            if (shown.Chromeless) Background = null;
+            else this[!BackgroundProperty] = new DynamicResourceExtension("LunaHudSurface");
         }
 
         private void Remove(Sheet sheet)
@@ -211,12 +228,12 @@ namespace EmuSen.LunaP.Windowing
         {
             private readonly SheetLayer _layer;
             private readonly ContentControl _host;
-            private readonly DockPanel _dock;
-            private readonly LayoutTransformControl _scaler;
-            private readonly TextBlock _hint;
+            private readonly LayoutTransformControl? _scaler;
+            private readonly TextBlock? _hint;
 
             public Window Window { get; }
             public Border Root { get; }
+            public bool Chromeless { get; }
             public TaskCompletionSource Done { get; } = new();
 
             public Sheet(SheetLayer layer, Window window)
@@ -227,6 +244,18 @@ namespace EmuSen.LunaP.Windowing
                 object? content = window.Content;
                 window.Content = null;
                 _host = new ContentControl { Content = content, DataContext = window.DataContext };
+                Chromeless = GetChromeless(window);
+
+                if (Chromeless)
+                {
+                    Root = new Border { Child = _host, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch };
+                    _host.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+                    _host.VerticalContentAlignment = VerticalAlignment.Stretch;
+                    KeyboardNavigation.SetTabNavigation(Root, KeyboardNavigationMode.Cycle);
+                    EmbeddedPopups.SetIsEnabled(Root, true);
+                    Root.KeyDown += OnKeyDown;
+                    return;
+                }
 
                 var title = new TextBlock { FontSize = 20, FontWeight = FontWeight.SemiBold, Margin = new Thickness(16, 12, 16, 4) };
                 title[!TextBlock.TextProperty] = window[!Window.TitleProperty];
@@ -236,15 +265,15 @@ namespace EmuSen.LunaP.Windowing
 
                 DockPanel.SetDock(title, Dock.Top);
                 DockPanel.SetDock(_hint, Dock.Bottom);
-                _dock = new DockPanel { LastChildFill = true };
-                _dock.Children.Add(title);
-                _dock.Children.Add(_hint);
-                _dock.Children.Add(_host);
+                var dock = new DockPanel { LastChildFill = true };
+                dock.Children.Add(title);
+                dock.Children.Add(_hint);
+                dock.Children.Add(_host);
 
                 // A window laid out for a desk keeps its width, centred, rather than stretching across a television.
-                if (double.IsFinite(window.Width) && window.Width > 0) _dock.MaxWidth = window.Width;
+                if (double.IsFinite(window.Width) && window.Width > 0) dock.MaxWidth = window.Width;
 
-                _scaler = new LayoutTransformControl { Child = _dock };
+                _scaler = new LayoutTransformControl { Child = dock };
 
                 Root = new Border
                 {
@@ -267,6 +296,7 @@ namespace EmuSen.LunaP.Windowing
 
             public void Restyle()
             {
+                if (_scaler is null || _hint is null) return;
                 double scale = double.IsFinite(_layer.Scale) && _layer.Scale > 0 ? _layer.Scale : 1.0;
                 _scaler.LayoutTransform = new ScaleTransform(scale, scale);
                 _hint.Text = _layer.Hint;

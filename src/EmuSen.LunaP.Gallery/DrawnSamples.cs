@@ -90,5 +90,22 @@ namespace EmuSen.LunaP.Gallery
             Avalonia.Automation.AutomationProperties.SetName(canvas, "Themed surface");
             return canvas;
         }
+
+        // A menu at half its design size over a striped surface it blurs: a submenu, an option, a switch and a plain row.
+        internal static Control Menu()
+        {
+            var stripes = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+            foreach (string hex in new[] { "#3A6EA5", "#C0504D", "#9BBB59", "#F79646" }) stripes.Children.Add(new Border { Width = 160, Background = Brush.Parse(hex) });
+            var rows = new StackPanel();
+            rows.Children.Add(MenuRows.Apply(new Button { Content = "Graphics Settings" }, MenuRowKind.Submenu));
+            rows.Children.Add(new MenuRow { Label = "Speed", Value = "100%", Kind = MenuRowKind.Option, IsHighlighted = true });
+            rows.Children.Add(new MenuRow { Label = "Display Help", Kind = MenuRowKind.Switch, IsOn = true });
+            rows.Children.Add(MenuRows.Apply(new Button { Content = "Exit" }));
+            var panel = new MenuPanel { Title = "Main Menu", Footer = "Gallery", Child = rows, Hints = new[] { new HintEntry("Select") { Button = PadGlyphButton.South }, new HintEntry("Close") { Button = PadGlyphButton.East } } };
+            var backdrop = new BlurBackdrop { Target = stripes, Radius = 8 };
+            var surface = new Grid { Width = 640, Height = 400, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, Children = { stripes, backdrop, panel } };
+            MenuPanel.SetScale(surface, 0.5);
+            return surface;
+        }
     }
 }

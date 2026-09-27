@@ -441,7 +441,10 @@ namespace EmuSen.LunaP.Gallery
                 Ui.Section("Split pane", split),
 
                 // Drawn controls on a positioned canvas: an image, a list, a carousel, text and the indicators - §98 to §101.
-                Ui.Section("Themed surface", DrawnSamples.Build())).Margin(12));
+                Ui.Section("Themed surface", DrawnSamples.Build()),
+
+                // A big-screen menu over a blurred surface: rows, an option, a switch and the help bar - §181.
+                Ui.Section("Big-screen menu", DrawnSamples.Menu())).Margin(12));
 
             // The shell's own status line, which is the arrangement five windows in one
             // application laid out by hand: a message on the left, a run of buttons on the right

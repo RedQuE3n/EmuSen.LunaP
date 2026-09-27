@@ -12233,3 +12233,129 @@ and position mutants survived** a test that moved the controller up and shrank i
 leave the middle, which either change alone satisfies. The test now asserts each on its own against the default (at
 size 1 the pad reaches left of the half-size box; at a fifth of the height it sits high and the middle is empty), and both
 were caught when run again.
+
+## 181. A big-screen menu: a wide panel of upper-case rows over the screen blurred
+
+*2026-09-27.* The consumer (EmuSen's Mistress) was asked by its user to make the menus of its big-screen session look
+like its reference frontend's (ES-DE's): a wide, centred panel with rounded corners over a blurred and darkened view,
+a large centred upper-case title, full-width rows in an upper-case condensed typeface separated by thin rules, a chevron
+on a row that opens another screen, the chosen row a bar across the whole width, a value at the right of a row and
+arrows around a value that steps, a small footer line, and one help bar at the bottom of the screen. The layout was
+read from the consumer's captures of the reference and from its user guide, never from its source, and nothing of the
+reference's (file, font, image, colour table) is in the toolkit. What follows is the toolkit's own implementation of
+that layout; the consumer's record of the look, its pictures and its questions is its `EmuSen_BigPicture.md` §32 and
+its settings reference §4.69.
+
+Nothing here names the consumer, its reference or a game. The pieces take strings, a font file's path, a pad family
+and colours, as §98's drawn controls do.
+
+### 181.1 `MenuRow`, `MenuRowKind` and `MenuRowLayout`
+
+`MenuRow` draws one row: the label at the left, cased by `LetterCase` (upper by default); the value at the right; and,
+by `Kind`, nothing more (`Action`), a chevron (`Submenu`), an outlined triangle each side of the value (`Option`) or a
+rounded switch whose knob sits at the left when off and at the right, over the accent fill, when on (`Switch`, which
+shows no value). A one-pixel rule runs along the bottom edge; `IsHighlighted` fills everything above it with
+`BarColor`, edge to edge, and draws the text and marks in `HighlightTextColor`.
+
+**Sizes are design pixels times an inherited scale.** `RowHeight` (54) and `TextSize` (36) are multiplied by `Scale`,
+which is `MenuPanel.ScaleProperty` added as an owner and inherited, so a host sets one number on its window (its height
+over the height it designs for) and every row, panel and push button under it follows. The rule stays at least one
+device pixel. The label and value are placed on a shared baseline found from the typeface's capital H (its glyph
+metrics, since Avalonia's `FontMetrics` carries no cap height), so upper-case text sits in the middle of the bar rather
+than where a line box with descenders would put it. A value takes at most half the row; a label that does not fit is
+cut with an ellipsis. `Layout(Size)` returns every part's rectangle, which is what the tests and the consumer's pixel
+tests read; it is exempt from `TemplateOrderTests` for the reason `HintBar.Layout` is.
+
+The row reports itself as a list item named "label, value" (or "label, on"/"off" for a switch); `MenuRow.Describe`
+gives the string.
+
+### 181.2 `MenuPanel`
+
+A `Decorator` that fills its area and draws, in it: a rounded panel `WidthFraction` (0.66) of the area's width, but no
+wider than `MaxWidthToHeight` (1.05) times its height, centred; a title band of 100 design pixels with the title centred
+in it at `TitleSize` (68); the rule under the band; the child, the rows, directly under it; a footer band of 78 with the
+footer centred, or 20 of padding when there is none; and, when `Hints` is set, a `HintBar` in upper case centred at the
+bottom of the area, on its own rounded fill. `HintFamily` passes a pad family to it (§103). The panel is centred
+vertically and pushed up if it would reach the help bar. `PanelBounds` and `TitleBounds` report where it was arranged.
+
+**Rows that do not all fit are shown in whole rows.** The rows' height is capped by what the area leaves, and the cap is
+rounded down to a multiple of `RowPitch` (54, a row's own height), so the last row showing is never cut through. The
+first version did not do this, and the consumer's first picture of its pad menu showed a row sliced in half above the
+footer.
+
+`ScaleProperty` and `FontPathProperty` are attached and inherited, with `Get`/`Set` accessors: the font file is a path,
+read by §98.3's `FontFiles` and never installed in the application's font manager, so the typeface a consumer ships for
+its menus reaches nothing else.
+
+### 181.3 `MenuRows`: stock controls drawn as rows, behaviour kept
+
+A consumer's menus are made of controls that already work: buttons that are clicked, dropdowns that step and drop
+down, lists that select. Rebuilding them as a new control would change their behaviour, and every test and input path
+written against them. `MenuRows` therefore changes only how they look:
+
+- `Apply(button, kind, value)` replaces the button's template with a `MenuRow` whose label is the content, whose value
+  and kind come from the attached `MenuRows.Value` and `MenuRows.Kind`, and whose bar follows the keyboard focus. The
+  content stays what it was, so a caller that reads `Content` or clicks the button sees no difference.
+- `Apply(comboBox, label)` draws a dropdown as an `Option` row, its selection between the arrows. The template keeps a
+  `PART_Popup` and a `PART_ItemsPresenter`, so opening it still drops the list down; Left and Right, and anything that
+  sets `SelectedIndex`, still step it.
+- `Apply(listBox)` gives the list an item container theme whose template is a `MenuRow` reading the container's
+  attached label, value and kind, highlighted while selected. The consumer sets those attached values in the list's
+  `ContainerPrepared`, so the item source can stay the strings it was. `Remove(list)` gives the rows back their theme.
+- `ApplyButton(button)` draws a push button (Apply, Cancel) as an outlined box in the menu's typeface, filled while
+  focused.
+
+Each clears the control's own background, border, padding and focus adorner, since the row draws the focus as its bar.
+`MenuRows.Label` overrides the content as the label, for a list row or a dropdown, which have no label of their own.
+
+### 181.4 `BlurBackdrop`
+
+While shown, it sets a `BlurEffect` of `Radius` (16) on its `Target` and fills its own area with `Shade` (translucent
+black); hidden or detached, it takes that effect off again. The blur is Avalonia's own effect, which its Skia backend
+draws as a Gaussian image filter over the target's layer at full resolution: nothing is captured to a bitmap, scaled
+down or sampled at low quality, which the consumer's user requires of everything the big screen draws. A target that
+already has an effect is left with it, and the backdrop reports `IsBlurring` false; only the effect the backdrop put
+there is ever removed. It is not hit-testable.
+
+**Why an effect on the target rather than a brush of it.** A `VisualBrush` of the screen, blurred, would draw the
+screen twice and cannot capture a surface drawn by a custom GPU operation, which is what the consumer's game picture is.
+The effect is applied where the screen is drawn anyway.
+
+### 181.5 `SheetLayer.Chromeless`
+
+§90's sheet adds a title, a hint line, a surface, a width cap, a scale and a fill behind it. A menu that draws its own
+panel, title and help bar wants none of them. `SheetLayer.SetChromeless(window, true)`, set before the window is
+presented, puts its content on the layer as it is, stretched over the whole layer, and the layer draws no fill while
+that sheet is the one on screen; another sheet presented over it brings the fill back, and it goes again when that one
+closes. Escape, the Tab cycle and embedded popups behave as on any sheet.
+
+### 181.6 Tests and mutants
+
+`MenuTests`, ten cases: an option row's value lies between its arrows at the right edge and its label left of them; a
+submenu's chevron and a switch sit at the right edge and a switch shows no value; a row is its design height times the
+inherited scale; a highlighted row is its bar colour edge to edge, and not when unhighlighted; a button drawn as a row
+keeps its content and its click and takes the bar with the focus, and follows a changed value; a dropdown drawn as a
+row shows its selection, follows a new one and still opens; a list drawn as rows highlights the selection, reads the
+container's kind, and gives its rows back; the panel is centred, as wide as its fraction or its height allows, shows
+whole rows and puts the help bar under it at the bottom centre, and a short list takes only its own height; the
+backdrop blurs its target while shown and leaves an effect it did not set; a chromeless sheet fills the layer with its
+content alone, the layer drawing nothing behind it until a plain sheet goes over it. `AccessibilityTests` gains the two
+controls and their names, `DocumentedDefaultTests` twenty-eight defaults (the colours now name their values), and the API
+baseline the new types.
+
+Six mutants, applied one at a time and each caught by the case meant for it on the first run: a chromeless sheet keeping
+the layer's fill; a list's bar following the focus instead of the selection; the backdrop replacing an effect it did
+not set; the rows not rounded to whole rows; a dropdown's selection not shown; an option row's left arrow drawn at the
+right edge. The consumer ran six more against its own pixel tests (its §32).
+
+The README's count of tests was already stale when this began: it said 1371 where `openemu-library` at 1bd782b has
+1374, and `AuditRegressionTests` failed on the unmodified branch for that reason alone. It now says 1388, the
+fourteen of this section included.
+
+### 181.7 What is not here
+
+- **A dropdown opened from a menu row** drops down the stock list, styled by the host's theme, not a menu of its own.
+  The reference opens a separate list screen; that is the consumer's second stage.
+- **A settings screen of label-and-value rows** (switches and option rows bound to settings) is only possible with
+  these pieces, not provided by them; `MenuRow`'s `Switch` kind is drawn but no control yet toggles through it.
+- **Pointer input** is whatever the underlying control does; the rows add none.

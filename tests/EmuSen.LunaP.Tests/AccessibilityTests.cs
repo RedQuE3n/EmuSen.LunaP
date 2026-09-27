@@ -83,6 +83,10 @@ namespace EmuSen.LunaP.Tests
             { nameof(BadgeGlyph), AutomationControlType.Image },
             { nameof(ControllerGlyph), AutomationControlType.Image },
             { nameof(ScrollLetterOverlay), AutomationControlType.Text },
+
+            // §181. A big-screen menu is a menu, and each of its rows an item of it.
+            { nameof(MenuPanel), AutomationControlType.Menu },
+            { nameof(MenuRow), AutomationControlType.ListItem },
         };
 
         [Theory]
@@ -118,6 +122,8 @@ namespace EmuSen.LunaP.Tests
         [InlineData(nameof(BadgeGlyph), "Folder")]
         [InlineData(nameof(ControllerGlyph), "SNES controller")]
         [InlineData(nameof(ScrollLetterOverlay), "Co")]
+        [InlineData(nameof(MenuPanel), "Main Menu")]
+        [InlineData(nameof(MenuRow), "Sort Games By, Name, ascending")]
         public Task A_control_names_itself_from_the_property_it_already_had(string name, string expected) =>
             Session.Dispatch(() =>
             {
@@ -462,6 +468,8 @@ namespace EmuSen.LunaP.Tests
             nameof(BadgeGlyph) => new BadgeGlyph { Kind = BadgeKind.Folder },
             nameof(ControllerGlyph) => new ControllerGlyph { Shape = ControllerShape.Snes },
             nameof(ScrollLetterOverlay) => new ScrollLetterOverlay { Letters = "Co" },
+            nameof(MenuPanel) => new MenuPanel { Title = "Main Menu" },
+            nameof(MenuRow) => new MenuRow { Label = "Sort Games By", Value = "Name, ascending", Kind = MenuRowKind.Option },
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, "No builder for this control."),
         };
 

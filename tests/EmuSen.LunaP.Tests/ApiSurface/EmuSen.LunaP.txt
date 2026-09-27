@@ -157,6 +157,20 @@ public class EmuSen.LunaP.Controls.BadgeStrip : Avalonia.Controls.Control
     public static readonly Avalonia.StyledProperty<int> ItemsPerLineProperty = 4
     public static readonly Avalonia.StyledProperty<int> LinesProperty = 1
 
+public class EmuSen.LunaP.Controls.BlurBackdrop : Avalonia.Controls.Control
+    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public Avalonia.Media.Color Shade { get; set; }
+    public Avalonia.Visual? Target { get; set; }
+    public BlurBackdrop()
+    public bool IsBlurring { get; }
+    public double Radius { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> ShadeProperty = #70000000
+    public static readonly Avalonia.StyledProperty<Avalonia.Visual?> TargetProperty = null
+    public static readonly Avalonia.StyledProperty<double> RadiusProperty = 16
+
 public class EmuSen.LunaP.Controls.ButtonBar : Avalonia.Controls.ItemsControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     public ButtonBar()
@@ -921,6 +935,139 @@ public class EmuSen.LunaP.Controls.MenuBar : Avalonia.Controls.Menu
     public const string StyleClass = "luna-menu-bar"
     public void SetMenus(EmuSen.LunaP.Commands.LunaMenu[] menus)
     public void SetMenus(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaMenu> menus)
+
+public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size ArrangeOverride(Avalonia.Size finalSize)
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public Avalonia.Media.Color FooterColor { get; set; }
+    public Avalonia.Media.Color HintBackground { get; set; }
+    public Avalonia.Media.Color HintColor { get; set; }
+    public Avalonia.Media.Color PanelColor { get; set; }
+    public Avalonia.Media.Color RuleColor { get; set; }
+    public Avalonia.Media.Color TitleColor { get; set; }
+    public Avalonia.Rect PanelBounds { get; }
+    public Avalonia.Rect TitleBounds { get; }
+    public EmuSen.LunaP.Controls.HintBar HelpBar { get; }
+    public EmuSen.LunaP.Controls.PadFamily HintFamily { get; set; }
+    public EmuSen.LunaP.Media.LetterCase LetterCase { get; set; }
+    public MenuPanel()
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? Hints { get; set; }
+    public double FooterSize { get; set; }
+    public double MaxWidthToHeight { get; set; }
+    public double PanelCornerRadius { get; set; }
+    public double RowPitch { get; set; }
+    public double TitleSize { get; set; }
+    public double WidthFraction { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static double GetScale(Avalonia.Controls.Control element)
+    public static readonly Avalonia.AttachedProperty<double> ScaleProperty = 1
+    public static readonly Avalonia.AttachedProperty<string?> FontPathProperty = null
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> FooterColorProperty = #ff86868a
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> HintBackgroundProperty = #f0161618
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> HintColorProperty = #ffd2d2d6
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> PanelColorProperty = #ff1b1b1e
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> RuleColorProperty = #ff333337
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TitleColorProperty = #ffb4b4b8
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadFamily> HintFamilyProperty = Generic
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = Upper
+    public static readonly Avalonia.StyledProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>?> HintsProperty = null
+    public static readonly Avalonia.StyledProperty<double> FooterSizeProperty = 26
+    public static readonly Avalonia.StyledProperty<double> MaxWidthToHeightProperty = 1.05
+    public static readonly Avalonia.StyledProperty<double> PanelCornerRadiusProperty = 16
+    public static readonly Avalonia.StyledProperty<double> RowPitchProperty = 54
+    public static readonly Avalonia.StyledProperty<double> TitleSizeProperty = 68
+    public static readonly Avalonia.StyledProperty<double> WidthFractionProperty = 0.66
+    public static readonly Avalonia.StyledProperty<string?> FooterProperty = null
+    public static readonly Avalonia.StyledProperty<string?> TitleProperty = null
+    public static string? GetFontPath(Avalonia.Controls.Control element)
+    public static void SetFontPath(Avalonia.Controls.Control element, string? value)
+    public static void SetScale(Avalonia.Controls.Control element, double value)
+    public string? Footer { get; set; }
+    public string? Title { get; set; }
+
+public class EmuSen.LunaP.Controls.MenuRow : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    public Avalonia.Media.Color AccentColor { get; set; }
+    public Avalonia.Media.Color BarColor { get; set; }
+    public Avalonia.Media.Color HighlightTextColor { get; set; }
+    public Avalonia.Media.Color RuleColor { get; set; }
+    public Avalonia.Media.Color TextColor { get; set; }
+    public EmuSen.LunaP.Controls.MenuRowKind Kind { get; set; }
+    public EmuSen.LunaP.Controls.MenuRowLayout Layout(Avalonia.Size size)
+    public EmuSen.LunaP.Media.LetterCase LetterCase { get; set; }
+    public MenuRow()
+    public bool IsHighlighted { get; set; }
+    public bool IsOn { get; set; }
+    public double RowHeight { get; set; }
+    public double Scale { get; set; }
+    public double TextSize { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> AccentColorProperty = #ff4c9ae8
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> BarColorProperty = #ff050507
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> HighlightTextColorProperty = #ffeeeef0
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> RuleColorProperty = #ff333337
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TextColorProperty = #ff9c9ca0
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.MenuRowKind> KindProperty = Action
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = Upper
+    public static readonly Avalonia.StyledProperty<bool> IsHighlightedProperty = false
+    public static readonly Avalonia.StyledProperty<bool> IsOnProperty = false
+    public static readonly Avalonia.StyledProperty<double> RowHeightProperty = 54
+    public static readonly Avalonia.StyledProperty<double> ScaleProperty = 1
+    public static readonly Avalonia.StyledProperty<double> TextSizeProperty = 36
+    public static readonly Avalonia.StyledProperty<string?> FontPathProperty = null
+    public static readonly Avalonia.StyledProperty<string?> LabelProperty = null
+    public static readonly Avalonia.StyledProperty<string?> ValueProperty = null
+    public static string Describe(string? label, string? value, EmuSen.LunaP.Controls.MenuRowKind kind, bool isOn)
+    public string? FontPath { get; set; }
+    public string? Label { get; set; }
+    public string? Value { get; set; }
+
+public enum EmuSen.LunaP.Controls.MenuRowKind
+    public const EmuSen.LunaP.Controls.MenuRowKind Action = 0
+    public const EmuSen.LunaP.Controls.MenuRowKind Option = 2
+    public const EmuSen.LunaP.Controls.MenuRowKind Submenu = 1
+    public const EmuSen.LunaP.Controls.MenuRowKind Switch = 3
+    public int value__
+
+public struct EmuSen.LunaP.Controls.MenuRowLayout : System.ValueType, System.IEquatable<EmuSen.LunaP.Controls.MenuRowLayout>
+    public Avalonia.Rect Bar { get; init; }
+    public Avalonia.Rect Chevron { get; init; }
+    public Avalonia.Rect Label { get; init; }
+    public Avalonia.Rect LeftArrow { get; init; }
+    public Avalonia.Rect RightArrow { get; init; }
+    public Avalonia.Rect Rule { get; init; }
+    public Avalonia.Rect Switch { get; init; }
+    public Avalonia.Rect Value { get; init; }
+    public MenuRowLayout(Avalonia.Rect Bar, Avalonia.Rect Label, Avalonia.Rect Value, Avalonia.Rect LeftArrow, Avalonia.Rect RightArrow, Avalonia.Rect Chevron, Avalonia.Rect Switch, Avalonia.Rect Rule)
+    public bool Equals(EmuSen.LunaP.Controls.MenuRowLayout other)
+    public override bool Equals(object obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.MenuRowLayout left, EmuSen.LunaP.Controls.MenuRowLayout right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.MenuRowLayout left, EmuSen.LunaP.Controls.MenuRowLayout right)
+    public void Deconstruct(out Avalonia.Rect Bar, out Avalonia.Rect Label, out Avalonia.Rect Value, out Avalonia.Rect LeftArrow, out Avalonia.Rect RightArrow, out Avalonia.Rect Chevron, out Avalonia.Rect Switch, out Avalonia.Rect Rule)
+
+public static class EmuSen.LunaP.Controls.MenuRows
+    public static Avalonia.Controls.ComboBox Apply(Avalonia.Controls.ComboBox choice, string label)
+    public static EmuSen.LunaP.Controls.MenuRowKind GetKind(Avalonia.Controls.Control control)
+    public static T Apply<T>(T button, EmuSen.LunaP.Controls.MenuRowKind kind = 0, string? value = null) where T : Avalonia.Controls.Button
+    public static T Apply<T>(T list) where T : Avalonia.Controls.ListBox
+    public static T ApplyButton<T>(T button) where T : Avalonia.Controls.Button
+    public static bool GetIsOn(Avalonia.Controls.Control control)
+    public static readonly Avalonia.AttachedProperty<EmuSen.LunaP.Controls.MenuRowKind> KindProperty = Action
+    public static readonly Avalonia.AttachedProperty<bool> IsOnProperty = false
+    public static readonly Avalonia.AttachedProperty<string?> LabelProperty = null
+    public static readonly Avalonia.AttachedProperty<string?> ValueProperty = null
+    public static string? GetLabel(Avalonia.Controls.Control control)
+    public static string? GetValue(Avalonia.Controls.Control control)
+    public static void Remove(Avalonia.Controls.ListBox list)
+    public static void SetIsOn(Avalonia.Controls.Control control, bool value)
+    public static void SetKind(Avalonia.Controls.Control control, EmuSen.LunaP.Controls.MenuRowKind value)
+    public static void SetLabel(Avalonia.Controls.Control control, string? value)
+    public static void SetValue(Avalonia.Controls.Control control, string? value)
 
 public struct EmuSen.LunaP.Controls.MeterEntry : System.ValueType, System.IEquatable<EmuSen.LunaP.Controls.MeterEntry>
     public MeterEntry(string Label, double Percent, string ValueText)
@@ -1834,10 +1981,13 @@ public class EmuSen.LunaP.Windowing.SheetLayer : Avalonia.Controls.Panel
     public static EmuSen.LunaP.Windowing.SheetLayer? PresenterOf(Avalonia.Controls.Window window)
     public static System.Threading.Tasks.Task Show(Avalonia.Controls.Window window, Avalonia.Controls.Window? owner)
     public static System.Threading.Tasks.Task<TResult?> ShowDialog<TResult>(EmuSen.LunaP.Windowing.ToolWindow dialog, Avalonia.Controls.Window owner)
+    public static bool GetChromeless(Avalonia.Controls.Window window)
+    public static readonly Avalonia.AttachedProperty<bool> ChromelessProperty = false
     public static readonly Avalonia.StyledProperty<bool> PresentsWindowsProperty = false
     public static readonly Avalonia.StyledProperty<double> ScaleProperty = 1
     public static readonly Avalonia.StyledProperty<string?> HintProperty = null
     public static void Activate(Avalonia.Controls.Window window)
+    public static void SetChromeless(Avalonia.Controls.Window window, bool value)
     public string? Hint { get; set; }
     public void BringToFront(Avalonia.Controls.Window window)
 

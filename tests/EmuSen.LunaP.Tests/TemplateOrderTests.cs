@@ -519,6 +519,7 @@ namespace EmuSen.LunaP.Tests
             [(typeof(DateStepper), nameof(DateStepper.Stepped))] = "DateStepper has no template; the answer is arithmetic on Value and the year bounds, and it sets nothing.",
             [(typeof(BadgeStrip), nameof(BadgeStrip.Cells))] = "BadgeStrip has no template; the answer is arithmetic on its properties and the size passed in.",
             [(typeof(HintBar), nameof(HintBar.Layout))] = "HintBar has no template; the answer is arithmetic on its entries and its font.",
+            [(typeof(MenuRow), nameof(MenuRow.Layout))] = "MenuRow has no template; the answer is arithmetic on its properties and its font.",
             [(typeof(FontText), nameof(FontText.NextScrollChange))] = "FontText has no template; it answers from its last measure, null before one, and holds nothing.",
             [(typeof(ImageGrid), nameof(ImageGrid.GeometryFor))] = "ImageGrid has no template; the layout is arithmetic on its properties and the size it is given.",
             [(typeof(TextRowList), nameof(TextRowList.NextMarqueeChange))] = "TextRowList has no template; the answer is arithmetic on its properties, its font and its bounds.",
