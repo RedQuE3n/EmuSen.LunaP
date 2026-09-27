@@ -21,10 +21,11 @@ namespace EmuSen.LunaP.Media
     // South is its B and an Xbox pad's is its A; the letters below follow that.
     internal static class PadGlyphDrawing
     {
-        internal static void Draw(DrawingContext dc, Rect box, PadFamily family, PadGlyphButton button, Color colour)
+        internal static void Draw(DrawingContext dc, Rect box, PadFamily family, PadGlyphButton button, Color colour, PadGlyphStyle style = PadGlyphStyle.Outline)
         {
             double s = Math.Min(box.Width, box.Height);
             if (s <= 0) return;
+            if (style == PadGlyphStyle.Filled && Filled(dc, box.Center, s, Lettered(family, style), button, new ImmutableSolidColorBrush(colour))) return;
             var brush = new ImmutableSolidColorBrush(colour);
             var pen = new ImmutablePen(brush, Math.Max(1, s * 0.075), lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
             var thin = new ImmutablePen(brush, Math.Max(1, s * 0.06), lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
@@ -266,6 +267,170 @@ namespace EmuSen.LunaP.Media
                     break;
             }
         }
+
+        // The filled set's disc, as a fraction of the square: 22 pixels beside 26-pixel text, the reference's help bar measured (§195.1).
+        internal const double FilledRadius = 0.425;
+
+        // The filled set has no positional drawing: a pad whose printing is not known is lettered as an Xbox pad, the reference's default (§195.1).
+        internal static PadFamily Lettered(PadFamily family, PadGlyphStyle style) => style == PadGlyphStyle.Filled && family == PadFamily.Generic ? PadFamily.Xbox : family;
+
+        // The filled set: a solid shape with the button's letter, symbol or mark cut out of it; false for the buttons it draws as the outlined set does.
+        private static bool Filled(DrawingContext dc, Point c, double s, PadFamily family, PadGlyphButton button, IBrush brush)
+        {
+            double r = s * FilledRadius;
+            Geometry disc = new EllipseGeometry(new Rect(c.X - r, c.Y - r, 2 * r, 2 * r));
+            var cutPen = new ImmutablePen(Brushes.Black, Math.Max(1, s * 0.085), lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
+            Geometry? shape, cut;
+            switch (button)
+            {
+                case PadGlyphButton.South or PadGlyphButton.East or PadGlyphButton.West or PadGlyphButton.North:
+                    shape = disc;
+                    cut = family == PadFamily.PlayStation ? Widened(ShapePath(c, s * 0.19, button), cutPen) : Bold(Letter(FaceLetter(family, button)!, c, s * 0.5), s);
+                    break;
+                case PadGlyphButton.Start or PadGlyphButton.Select:
+                    (shape, cut) = FilledMiddle(c, s, r, disc, family, button == PadGlyphButton.Start, cutPen);
+                    break;
+                case PadGlyphButton.LeftShoulder or PadGlyphButton.RightShoulder or PadGlyphButton.LeftTrigger or PadGlyphButton.RightTrigger:
+                    bool trigger = button is PadGlyphButton.LeftTrigger or PadGlyphButton.RightTrigger;
+                    double w = s * 0.9, h = trigger ? s * 0.78 : s * 0.6;
+                    shape = ShoulderBody(new Rect(c.X - w / 2, c.Y - h / 2, w, h), s, trigger);
+                    string label = ShoulderLabel(family, button);
+                    cut = Bold(Letter(label, c, Math.Min(s * 0.42, w * 0.66 / Math.Max(1, label.Length * 0.62))), s);
+                    break;
+                case PadGlyphButton.DPad or PadGlyphButton.DPadUpDown or PadGlyphButton.DPadLeftRight:
+                    (shape, cut) = FilledDPad(c, s, button);
+                    break;
+                default:
+                    return false;
+            }
+            dc.DrawGeometry(brush, null, cut is null ? shape : new CombinedGeometry(GeometryCombineMode.Exclude, shape, cut));
+            return true;
+        }
+
+        // The middle buttons filled: a disc for the families whose marks sit in a circle, a pill for the other, each with its own mark cut out.
+        private static (Geometry Shape, Geometry? Cut) FilledMiddle(Point c, double s, double r, Geometry disc, PadFamily family, bool start, IPen cutPen)
+        {
+            switch (family)
+            {
+                case PadFamily.Nintendo:
+                    double arm = s * 0.22, bar = s * 0.075;
+                    Geometry minus = new RectangleGeometry(new Rect(c.X - arm, c.Y - bar, 2 * arm, 2 * bar));
+                    return (disc, start ? new CombinedGeometry(GeometryCombineMode.Union, minus, new RectangleGeometry(new Rect(c.X - bar, c.Y - arm, 2 * bar, 2 * arm))) : minus);
+                case PadFamily.PlayStation:
+                    var pill = new RectangleGeometry(new Rect(c.X - s * 0.46, c.Y - s * 0.27, s * 0.92, s * 0.54), s * 0.27, s * 0.27);
+                    return (pill, Bars(c, s, vertical: !start, count: 3, length: start ? s * 0.34 : s * 0.24, pitch: start ? s * 0.12 : s * 0.13));
+                default:
+                    if (start) return (disc, Bars(c, s, vertical: false, count: 3, length: s * 0.4, pitch: s * 0.13));
+                    Geometry back = Widened(new RectangleGeometry(new Rect(c.X - s * 0.2, c.Y - s * 0.17, s * 0.24, s * 0.2)), cutPen);
+                    Geometry front = new RectangleGeometry(new Rect(c.X - s * 0.06, c.Y - s * 0.05, s * 0.3, s * 0.24));
+                    return (disc, new CombinedGeometry(GeometryCombineMode.Union, back, front));
+            }
+        }
+
+        // Parallel bars about a point, to cut a mark out of a filled shape.
+        private static Geometry Bars(Point c, double s, bool vertical, int count, double length, double pitch)
+        {
+            var group = new GeometryGroup();
+            double thick = s * 0.07;
+            for (int i = 0; i < count; i++)
+            {
+                double off = (i - (count - 1) / 2.0) * pitch;
+                group.Children.Add(new RectangleGeometry(vertical
+                    ? new Rect(c.X + off - thick / 2, c.Y - length / 2, thick, length)
+                    : new Rect(c.X - length / 2, c.Y + off - thick / 2, length, thick), thick / 2, thick / 2));
+            }
+            return group;
+        }
+
+        // A filled plus, with an arrow cut into the tip of each arm the hint moves along.
+        private static (Geometry Shape, Geometry? Cut) FilledDPad(Point c, double s, PadGlyphButton button)
+        {
+            double arm = s * 0.32, reach = s * 0.46, a = arm / 2;
+            var plus = new StreamGeometry();
+            using (StreamGeometryContext g = plus.Open())
+            {
+                g.BeginFigure(new Point(c.X - a, c.Y - reach), true);
+                foreach ((double x, double y) in new[] { (a, -reach), (a, -a), (reach, -a), (reach, a), (a, a), (a, reach), (-a, reach), (-a, a), (-reach, a), (-reach, -a), (-a, -a) })
+                    g.LineTo(new Point(c.X + x, c.Y + y));
+                g.EndFigure(true);
+            }
+            bool vertical = button is PadGlyphButton.DPad or PadGlyphButton.DPadUpDown, horizontal = button is PadGlyphButton.DPad or PadGlyphButton.DPadLeftRight;
+            var arrows = new StreamGeometry();
+            using (StreamGeometryContext g = arrows.Open())
+            {
+                double tip = reach - s * 0.05, baseline = reach - s * 0.2, half = s * 0.1;
+                foreach (Vector d in new[] { new Vector(0, -1), new Vector(0, 1), new Vector(-1, 0), new Vector(1, 0) })
+                {
+                    if (d.X == 0 ? !vertical : !horizontal) continue;
+                    var side = new Vector(-d.Y, d.X);
+                    g.BeginFigure(c + d * tip, true);
+                    g.LineTo(c + d * baseline + side * half);
+                    g.LineTo(c + d * baseline - side * half);
+                    g.EndFigure(true);
+                }
+            }
+            return (plus, arrows);
+        }
+
+        // A shoulder's body, rounded at the top, or a trigger's, rounded at the bottom.
+        private static Geometry ShoulderBody(Rect body, double s, bool trigger)
+        {
+            double r = s * 0.2, top = trigger ? s * 0.05 : r, bottom = trigger ? r : s * 0.05;
+            var outline = new StreamGeometry();
+            using (StreamGeometryContext g = outline.Open())
+            {
+                g.BeginFigure(new Point(body.Left + top, body.Top), true);
+                g.LineTo(new Point(body.Right - top, body.Top));
+                g.ArcTo(new Point(body.Right, body.Top + top), new Size(top, top), 0, false, SweepDirection.Clockwise);
+                g.LineTo(new Point(body.Right, body.Bottom - bottom));
+                g.ArcTo(new Point(body.Right - bottom, body.Bottom), new Size(bottom, bottom), 0, false, SweepDirection.Clockwise);
+                g.LineTo(new Point(body.Left + bottom, body.Bottom));
+                g.ArcTo(new Point(body.Left, body.Bottom - bottom), new Size(bottom, bottom), 0, false, SweepDirection.Clockwise);
+                g.LineTo(new Point(body.Left, body.Top + top));
+                g.ArcTo(new Point(body.Left + top, body.Top), new Size(top, top), 0, false, SweepDirection.Clockwise);
+                g.EndFigure(true);
+            }
+            return outline;
+        }
+
+        // The four shapes as paths, for cutting a stroke of them out of a disc.
+        private static Geometry ShapePath(Point c, double r, PadGlyphButton button)
+        {
+            switch (button)
+            {
+                case PadGlyphButton.East:
+                    return new EllipseGeometry(new Rect(c.X - r, c.Y - r, 2 * r, 2 * r));
+                case PadGlyphButton.West:
+                    return new RectangleGeometry(new Rect(c.X - r * 0.9, c.Y - r * 0.9, r * 1.8, r * 1.8));
+            }
+            var path = new StreamGeometry();
+            using (StreamGeometryContext g = path.Open())
+            {
+                if (button == PadGlyphButton.South)
+                {
+                    g.BeginFigure(c + new Vector(-r, -r), false);
+                    g.LineTo(c + new Vector(r, r));
+                    g.EndFigure(false);
+                    g.BeginFigure(c + new Vector(-r, r), false);
+                    g.LineTo(c + new Vector(r, -r));
+                    g.EndFigure(false);
+                }
+                else
+                {
+                    g.BeginFigure(c + new Vector(0, -r * 1.05), true);
+                    g.LineTo(c + new Vector(r * 1.0, r * 0.7));
+                    g.LineTo(c + new Vector(-r * 1.0, r * 0.7));
+                    g.EndFigure(true);
+                }
+            }
+            return path;
+        }
+
+        private static Geometry Widened(Geometry path, IPen pen) => path.GetWidenedGeometry(pen) ?? path;
+
+        // A letter thickened by a thin stroke of itself, so a cut-out reads at 22 pixels as the reference's heavy letters do.
+        private static Geometry Bold(Geometry letter, double s) =>
+            new CombinedGeometry(GeometryCombineMode.Union, letter, Widened(letter, new ImmutablePen(Brushes.Black, Math.Max(0.5, s * 0.035), lineJoin: PenLineJoin.Round)));
 
         // A word in the default typeface as geometry, its ink box centred on a point, so it can be filled or cut out of a disc.
         internal static Geometry Letter(string text, Point centre, double size)

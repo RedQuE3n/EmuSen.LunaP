@@ -489,6 +489,9 @@ namespace EmuSen.LunaP.Tests
         {
             [(typeof(CrossFadeImage), nameof(CrossFadeImage.Show))] =
                 "CrossFadeImage has no template: its two pictures are built in the constructor, so Show sets sources that exist and ScreensaverPieceTests reads them back.",
+            [(typeof(MenuTextPopup), nameof(MenuTextPopup.Finish))] =
+                "MenuTextPopup has no template: before it is shown Finish and Cancel return at once, as they do after it closes.",
+            [(typeof(MenuTextPopup), nameof(MenuTextPopup.Cancel))] = "as MenuTextPopup.Finish.",
             [(typeof(OnScreenKeyboard), nameof(OnScreenKeyboard.Move))] =
                 "OnScreenKeyboard has no template: its keys are built in the constructor, so every method acts on keys that exist.",
             [(typeof(OnScreenKeyboard), nameof(OnScreenKeyboard.Press))] = "as OnScreenKeyboard.Move.",

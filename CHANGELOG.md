@@ -14,6 +14,13 @@ answer.
 
 ## Unreleased
 
+- **Filled button glyphs, a menu's scroll indicator and `MenuTextPopup`, new (`§195`).** `PadGlyphStyle` (`Outline`,
+  `Filled`) on `PadGlyph.Style`, `HintBar.GlyphStyle` and `MenuPanel.HintGlyphStyle`; `MenuPanel.ScrollIndicator`,
+  `ScrollIndicatorBounds`, `ShowsScrollIndicator` and `ScrollIndicatorColor`, with `MenuScrollIndicator`; and a text
+  popup whose bar is a real, focused `TextBox`. **Behaviour changes:** `MenuPanel`'s help bar draws its buttons filled
+  by default, and a filled Generic pad is lettered as an Xbox pad; a menu whose rows run past its panel draws chevrons
+  at its title's right. A stored picture of a menu will differ.
+
 - **`ControllerDiagram`, new and additive (`§198`).** A controller drawn large from the toolkit's own geometry, every
   button, direction and trigger a named region with a label showing its key and pad button, lit while pressed, a stick's
   knob moved by its position, and chosen by a click or by moving between regions. The Super NES and Nintendo 64 pads are

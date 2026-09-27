@@ -21,6 +21,15 @@ namespace EmuSen.LunaP.Controls
         Nintendo,
     }
 
+    /// <summary>How a PadGlyph draws a button: outlined in its colour, or solid with the button's letter or mark cut out of it.</summary>
+    public enum PadGlyphStyle
+    {
+        /// <summary>A ring or outline with the letter or mark drawn inside it, and the unknown pad's buttons by position. The default.</summary>
+        Outline,
+        /// <summary>A solid disc, pill or plus with the letter, symbol or mark cut out of it; an unknown pad is lettered as an Xbox pad - see docs/LunaP.md §195.1.</summary>
+        Filled,
+    }
+
     /// <summary>A gamepad button or group of buttons a hint can name, the face buttons by position.</summary>
     public enum PadGlyphButton
     {
@@ -67,11 +76,12 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<PadGlyphButton> ButtonProperty = AvaloniaProperty.Register<PadGlyph, PadGlyphButton>(nameof(Button));
         public static readonly StyledProperty<Color> ColorProperty = AvaloniaProperty.Register<PadGlyph, Color>(nameof(Color), LunaPalette.Text.Color);
         public static readonly StyledProperty<double> GlyphSizeProperty = AvaloniaProperty.Register<PadGlyph, double>(nameof(GlyphSize), 24);
+        public static readonly StyledProperty<PadGlyphStyle> StyleProperty = AvaloniaProperty.Register<PadGlyph, PadGlyphStyle>(nameof(Style));
 
         static PadGlyph()
         {
             AffectsMeasure<PadGlyph>(GlyphSizeProperty);
-            AffectsRender<PadGlyph>(FamilyProperty, ButtonProperty, ColorProperty);
+            AffectsRender<PadGlyph>(FamilyProperty, ButtonProperty, ColorProperty, StyleProperty);
         }
 
         /// <summary>Which set the button is drawn from. Generic by default.</summary>
@@ -86,18 +96,30 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The side of the square the glyph measures to, in pixels. 24 by default.</summary>
         public double GlyphSize { get => GetValue(GlyphSizeProperty); set => SetValue(GlyphSizeProperty, value); }
 
+        /// <summary>Outlined or filled. Outline by default.</summary>
+        public PadGlyphStyle Style { get => GetValue(StyleProperty); set => SetValue(StyleProperty, value); }
+
         protected override Size MeasureOverride(Size availableSize) => new(GlyphSize, GlyphSize);
 
-        public override void Render(DrawingContext context) => PadGlyphDrawing.Draw(context, new Rect(Bounds.Size), Family, Button, Color);
+        public override void Render(DrawingContext context) => PadGlyphDrawing.Draw(context, new Rect(Bounds.Size), Family, Button, Color, Style);
 
         protected override AutomationPeer OnCreateAutomationPeer() =>
-            new LunaAutomationPeer(this, AutomationControlType.Image, () => PadGlyph.Describe(Family, Button));
+            new LunaAutomationPeer(this, AutomationControlType.Image, () => PadGlyph.Describe(Family, Button, Style));
 
         /// <summary>What a screen reader hears for a button of a family: its printed name where the family prints one, else its position.</summary>
         /// <param name="family">The pad's family.</param>
         /// <param name="button">The button, face buttons by position.</param>
         /// <returns>A short name, such as "A", "Cross", "LB" or "South button".</returns>
-        public static string Describe(PadFamily family, PadGlyphButton button) => button switch
+        public static string Describe(PadFamily family, PadGlyphButton button) => Describe(family, button, PadGlyphStyle.Outline);
+
+        /// <summary>What a screen reader hears for a button of a family drawn in a style: the filled style letters an unknown pad as an Xbox pad, so it is named so.</summary>
+        /// <param name="family">The pad's family.</param>
+        /// <param name="button">The button, face buttons by position.</param>
+        /// <param name="style">The style it is drawn in.</param>
+        /// <returns>A short name, such as "A", "Cross", "LB" or "South button".</returns>
+        public static string Describe(PadFamily family, PadGlyphButton button, PadGlyphStyle style) => Named(PadGlyphDrawing.Lettered(family, style), button);
+
+        private static string Named(PadFamily family, PadGlyphButton button) => button switch
         {
             PadGlyphButton.South or PadGlyphButton.East or PadGlyphButton.West or PadGlyphButton.North => family switch
             {

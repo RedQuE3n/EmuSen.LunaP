@@ -1,4 +1,7 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Media.TextFormatting;
+using EmuSen.LunaP.Media;
 
 namespace EmuSen.LunaP.Controls
 {
@@ -6,6 +9,20 @@ namespace EmuSen.LunaP.Controls
     /// <summary>A bold coloured heading introducing a group of controls.</summary>
     public class SectionHeader : TextBlock
     {
+        public static readonly StyledProperty<LetterCase> LetterCaseProperty = AvaloniaProperty.Register<SectionHeader, LetterCase>(nameof(LetterCase), LetterCase.None);
+
+        static SectionHeader() => AffectsMeasure<SectionHeader>(LetterCaseProperty);
+
+        /// <summary>How the heading's words are cased when drawn; Text keeps them as written. None by default.</summary>
+        public LetterCase LetterCase { get => GetValue(LetterCaseProperty); set => SetValue(LetterCaseProperty, value); }
+
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+        {
+            base.OnPropertyChanged(change);
+            if (change.Property == LetterCaseProperty) InvalidateTextLayout();
+        }
+
+        protected override TextLayout CreateTextLayout(string? text) => base.CreateTextLayout(text is null ? null : FontLayout.Cased(text, LetterCase));
     }
 
     // Grey 11pt wrapping explanatory text, under a label or a checkbox.
