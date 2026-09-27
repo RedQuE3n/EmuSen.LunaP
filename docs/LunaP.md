@@ -12889,12 +12889,22 @@ at the origin with no size. It now falls back to the window's client size.
 
 ### 195.4 Tests and mutants
 
-`MenuFollowupTests`, eleven cases: every button of every family draws filled inside its square; a filled face button
+`MenuFollowupTests`, thirteen cases: every button of every family draws filled inside its square; a filled face button
 is a disc with something cut out of it, a cross cut through its middle and a circle leaving the middle solid; an
 unknown pad filled is pixel for pixel the Xbox set and is described so; the three printed families differ on every
 face, middle, shoulder and trigger button, and Start differs from Select in each; the d-pad's arrows are cut into the
 named arms alone; a hint bar draws its style and a menu panel's is filled by default; the indicator follows the
 scroller down, both and up, and draws nowhere but its squares; it sits where the reference's does at scale 1 and 1.5,
 with and without a subtitle; a list child is watched through its own scroller; the text popup's field is focused and
-Enter keeps what was typed; Escape drops it, and the popup is centred and shades the window. The mutants are the
-consumer's (its §40.7).
+Enter keeps what was typed; Escape drops it, and the popup is centred and shades the window; each chevron pair points
+the way its rows run; and scrolling redraws the indicator in a capture that repaints only what was invalidated.
+
+**Mutants.** Fifteen, run by the consumer's runner (its `EmuSen_BigPicture.md` §40.8): a filled Generic pad drawn by
+position; a menu's help bar outlined by default; the style not handed to the help bar; the disc too large;
+PlayStation's shapes cut out solid; arrows on every arm; no upper chevrons; the indicator 24 pixels in; the indicator
+on the band's middle under a subtitle; a list's scroller not found; no redraw on scrolling; the lower pair pointing
+up; Enter not writing back; Escape not cancelling; the field not focused. **Thirteen were caught at once and two
+survived**, as predicted before the round: with no redraw on scrolling the tests still passed, because `Frame` repaints
+every visual; and with the lower pair pointing up, because the pixel counts did not look at direction. The last two
+cases were added for them, one capturing with `UiTest.Capture`, which repaints only what was invalidated, and one
+reading the pixel at each pair's point; rerun alone, both mutants were caught.

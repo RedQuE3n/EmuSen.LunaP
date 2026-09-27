@@ -206,6 +206,34 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // The chevrons point the way the rows run: the lower pair's points are at the bottom of its square, the upper pair's at the top.
+        [Fact]
+        public Task Each_pair_points_the_way_its_rows_run() => UiTest.Run(() =>
+        {
+            var (panel, rows, window) = Menu(30);
+            rows.Offset = new Vector(0, 54 * 5);
+            window.UpdateLayout();
+            RenderedFrame f = Frame(window);
+            (Rect up, Rect down) = panel.ScrollIndicatorBounds;
+            bool Lit(Rect box, double fy) => At(f, box.X + box.Width / 2, box.Y + box.Height * fy) is { G: > 150, R: < 100, B: < 100 };
+            Assert.True(Lit(down, 0.84) && !Lit(down, 0.16), "the lower pair points down");
+            Assert.True(Lit(up, 0.16) && !Lit(up, 0.84), "the upper pair points up");
+            window.Close();
+        });
+
+        // Scrolling redraws the panel itself: a capture that repaints only what was invalidated shows the new pair.
+        [Fact]
+        public Task Scrolling_redraws_the_indicator_without_a_forced_repaint() => UiTest.Run(() =>
+        {
+            var (panel, rows, window) = Menu(30);
+            (Rect up, _) = panel.ScrollIndicatorBounds;
+            Assert.Equal(0, Lime(UiTest.Capture(window), up));
+            rows.Offset = new Vector(0, 54 * 5);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.True(Lime(UiTest.Capture(window), up) > 40, "the upper pair appeared on the next frame");
+            window.Close();
+        });
+
         [Fact]
         public Task The_scroll_indicator_sits_at_the_title_s_right_where_the_reference_draws_it_at_any_scale() => UiTest.Run(() =>
         {
