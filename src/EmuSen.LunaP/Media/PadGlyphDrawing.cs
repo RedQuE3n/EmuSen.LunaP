@@ -268,7 +268,7 @@ namespace EmuSen.LunaP.Media
         }
 
         // A word in the default typeface as geometry, its ink box centred on a point, so it can be filled or cut out of a disc.
-        private static Geometry Letter(string text, Point centre, double size)
+        internal static Geometry Letter(string text, Point centre, double size)
         {
             GlyphTypeface typeface = FontFiles.Default;
             ShapedBuffer shaped = TextShaper.Current.ShapeText(text.AsMemory(), new TextShaperOptions(typeface, size, 0, CultureInfo.InvariantCulture, 0, 0, null));

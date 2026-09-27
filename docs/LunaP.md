@@ -12111,3 +12111,113 @@ the API baseline gains the property and its field.
 
 **Not done.** The fade stays linear between keyframes, as §88.5's is. That the reference's fade is close to linear
 rests on one recording (the consumer's §24).
+
+## 180. Badges and controllers, drawn; and the letters of a list scrolled fast
+
+*2026-09-27.* The consumer (EmuSen's Mistress) draws its reference frontend's themes (ES-DE's), and those themes may
+place a `badges` element without naming an image for every badge. The reference then draws built-in pictures of its
+own. The consumer's rule, set by its user, is that such pictures are the consumer's own drawings and none of the
+reference's (its `EmuSen_BigPicture.md` §10.1, Q9, and §29). This section adds the drawings, the strip's way of taking
+them, and one control for a list held down. Nothing here knows about the consumer's theme format; the kinds are named
+for what they mean to a player of a game list, as `PadFamily` (§103.1) names what a pad prints.
+
+### 180.1 `BadgeGlyph`, `BadgeKind`, `ControllerGlyph` and `ControllerShape`
+
+`BadgeGlyph` draws one badge in one colour, a square `GlyphSize` on a side, as `PadGlyph` does for a button. Every badge
+but the folder link stands on the same **plate**, a rounded square outline 0.86 of the side with corners 0.16 of it, so
+a strip of badges reads as one set; the symbol inside it is:
+
+| `BadgeKind` | Symbol |
+|---|---|
+| `Favorite` | a filled five-pointed star, `StarRating`'s own geometry |
+| `Completed` | a check mark, stroked |
+| `KidGame` | a smiling face: a ring, two dots and an arc |
+| `Broken` | a crack from top to bottom, a stroked zigzag |
+| `Controller` | nothing: the plate alone, for a controller to be drawn over it |
+| `AltEmulator` | two opposed arrows, one above the other |
+| `Collection` | two stacked cards, the back one outlined and the front one filled |
+| `Folder` | a folder's outline with its tab |
+| `Manual` | an open book: two pages and a spine |
+| `FolderLink` | two rounded links overlapping on the rising diagonal, **with no plate**, since it is drawn over a folder's |
+
+`ControllerGlyph` draws a controller the same way, with no plate. `ControllerShape` holds five: `Unknown` (a pad's
+outline with a question mark), `Gamepad` (a body with two grips and two sticks), `Nes` (a flat oblong with a cross, two
+small bars and two round buttons), `Snes` (an oblong with round ends, a cross and four buttons in a diamond) and
+`Nintendo64` (a body with three prongs, a cross on the left, a stick on the middle prong, and two buttons on the
+right). The set is the consumer's need, not a catalogue: its consoles use those three pads, and the reference names a
+generic type and an unknown one besides. A consumer that needs another shape adds a value at the end, as §151 did to
+`PadGlyphButton`.
+
+**The drawings are the toolkit's own.** Every shape is plain geometry (rounded rectangles, lines, arcs, discs) or a
+letter of the application's default typeface (the question mark, through the same `Letter` helper as §103.1's
+letters, now internal rather than private). None was traced from a vendor's artwork or from the reference's pictures,
+which were not looked at; the controllers are recognisable by their outlines and the layout of their buttons, which is
+what a player remembers of a pad, and carry no vendor's colours or logos.
+
+`BadgeGlyph.Describe` and `ControllerGlyph.Describe` give the names a screen reader hears ("Kids' game", "Folder link",
+"NES controller", "Unknown controller"). Both controls report themselves as images, as `PadGlyph` does.
+
+### 180.2 `BadgeStrip.Entries`, `BadgeEntry`, and the two overlays
+
+`BadgeStrip` (§101.2) took image files only. It gains `Entries`, a list of `BadgeEntry` records, drawn **instead of**
+`Icons` when set, so a consumer that sets only `Icons` sees no change. An entry names its `Kind` and may carry:
+- `IconPath`, an image drawn in place of the drawing; a missing or unreadable file falls back to the drawing, as
+  the reference falls back to its own picture when a theme's file is absent;
+- `Controller` or `ControllerIconPath`, drawn over a `Controller` badge;
+- `Linked` and `LinkIconPath`, a folder link drawn over a `Folder` badge.
+
+A drawing is made in the square fitted to its cell, centred, so a wide cell does not stretch it. An overlay's box is a
+square `ControllerSize` (or `FolderLinkSize`) of that square's width on a side, centred at `ControllerPosition` (or
+`FolderLinkPosition`) given as fractions of the cell; the defaults, 0.5 and the centre, are the reference's documented
+defaults for its `controllerSize`, `controllerPos`, `folderLinkSize` and `folderLinkPos`. `ControllerTint` and
+`FolderLinkTint` multiply the overlays as `Tint` does the badges. An overlay is drawn only over its own kind: a
+`Controller` on a favourite, or `Linked` on anything but a folder, is ignored, which is a test's assertion rather than
+an accident of order.
+
+**A drawn link over a drawn folder is cut out of it.** The first picture of the two together (the consumer's
+`glyph-sheet.png`) showed the link's white outline running into the folder's white outline, so that neither read. The
+folder is now drawn under a clip that excludes the link's outline widened to three times its pen, a knockout: the
+folder's lines stop short of the link on either side. Only the drawing is cut. A theme's own folder image, or its own
+link image, is drawn whole, as the reference documents an overlay (an image over an image), since the toolkit cannot
+know what either file needs.
+
+### 180.3 `ScrollLetterOverlay`
+
+The reference offers, off by default, an overlay over a text list held down: "The overlay will darken the background
+slightly and display the first two characters of the game names. If the game is a favorite and the setting to sort
+favorites above non-favorites has been enabled, a star symbol will be shown instead" (its user guide, "UI settings").
+`ScrollLetterOverlay` is that picture and nothing of its timing: `Letters`, `Star`, `Shade` (black at 0x60 alpha, which
+is "slightly"; the reference's value was not measured), `Foreground` and `LetterSize`. With no letters and no star it
+draws nothing at all, not even the shade, so a consumer can leave it in its tree; `Showing` says which. It is not hit
+by the pointer. When to show it, and what letters, is the consumer's business, as the time is (§102's rule that no
+control reads a clock).
+
+### 180.4 Tests
+
+`BadgeGlyphTests`: every badge and controller draws inside its square and fills less than half of it; every pair in
+each set differs by more than forty pixels at 64 px; every badge but the link carries the plate, and the controller
+badge's middle half is empty; the names; a strip draws an entry's file, else its drawing, and entries win over icons; a
+controller and a folder link appear over their badges, move with the position, shrink with the size, give way to a
+file, and are not drawn over another kind; the scroll overlay draws nothing when empty, shades its corner and shows its
+letters in the middle, and a star in their place. `DocumentedDefaultTests` gains the seventeen new defaults,
+`AccessibilityTests` the three new controls with their names, and the API baseline the new types and members.
+
+### 180.5 A defect the consumer's pixel test found: the Wi-Fi fan drew past its box
+
+The consumer's test for its status switches requires that turning an indicator off changes no pixel outside the status
+element's box (its `EmuSen_BigPicture.md` §29). Turning the battery off failed it by 44 pixels, eight to nine columns
+right of the box. The cause was §101.5's built-in Wi-Fi drawing: its three arcs had radii of `height × i / 3.2`, so
+the outer arc's ends, at 45 degrees, lay `0.66 × height` from the centre, while the icon's box is one height wide. The
+fan therefore reached about 0.16 of a height past each side of its own box. With another indicator after it the overhang
+fell in the spacing and was not seen; with the Wi-Fi fan last, it drew past the bar's measured edge.
+
+**Shown before it was fixed.** `IndicatorControlTests.No_indicator_draws_past_the_bar_s_right_edge` (five cases of which
+indicators are on) failed on the unmodified drawing in the two cases where the fan is last, with ink seven columns past
+the bar's right edge at a 40 px icon height (column 147 against an edge at 140; 193 against 186), and passed in the other
+three. With the fix it passes all five.
+
+**The fix.** The outer radius is the smaller of the old `height × 3 / 3.2` and the radius whose 45-degree ends, with half
+the pen, touch the box's sides; the inner arcs keep their thirds of it. At a square box the fan is about 30% narrower
+than before and its apex a little lower; at a box wider than it is high it is unchanged. The fan's shape was the
+toolkit's own and is still, so no consumer's image is affected; a consumer that compared pixels of the built-in fan
+against a stored picture will see the change.

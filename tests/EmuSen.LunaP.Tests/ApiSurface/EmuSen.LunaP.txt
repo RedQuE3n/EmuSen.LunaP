@@ -79,25 +79,81 @@ public class EmuSen.LunaP.Controls.ActionToggle : Avalonia.Controls.Primitives.T
     public EmuSen.LunaP.Commands.LunaAction Action { get; }
     public const string StyleClass = "luna-action-toggle"
 
+public sealed class EmuSen.LunaP.Controls.BadgeEntry : System.IEquatable<EmuSen.LunaP.Controls.BadgeEntry>
+    public BadgeEntry(EmuSen.LunaP.Controls.BadgeKind Kind)
+    public EmuSen.LunaP.Controls.BadgeKind Kind { get; init; }
+    public EmuSen.LunaP.Controls.ControllerShape? Controller { get; init; }
+    public bool Equals(EmuSen.LunaP.Controls.BadgeEntry? other)
+    public bool Linked { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.BadgeEntry? left, EmuSen.LunaP.Controls.BadgeEntry? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.BadgeEntry? left, EmuSen.LunaP.Controls.BadgeEntry? right)
+    public string? ControllerIconPath { get; init; }
+    public string? IconPath { get; init; }
+    public string? LinkIconPath { get; init; }
+    public void Deconstruct(out EmuSen.LunaP.Controls.BadgeKind Kind)
+
+public class EmuSen.LunaP.Controls.BadgeGlyph : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    public Avalonia.Media.Color Color { get; set; }
+    public BadgeGlyph()
+    public EmuSen.LunaP.Controls.BadgeKind Kind { get; set; }
+    public double GlyphSize { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> ColorProperty = #ffd4d4d4
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.BadgeKind> KindProperty = Favorite
+    public static readonly Avalonia.StyledProperty<double> GlyphSizeProperty = 24
+    public static string Describe(EmuSen.LunaP.Controls.BadgeKind kind)
+
+public enum EmuSen.LunaP.Controls.BadgeKind
+    public const EmuSen.LunaP.Controls.BadgeKind AltEmulator = 5
+    public const EmuSen.LunaP.Controls.BadgeKind Broken = 3
+    public const EmuSen.LunaP.Controls.BadgeKind Collection = 6
+    public const EmuSen.LunaP.Controls.BadgeKind Completed = 1
+    public const EmuSen.LunaP.Controls.BadgeKind Controller = 4
+    public const EmuSen.LunaP.Controls.BadgeKind Favorite = 0
+    public const EmuSen.LunaP.Controls.BadgeKind Folder = 7
+    public const EmuSen.LunaP.Controls.BadgeKind FolderLink = 9
+    public const EmuSen.LunaP.Controls.BadgeKind KidGame = 2
+    public const EmuSen.LunaP.Controls.BadgeKind Manual = 8
+    public int value__
+
 public class EmuSen.LunaP.Controls.BadgeStrip : Avalonia.Controls.Control
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     public Avalonia.Layout.HorizontalAlignment ContentHorizontalAlignment { get; set; }
     public Avalonia.Layout.Orientation Direction { get; set; }
     public Avalonia.Layout.VerticalAlignment ContentVerticalAlignment { get; set; }
+    public Avalonia.Media.Color ControllerTint { get; set; }
+    public Avalonia.Media.Color FolderLinkTint { get; set; }
     public Avalonia.Media.Color Tint { get; set; }
+    public Avalonia.Point ControllerPosition { get; set; }
+    public Avalonia.Point FolderLinkPosition { get; set; }
     public Avalonia.Size ItemMargin { get; set; }
     public BadgeStrip()
     public System.Collections.Generic.IReadOnlyList<Avalonia.Rect> Cells(Avalonia.Size size)
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.BadgeEntry>? Entries { get; set; }
     public System.Collections.Generic.IReadOnlyList<string>? Icons { get; set; }
+    public double ControllerSize { get; set; }
+    public double FolderLinkSize { get; set; }
     public int ItemsPerLine { get; set; }
     public int Lines { get; set; }
     public override void Render(Avalonia.Media.DrawingContext context)
     public static readonly Avalonia.StyledProperty<Avalonia.Layout.HorizontalAlignment> ContentHorizontalAlignmentProperty = Left
     public static readonly Avalonia.StyledProperty<Avalonia.Layout.Orientation> DirectionProperty = Horizontal
     public static readonly Avalonia.StyledProperty<Avalonia.Layout.VerticalAlignment> ContentVerticalAlignmentProperty = Top
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> ControllerTintProperty = White
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> FolderLinkTintProperty = White
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TintProperty = White
+    public static readonly Avalonia.StyledProperty<Avalonia.Point> ControllerPositionProperty = 0.5, 0.5
+    public static readonly Avalonia.StyledProperty<Avalonia.Point> FolderLinkPositionProperty = 0.5, 0.5
     public static readonly Avalonia.StyledProperty<Avalonia.Size> ItemMarginProperty = 0, 0
+    public static readonly Avalonia.StyledProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.BadgeEntry>?> EntriesProperty = null
     public static readonly Avalonia.StyledProperty<System.Collections.Generic.IReadOnlyList<string>?> IconsProperty = null
+    public static readonly Avalonia.StyledProperty<double> ControllerSizeProperty = 0.5
+    public static readonly Avalonia.StyledProperty<double> FolderLinkSizeProperty = 0.5
     public static readonly Avalonia.StyledProperty<int> ItemsPerLineProperty = 4
     public static readonly Avalonia.StyledProperty<int> LinesProperty = 1
 
@@ -153,6 +209,27 @@ public class EmuSen.LunaP.Controls.ConsolePane : Avalonia.Controls.Primitives.Te
     public void Clear()
     public void FocusInput()
     public void ResetHistoryRecall()
+
+public class EmuSen.LunaP.Controls.ControllerGlyph : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
+    public Avalonia.Media.Color Color { get; set; }
+    public ControllerGlyph()
+    public EmuSen.LunaP.Controls.ControllerShape Shape { get; set; }
+    public double GlyphSize { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> ColorProperty = #ffd4d4d4
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.ControllerShape> ShapeProperty = Unknown
+    public static readonly Avalonia.StyledProperty<double> GlyphSizeProperty = 24
+    public static string Describe(EmuSen.LunaP.Controls.ControllerShape shape)
+
+public enum EmuSen.LunaP.Controls.ControllerShape
+    public const EmuSen.LunaP.Controls.ControllerShape Gamepad = 1
+    public const EmuSen.LunaP.Controls.ControllerShape Nes = 2
+    public const EmuSen.LunaP.Controls.ControllerShape Nintendo64 = 4
+    public const EmuSen.LunaP.Controls.ControllerShape Snes = 3
+    public const EmuSen.LunaP.Controls.ControllerShape Unknown = 0
+    public int value__
 
 public enum EmuSen.LunaP.Controls.DateSegment
     public const EmuSen.LunaP.Controls.DateSegment Day = 2
@@ -1063,6 +1140,22 @@ public class EmuSen.LunaP.Controls.RgbaImageView : Avalonia.Controls.Primitives.
     public void SetFrame(System.ReadOnlySpan<byte> rgba, int width, int height)
     public void SetFrame(System.ValueTuple<byte[], int, int> frame)
     public void SetFrame(byte[] rgba, int width, int height)
+
+public class EmuSen.LunaP.Controls.ScrollLetterOverlay : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    public Avalonia.Media.Color Foreground { get; set; }
+    public Avalonia.Media.Color Shade { get; set; }
+    public ScrollLetterOverlay()
+    public bool Showing { get; }
+    public bool Star { get; set; }
+    public double LetterSize { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> ForegroundProperty = #ffd4d4d4
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> ShadeProperty = #60000000
+    public static readonly Avalonia.StyledProperty<bool> StarProperty = false
+    public static readonly Avalonia.StyledProperty<double> LetterSizeProperty = 96
+    public static readonly Avalonia.StyledProperty<string?> LettersProperty = null
+    public string? Letters { get; set; }
 
 public class EmuSen.LunaP.Controls.SectionHeader : Avalonia.Controls.TextBlock
     public SectionHeader()

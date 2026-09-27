@@ -156,5 +156,28 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(Colors.Lime, At(f, 40, 10));
             window.Close();
         });
+
+        // Whatever indicator comes last, nothing is drawn past the bar's measured right edge; the Wi-Fi fan once reached seven pixels beyond it (§180.5).
+        [Theory]
+        [InlineData(DeviceIndicators.All)]
+        [InlineData(DeviceIndicators.Bluetooth | DeviceIndicators.Wifi | DeviceIndicators.Battery)]
+        [InlineData(DeviceIndicators.Bluetooth | DeviceIndicators.Wifi)]
+        [InlineData(DeviceIndicators.Wifi)]
+        [InlineData(DeviceIndicators.Bluetooth)]
+        public Task No_indicator_draws_past_the_bar_s_right_edge(DeviceIndicators on) => UiTest.Run(() =>
+        {
+            var bar = new DeviceStatusBar { Status = new DeviceStatus(Bluetooth: true, Wifi: true, BatteryPercent: 64), Indicators = on, IconHeight = 40, EntrySpacing = 6, Color = Colors.White };
+            var canvas = new Canvas { Width = 400, Height = 60, Background = Brushes.Black, Children = { bar } };
+            Canvas.SetLeft(bar, 100);
+            ToolWindow window = Show(canvas, 400, 60);
+            RenderedFrame f = Frame(window);
+            int first = 400, last = 0;
+            for (int x = 0; x < 400; x++)
+                for (int y = 0; y < 60; y++)
+                    if (At(f, x, y).G > 40) (first, last) = (Math.Min(first, x), Math.Max(last, x));
+            Assert.True(last + 1 <= bar.Bounds.Right + 0.5, $"{on}: ink to column {last}, the bar ends at {bar.Bounds.Right}");
+            Assert.True(first >= bar.Bounds.Left - 0.5, $"{on}: ink from column {first}, the bar starts at {bar.Bounds.Left}");
+            window.Close();
+        });
     }
 }

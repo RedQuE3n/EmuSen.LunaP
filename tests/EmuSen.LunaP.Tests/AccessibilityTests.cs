@@ -78,6 +78,11 @@ namespace EmuSen.LunaP.Tests
             { nameof(BadgeStrip), AutomationControlType.Group },
             { nameof(HintBar), AutomationControlType.Group },
             { nameof(DeviceStatusBar), AutomationControlType.StatusBar },
+
+            // §180. A badge and a controller are pictures; the scroll overlay is the text it shows.
+            { nameof(BadgeGlyph), AutomationControlType.Image },
+            { nameof(ControllerGlyph), AutomationControlType.Image },
+            { nameof(ScrollLetterOverlay), AutomationControlType.Text },
         };
 
         [Theory]
@@ -110,6 +115,9 @@ namespace EmuSen.LunaP.Tests
         [InlineData(nameof(StarRating), "3.5 of 5")]
         [InlineData(nameof(HintBar), "A Launch, B Back")]
         [InlineData(nameof(DeviceStatusBar), "Wi-Fi on, battery 75%")]
+        [InlineData(nameof(BadgeGlyph), "Folder")]
+        [InlineData(nameof(ControllerGlyph), "SNES controller")]
+        [InlineData(nameof(ScrollLetterOverlay), "Co")]
         public Task A_control_names_itself_from_the_property_it_already_had(string name, string expected) =>
             Session.Dispatch(() =>
             {
@@ -451,6 +459,9 @@ namespace EmuSen.LunaP.Tests
             nameof(BadgeStrip) => new BadgeStrip(),
             nameof(HintBar) => new HintBar { Entries = new[] { new HintEntry("Launch", Glyph: "A"), new HintEntry("Back", Glyph: "B") } },
             nameof(DeviceStatusBar) => new DeviceStatusBar { Status = new DeviceStatus(Wifi: true, BatteryPercent: 75) },
+            nameof(BadgeGlyph) => new BadgeGlyph { Kind = BadgeKind.Folder },
+            nameof(ControllerGlyph) => new ControllerGlyph { Shape = ControllerShape.Snes },
+            nameof(ScrollLetterOverlay) => new ScrollLetterOverlay { Letters = "Co" },
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, "No builder for this control."),
         };
 

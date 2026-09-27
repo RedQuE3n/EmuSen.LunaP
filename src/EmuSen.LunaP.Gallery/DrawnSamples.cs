@@ -78,6 +78,13 @@ namespace EmuSen.LunaP.Gallery
                 At(canvas, new PadGlyph { Family = family, Button = PadGlyphButton.LeftShoulder, GlyphSize = 18 }, x + 0.03, 0.88, 0, 0, 0, 1);
                 x += 0.07;
             }
+            // §180: the toolkit's own badges, a controller on its plate and a linked folder, and one controller glyph.
+            At(canvas, new BadgeStrip
+            {
+                Entries = new[] { new BadgeEntry(BadgeKind.Favorite), new BadgeEntry(BadgeKind.Completed), new BadgeEntry(BadgeKind.Controller) { Controller = ControllerShape.Snes }, new BadgeEntry(BadgeKind.Folder) { Linked = true } },
+                ItemsPerLine = 4, ItemMargin = new Size(4, 0),
+            }, 0.78, 0.74, 0.2, 0.08);
+            At(canvas, new ControllerGlyph { Shape = ControllerShape.Nintendo64, GlyphSize = 22 }, 0.74, 0.74, 0, 0);
             At(canvas, new ClockLabel { Live = true, FontSize = 13 }, 0.02, 0.97, 0, 0, 0, 1);
             At(canvas, new DeviceStatusBar { Status = new DeviceStatus(Wifi: true, BatteryPercent: 64), IconHeight = 13 }, 0.98, 0.97, 0, 0, 1, 1);
             Avalonia.Automation.AutomationProperties.SetName(canvas, "Themed surface");

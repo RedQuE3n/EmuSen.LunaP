@@ -14,6 +14,15 @@ answer.
 
 ## Unreleased
 
+- **Badges and controllers drawn by the toolkit, new and additive (`§180`).** `BadgeGlyph` and `BadgeKind` draw a list
+  entry's marks (favourite, completed, kids' game, broken, controller, alternative emulator, collection, folder,
+  manual, folder link); `ControllerGlyph` and `ControllerShape` draw five controllers. `BadgeStrip.Entries` takes
+  `BadgeEntry` records, each an image file or the drawing, with a controller or folder link over it; a strip that sets
+  only `Icons` is unchanged. `ScrollLetterOverlay` shows the letters a fast-scrolling list is passing.
+
+- **The built-in Wi-Fi indicator stays inside its box (`§180.5`).** `DeviceStatusBar`'s fan reached about seven pixels
+  past its box at a 40 px icon; it is now about 30% narrower at a square box, so a stored picture of it will differ.
+
 - **A notice's fade can be set in time, new and additive (`§170`).** `NoticeLayer.FadeTime` fades in and out over a
   fixed time rather than 15% of `Duration`. Null, the default, keeps the old curve exactly.
 

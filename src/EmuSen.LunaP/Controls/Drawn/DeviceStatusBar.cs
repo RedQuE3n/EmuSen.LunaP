@@ -177,9 +177,11 @@ namespace EmuSen.LunaP.Controls
 
             if (key == "wifi")
             {
+                // The outer arc's ends, at 45 degrees, reach the box's sides and no further - see docs/LunaP.md §180.5.
+                double outer = Math.Min(box.Height * 3 / 3.2, (box.Width / 2 - pen.Thickness / 2) / 0.7071);
                 for (int i = 1; i <= 3; i++)
                 {
-                    double r = box.Height * i / 3.2;
+                    double r = outer * i / 3;
                     var arc = new StreamGeometry();
                     using (StreamGeometryContext g = arc.Open())
                     {
