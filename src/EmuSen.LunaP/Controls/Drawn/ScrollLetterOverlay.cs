@@ -9,7 +9,6 @@ using EmuSen.LunaP.Theme;
 
 namespace EmuSen.LunaP.Controls
 {
-    // The letters a fast-scrolling list is passing, over a shade of its whole box - see docs/LunaP.md §180.
     /// <summary>An overlay for a list scrolled fast: a shade over the whole box and, in its middle, the first letters of the entry passing or a star.</summary>
     public class ScrollLetterOverlay : Control
     {

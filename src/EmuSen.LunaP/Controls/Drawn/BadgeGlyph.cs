@@ -48,7 +48,6 @@ namespace EmuSen.LunaP.Controls
         Nintendo64,
     }
 
-    // One badge drawn as the toolkit's own geometry in one colour - see docs/LunaP.md §180.
     /// <summary>One list badge, such as a favourite or a folder mark, drawn as the toolkit's own geometry in one colour.</summary>
     public class BadgeGlyph : Control
     {
@@ -89,7 +88,6 @@ namespace EmuSen.LunaP.Controls
         };
     }
 
-    // One controller drawn as the toolkit's own geometry in one colour, to stand on a Controller badge - see docs/LunaP.md §180.
     /// <summary>One controller, such as a flat oblong pad or a three-pronged one, drawn as the toolkit's own geometry in one colour.</summary>
     public class ControllerGlyph : Control
     {

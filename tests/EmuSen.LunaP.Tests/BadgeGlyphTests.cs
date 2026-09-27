@@ -144,9 +144,15 @@ namespace EmuSen.LunaP.Tests
                     if (At(plain, x, y).G > 128 && At(over, x, y).G < 64) cut++;
             Assert.True(cut > 10, $"{cut} pixels of the folder were cut");
 
-            var moved = Strip(new[] { new BadgeEntry(BadgeKind.Controller) { Controller = ControllerShape.Nes } }, s => { s.ControllerPosition = new Point(0.5, 0.2); s.ControllerSize = 0.3; }).Frame;
-            Assert.True(InkIn(moved, new Rect(30, 55, 40, 30)) < InkIn(over, new Rect(30, 55, 40, 30)));
-            Assert.True(InkIn(moved, new Rect(35, 8, 30, 24)) > 20);
+            // The size alone: at 1 the pad spans the badge, its cross reaching well left of the default half-size box.
+            var wide = Strip(new[] { new BadgeEntry(BadgeKind.Controller) { Controller = ControllerShape.Nes } }, s => s.ControllerSize = 1).Frame;
+            Assert.True(InkIn(wide, new Rect(13, 45, 9, 10)) > 10, $"{InkIn(wide, new Rect(13, 45, 9, 10))} pixels left of the half-size box");
+            Assert.Equal(0, InkIn(over, new Rect(13, 45, 9, 10)));
+            // The position alone: centred at a fifth of the height the pad sits high, and the middle is empty.
+            var moved = Strip(new[] { new BadgeEntry(BadgeKind.Controller) { Controller = ControllerShape.Nes } }, s => s.ControllerPosition = new Point(0.5, 0.2)).Frame;
+            Assert.True(InkIn(moved, new Rect(28, 13, 44, 17)) > 20, $"{InkIn(moved, new Rect(28, 13, 44, 17))} pixels high up");
+            Assert.Equal(0, InkIn(over, new Rect(28, 13, 44, 17)));
+            Assert.True(InkIn(moved, new Rect(30, 45, 40, 10)) < InkIn(over, new Rect(30, 45, 40, 10)) / 4);
 
             string blue = Flat("controller-blue", 10, 10, Colors.Blue);
             var file = Strip(new[] { new BadgeEntry(BadgeKind.Controller) { Controller = ControllerShape.Nes, ControllerIconPath = blue } }).Frame;

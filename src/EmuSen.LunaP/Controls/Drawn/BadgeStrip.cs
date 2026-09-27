@@ -10,7 +10,6 @@ using EmuSen.LunaP.Media;
 
 namespace EmuSen.LunaP.Controls
 {
-    // A badge as an image file or the toolkit's drawing of its kind, with a controller or a folder link over it - see docs/LunaP.md §180.
     /// <summary>One badge of a BadgeStrip: an image file when given, else the toolkit's drawing of its kind, with the controller or folder link drawn over it.</summary>
     /// <param name="Kind">Which badge this is, drawn by BadgeGlyph when no image file is given.</param>
     public sealed record BadgeEntry(BadgeKind Kind)
