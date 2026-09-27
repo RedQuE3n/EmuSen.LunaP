@@ -12358,6 +12358,68 @@ fourteen of this section included.
   these pieces, not provided by them; `MenuRow`'s `Switch` kind is drawn but no control yet toggles through it.
 - **Pointer input** is whatever the underlying control does; the rows add none.
 
+## 184. A dim layer, and a picture that fades in
+
+*2026-09-27.* The consumer's big-screen library gains its reference frontend's screensaver (ES-DE's; the consumer's
+`EmuSen_BigPicture.md` §37). Two of its looks need a piece each: *Dim*, which greys and darkens the view that was on
+screen, and *Slideshow*, which cuts to black and fades a picture in. Both pieces are general: nothing in them knows of
+screensavers, idle time or games, and both leave the clock to the consumer, as `FontText`'s scrolling does.
+
+### 184.1 `DimLayer`
+
+Over its own area it turns what is drawn beneath it toward the grey of that pixel's own luminance by `Saturation` (1
+keeps the colours, 0 is grey) and toward black by `Brightness` (1 keeps the light, 0 is black). Both are 1 by default
+and clamped to [0, 1]; at 1 and 1 it draws nothing. It is not hit-testable.
+
+**How.** Nothing beneath is captured, copied or resampled. The desaturation is the renderer's own *saturation* blend
+mode: a grey drawn over a pixel with that mode keeps the pixel's luminance and takes the grey's saturation, which for
+any grey is 0. Drawn at opacity `1 − Saturation`, it moves each pixel that far toward its own grey. The darkening is a
+black fill at opacity `1 − Brightness` drawn after it. The luminance is the blend mode's, 0.3 R + 0.59 G + 0.11 B,
+which differs from Rec. 601's weights (0.299, 0.587, 0.114) by at most one level in 255.
+
+**Why an image and not a fill.** In Avalonia 12.1 a pushed `RenderOptions.BitmapBlendingMode` reaches images and not
+fills. Measured on 2026-09-27: a grey `FillRectangle` under the saturation mode, at brightness 0.4 over
+(40, 161, 61), drew the grey itself darkened, (80, 80, 80) for a grey of 200; a 2×2 grey image drawn under the same
+mode drew (45, 45, 45). The image is a constant, so its sampling cannot show; its colour does not matter, only that
+it is grey.
+
+**What it does not do.** The blend reads what the layer is composited over. Put inside a parent with an opacity below
+1, an opacity mask or an effect, the parent is drawn into a layer of its own first and the blend sees that layer's
+transparent pixels, not the screen. A consumer fades the layer's two properties, not its parent. This was argued from
+how the compositor draws such a parent and was not measured.
+
+### 184.2 `CrossFadeImage`
+
+Two `FittedImage`s (§98.2), one over the other, both at `Fit` (Contain by default) and `Interpolation` (HighQuality by
+default). `Show(source, overPrevious)` starts a change at `Progress` 0: the new picture is drawn at opacity
+`Progress` over the old one (`overPrevious` true, the default), or over whatever is behind the control (false).
+`Progress` 1, the default, shows the new picture alone and lets the old one go. `Source`, `Previous` and
+`SourceOpacity` read the state back.
+
+A true cross-fade, the old picture held under the new one, never dips toward the background. The consumer's reference
+does not cross-fade: it cuts to black and fades in, which is `overPrevious: false`. Both are one call, so a consumer
+that wants the other look changes one argument.
+
+### 184.3 Tests and mutants
+
+`ScreensaverPieceTests`, six cases, each read from rendered pixels:
+- no saturation at brightness 0.4 over (40, 161, 61) is (45, 45, 45), the reference's own Dim measured over that
+  colour;
+- half saturation is halfway to the grey, (77, 137, 87), and brightness alone keeps the hue, (20, 80, 30);
+- at 1 and 1 nothing changes, and out-of-range values are clamped;
+- a new picture over the old: red, then half red and half blue, then blue with the old one gone;
+- over nothing: black, then a quarter of the blue, then blue, `Progress` clamped;
+- both pictures take the fit, and the defaults are Contain and HighQuality.
+
+`DocumentedDefaultTests` gains the five defaults, `TemplateOrderTests` an exemption for `CrossFadeImage.Show` (the
+control has no template), and the API baseline the two types. The README's count goes from 1388 to 1396.
+
+Four mutants, applied one at a time by the consumer's runner (its §37), each caught on the first run: the saturation
+drawn as a plain fill (two cases); the black fill at `Brightness` rather than `1 − Brightness` (three); `Show` keeping
+the old picture when asked not to (one); `Progress` not clamped (one). The last is caught only because the case reads
+`SourceOpacity` back: the renderer clamps an opacity above 1 itself, so no pixel shows it, and a consumer that reads
+the opacity to schedule its frames would see 7.
+
 ## 190. A carousel that turns: wheels, a content offset, clipping, and reflections
 
 *2026-09-27.* The consumer (EmuSen's Mistress) draws its reference frontend's (ES-DE 3.4.1's) themes, and nine of the

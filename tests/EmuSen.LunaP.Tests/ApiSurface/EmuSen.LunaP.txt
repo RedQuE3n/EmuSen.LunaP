@@ -250,6 +250,20 @@ public enum EmuSen.LunaP.Controls.ControllerShape
     public const EmuSen.LunaP.Controls.ControllerShape Unknown = 0
     public int value__
 
+public class EmuSen.LunaP.Controls.CrossFadeImage : Avalonia.Controls.Panel
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public Avalonia.Media.Imaging.BitmapInterpolationMode Interpolation { get; set; }
+    public CrossFadeImage()
+    public EmuSen.LunaP.Controls.ImageFit Fit { get; set; }
+    public double Progress { get; set; }
+    public double SourceOpacity { get; }
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Imaging.BitmapInterpolationMode> InterpolationProperty = HighQuality
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.ImageFit> FitProperty = Contain
+    public static readonly Avalonia.StyledProperty<double> ProgressProperty = 1
+    public string? Previous { get; }
+    public string? Source { get; }
+    public void Show(string? source, bool overPrevious = true)
+
 public enum EmuSen.LunaP.Controls.DateSegment
     public const EmuSen.LunaP.Controls.DateSegment Day = 2
     public const EmuSen.LunaP.Controls.DateSegment Month = 1
@@ -336,6 +350,15 @@ public class EmuSen.LunaP.Controls.DeviceStatusBar : Avalonia.Controls.Control
     public static readonly System.Collections.Generic.IReadOnlyList<string> IconKeys
     public static string BatteryKey(int percent, bool charging)
     public string? FontPath { get; set; }
+
+public class EmuSen.LunaP.Controls.DimLayer : Avalonia.Controls.Control
+    public DimLayer()
+    public bool IsDimming { get; }
+    public double Brightness { get; set; }
+    public double Saturation { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<double> BrightnessProperty = 1
+    public static readonly Avalonia.StyledProperty<double> SaturationProperty = 1
 
 public class EmuSen.LunaP.Controls.Dropdown : Avalonia.Controls.ComboBox
     protected override System.Type StyleKeyOverride { get; }

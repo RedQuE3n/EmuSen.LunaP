@@ -21,6 +21,11 @@ answer.
   item grows from the edge its cross-axis alignment names rather than from its centre; each item's `RenderTransform`
   is a `MatrixTransform`, where it was a `ScaleTransform`.
 
+- **A dim layer and a picture that fades in, new and additive (`§184`).** `DimLayer` turns what is drawn beneath it
+  toward the grey of its own luminance by `Saturation` and toward black by `Brightness`, by blending over it rather
+  than capturing it; `CrossFadeImage` fades a new picture in over the old one, or over nothing, as `Progress` runs from
+  0 to 1, both pictures `FittedImage`s at high-quality sampling. Nothing existing changes.
+
 - **A big-screen menu, new and additive (`§181`).** `MenuPanel` draws a wide centred panel with a large title, a
   footer and a help bar; `MenuRow` draws an upper-case row with a value, option arrows, a chevron or a switch, and a
   full-width bar when highlighted; `MenuRows` draws a `Button`, a `ComboBox` or a `ListBox`'s rows that way without
