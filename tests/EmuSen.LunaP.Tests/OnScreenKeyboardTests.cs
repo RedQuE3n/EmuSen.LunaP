@@ -43,6 +43,31 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         }, default);
 
+        // Shift and Done are two keys wide on the word layout, so their labels fit at the default key size; every row stays ten keys wide - see docs/LunaP.md §182.8.
+        [Fact]
+        public Task The_word_layout_s_Shift_and_Done_are_wide_enough_for_their_labels() => Session.Dispatch(() =>
+        {
+            var rows = KeyboardLayout.Letters.Rows;
+            Assert.All(rows, r => Assert.Equal(10, r.Sum(k => k.Width)));
+            Assert.Equal(2, rows.SelectMany(r => r).Single(k => k.Key == KeyboardLayout.Shift).Width);
+            Assert.Equal(2, rows.SelectMany(r => r).Single(k => k.Key == KeyboardLayout.Done).Width);
+            Assert.Contains(rows.SelectMany(r => r), k => k.Key == ".");
+
+            var (window, box) = Window();
+            OnScreenKeyboard keyboard = OnScreenKeyboard.Show(box, new[] { KeyboardLayout.Letters }, "A  Type");
+            window.UpdateLayout();
+            foreach (string key in new[] { KeyboardLayout.Shift, KeyboardLayout.Done })
+            {
+                Button b = keyboard.GetVisualDescendants().OfType<Button>().Single(k => (string?)k.Tag == key);
+                // The label's own width, unconstrained, against the room the key leaves inside its padding.
+                var label = new TextBlock { Text = key, FontSize = b.FontSize, FontFamily = b.FontFamily };
+                label.Measure(Avalonia.Size.Infinity);
+                double room = b.Bounds.Width - b.Padding.Left - b.Padding.Right;
+                Assert.True(label.DesiredSize.Width <= room, $"{key}: {label.DesiredSize.Width} in {room}");
+            }
+            window.Close();
+        }, default);
+
         // A password box's typed text is masked in the keyboard's own preview as it is in the box - see docs/LunaP.md §110.
         [Fact]
         public Task A_password_box_s_preview_shows_its_mask_and_an_ordinary_box_s_shows_its_text() => Session.Dispatch(() =>

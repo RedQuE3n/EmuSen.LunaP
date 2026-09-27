@@ -12468,6 +12468,26 @@ The README's count of tests is now 1397, and the whole suite passed at that coun
 - **A reset control per row.** The consumer places its own Reset button beside a row, outside the `MenuRow`, so the
   row's bar stops short of it (its §34.10).
 
+### 182.8 The word layout's Shift and Done, widened
+
+*2026-09-27.* The consumer's pictures of its editor showed the word layout's *Shift* and *Done* cut to *Shi* and *Do* at
+the default key size: a one-unit key is 44 pixels, and at 18 pixels those labels, with a button's padding, need more.
+`KeyboardLayout.Letters` now gives each two units. To keep every row ten units wide, so that moving between rows lands
+under the middle of the key left as before, *Space* is two units rather than four and *.* moves from the fourth row to
+the fifth, beside *-*:
+
+```
+1 2 3 4 5 6 7 8 9 0
+q w e r t y u i o p
+a s d f g h j k l '
+Shift:2 z x c v b n m ,
+Next:2 . - Space:2 Erase:2 Done:2
+```
+
+`OnScreenKeyboardTests` gains a case: every row is ten units, Shift and Done are two, *.* is still on the layout, and
+each of the two labels, measured at the key's font with no width limit, fits inside its key less the key's padding.
+Nothing else about the keyboard changed. Code and Game Genie had no key cut and are unchanged.
+
 ## 184. A dim layer, and a picture that fades in
 
 *2026-09-27.* The consumer's big-screen library gains its reference frontend's screensaver (ES-DE's; the consumer's
