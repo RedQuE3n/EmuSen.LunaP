@@ -52,6 +52,11 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<Color> RuleColorProperty = AvaloniaProperty.Register<MenuRow, Color>(nameof(RuleColor), Color.FromRgb(0x33, 0x33, 0x37));
         public static readonly StyledProperty<Color> AccentColorProperty = AvaloniaProperty.Register<MenuRow, Color>(nameof(AccentColor), Color.FromRgb(0x4C, 0x9A, 0xE8));
         public static readonly StyledProperty<LetterCase> LetterCaseProperty = AvaloniaProperty.Register<MenuRow, LetterCase>(nameof(LetterCase), LetterCase.Upper);
+        public static readonly StyledProperty<Color?> ValueColorProperty = AvaloniaProperty.Register<MenuRow, Color?>(nameof(ValueColor));
+        public static readonly StyledProperty<LetterCase?> ValueLetterCaseProperty = AvaloniaProperty.Register<MenuRow, LetterCase?>(nameof(ValueLetterCase));
+
+        // Width at the right a MenuFieldRow keeps for the control it hosts, so the label is cut short of it - see docs/LunaP.md §182.3.
+        internal static readonly StyledProperty<double> TrailingWidthProperty = AvaloniaProperty.Register<MenuRow, double>("TrailingWidth");
 
         // A template's label from the control's own attached one, which wins over its content - see MenuRows.
         internal static readonly StyledProperty<string?> LabelOverrideProperty = AvaloniaProperty.Register<MenuRow, string?>("LabelOverride");
@@ -60,7 +65,8 @@ namespace EmuSen.LunaP.Controls
         {
             AffectsMeasure<MenuRow>(ScaleProperty, RowHeightProperty);
             AffectsRender<MenuRow>(LabelProperty, ValueProperty, KindProperty, IsOnProperty, IsHighlightedProperty, FontPathProperty, TextSizeProperty, TextColorProperty,
-                HighlightTextColorProperty, BarColorProperty, RuleColorProperty, AccentColorProperty, LetterCaseProperty, LabelOverrideProperty);
+                HighlightTextColorProperty, BarColorProperty, RuleColorProperty, AccentColorProperty, LetterCaseProperty, LabelOverrideProperty, ValueColorProperty,
+                ValueLetterCaseProperty, TrailingWidthProperty);
         }
 
         /// <summary>The words at the row's left, cased by LetterCase.</summary>
@@ -108,11 +114,18 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The casing of the label and the value. Upper by default.</summary>
         public LetterCase LetterCase { get => GetValue(LetterCaseProperty); set => SetValue(LetterCaseProperty, value); }
 
+        /// <summary>The value's colour on either state of the row, such as one that marks where the value came from; null draws it as the label is drawn. Null by default.</summary>
+        public Color? ValueColor { get => GetValue(ValueColorProperty); set => SetValue(ValueColorProperty, value); }
+
+        /// <summary>The casing of the value alone, such as None for a name that must read as written; null follows LetterCase. Null by default.</summary>
+        public LetterCase? ValueLetterCase { get => GetValue(ValueLetterCaseProperty); set => SetValue(ValueLetterCaseProperty, value); }
+
         private double Unit => double.IsFinite(Scale) && Scale > 0 ? Scale : 1;
 
         private string Text => FontLayout.Cased(GetValue(LabelOverrideProperty) ?? Label ?? "", LetterCase);
 
-        private string ValueText => FontLayout.Cased(Value ?? "", LetterCase);
+        // One line: a value with line breaks is shown with spaces for them.
+        private string ValueText => FontLayout.Cased((Value ?? "").ReplaceLineEndings(" "), ValueLetterCase ?? LetterCase);
 
         internal GlyphTypeface Typeface() => FontPath is { Length: > 0 } p && FontFiles.Load(p) is { } t ? t : FontFiles.Default;
 
@@ -128,7 +141,8 @@ namespace EmuSen.LunaP.Controls
             double pad = 8 * u, gap = 8 * u, arrowGap = 11 * u;
             double mark = CapHeight(Typeface(), TextSize * u);
             double mid = (h - rule) / 2;
-            double right = w - pad;
+            double right = w - pad - Math.Max(0, GetValue(TrailingWidthProperty));
+            if (GetValue(TrailingWidthProperty) > 0) right -= gap;
             Rect chevron = default, rightArrow = default, leftArrow = default, toggle = default, value = default;
 
             if (Kind == MenuRowKind.Submenu)
@@ -193,7 +207,7 @@ namespace EmuSen.LunaP.Controls
             double size = TextSize * u;
             double baseline = at.Bar.Height / 2 + CapHeight(typeface, size) / 2;
             DrawLine(context, typeface, size, Text, at.Label, baseline, TextAlignment.Left, brush);
-            if (at.Value.Width > 0) DrawLine(context, typeface, size, ValueText, at.Value, baseline, TextAlignment.Right, brush);
+            if (at.Value.Width > 0) DrawLine(context, typeface, size, ValueText, at.Value, baseline, TextAlignment.Right, ValueColor is { } own ? new ImmutableSolidColorBrush(own) : brush);
 
             var pen = new ImmutablePen(brush, Math.Max(1, 1.6 * u), lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
             if (at.Chevron.Width > 0) Chevron(context, pen, at.Chevron);

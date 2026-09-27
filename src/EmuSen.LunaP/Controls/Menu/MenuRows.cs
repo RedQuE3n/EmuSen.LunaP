@@ -8,6 +8,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
+using EmuSen.LunaP.Media;
 
 namespace EmuSen.LunaP.Controls
 {
@@ -26,6 +27,32 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>Whether a switch row is on.</summary>
         public static readonly AttachedProperty<bool> IsOnProperty = AvaloniaProperty.RegisterAttached<Control, bool>("IsOn", typeof(MenuRows));
+
+        /// <summary>The row's value colour, such as one marking where the value came from; null draws it as the label.</summary>
+        public static readonly AttachedProperty<Color?> ValueColorProperty = AvaloniaProperty.RegisterAttached<Control, Color?>("ValueColor", typeof(MenuRows));
+
+        /// <summary>The casing of the row's value alone; null follows the row's.</summary>
+        public static readonly AttachedProperty<LetterCase?> ValueLetterCaseProperty = AvaloniaProperty.RegisterAttached<Control, LetterCase?>("ValueLetterCase", typeof(MenuRows));
+
+        /// <summary>Reads a control's row value colour.</summary>
+        /// <param name="control">The control.</param>
+        /// <returns>The colour, or null for the label's.</returns>
+        public static Color? GetValueColor(Control control) => control.GetValue(ValueColorProperty);
+
+        /// <summary>Sets a control's row value colour.</summary>
+        /// <param name="control">The control.</param>
+        /// <param name="value">The colour, or null for the label's.</param>
+        public static void SetValueColor(Control control, Color? value) => control.SetValue(ValueColorProperty, value);
+
+        /// <summary>Reads the casing of a control's row value.</summary>
+        /// <param name="control">The control.</param>
+        /// <returns>The casing, or null to follow the row's.</returns>
+        public static LetterCase? GetValueLetterCase(Control control) => control.GetValue(ValueLetterCaseProperty);
+
+        /// <summary>Sets the casing of a control's row value.</summary>
+        /// <param name="control">The control.</param>
+        /// <param name="value">The casing, or null to follow the row's.</param>
+        public static void SetValueLetterCase(Control control, LetterCase? value) => control.SetValue(ValueLetterCaseProperty, value);
 
         /// <summary>Reads a control's row label.</summary>
         /// <param name="control">The control.</param>
@@ -86,19 +113,27 @@ namespace EmuSen.LunaP.Controls
         /// <typeparam name="T">The button's type.</typeparam>
         /// <param name="button">The button; it is still clicked, focused and named as before.</param>
         /// <returns>The same button.</returns>
-        public static T ApplyButton<T>(T button) where T : Button
+        public static T ApplyButton<T>(T button) where T : Button => ApplyButton(button, 34);
+
+        /// <summary>Draws a button as a menu's outlined push button with its text at a given size, such as a small one beside a row.</summary>
+        /// <typeparam name="T">The button's type.</typeparam>
+        /// <param name="button">The button; it is still clicked, focused and named as before.</param>
+        /// <param name="textSize">The text's em size in design pixels before the inherited scale; 34 is the size under the rows.</param>
+        /// <returns>The same button.</returns>
+        public static T ApplyButton<T>(T button, double textSize) where T : Button
         {
+            double k = textSize / 34;
             button.Template = new FuncControlTemplate<Button>((b, _) =>
             {
                 var text = new FontText { Wrap = false, LineSpacing = 1.15, LetterCase = Media.LetterCase.Upper, TextAlignment = TextAlignment.Center, TextVerticalAlignment = VerticalAlignment.Center };
                 text.Bind(FontText.TextProperty, Text(b, ContentControl.ContentProperty));
                 text.Bind(FontText.FontPathProperty, b.GetObservable(MenuPanel.FontPathProperty));
-                text.Bind(FontText.FontSizeProperty, b.GetObservable(MenuPanel.ScaleProperty, u => 34 * u));
+                text.Bind(FontText.FontSizeProperty, b.GetObservable(MenuPanel.ScaleProperty, u => textSize * u));
                 text.Bind(FontText.ForegroundProperty, b.GetObservable(InputElement.IsFocusedProperty, f => (IBrush)new SolidColorBrush(f ? PushTextFocused : PushText)));
                 var frame = new Border { Child = text, BorderBrush = new SolidColorBrush(PushOutline) };
                 frame.Bind(Border.BorderThicknessProperty, b.GetObservable(MenuPanel.ScaleProperty, u => new Thickness(Math.Max(1, Math.Round(u)))));
                 frame.Bind(Border.CornerRadiusProperty, b.GetObservable(MenuPanel.ScaleProperty, u => new CornerRadius(3 * u)));
-                frame.Bind(Decorator.PaddingProperty, b.GetObservable(MenuPanel.ScaleProperty, u => new Thickness(12 * u, 2 * u)));
+                frame.Bind(Decorator.PaddingProperty, b.GetObservable(MenuPanel.ScaleProperty, u => new Thickness(12 * u * k, 2 * u * k)));
                 frame.Bind(Border.BackgroundProperty, b.GetObservable(InputElement.IsFocusedProperty, f => (IBrush?)(f ? new SolidColorBrush(PushFill) : null)));
                 return frame;
             });
@@ -149,6 +184,53 @@ namespace EmuSen.LunaP.Controls
             return choice;
         }
 
+        /// <summary>Draws a text box as a row, its text as the value at the right; whatever types into it (a keyboard, an on-screen keyboard) still does, and the row is highlighted while it has the focus.</summary>
+        /// <param name="box">The text box.</param>
+        /// <param name="label">The row's label.</param>
+        /// <param name="kind">What the row offers beside its label; Submenu, the default, marks that choosing it opens an editor.</param>
+        /// <returns>The same text box.</returns>
+        public static TextBox Apply(TextBox box, string label, MenuRowKind kind = MenuRowKind.Submenu)
+        {
+            SetKind(box, kind);
+            SetLabel(box, label);
+            box.Template = new FuncControlTemplate<TextBox>((t, scope) =>
+            {
+                MenuRow row = Row(t, null, t.GetObservable(InputElement.IsFocusedProperty));
+                row.Bind(MenuRow.ValueProperty, t.GetObservable(TextBox.TextProperty, v => t.PasswordChar != default && !t.RevealPassword ? new string(t.PasswordChar, v?.Length ?? 0) : v));
+                // The box's own part, kept and never shown, since a text box requires it of any template.
+                var presenter = new TextPresenter { Name = "PART_TextPresenter", IsVisible = false };
+                presenter.RegisterInNameScope(scope);
+                return new Panel { Children = { row, presenter } };
+            });
+            Plain(box);
+            box.MinHeight = 0;
+            return box;
+        }
+
+        /// <summary>Draws a toggle switch as a switch row; a click, a key or IsChecked still toggles it, and the row shows its state.</summary>
+        /// <param name="toggle">The switch to draw as a row.</param>
+        /// <param name="label">The row's label.</param>
+        /// <returns>The same switch.</returns>
+        public static ToggleSwitch Apply(ToggleSwitch toggle, string label)
+        {
+            SetKind(toggle, MenuRowKind.Switch);
+            SetLabel(toggle, label);
+            toggle.Template = new FuncControlTemplate<ToggleSwitch>((t, scope) =>
+            {
+                MenuRow row = Row(t, null, t.GetObservable(InputElement.IsFocusedProperty));
+                row.Bind(MenuRow.IsOnProperty, t.GetObservable(ToggleButton.IsCheckedProperty, v => v == true));
+                // The switch's own parts, kept and never shown, since a toggle switch requires them of any template.
+                var knob = new Canvas { Name = "PART_SwitchKnob" };
+                var knobs = new Canvas { Name = "PART_MovingKnobs", IsVisible = false, Children = { knob } };
+                knobs.RegisterInNameScope(scope);
+                knob.RegisterInNameScope(scope);
+                return new Panel { Children = { row, knobs } };
+            });
+            Plain(toggle);
+            toggle.MinHeight = 0;
+            return toggle;
+        }
+
         /// <summary>Draws a list's rows as menu rows; each row's label, value and kind are read from its container, set when the container is prepared.</summary>
         /// <param name="list">The list; its selection is the highlighted row.</param>
         /// <returns>The same list.</returns>
@@ -196,6 +278,8 @@ namespace EmuSen.LunaP.Controls
             if (content is not null) row.Bind(MenuRow.ValueProperty, owner.GetObservable(ValueProperty));
             row.Bind(MenuRow.KindProperty, owner.GetObservable(KindProperty));
             row.Bind(MenuRow.IsOnProperty, owner.GetObservable(IsOnProperty));
+            row.Bind(MenuRow.ValueColorProperty, owner.GetObservable(ValueColorProperty));
+            row.Bind(MenuRow.ValueLetterCaseProperty, owner.GetObservable(ValueLetterCaseProperty));
             row.Bind(MenuRow.IsHighlightedProperty, highlighted);
             return row;
         }

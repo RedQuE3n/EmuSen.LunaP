@@ -32,12 +32,14 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<int> StarCountProperty = AvaloniaProperty.Register<RatingPicker, int>(nameof(StarCount), 5);
         public static readonly StyledProperty<int> StepsPerStarProperty = AvaloniaProperty.Register<RatingPicker, int>(nameof(StepsPerStar), 2);
         public static readonly StyledProperty<double> StarSizeProperty = AvaloniaProperty.Register<RatingPicker, double>(nameof(StarSize), 28);
+        public static readonly StyledProperty<Color?> FilledColorProperty = AvaloniaProperty.Register<RatingPicker, Color?>(nameof(FilledColor));
+        public static readonly StyledProperty<Color?> UnfilledColorProperty = AvaloniaProperty.Register<RatingPicker, Color?>(nameof(UnfilledColor));
 
         static RatingPicker()
         {
             FocusableProperty.OverrideDefaultValue<RatingPicker>(true);
             AffectsMeasure<RatingPicker>(StarCountProperty, StarSizeProperty);
-            AffectsRender<RatingPicker>(ValueProperty, StepsPerStarProperty);
+            AffectsRender<RatingPicker>(ValueProperty, StepsPerStarProperty, FilledColorProperty, UnfilledColorProperty);
         }
 
         /// <summary>The rating from 0 to 1, as StarRating takes it; a value set from code is kept as given, and a person's change lands on a step.</summary>
@@ -51,6 +53,12 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>The height and width of one star in pixels. 28 unless set.</summary>
         public double StarSize { get => GetValue(StarSizeProperty); set => SetValue(StarSizeProperty, value); }
+
+        /// <summary>The colour of the filled part of the stars, such as a menu's text colour; null for the palette's warning colour. Null by default.</summary>
+        public Color? FilledColor { get => GetValue(FilledColorProperty); set => SetValue(FilledColorProperty, value); }
+
+        /// <summary>The colour of the stars' unfilled part; null for the palette's muted colour. Null by default.</summary>
+        public Color? UnfilledColor { get => GetValue(UnfilledColorProperty); set => SetValue(UnfilledColorProperty, value); }
 
         /// <summary>Raised when a person changes the value with a key or the pointer; never when code sets it.</summary>
         public event Action<double>? Chose;
@@ -107,8 +115,8 @@ namespace EmuSen.LunaP.Controls
             int n = Math.Max(1, StarCount);
             double w = Bounds.Width / n, h = Bounds.Height;
             double cut = Math.Clamp(Value, 0, 1) * Bounds.Width;
-            var unfilled = new ImmutableSolidColorBrush(LunaPalette.Muted.Color);
-            var filled = new ImmutableSolidColorBrush(LunaPalette.Warning.Color);
+            var unfilled = new ImmutableSolidColorBrush(UnfilledColor ?? LunaPalette.Muted.Color);
+            var filled = new ImmutableSolidColorBrush(FilledColor ?? LunaPalette.Warning.Color);
             // Transparent over the whole row, so a click between two stars' points is the control's and not the window's (§160.4).
             context.FillRectangle(Brushes.Transparent, new Rect(Bounds.Size));
             using (context.PushClip(new Rect(cut, 0, Math.Max(0, Bounds.Width - cut), h)))
@@ -149,12 +157,15 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<DateTime> StartDateProperty = AvaloniaProperty.Register<DateStepper, DateTime>(nameof(StartDate), new DateTime(1990, 1, 1));
         public static readonly StyledProperty<double> FontSizeProperty = TextElement.FontSizeProperty.AddOwner<DateStepper>();
         public static readonly StyledProperty<string> NoDateTextProperty = AvaloniaProperty.Register<DateStepper, string>(nameof(NoDateText), "No date");
+        public static readonly StyledProperty<string?> FontPathProperty = AvaloniaProperty.Register<DateStepper, string?>(nameof(FontPath));
+        public static readonly StyledProperty<Color?> ForegroundColorProperty = AvaloniaProperty.Register<DateStepper, Color?>(nameof(ForegroundColor));
+        public static readonly StyledProperty<bool> IsFramedProperty = AvaloniaProperty.Register<DateStepper, bool>(nameof(IsFramed), true);
 
         static DateStepper()
         {
             FocusableProperty.OverrideDefaultValue<DateStepper>(true);
-            AffectsMeasure<DateStepper>(FontSizeProperty, ValueProperty, NoDateTextProperty);
-            AffectsRender<DateStepper>(ValueProperty, SegmentProperty);
+            AffectsMeasure<DateStepper>(FontSizeProperty, ValueProperty, NoDateTextProperty, FontPathProperty, IsFramedProperty);
+            AffectsRender<DateStepper>(ValueProperty, SegmentProperty, ForegroundColorProperty);
         }
 
         /// <summary>The date, its time of day ignored; null when there is none.</summary>
@@ -177,6 +188,15 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>What is shown when there is no date. "No date" unless set.</summary>
         public string NoDateText { get => GetValue(NoDateTextProperty); set => SetValue(NoDateTextProperty, value); }
+
+        /// <summary>A font file the date is drawn in, such as a menu's typeface; null for the inherited font family. Null by default.</summary>
+        public string? FontPath { get => GetValue(FontPathProperty); set => SetValue(FontPathProperty, value); }
+
+        /// <summary>The text's colour, with or without a date; null for the palette's text and muted colours. Null by default.</summary>
+        public Color? ForegroundColor { get => GetValue(ForegroundColorProperty); set => SetValue(ForegroundColorProperty, value); }
+
+        /// <summary>Whether the date is drawn on the input surface inside a border, as a field in a form; false draws the text alone, as a value in a menu row. True by default.</summary>
+        public bool IsFramed { get => GetValue(IsFramedProperty); set => SetValue(IsFramedProperty, value); }
 
         /// <summary>Raised when a person changes the date with a key or the pointer; never when code sets it.</summary>
         public event Action<DateTime?>? Chose;
@@ -247,8 +267,15 @@ namespace EmuSen.LunaP.Controls
         private FormattedText Layout(string text, IBrush brush) =>
             new(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface(TextElement.GetFontFamily(this)), FontSize, brush);
 
+        private GlyphTypeface? FileTypeface => FontPath is { Length: > 0 } p ? Media.FontFiles.Load(p) : null;
+
         protected override Size MeasureOverride(Size availableSize)
         {
+            if (FileTypeface is { } face)
+            {
+                double w = Math.Max(Media.FontLayout.Measure(face, FontSize, "0000-00-00"), Media.FontLayout.Measure(face, FontSize, NoDateText));
+                return new Size(w + (IsFramed ? 16 : 8), Media.FontLayout.Create(face, FontSize, "0", 1, double.PositiveInfinity, double.PositiveInfinity, false, null).LineHeight + 8);
+            }
             FormattedText widest = Layout("0000-00-00", LunaPalette.Text);
             FormattedText none = Layout(NoDateText, LunaPalette.Text);
             return new Size(Math.Max(widest.Width, none.Width) + 16, widest.Height + 8);
@@ -257,7 +284,12 @@ namespace EmuSen.LunaP.Controls
         public override void Render(DrawingContext context)
         {
             // Drawn as a field, on the input surface inside a border, so it reads as something to set and not as a label.
-            context.DrawRectangle(LunaPalette.InputSurface, new Pen(LunaPalette.Border, 1), new Rect(Bounds.Size).Deflate(0.5), 4, 4);
+            if (IsFramed) context.DrawRectangle(LunaPalette.InputSurface, new Pen(LunaPalette.Border, 1), new Rect(Bounds.Size).Deflate(0.5), 4, 4);
+            if (FileTypeface is { } face)
+            {
+                RenderFromFile(context, face);
+                return;
+            }
             FormattedText text = Layout(Text, Value is null ? LunaPalette.Muted : LunaPalette.Text);
             var origin = new Point(8, (Bounds.Height - text.Height) / 2);
             if (Value is not null && IsFocused)
@@ -269,6 +301,25 @@ namespace EmuSen.LunaP.Controls
                 context.FillRectangle(LunaPalette.Accent, new Rect(origin.X + left - 2, origin.Y - 2, width + 4, text.Height + 4), 3);
             }
             context.DrawText(text, origin);
+        }
+
+        // The same drawing in a font file: the part being changed on the accent, the text right-aligned so it ends where a menu row's value ends.
+        private void RenderFromFile(DrawingContext context, GlyphTypeface face)
+        {
+            IBrush ink = ForegroundColor is { } c ? new ImmutableSolidColorBrush(c) : Value is null ? LunaPalette.Muted : LunaPalette.Text;
+            string text = Text;
+            double width = Media.FontLayout.Measure(face, FontSize, text);
+            double left = Bounds.Width - width - (IsFramed ? 8 : 4);
+            Media.FontLayout line = Media.FontLayout.Create(face, FontSize, text, 1, double.PositiveInfinity, double.PositiveInfinity, false, null);
+            double top = (Bounds.Height - line.LineHeight) / 2;
+            if (Value is not null && IsFocused)
+            {
+                (int start, int length) = Segment switch { DateSegment.Year => (0, 4), DateSegment.Month => (5, 2), _ => (8, 2) };
+                double from = Media.FontLayout.Measure(face, FontSize, text[..start]);
+                double span = Media.FontLayout.Measure(face, FontSize, text.Substring(start, length));
+                context.FillRectangle(LunaPalette.Accent, new Rect(left + from - 3, top, span + 6, line.LineHeight), 3);
+            }
+            line.Draw(context, ink, new Rect(left, top, width + 1, line.LineHeight), TextAlignment.Left, 0);
         }
 
         protected override AutomationPeer OnCreateAutomationPeer() =>

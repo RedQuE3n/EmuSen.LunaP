@@ -23,6 +23,17 @@ namespace EmuSen.LunaP.Windowing
             string acceptText = "OK", string cancelText = "Cancel") =>
             await SheetLayer.ShowDialog<bool>(DialogWindow.Confirm(title, message, acceptText, cancelText), owner);
 
+        /// <summary>Asks a yes/no question as a big-screen menu's message box: the message on a small rounded panel in the menu's type, the buttons in a row beneath, a help bar, and a menu presented beneath it still drawn.</summary>
+        /// <param name="owner">The window to sit over. The dialog is modal to it.</param>
+        /// <param name="message">The question.</param>
+        /// <param name="acceptText">The caption of the accepting button, focused first.</param>
+        /// <param name="cancelText">The caption of the cancelling button.</param>
+        /// <param name="family">The pad family the help bar draws its buttons in.</param>
+        /// <param name="hints">The help bar's entries, or null for none.</param>
+        /// <returns>True if the accepting button was pressed. Closing the dialog any other way answers false.</returns>
+        public static async Task<bool> MenuConfirmAsync(Window owner, string message, string acceptText, string cancelText, Controls.PadFamily family, IReadOnlyList<Controls.HintEntry>? hints = null) =>
+            await SheetLayer.ShowDialog<bool>(DialogWindow.MenuConfirm(message, acceptText, cancelText, family, hints), owner);
+
         /// <summary>Shows a modal message with a single dismiss button.</summary>
         /// <param name="owner">The window to sit over.</param>
         /// <param name="title">The dialog title.</param>

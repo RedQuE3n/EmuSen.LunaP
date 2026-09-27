@@ -36,18 +36,28 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<PadFamily> HintFamilyProperty = AvaloniaProperty.Register<MenuPanel, PadFamily>(nameof(HintFamily));
         public static readonly StyledProperty<Color> HintColorProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(HintColor), Color.FromRgb(0xD2, 0xD2, 0xD6));
         public static readonly StyledProperty<double> RowPitchProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(RowPitch), 54);
+        public static readonly StyledProperty<string?> SubtitleProperty = AvaloniaProperty.Register<MenuPanel, string?>(nameof(Subtitle));
+        public static readonly StyledProperty<double> SubtitleSizeProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(SubtitleSize), 26);
+        public static readonly StyledProperty<LetterCase> SubtitleLetterCaseProperty = AvaloniaProperty.Register<MenuPanel, LetterCase>(nameof(SubtitleLetterCase), LetterCase.Upper);
+        public static readonly StyledProperty<bool> ShowsTitleBandProperty = AvaloniaProperty.Register<MenuPanel, bool>(nameof(ShowsTitleBand), true);
+        public static readonly StyledProperty<int> FooterMaxLinesProperty = AvaloniaProperty.Register<MenuPanel, int>(nameof(FooterMaxLines), 1);
+        public static readonly StyledProperty<Control?> ButtonsProperty = AvaloniaProperty.Register<MenuPanel, Control?>(nameof(Buttons));
         public static readonly StyledProperty<Color> HintBackgroundProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(HintBackground), Color.FromArgb(0xF0, 0x16, 0x16, 0x18));
 
         // Design sizes before Scale: the title's band, the footer's band (or the padding under the rows without one), the margins, and the help bar's text.
         private const double TitleBand = 100, FooterBand = 78, BareFooter = 20, Edge = 24, HintText = 26, HintGap = 10;
 
+        // With a subtitle: the title's centre, the first subtitle line's centre, the lines' pitch, and the space under the last; the buttons' band's padding.
+        private const double SubtitledTitleCentre = 46, FirstSubtitleCentre = 92, SubtitlePitch = 32, UnderSubtitle = 30, ButtonsPad = 12, FooterPad = 14;
+
         private readonly HintBar _hints = new() { LetterCase = LetterCase.Upper };
 
         static MenuPanel()
         {
-            AffectsMeasure<MenuPanel>(ScaleProperty, TitleProperty, FooterProperty, WidthFractionProperty, MaxWidthToHeightProperty, HintsProperty, RowPitchProperty);
+            AffectsMeasure<MenuPanel>(ScaleProperty, TitleProperty, FooterProperty, WidthFractionProperty, MaxWidthToHeightProperty, HintsProperty, RowPitchProperty,
+                SubtitleProperty, ButtonsProperty, FooterMaxLinesProperty, FooterSizeProperty, ShowsTitleBandProperty);
             AffectsRender<MenuPanel>(FontPathProperty, TitleSizeProperty, FooterSizeProperty, PanelCornerRadiusProperty, PanelColorProperty, TitleColorProperty,
-                FooterColorProperty, RuleColorProperty, LetterCaseProperty);
+                FooterColorProperty, RuleColorProperty, LetterCaseProperty, SubtitleSizeProperty, SubtitleLetterCaseProperty);
         }
 
         /// <summary>An empty panel, its help bar hidden until Hints are given.</summary>
@@ -129,6 +139,27 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The height of one row in design pixels before Scale; rows that do not all fit are shown in whole rows of it. 54 by default, MenuRow's own.</summary>
         public double RowPitch { get => GetValue(RowPitchProperty); set => SetValue(RowPitchProperty, value); }
 
+        /// <summary>Lines under the title, smaller, such as what the menu is about; separated by line breaks. Null shows none and keeps the title's band its own height.</summary>
+        public string? Subtitle { get => GetValue(SubtitleProperty); set => SetValue(SubtitleProperty, value); }
+
+        /// <summary>The subtitle's em size in design pixels before Scale. 26 by default.</summary>
+        public double SubtitleSize { get => GetValue(SubtitleSizeProperty); set => SetValue(SubtitleSizeProperty, value); }
+
+        /// <summary>The casing of the subtitle. Upper by default.</summary>
+        public LetterCase SubtitleLetterCase { get => GetValue(SubtitleLetterCaseProperty); set => SetValue(SubtitleLetterCaseProperty, value); }
+
+        /// <summary>Whether the panel keeps its title's band and the rule under it; false, with no title, starts the rows at the panel's top, as a message box does. True by default.</summary>
+        public bool ShowsTitleBand { get => GetValue(ShowsTitleBandProperty); set => SetValue(ShowsTitleBandProperty, value); }
+
+        /// <summary>How many lines the footer may wrap to; its band is kept that tall whatever the footer holds, so the panel does not change height as it changes. 1 by default.</summary>
+        public int FooterMaxLines { get => GetValue(FooterMaxLinesProperty); set => SetValue(FooterMaxLinesProperty, value); }
+
+        /// <summary>A control, typically a row of push buttons, shown in a band of its own under the rows and always in view, however the rows scroll. Null shows none.</summary>
+        public Control? Buttons { get => GetValue(ButtonsProperty); set => SetValue(ButtonsProperty, value); }
+
+        /// <summary>The buttons' band's rectangle in this control's coordinates, as last arranged; empty without Buttons.</summary>
+        public Rect ButtonsBounds { get; private set; }
+
         /// <summary>The panel's rectangle in this control's coordinates, as last arranged.</summary>
         public Rect PanelBounds { get; private set; }
 
@@ -140,13 +171,32 @@ namespace EmuSen.LunaP.Controls
 
         private double Unit => double.IsFinite(GetValue(ScaleProperty)) && GetValue(ScaleProperty) > 0 ? GetValue(ScaleProperty) : 1;
 
-        private double BottomBand => (Footer is { Length: > 0 } ? FooterBand : BareFooter) * Unit;
+        private double BottomBand => FooterMaxLines > 1 ? (FooterMaxLines * FooterSize * 1.25 + 2 * FooterPad) * Unit : (Footer is { Length: > 0 } ? FooterBand : BareFooter) * Unit;
+
+        private string[] SubtitleLines => Subtitle is { Length: > 0 } sub ? sub.Split('\n') : [];
+
+        private double TopBand => !ShowsTitleBand && Title is not { Length: > 0 } ? 0 : (SubtitleLines.Length is var n && n > 0 ? FirstSubtitleCentre + SubtitlePitch * (n - 1) + UnderSubtitle : TitleBand) * Unit;
+
+        private double ButtonsBand => Buttons is { IsVisible: true } b ? b.DesiredSize.Height + 2 * ButtonsPad * Unit : 0;
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);
+            if (change.Property == ButtonsProperty)
+            {
+                if (change.OldValue is Control old)
+                {
+                    VisualChildren.Remove(old);
+                    LogicalChildren.Remove(old);
+                }
+                if (change.NewValue is Control added)
+                {
+                    VisualChildren.Add(added);
+                    LogicalChildren.Add(added);
+                }
+            }
             if (change.Property == HintsProperty || change.Property == HintFamilyProperty || change.Property == HintColorProperty || change.Property == HintBackgroundProperty
-                || change.Property == ScaleProperty || change.Property == FontPathProperty)
+                || change.Property == ScaleProperty || change.Property == FontPathProperty || change.Property == Windowing.SheetLayer.IsCoveredProperty)
                 ConfigureHints();
         }
 
@@ -155,6 +205,8 @@ namespace EmuSen.LunaP.Controls
             double u = Unit;
             _hints.Entries = Hints;
             _hints.IsVisible = Hints is { Count: > 0 };
+            // Under a message box the box's help bar is the one shown; this one keeps its place so the panel does not move.
+            _hints.Opacity = GetValue(Windowing.SheetLayer.IsCoveredProperty) ? 0 : 1;
             _hints.PadFamily = HintFamily;
             _hints.FontPath = GetValue(FontPathProperty);
             _hints.FontSize = HintText * u;
@@ -172,7 +224,7 @@ namespace EmuSen.LunaP.Controls
         {
             double u = Unit;
             double width = Math.Max(0, Math.Min(Math.Min(area.Width * WidthFraction, area.Height * MaxWidthToHeight), area.Width - 2 * Edge * u));
-            double rowsMax = Math.Max(0, area.Height - hintHeight - 2 * Edge * u - TitleBand * u - BottomBand);
+            double rowsMax = Math.Max(0, area.Height - hintHeight - 2 * Edge * u - TopBand - ButtonsBand - BottomBand);
             // Rows that do not all fit scroll, and the last one shown is never cut through.
             double pitch = RowPitch * u;
             if (pitch > 0 && rowsMax >= pitch) rowsMax = Math.Floor((rowsMax + 0.01) / pitch) * pitch;
@@ -185,6 +237,7 @@ namespace EmuSen.LunaP.Controls
             _hints.Measure(Size.Infinity);
             double hintHeight = _hints.IsVisible ? _hints.DesiredSize.Height + HintGap * Unit : 0;
             Size area = new(double.IsFinite(availableSize.Width) ? availableSize.Width : 1280 * Unit, double.IsFinite(availableSize.Height) ? availableSize.Height : 800 * Unit);
+            Buttons?.Measure(new Size(double.IsFinite(area.Width) ? area.Width : double.PositiveInfinity, double.PositiveInfinity));
             (double width, double rowsMax) = Frame(area, hintHeight);
             Child?.Measure(new Size(width, rowsMax));
             return area;
@@ -196,12 +249,19 @@ namespace EmuSen.LunaP.Controls
             double hintHeight = _hints.IsVisible ? _hints.DesiredSize.Height + HintGap * u : 0;
             (double width, double rowsMax) = Frame(finalSize, hintHeight);
             double rows = Math.Min(Child?.DesiredSize.Height ?? 0, rowsMax);
-            double height = TitleBand * u + rows + BottomBand;
+            double buttons = ButtonsBand;
+            double height = TopBand + rows + buttons + BottomBand;
             double top = Math.Clamp((finalSize.Height - height) / 2, Edge * u, Math.Max(Edge * u, finalSize.Height - hintHeight - Edge * u - height));
             double left = (finalSize.Width - width) / 2;
             PanelBounds = new Rect(left, top, width, height);
-            TitleBounds = new Rect(left, top, width, TitleBand * u);
-            Child?.Arrange(new Rect(left, top + TitleBand * u, width, rows));
+            TitleBounds = new Rect(left, top, width, TopBand);
+            Child?.Arrange(new Rect(left, top + TopBand, width, rows));
+            ButtonsBounds = Buttons is { IsVisible: true } ? new Rect(left, top + TopBand + rows, width, buttons) : default;
+            if (Buttons is { } b)
+            {
+                Size bs = b.DesiredSize;
+                b.Arrange(new Rect(left + Math.Max(0, (width - bs.Width) / 2), top + TopBand + rows + ButtonsPad * u, Math.Min(width, bs.Width), bs.Height));
+            }
             if (_hints.IsVisible)
             {
                 Size hs = _hints.DesiredSize;
@@ -218,16 +278,33 @@ namespace EmuSen.LunaP.Controls
             double radius = PanelCornerRadius * u;
             context.DrawRectangle(new ImmutableSolidColorBrush(PanelColor), null, panel, radius, radius);
             double rule = Math.Max(1, Math.Round(u));
-            context.FillRectangle(new ImmutableSolidColorBrush(RuleColor), new Rect(panel.X, TitleBounds.Bottom - rule, panel.Width, rule));
+            if (TitleBounds.Height > 0) context.FillRectangle(new ImmutableSolidColorBrush(RuleColor), new Rect(panel.X, TitleBounds.Bottom - rule, panel.Width, rule));
 
             GlyphTypeface typeface = GetValue(FontPathProperty) is { Length: > 0 } p && FontFiles.Load(p) is { } t ? t : FontFiles.Default;
+            string[] lines = SubtitleLines;
             if (Title is { Length: > 0 } title)
             {
                 double size = TitleSize * u;
                 Rect band = TitleBounds.Deflate(new Thickness(24 * u, 0));
-                MenuRow.DrawLine(context, typeface, size, FontLayout.Cased(title, LetterCase), band, band.Center.Y + MenuRow.CapHeight(typeface, size) / 2, TextAlignment.Center, new ImmutableSolidColorBrush(TitleColor));
+                double centre = lines.Length > 0 ? TitleBounds.Top + SubtitledTitleCentre * u : band.Center.Y;
+                MenuRow.DrawLine(context, typeface, size, FontLayout.Cased(title, LetterCase), band, centre + MenuRow.CapHeight(typeface, size) / 2, TextAlignment.Center, new ImmutableSolidColorBrush(TitleColor));
             }
-            if (Footer is { Length: > 0 } footer)
+            for (int i = 0; i < lines.Length; i++)
+            {
+                double size = SubtitleSize * u;
+                Rect band = TitleBounds.Deflate(new Thickness(24 * u, 0));
+                double centre = TitleBounds.Top + (FirstSubtitleCentre + SubtitlePitch * i) * u;
+                MenuRow.DrawLine(context, typeface, size, FontLayout.Cased(lines[i], SubtitleLetterCase), band, centre + MenuRow.CapHeight(typeface, size) / 2, TextAlignment.Center, new ImmutableSolidColorBrush(FooterColor));
+            }
+            if (Footer is { Length: > 0 } wrapped && FooterMaxLines > 1)
+            {
+                double size = FooterSize * u;
+                var band = new Rect(panel.X + 24 * u, panel.Bottom - BottomBand, panel.Width - 48 * u, BottomBand);
+                double lineHeight = FontLayout.Create(typeface, size, "H", 1, double.PositiveInfinity, double.PositiveInfinity, false, null).LineHeight;
+                FontLayout wrappedLines = FontLayout.Create(typeface, size, FontLayout.Cased(wrapped, LetterCase), 1, band.Width, FooterMaxLines * lineHeight + 0.5, true, "…");
+                wrappedLines.Draw(context, new ImmutableSolidColorBrush(FooterColor), band, TextAlignment.Center, 0.5);
+            }
+            else if (Footer is { Length: > 0 } footer)
             {
                 double size = FooterSize * u;
                 var band = new Rect(panel.X + 24 * u, panel.Bottom - FooterBand * u, panel.Width - 48 * u, FooterBand * u);

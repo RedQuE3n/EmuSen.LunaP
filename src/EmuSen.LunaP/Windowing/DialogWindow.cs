@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using System.Collections.Generic;
 using EmuSen.LunaP.Controls;
 
 namespace EmuSen.LunaP.Windowing
@@ -52,6 +53,41 @@ namespace EmuSen.LunaP.Windowing
                 },
             };
         }
+
+        // A question drawn as a big-screen menu's message box: the message centred on a small panel, the buttons in a row beneath, and the menu under it still drawn - see docs/LunaP.md §182.5.
+        private DialogWindow(string message, string acceptText, string cancelText, PadFamily family, IReadOnlyList<HintEntry>? hints)
+        {
+            Title = message;
+            ClosesOnEscape = true;
+            SheetLayer.SetChromeless(this, true);
+
+            var accept = MenuRows.ApplyButton(new Button { Name = "PART_Accept", Content = acceptText, IsDefault = true });
+            accept.Click += (_, _) => Close(true);
+            var cancel = MenuRows.ApplyButton(new Button { Name = "PART_Cancel", Content = cancelText, IsCancel = true });
+            cancel.Click += (_, _) => Close(false);
+
+            var text = new FontText { Name = "PART_Message", Text = message, Wrap = true, LetterCase = Media.LetterCase.Upper, TextAlignment = Avalonia.Media.TextAlignment.Center, LineSpacing = 1.1 };
+            text.Bind(FontText.FontPathProperty, text.GetObservable(MenuPanel.FontPathProperty));
+            text.Bind(FontText.FontSizeProperty, text.GetObservable(MenuPanel.ScaleProperty, u => 30 * u));
+            text.Bind(MarginProperty, text.GetObservable(MenuPanel.ScaleProperty, u => new Thickness(28 * u, 26 * u, 28 * u, 6 * u)));
+            text.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0xB4, 0xB4, 0xB8));
+            // The menu beneath stays drawn, shaded, so the box reads as over it.
+            Content = new Panel { Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromArgb(0x90, 0, 0, 0)), Children = { new MenuPanel
+            {
+                Name = "PART_MessageBox",
+                ShowsTitleBand = false,
+                WidthFraction = 0.55,
+                MaxWidthToHeight = 0.8,
+                HintFamily = family,
+                Hints = hints,
+                Child = text,
+                Buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { accept, cancel } },
+            } } };
+        }
+
+        // The big-screen form of Confirm: no title bar, the message in the menu's type, and its accepting button focused first as a dialog's is.
+        public static DialogWindow MenuConfirm(string message, string acceptText, string cancelText, PadFamily family, IReadOnlyList<HintEntry>? hints) =>
+            new(message, acceptText, cancelText, family, hints);
 
         // Escape and the window's own close button both mean "no".
         public static DialogWindow Confirm(string title, string message, string acceptText, string cancelText) =>

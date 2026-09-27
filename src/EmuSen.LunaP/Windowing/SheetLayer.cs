@@ -25,6 +25,15 @@ namespace EmuSen.LunaP.Windowing
         public static readonly StyledProperty<string?> HintProperty =
             AvaloniaProperty.Register<SheetLayer, string?>(nameof(Hint));
 
+        /// <summary>Set on a chromeless sheet while another chromeless sheet, such as a message box, is presented over it; inherited, so a menu in it can put its help bar away.</summary>
+        public static readonly AttachedProperty<bool> IsCoveredProperty =
+            AvaloniaProperty.RegisterAttached<SheetLayer, Control, bool>("IsCovered", inherits: true);
+
+        /// <summary>Reads whether an element's sheet is covered by a chromeless sheet presented over it.</summary>
+        /// <param name="element">Any element on a sheet.</param>
+        /// <returns>True while its sheet is drawn beneath another.</returns>
+        public static bool GetIsCovered(Control element) => element.GetValue(IsCoveredProperty);
+
         /// <summary>Whether a window's content is presented as it is, filling the layer, for content that draws its own chrome - see docs/LunaP.md §181.5.</summary>
         public static readonly AttachedProperty<bool> ChromelessProperty =
             AvaloniaProperty.RegisterAttached<SheetLayer, Window, bool>("Chromeless");
@@ -132,7 +141,15 @@ namespace EmuSen.LunaP.Windowing
 
         private void ShowOnly(Sheet shown)
         {
-            foreach (Sheet other in _sheets) other.Root.IsVisible = ReferenceEquals(other, shown);
+            // A chromeless sheet over a chromeless one, as a message box over a menu, leaves the one beneath drawn and out of reach - §182.5.
+            int at = _sheets.IndexOf(shown);
+            Sheet? beneath = shown.Chromeless && at > 0 && _sheets[at - 1].Chromeless ? _sheets[at - 1] : null;
+            foreach (Sheet other in _sheets)
+            {
+                other.Root.IsVisible = ReferenceEquals(other, shown) || ReferenceEquals(other, beneath);
+                other.Root.IsHitTestVisible = ReferenceEquals(other, shown);
+                other.Root.SetValue(IsCoveredProperty, ReferenceEquals(other, beneath));
+            }
             // A chromeless sheet's content draws what is behind it itself.
             if (shown.Chromeless) Background = null;
             else this[!BackgroundProperty] = new DynamicResourceExtension("LunaHudSurface");

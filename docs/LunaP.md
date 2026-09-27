@@ -12357,3 +12357,113 @@ fourteen of this section included.
 - **A settings screen of label-and-value rows** (switches and option rows bound to settings) is only possible with
   these pieces, not provided by them; `MenuRow`'s `Switch` kind is drawn but no control yet toggles through it.
 - **Pointer input** is whatever the underlying control does; the rows add none.
+
+## 182. An editor built of menu rows: text and switch rows, hosted controls, a subtitle, a button band and a message box
+
+*2026-09-27.* The consumer's second stage of §181: its metadata editor drawn as its reference frontend's editor is.
+That editor is a menu whose rows edit values, text, stars, a date, flags and choices, with a row of push buttons at
+the bottom that never scrolls away, the game's name and file under the title, and a message box over it for its
+questions. §181's pieces drew rows for buttons, dropdowns and lists; this section adds what an editor needs, again by
+changing only how stock controls look. The consumer's record, its pictures and its questions are its
+`EmuSen_BigPicture.md` §34 and its settings reference §4.72. Nothing here names the consumer, its reference or a game.
+
+### 182.1 `MenuPanel`: a subtitle, a button band, a taller footer, no title band
+
+- `Subtitle`: lines under the title, separated by `\n`, at `SubtitleSize` (26) in the footer's colour, cased by
+  `SubtitleLetterCase` (upper). With a subtitle the title's band deepens to hold it: the title's centre 46 design pixels
+  from the top, the first line's 92, the lines 32 apart and 30 under the last. Without one the band is §181.2's 100.
+- `Buttons`: a control, typically a horizontal `StackPanel` of push buttons, arranged at its desired size and centred
+  in a band of its own between the rows and the footer, 12 design pixels of padding above and below. The rows' height
+  cap (§181.2) leaves room for it, so it is always in view however the rows scroll. `ButtonsBounds` reports the band.
+- `FooterMaxLines` (1): above one, the footer's band is that many lines of `FooterSize` tall, whatever the footer holds,
+  and the footer wraps into it, ending with an ellipsis if it would need more. The band does not change height as the
+  footer changes, so the panel does not jump while the focus moves.
+- `ShowsTitleBand` (true): false, with no title, starts the rows at the panel's top and draws no rule, as a message box
+  has no title band.
+
+### 182.2 `MenuRow` and `MenuRows`: a value's own colour and casing, text boxes and switches as rows
+
+- `MenuRow.ValueColor` (null): the value's colour on either state of the row, bar or not, such as the host's mark for
+  where a value came from; null draws it as the label is drawn. The label keeps its colours: the bar and the white
+  label say where the focus is, the value's colour says something about the value, and the two do not compete.
+- `MenuRow.ValueLetterCase` (null): the value's casing alone, for a name that must read as it was written in a row whose
+  label is upper case; null follows `LetterCase`. A value with line breaks is drawn on one line with spaces for them.
+- `MenuRows.ValueColor` and `MenuRows.ValueLetterCase` are the attached forms, bound into every row `MenuRows` makes.
+- `MenuRows.Apply(TextBox, label, kind)` draws a text box as a row (a `Submenu` row by default), its text as the value
+  (masked as the box masks it). The template keeps an invisible `PART_TextPresenter`, which a text box requires, so
+  whatever types into the box (a hardware keyboard, an on-screen keyboard, code) still does, and the row follows.
+- `MenuRows.Apply(ToggleSwitch, label)` draws a switch as a `Switch` row, its state as the row's `IsOn`. It keeps the
+  switch's knob parts, invisible, so a click, a key and `IsChecked` still toggle it. This retires the second item of
+  §181.7: a control now toggles through the `Switch` kind.
+- `MenuRows.ApplyButton(button, textSize)` draws a push button with its text at a given design size and its padding
+  scaled to match, such as a small one beside a row; `ApplyButton(button)` is the size-34 form of §181.3.
+
+### 182.3 `MenuFieldRow`: a control at a row's right
+
+A row whose value is a control of its own, such as a `RatingPicker` or a `DateStepper`: the label at the left, drawn by
+an inner `MenuRow`; the control arranged at its desired size at the right, 8 design pixels in, centred on the bar; and
+the bar drawn while the keyboard focus is anywhere inside the row (`IsKeyboardFocusWithin`). The control keeps its own
+input and focus. The inner row is told the control's width (an internal `TrailingWidth`), so its label is cut with an
+ellipsis short of the control rather than running under it. `Row` exposes the inner `MenuRow` for its colours. The row
+reports itself as a list item named by its label.
+
+The pickers gain what a menu row needs of them:
+- `RatingPicker.FilledColor` and `UnfilledColor` (null: the palette's warning and muted colours);
+- `DateStepper.FontPath` (null), which draws the date in a font file by §98.3's `FontFiles` and measures it the same
+  way; `ForegroundColor` (null: the palette's text, or muted without a date); `IsFramed` (true), false drawing the text
+  alone, right-aligned, with no input surface or border, so that it ends where a row's value ends.
+
+### 182.4 Why stock controls again
+
+§181.3's reason holds and is the whole argument: the consumer's editor already had a text box per text field, a switch
+per flag, a rating picker, a date stepper and dropdowns, each wired to its draft, each reached by its pad router and each
+under tests that press them. Drawing them as rows kept every one of those paths; the consumer's existing tests of the
+editor passed with only the expectations about how a field's hint is read changed (its §34.5). A new "editor row"
+control would have had to reproduce the text box's input and the switch's toggling, and every test would have been
+rewritten against it.
+
+### 182.5 A message box over a menu
+
+`Dialogs.MenuConfirmAsync(owner, message, accept, cancel, family, hints)` asks a yes/no question drawn as a small menu:
+`DialogWindow.MenuConfirm` builds a chromeless window whose content is a translucent shade and a `MenuPanel` with no
+title band, 0.55 of the width and no wider than 0.8 of the height, the message wrapped and centred in upper case at 30
+design pixels, and the two answers as push buttons in its button band, the accepting one the default and focused first.
+It answers false when closed any other way, as `ConfirmAsync` does. The message is also the window's title.
+
+**The menu beneath stays drawn.** `SheetLayer` shows only its top sheet (§90). When a chromeless sheet is presented
+directly over another chromeless sheet, the one beneath is now left visible but not hit-testable, so the box reads as
+over the menu and the pointer cannot reach the menu. The one beneath is marked with `SheetLayer.IsCovered`, an
+inherited attached property, and a `MenuPanel` inside it sets its help bar's opacity to 0 while covered, so one help bar
+shows, the box's; its opacity rather than its visibility, so the covered panel keeps its layout and does not move. A
+plain sheet presented over a chromeless one still takes the whole layer, as before.
+
+### 182.6 Tests and mutants
+
+`MenuEditorTests`, six cases: a text box drawn as a row shows its text as the value, follows typing, draws the value in
+its own colour and the label not and in its own casing, and takes the bar with the focus; a switch drawn as a row shows its state and is
+still toggled by a key and by code, and shows no value; a field row puts its control at the right on the bar, cuts its
+label short of it, and is highlighted while the control has the focus, the stars drawn in the colours given; an
+unframed date in a font file has no border and its text in its colour, and gains the border when framed; a subtitle
+deepens the title band to 154 design pixels with two lines, the buttons sit centred in their band under the rows, and a
+two-line footer's band is kept empty; a message box over a menu leaves the menu drawn, out of reach and with its help
+bar hidden, answers true for its accepting button, gives everything back when it closes, and a plain sheet over the menu
+still hides it. `AccessibilityTests` gains `MenuFieldRow`, `DocumentedDefaultTests` eleven defaults, and the API
+baseline the new members.
+
+Eleven mutants, one at a time, by the consumer's runner: a row's value colour ignored; a hosted control's width not
+kept from the label; a field row never highlighted; a covered menu keeping its help bar; the menu under a message box
+not drawn; the menu under a message box still taking the pointer; the footer's band not kept at its lines; an unframed
+date framed; the stars' filled colour ignored; a value's own casing ignored when drawn; the buttons not centred on the
+panel. Ten were caught on the first run. The casing mutant survived: the text-row case read `ValueLetterCase` and never
+the drawn value. The case now draws the value as written and again in the row's casing and requires the two to differ,
+and the mutant was caught when rerun. The consumer ran sixteen more against its own tests (its §34.6).
+
+The README's count of tests is now 1397, and the whole suite passed at that count on the final build.
+
+### 182.7 What is not here
+
+- **A text-editing popup** in the menu's look: a text row opens whatever the host opens for a text box (the consumer's
+  on-screen keyboard), not a popup of its own.
+- **A list screen** for an option row, still §181.7's first item.
+- **A reset control per row.** The consumer places its own Reset button beside a row, outside the `MenuRow`, so the
+  row's bar stops short of it (its §34.10).
