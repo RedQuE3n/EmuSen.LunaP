@@ -14,6 +14,13 @@ answer.
 
 ## Unreleased
 
+- **Filled button glyphs, a menu's scroll indicator and `MenuTextPopup`, new (`§195`).** `PadGlyphStyle` (`Outline`,
+  `Filled`) on `PadGlyph.Style`, `HintBar.GlyphStyle` and `MenuPanel.HintGlyphStyle`; `MenuPanel.ScrollIndicator`,
+  `ScrollIndicatorBounds`, `ShowsScrollIndicator` and `ScrollIndicatorColor`, with `MenuScrollIndicator`; and a text
+  popup whose bar is a real, focused `TextBox`. **Behaviour changes:** `MenuPanel`'s help bar draws its buttons filled
+  by default, and a filled Generic pad is lettered as an Xbox pad; a menu whose rows run past its panel draws chevrons
+  at its title's right. A stored picture of a menu will differ.
+
 - **`InfoLine` and `FrameSequenceImage`, new and additive (`§193`, `§194`).** A line of drawn pictures (gamepad, star,
   funnel, open folder) with their numbers; an animated GIF decoded by the toolkit and played from the host's clock by
   the timing rules its consumer measured. Lottie is not supported.
