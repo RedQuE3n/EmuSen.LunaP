@@ -124,6 +124,26 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // The selected item's margins move every item on their side, and an item between slots by its fraction of the way (§192).
+        [Fact]
+        public Task Selected_item_margins_open_room_either_side_and_follow_a_moving_row() => UiTest.Run(() =>
+        {
+            var carousel = new ImageCarousel { Items = Pictures(9), SelectedIndex = 4, MaxItemCount = 5, ItemSize = new Size(100, 100), ItemScale = 1, SelectedItemMargins = new Point(128, 64) };
+            ToolWindow window = Fill(carousel, 1280, 400);
+            Assert.Equal(640 - 256 - 128, carousel.ItemRect(-1, carousel.Bounds.Size).Center.X, 6);
+            Assert.Equal(640 - 512 - 128, carousel.ItemRect(-2, carousel.Bounds.Size).Center.X, 6);
+            Assert.Equal(640 + 256 + 64, carousel.ItemRect(1, carousel.Bounds.Size).Center.X, 6);
+            Assert.Equal(640, carousel.ItemRect(0, carousel.Bounds.Size).Center.X, 6);
+            Assert.Equal(640 - 0.25 * 256 - 0.25 * 128, carousel.ItemRect(-0.25, carousel.Bounds.Size).Center.X, 6);
+            Assert.Equal(640 + 0.5 * 256 + 0.5 * 64, carousel.ItemRect(0.5, carousel.Bounds.Size).Center.X, 6);
+            carousel.Orientation = Orientation.Vertical;
+            carousel.SelectedItemMargins = new Point(-20, 10);
+            UiTest.Settle(carousel);
+            Assert.Equal(200 - 80 + 20, carousel.ItemRect(-1, carousel.Bounds.Size).Center.Y, 6);
+            Assert.Equal(200 + 80 + 10, carousel.ItemRect(1, carousel.Bounds.Size).Center.Y, 6);
+            window.Close();
+        });
+
         [Fact]
         public Task A_reflection_mirrors_its_image_beneath_it_and_fades_by_the_falloff() => UiTest.Run(() =>
         {

@@ -56,7 +56,8 @@ namespace EmuSen.LunaP.Controls
                 UnfocusedItemOpacityProperty, UnfocusedItemSaturationProperty, UnfocusedItemDimmingProperty, ImageTintProperty, ImageSelectedTintProperty, ImageSaturationProperty,
                 ImageFitProperty, ItemVerticalAlignmentProperty, ItemHorizontalAlignmentProperty, FontPathProperty, FontSizeProperty, TextColorProperty, TextBackgroundProperty, LetterCaseProperty,
                 LayoutProperty, WheelRotationProperty, WheelOriginProperty, ItemsBeforeProperty, ItemsAfterProperty, ItemsUprightProperty, WheelHorizontalAlignmentProperty,
-                WheelVerticalAlignmentProperty, ContentOffsetProperty, ReflectionsProperty, ReflectionOpacityProperty, ReflectionFalloffProperty);
+                WheelVerticalAlignmentProperty, ContentOffsetProperty, ReflectionsProperty, ReflectionOpacityProperty, ReflectionFalloffProperty,
+                SelectedItemMarginsProperty, LineSpacingProperty);
             AffectsRender<ImageCarousel>(BackgroundProperty);
         }
 
@@ -156,7 +157,7 @@ namespace EmuSen.LunaP.Controls
             double w = ItemSize.Width > 0 ? ItemSize.Width : across ? spacing : cross;
             double h = ItemSize.Height > 0 ? ItemSize.Height : across ? cross : spacing;
             if (Layout == CarouselLayout.Wheel) return HubRect(bounds);
-            double centre = length / 2 + offset * spacing;
+            double centre = length / 2 + offset * spacing + MarginShift(offset);
             Vector shift = new(ContentOffset.X * bounds.Width, ContentOffset.Y * bounds.Height);
             if (across)
             {
@@ -236,7 +237,7 @@ namespace EmuSen.LunaP.Controls
                     }
                     : new FontText
                     {
-                        Text = item.Text, FontPath = FontPath, FontSize = FontSize, LetterCase = LetterCase, Wrap = true,
+                        Text = item.Text, FontPath = FontPath, FontSize = FontSize, LineSpacing = LineSpacing, LetterCase = LetterCase, Wrap = true,
                         Foreground = new SolidColorBrush(Color.FromArgb(TextColor.A, (byte)(TextColor.R * dim), (byte)(TextColor.G * dim), (byte)(TextColor.B * dim))),
                         Background = TextBackground.A > 0 ? new SolidColorBrush(TextBackground) : null,
                         TextAlignment = TextAlignment.Center, TextVerticalAlignment = VerticalAlignment.Center,

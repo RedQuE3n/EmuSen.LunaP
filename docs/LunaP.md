@@ -12688,3 +12688,128 @@ arm through the origin; no side shift; no room for reflections; a reflection tha
 ignores its item's opacity; no clipping; a row grown from its centre; the vertical offset by the width; a wheel drawing
 the row's reach; a reflection not flipped; the hub not aligned. **One was caught only by the consumer:** a reflection
 that ignores its item's opacity, since this repository's reflection test draws its items at full opacity.
+
+## 191. Status icons drawn as their reference draws them
+
+*2026-09-27.* `DeviceStatusBar` drew its built-in Bluetooth and cellular icons as the letters "B" and "C" from the
+typeface, and its battery lying on its side. The consumer's side-by-side pictures against its reference (ES-DE 3.4.1)
+showed the letter where the reference draws the Bluetooth rune. The reference was then run with every indicator forced
+on, and each icon's ink box read from its captures at 1280×800 and 1920×1200 (the consumer's `EmuSen_BigPicture.md`
+§39). All four built-in icons are now geometry, each in a **square** box `IconHeight` on a side, where the battery's
+used to be 1.6 times as wide:
+
+- **Bluetooth:** the rune, a stem and two crossing arms, 0.54 of the box across and 0.77 down, centred, stroked at
+  0.06 of the height with bevelled joins.
+- **Wi-Fi:** three quarter-turn arcs about a dot at 0.8 of the box down, radii 0.62, 0.43 and 0.26 of the height (to the
+  stroke's outside), stroke 0.08, and the dot 0.05 in radius. The fan of §180.5 had no dot and its arcs met the box's
+  bottom corner; this one is shorter.
+- **Cellular:** four bars 0.095 of the height wide at a pitch of 0.214, from 0.14 across, rising from 0.8 of the box down
+  by 0.18 of the height each.
+- **Battery:** upright: a terminal 0.24 wide on top, a body 0.48 wide from 0.12 to 0.84 down with a 0.05 outline, and
+  one bar inside for each quarter of charge, rounded up.
+
+**The percentage** now follows the battery's box directly, with no `EntrySpacing` before it, as in the reference; the
+control's measured width loses that spacing.
+
+**Against the reference.** Each icon's ink box lies within 2 px of the reference's at both sizes, and the gaps between
+icons agree to 1 px. The Bluetooth rune's coverage IoU is 0.79 at 1280×800 and 0.74 at 1920×1200: thin strokes, where
+a pixel of difference moves the figure, as §101's consumer found for its thin icons. The percentage's text is wider in
+the consumer's rendering, because the reference sets it in its own typeface, which the consumer does not ship; the
+icons are placed right to left from the same edge, so the row stands about 20 px further left there.
+
+**Tests.** `IndicatorControlTests.Bluetooth_is_drawn_as_its_rune` checks the stem, the arms' points and the openings
+between them by pixels; the file-icon test's widths were changed to the square battery, and the right-edge test holds
+for every indicator.
+
+## 192. A selected item's margins, and the line pitch of text items
+
+*2026-09-27.* Thirty-two of the 66 themes on the consumer's reference list (ES-DE's) set a carousel's
+`selectedItemMargins`, and thirty-three its `lineSpacing`; the consumer measured both from its reference's captures (its
+`EmuSen_BigPicture.md` §39) and this section adds them to `ImageCarousel`.
+
+- **`SelectedItemMargins`** is extra room along a row before the selected item (X) and after it (Y), in pixels, either
+  negative. Every item on that side of the selection moves by it, not only the neighbour: the reference's captures put
+  the second item before the selection 0.1 of the screen further left, as the first. While the row moves, an item
+  between the selection and its neighbour's slot moves by its fraction of the way: a recording of one step, read frame
+  by frame, followed that linear rule to within a pixel at every frame. The consumer converts its theme's fractions
+  (of the screen, not of the carousel, as measured) into pixels. A wheel ignores the property, as the reference does.
+- **`LineSpacing`** is the pitch of the lines of an item shown as text, as a multiple of `FontSize`; the reference's
+  captures showed 40, 60 and 80 px pitches at a 40 px font for 1, 1.5 and 2. The default stays 1.2, the value the
+  control's text items had before, so a consumer that sets nothing sees no change.
+
+**Tests.** `CarouselWheelTests.Selected_item_margins_open_room_either_side_and_follow_a_moving_row`: both sides, an item
+two slots away, fractional positions, and a vertical row with a negative margin. `DocumentedDefaultTests` checks the two
+new defaults.
+
+## 193. A line of counts with pictures: `InfoLine`
+
+*2026-09-27.* The consumer draws its reference's `gamelistinfo` element, a line such as a gamepad and "12", a star and
+"6", or a funnel and "6 / 12", with an open folder once a folder is entered. The reference draws those pictures from an
+icon font it ships; the consumer's rule is that such pictures are its own drawings (its `EmuSen_BigPicture.md` §10.1,
+Q9). `InfoLine` draws one line of `InfoItem`s, each an `InfoIcon` (`Gamepad`, `Star`, `Filter`, `Folder` or `None`)
+followed by its text, in one typeface, size and colour.
+
+**Proportions, in ems, from the reference's captures at a 36 px em** (the consumer's §39): the gamepad 1.06 wide and
+0.58 tall standing on the baseline, a rounded body with a cross and two buttons cut out; the star 0.92 wide and 0.87 tall,
+its centre 0.35 above the baseline and its inner corners at half its radius; the funnel 0.78 wide, its stem ending just
+below the baseline; the open folder 1.06 wide and 0.78 tall. A picture is followed by 0.3 ems before its text, and items
+are 0.47 apart. The line's height is `LineSpacing` (1.5) ems, the reference's box for a text of no set height, with the
+text centred in it as `FontText` centres a line.
+
+**A right-aligned line puts the folder first**, at its left, as the reference does; any other alignment keeps the
+items' order. The control does not wrap or cut its text: the reference's line never needed to in any measured state.
+
+**Tests.** `InfoLineTests`: the height and the width's arithmetic; the folder's place by pixels in both alignments.
+
+## 194. An animated GIF: `FrameSequenceImage`
+
+*2026-09-27.* Four of the 66 themes on the consumer's reference list use its `animation` element, which plays a GIF (or
+a Lottie file, which this toolkit does not draw: Lottie would need Skottie, a SkiaSharp library, and this project
+references Avalonia alone). Avalonia's `Bitmap` reads a GIF's first frame only, so the toolkit decodes GIFs itself.
+
+**The decoder** (`Media/GifFile`, internal) reads GIF87a and GIF89a: the global and local colour tables, the graphic
+control extension's delay, transparent index and disposal method (none, keep, restore to background, restore to
+previous), interlaced images, and the variable-width LZW. A file it cannot read shows nothing.
+
+**Frames are composited on demand.** The first version composited every frame when the file was read. The first real
+theme drawn with it, Cathode, plays a 600×338 GIF of 338 frames, which that way would have held 274 MB of pixels (338 × 600 × 338 × 4 bytes; computed, not run). The file keeps
+each frame's compressed codes instead (793 KB for that one), the canvas before every sixteenth frame once it has been
+reached, and the canvas after the last frame drawn: stepping forward draws one frame, and a jump back at most sixteen.
+The control keeps at most 32 finished frames as bitmaps and starts again when it has more.
+
+**Timing, as measured from the reference** by recording it at 30 frames a second on probe GIFs whose frames had
+different delays (the consumer's §39):
+
+- **Every frame is shown for the first frame's delay.** A GIF of 100, 200, 300 and 400 ms frames played at 100 ms a
+  frame; one of 300, 100, 100 and 100 ms at 300 ms a frame; one of 100, 100, 100 and 700 ms at 100 ms. A first delay of
+  0 is taken as 100 ms here, which was not measured.
+- **The GIF's own loop count is ignored**; `IterationCount`, 0 for ever, counts passes.
+- **After a reset the first frame is held for two frame times** in `Normal` and `Alternate`, and for one in `Reverse`
+  and `AlternateReverse`, which then go on from the last frame. Equivalently: the first frame, then the direction's
+  sequence from its start. `FrameAt` implements that.
+- **A bounce's pass is a round trip**: `Alternate` with `IterationCount` 2 played 0 1 2 3 2 1 0 1 2 3 2 1 0 and held 0.
+  `Normal` with 1 played 0 1 2 3 and held 3.
+- **`Speed`** divides the frame time: 2 gave 50 ms frames, 0.5 gave 200 ms.
+
+The control keeps no clock: the host sets `Time`, and `NextFrameChange` says when to set it next, null once the last
+iteration holds. It fits, tints, desaturates and rounds as `FittedImage` does, and samples nearest by default, which is
+the reference's default for an unrotated animation.
+
+**Tests.** `FrameSequenceTests`: a three-frame interlaced GIF compressed by an ordinary encoder decodes to its pattern
+pixel for pixel in every frame; two forty-frame GIFs, one of changed rectangles kept over the last frame and one of
+frames cleared after each, give every frame pixel for pixel when asked for out of order, across the kept canvases;
+GIFs written by the test itself check disposal 2 and 3, a transparent index, interlaced rows, and a restoring frame at a
+kept canvas after a jump back; the directions, iterations and speed give the measured sequences; a missing or broken
+file shows nothing.
+
+### 194.1 Mutants for §191 to §194
+
+Eleven mutants, run by the consumer's runner (its `EmuSen_BigPicture.md` §39.9) against this repository's tests and then
+the consumer's: the first frame not held; the last frame's delay for all; a bounce's pass one way; disposal 2 ignored; a
+kept canvas taken after drawing; interlace ignored; transparency ignored; the margins jumping while the row moves; the
+percentage after a spacing; the rune filling its box; the folder never first. **Six were caught at once and five
+survived the first run**: four of the decoder's (disposal 2, the kept canvas, interlace, transparency), because the only
+GIFs the tests read were an ordinary encoder's, which wrote whole frames; and the folder's, because `InfoLineTests`
+compared amounts of ink. The test now writes its own GIFs for each of the four, and compares the first picture's height
+for the fifth. The kept-canvas mutant survived that too, since the first test reached frame 16 from the canvas after
+frame 1 rather than from the kept one; the test now jumps so that it must use the kept one. All eleven are caught.

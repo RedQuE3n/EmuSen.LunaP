@@ -32,7 +32,20 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<double> ReflectionOpacityProperty = AvaloniaProperty.Register<ImageCarousel, double>(nameof(ReflectionOpacity), 0.5);
         public static readonly StyledProperty<double> ReflectionFalloffProperty = AvaloniaProperty.Register<ImageCarousel, double>(nameof(ReflectionFalloff), 1);
 
+        public static readonly StyledProperty<Point> SelectedItemMarginsProperty = AvaloniaProperty.Register<ImageCarousel, Point>(nameof(SelectedItemMargins));
+        public static readonly StyledProperty<double> LineSpacingProperty = AvaloniaProperty.Register<ImageCarousel, double>(nameof(LineSpacing), 1.2);
+
         private readonly List<(Control Item, Control Reflection)> _reflections = new();
+
+        /// <summary>For a row, extra room in pixels before the selected item (X) and after it (Y), along the row, either negative; every item on that side moves by it, and an item between its slots by the fraction of the way it is from the selection. (0, 0) by default.</summary>
+        public Point SelectedItemMargins { get => GetValue(SelectedItemMarginsProperty); set => SetValue(SelectedItemMarginsProperty, value); }
+
+        /// <summary>The line pitch of items shown as text, as a multiple of FontSize. 1.2 by default.</summary>
+        public double LineSpacing { get => GetValue(LineSpacingProperty); set => SetValue(LineSpacingProperty, value); }
+
+        // The selected item's margins as the row moves: full beyond one item from the selection, in proportion within it, as the consumer measured (§192).
+        private double MarginShift(double offset) =>
+            offset < 0 ? -SelectedItemMargins.X * Math.Min(1, -offset) : SelectedItemMargins.Y * Math.Min(1, offset);
 
         /// <summary>Creates a carousel that clips its items to its own box.</summary>
         public ImageCarousel() => ClipToBounds = true;

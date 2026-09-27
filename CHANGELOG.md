@@ -14,6 +14,18 @@ answer.
 
 ## Unreleased
 
+- **`InfoLine` and `FrameSequenceImage`, new and additive (`§193`, `§194`).** A line of drawn pictures (gamepad, star,
+  funnel, open folder) with their numbers; an animated GIF decoded by the toolkit and played from the host's clock by
+  the timing rules its consumer measured. Lottie is not supported.
+
+- **`ImageCarousel.SelectedItemMargins` and `LineSpacing`, new and additive (`§192`).** Room before and after the
+  selected item along a row, followed while it moves; the line pitch of items shown as text, 1.2 by default as before.
+
+- **`DeviceStatusBar`'s built-in icons are drawn, not lettered (`§191`).** Bluetooth is its rune and cellular four
+  bars, where they were the letters "B" and "C"; Wi-Fi gains a dot; the battery stands upright in a square box, where it
+  lay on its side 1.6 boxes wide; the percentage follows the battery with no spacing. A stored picture of any of them
+  will differ, and a bar showing the battery is narrower.
+
 - **`ImageCarousel` turns, offsets, clips and reflects (`§190`).** New: `Layout` (`CarouselLayout.Row` or `Wheel`),
   `WheelRotation`, `WheelOrigin`, `ItemsBefore`, `ItemsAfter`, `ItemsUpright`, `WheelHorizontalAlignment`,
   `WheelVerticalAlignment`, `ContentOffset`, `Reflections`, `ReflectionOpacity`, `ReflectionFalloff`,
