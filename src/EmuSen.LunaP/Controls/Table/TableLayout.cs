@@ -29,7 +29,16 @@ namespace EmuSen.LunaP.Controls
 
         private string? _tableKey;
 
-        private bool _restored;
+        // Whether the widths currently on the columns came off a saved layout, so Revert knows
+        // whether there is anything to undo. Replaces the _restored latch, which could not express
+        // "applied, and no longer applicable" - the state §79.2 lived in.
+        private bool _applied;
+
+        // The layout for _loadedKey, read once rather than once per Column() call (§79.5). Null is a
+        // real answer - no layout saved under that key - so the key is tracked separately rather than
+        // using null to mean "not looked yet".
+        private TableLayout? _loaded;
+        private string? _loadedKey;
 
         // Opt-in, exactly as ToolWindow.WindowKey and SplitPane.PaneKey are: no key, no file. A
         // toolkit that started remembering every table in an application because the application
@@ -66,6 +75,10 @@ namespace EmuSen.LunaP.Controls
                 layout.SortedBy = _sortColumn >= 0 && _sortColumn < _columns.Count ? _columns[_sortColumn].Header : null;
                 layout.Descending = _sortDescending;
             });
+
+            // The cached copy Restore reads is now the stale one. Dropped rather than updated, so
+            // there is one path to a layout and it is the file (§79.5).
+            _loadedKey = null;
         }
 
         // MATCHED BY HEADER AND BY COUNT, and both halves matter. A saved layout describes the
@@ -76,11 +89,40 @@ namespace EmuSen.LunaP.Controls
         // The safe answer to a layout that does not match is to ignore it. A user loses the column
         // widths they dragged once, after the application changed its own table - which is a good
         // deal better than a table that comes back scrambled and cannot be explained.
+        // RE-ENTRANT, AND IT HAS TO BE - see docs/LunaP.md §79.2.
+        //
+        // This runs after every Column() call, so it sees the table at every intermediate column
+        // count on the way up. The count check below is what refuses a layout describing a different
+        // table - and a five-column table IS a two-column table for one moment while it is being
+        // built, so a stale two-column layout matched, latched, and left widths of [500, 500, 100,
+        // 100, 100] on a table the caller declared entirely at 100. That is precisely the outcome the
+        // check exists to prevent, arriving through the call site rather than through the comparison.
+        //
+        // So the decision is re-made from Declared every time rather than applied once and latched:
+        // a match at two columns is undone by the call at three. _restored is gone; what replaces it
+        // is _applied, which records whether the widths currently on the columns came from a layout
+        // and therefore whether there is anything to take back off.
+        //
+        // AND THE FILE IS READ ONCE PER KEY, not once per call. The comment at the Column() call site
+        // used to say this cost "two comparisons"; until the latch was set it cost a read and a full
+        // JSON parse of tables.json - the file every table in the application shares - measured at
+        // thirty reads for a thirty-column table (§79.5). One table instance wants one answer from
+        // disk; a second table writing the same key mid-construction is not a case this control has.
         private void Restore()
         {
-            if (_restored || TableKey is not { } key || _columns.Count == 0) return;
-            if (TableLayoutStore.Load(key) is not { } layout) return;
-            if (layout.Widths.Count != _columns.Count) return;
+            if (TableKey is not { } key || _columns.Count == 0) return;
+
+            if (!string.Equals(_loadedKey, key, StringComparison.Ordinal))
+            {
+                _loaded = TableLayoutStore.Load(key);
+                _loadedKey = key;
+            }
+
+            if (_loaded is not { } layout || layout.Widths.Count != _columns.Count)
+            {
+                Revert();
+                return;
+            }
 
             // PARSED IN FULL BEFORE ANY OF IT IS APPLIED, and there is no GridLength.TryParse to
             // lean on - Parse throws. A hand-edited or truncated tables.json that is good for two
@@ -96,11 +138,12 @@ namespace EmuSen.LunaP.Controls
                 }
                 catch (FormatException)
                 {
+                    Revert();
                     return;
                 }
             }
 
-            _restored = true;
+            _applied = true;
 
             for (int i = 0; i < _columns.Count; i++)
             {
@@ -116,6 +159,32 @@ namespace EmuSen.LunaP.Controls
 
             _sortColumn = sorted;
             _sortDescending = sorted >= 0 && layout.Descending;
+
+            Rebuild();
+            Show();
+        }
+
+        // TAKES A RESTORE BACK OFF, and does nothing at all if there was never one to take.
+        //
+        // The guard matters as much as the reversion: a table with no saved layout must not have its
+        // widths written at every Column() call, because a resize drag writes Width too and this
+        // would undo it. _applied is only true between a layout being applied and it ceasing to
+        // match, which is a window that closes during construction and never reopens.
+        private void Revert()
+        {
+            if (!_applied) return;
+
+            _applied = false;
+            for (int i = 0; i < _columns.Count; i++)
+            {
+                _columns[i] = _columns[i] with { Width = _columns[i].Declared };
+            }
+
+            // The sort came off the same layout, so it goes back with the widths. A SortBy the caller
+            // made itself is not at risk: Restore only runs while the table is being built, and §27.6
+            // already has a remembered layout outranking a sort set in code.
+            _sortColumn = -1;
+            _sortDescending = false;
 
             Rebuild();
             Show();

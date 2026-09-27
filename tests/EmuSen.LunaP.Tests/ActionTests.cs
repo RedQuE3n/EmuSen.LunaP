@@ -141,6 +141,60 @@ namespace EmuSen.LunaP.Tests
             Assert.Same(dark, group.Checked);
         }
 
+        // The setter §78.1 added because the summary had been promising it since before it existed.
+        [Fact]
+        public void Setting_Checked_moves_the_check_without_running_a_handler()
+        {
+            var group = new ActionGroup();
+            int ran = 0;
+            LunaAction dark = group.Add("Dark", _ => ran++);
+            LunaAction light = group.Add("Light", _ => ran++);
+
+            dark.IsChecked = true;
+
+            group.Checked = light;
+
+            Assert.True(light.IsChecked);
+            Assert.False(dark.IsChecked);
+            Assert.Same(light, group.Checked);
+            // The whole point of the setter over Invoke: a window showing the current
+            // theme must not apply one by displaying it.
+            Assert.Equal(0, ran);
+        }
+
+        // Null is a real assignment, so `group.Checked = group.Checked` round-trips
+        // even for a group nothing has been chosen in yet.
+        [Fact]
+        public void Setting_Checked_to_null_unchecks_everything()
+        {
+            var group = new ActionGroup();
+            LunaAction dark = group.Add("Dark");
+            group.Add("Light");
+            dark.IsChecked = true;
+
+            group.Checked = null;
+
+            Assert.Null(group.Checked);
+            Assert.False(dark.IsChecked);
+
+            // The round trip, on a group with nothing selected.
+            group.Checked = group.Checked;
+            Assert.Null(group.Checked);
+        }
+
+        // Adding it here instead would make membership depend on assignment order and skip
+        // the checkable-and-exclusive setup Add performs.
+        [Fact]
+        public void Setting_Checked_to_a_stranger_is_refused()
+        {
+            var group = new ActionGroup();
+            group.Add("Dark");
+            var outsider = new LunaAction("Light");
+
+            Assert.Throws<System.ArgumentException>(() => group.Checked = outsider);
+            Assert.False(outsider.IsChecked);
+        }
+
         [Fact]
         public void Joining_a_group_makes_an_action_checkable()
         {

@@ -64,8 +64,10 @@ namespace EmuSen.LunaP.Controls
         {
             if (column is null) throw new ArgumentNullException(nameof(column));
 
+            GridLength declared = GridLength.Parse(column.Width);
+
             _columns.Add(new ColumnSpec(
-                column.Header, column.Text, GridLength.Parse(column.Width), column.Sort,
+                column.Header, column.Text, declared, declared, column.Sort,
                 column.Commit, column.Validate,
                 column.MinWidth, column.MaxWidth, column.IsVisible,
                 column.Kind, column.Checked, column.Toggle, column.Build,
@@ -74,9 +76,14 @@ namespace EmuSen.LunaP.Controls
 
             // A saved layout can only be matched once the columns it describes exist, and there is
             // no ordering rule that puts TableKey after them - `new LunaTable<T> { TableKey = "x" }`
-            // followed by three Column calls is the shape an object initializer invites. Restore is
-            // idempotent and refuses a layout whose column count does not match, so calling it after
-            // every column costs two comparisons and removes the ordering trap entirely.
+            // followed by three Column calls is the shape an object initializer invites, so this runs
+            // after every column rather than at some moment nothing can identify.
+            //
+            // WHICH MEANS IT RUNS AT EVERY INTERMEDIATE COLUMN COUNT, and that is what made §79.2:
+            // a five-column table passes through two columns on its way up, so a stale TWO-column
+            // layout matched and latched. Restore is re-entrant now and re-decides from the declared
+            // widths every time, so the match at two is undone by the call at three. It reads the
+            // file once per key rather than once per column (§79.5).
             Restore();
             return this;
         }
@@ -89,6 +96,12 @@ namespace EmuSen.LunaP.Controls
             string Header,
             Func<T, string> Text,
             GridLength Width,
+            // WHAT THE CALLER DECLARED, kept beside what the column is currently at so a restore can
+            // be taken back off - see docs/LunaP.md §79.2. Width moves: a saved layout writes it and
+            // a resize drag writes it. This never does, so it is the answer to "what would this
+            // column be with no remembered layout at all", which is what Restore reverts to when a
+            // layout stops matching.
+            GridLength Declared,
             Comparison<T>? Sort,
             Action<T, string>? Commit,
             Func<T, string, string?>? Validate,

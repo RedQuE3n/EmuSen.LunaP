@@ -25,7 +25,8 @@ namespace EmuSen.LunaP.Commands
 
         /// <summary>A titled menu built from an existing sequence of actions.</summary>
         /// <param name="title">The top-level title, as shown in the menu bar.</param>
-        /// <param name="items">The actions, in order. Copied, so later changes to the sequence are not seen.</param>
+        /// <param name="items">The actions, in order, or null for an empty menu. Copied, so later changes to the sequence are not seen.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="title"/> is null.</exception>
         public LunaMenu(string title, IEnumerable<LunaAction> items)
         {
             Title = title ?? throw new ArgumentNullException(nameof(title));
@@ -46,13 +47,19 @@ namespace EmuSen.LunaP.Commands
         // get that. Separators are skipped - they are not commands and binding a key to one would
         // be binding a key to nothing.
         /// <summary>Every action this menu can reach, including those nested in submenus, flattened.</summary>
-        /// <returns>The actions, with separators and submenu owners left out, so a caller binding shortcuts sees each invocable command once.</returns>
+        /// <returns>The actions, in the order a reader meets them, with separators left out. A submenu's owner is returned before the actions it contains; only separators are skipped.</returns>
         public IEnumerable<LunaAction> Commands()
         {
             foreach (LunaAction item in Items)
             {
                 if (item.IsSeparator) continue;
 
+                // THE OWNER IS RETURNED TOO, and that is deliberate rather than an oversight - it is
+                // what the walk has done since it was written and what ActionTests has asserted
+                // since the same commit. A caller enumerating a menu is enumerating what is IN it,
+                // and an owner carrying a HelpText or a Shortcut is still a thing the caller put
+                // there. See §82.2: the <returns> tag claimed owners were left out for a day and a
+                // half and was corrected to match this, not the other way round.
                 yield return item;
 
                 if (item.Submenu is not { } submenu) continue;
