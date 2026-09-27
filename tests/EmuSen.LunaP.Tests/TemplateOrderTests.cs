@@ -487,6 +487,8 @@ namespace EmuSen.LunaP.Tests
         // checkable as an assertion.
         private static readonly Dictionary<(Type Type, string Method), string> Exempt = new()
         {
+            [(typeof(CrossFadeImage), nameof(CrossFadeImage.Show))] =
+                "CrossFadeImage has no template: its two pictures are built in the constructor, so Show sets sources that exist and ScreensaverPieceTests reads them back.",
             [(typeof(OnScreenKeyboard), nameof(OnScreenKeyboard.Move))] =
                 "OnScreenKeyboard has no template: its keys are built in the constructor, so every method acts on keys that exist.",
             [(typeof(OnScreenKeyboard), nameof(OnScreenKeyboard.Press))] = "as OnScreenKeyboard.Move.",
