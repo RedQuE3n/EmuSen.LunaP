@@ -14,6 +14,10 @@ answer.
 
 ## Unreleased
 
+- **`InfoLine` and `FrameSequenceImage`, new and additive (`§193`, `§194`).** A line of drawn pictures (gamepad, star,
+  funnel, open folder) with their numbers; an animated GIF decoded by the toolkit and played from the host's clock by
+  the timing rules its consumer measured. Lottie is not supported.
+
 - **`ImageCarousel.SelectedItemMargins` and `LineSpacing`, new and additive (`§192`).** Room before and after the
   selected item along a row, followed while it moves; the line pitch of items shown as text, 1.2 by default as before.
 

@@ -12664,3 +12664,56 @@ for every indicator.
 **Tests.** `CarouselWheelTests.Selected_item_margins_open_room_either_side_and_follow_a_moving_row`: both sides, an item
 two slots away, fractional positions, and a vertical row with a negative margin. `DocumentedDefaultTests` checks the two
 new defaults.
+
+## 193. A line of counts with pictures: `InfoLine`
+
+*2026-09-27.* The consumer draws its reference's `gamelistinfo` element, a line such as a gamepad and "12", a star and
+"6", or a funnel and "6 / 12", with an open folder once a folder is entered. The reference draws those pictures from an
+icon font it ships; the consumer's rule is that such pictures are its own drawings (its `EmuSen_BigPicture.md` §10.1,
+Q9). `InfoLine` draws one line of `InfoItem`s, each an `InfoIcon` (`Gamepad`, `Star`, `Filter`, `Folder` or `None`)
+followed by its text, in one typeface, size and colour.
+
+**Proportions, in ems, from the reference's captures at a 36 px em** (the consumer's §38): the gamepad 1.06 wide and
+0.58 tall standing on the baseline, a rounded body with a cross and two buttons cut out; the star 0.92 wide and 0.87 tall,
+its centre 0.35 above the baseline and its inner corners at half its radius; the funnel 0.78 wide, its stem ending just
+below the baseline; the open folder 1.06 wide and 0.78 tall. A picture is followed by 0.3 ems before its text, and items
+are 0.47 apart. The line's height is `LineSpacing` (1.5) ems, the reference's box for a text of no set height, with the
+text centred in it as `FontText` centres a line.
+
+**A right-aligned line puts the folder first**, at its left, as the reference does; any other alignment keeps the
+items' order. The control does not wrap or cut its text: the reference's line never needed to in any measured state.
+
+**Tests.** `InfoLineTests`: the height and the width's arithmetic; the folder's place by pixels in both alignments.
+
+## 194. An animated GIF: `FrameSequenceImage`
+
+*2026-09-27.* Four of the 66 themes on the consumer's reference list use its `animation` element, which plays a GIF (or
+a Lottie file, which this toolkit does not draw: Lottie would need Skottie, a SkiaSharp library, and this project
+references Avalonia alone). Avalonia's `Bitmap` reads a GIF's first frame only, so the toolkit decodes GIFs itself.
+
+**The decoder** (`Media/GifFile`, internal) reads GIF87a and GIF89a: the global and local colour tables, the graphic
+control extension's delay, transparent index and disposal method (none, keep, restore to background, restore to
+previous), interlaced images, and the variable-width LZW. Every frame is composited over the last into a whole
+logical-screen image, cached per file as `ImageFile` caches pictures. A file it cannot read shows nothing.
+
+**Timing, as measured from the reference** by recording it at 30 frames a second on probe GIFs whose frames had
+different delays (the consumer's §38):
+
+- **Every frame is shown for the first frame's delay.** A GIF of 100, 200, 300 and 400 ms frames played at 100 ms a
+  frame; one of 300, 100, 100 and 100 ms at 300 ms a frame; one of 100, 100, 100 and 700 ms at 100 ms. A first delay of
+  0 is taken as 100 ms here, which was not measured.
+- **The GIF's own loop count is ignored**; `IterationCount`, 0 for ever, counts passes.
+- **After a reset the first frame is held for two frame times** in `Normal` and `Alternate`, and for one in `Reverse`
+  and `AlternateReverse`, which then go on from the last frame. Equivalently: the first frame, then the direction's
+  sequence from its start. `FrameAt` implements that.
+- **A bounce's pass is a round trip**: `Alternate` with `IterationCount` 2 played 0 1 2 3 2 1 0 1 2 3 2 1 0 and held 0.
+  `Normal` with 1 played 0 1 2 3 and held 3.
+- **`Speed`** divides the frame time: 2 gave 50 ms frames, 0.5 gave 200 ms.
+
+The control keeps no clock: the host sets `Time`, and `NextFrameChange` says when to set it next, null once the last
+iteration holds. It fits, tints, desaturates and rounds as `FittedImage` does, and samples nearest by default, which is
+the reference's default for an unrotated animation.
+
+**Tests.** `FrameSequenceTests`: a three-frame interlaced GIF compressed by an ordinary encoder decodes to its pattern
+pixel for pixel in every frame; the directions, iterations and speed give the measured sequences; a missing or broken
+file shows nothing.
