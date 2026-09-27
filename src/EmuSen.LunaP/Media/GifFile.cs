@@ -8,27 +8,35 @@ using Avalonia.Platform;
 
 namespace EmuSen.LunaP.Media
 {
-    // A GIF read into whole frames, each composited over the last by its disposal method, with each frame's delay - see docs/LunaP.md §194.
+    // A GIF read into frame records, composited into whole frames on demand by each frame's disposal method - see docs/LunaP.md §194.
     internal sealed class GifFile
     {
         private static readonly Dictionary<string, GifFile?> Files = new(StringComparer.Ordinal);
 
-        private GifFile(int width, int height, IReadOnlyList<uint[]> frames, IReadOnlyList<TimeSpan> delays)
+        // One image block as the file holds it: its rectangle, colours and still-compressed codes.
+        private sealed record Record(int Left, int Top, int W, int H, bool Interlaced, uint[] Palette, int Transparent, int Disposal, int MinCode, byte[] Data);
+
+        // The canvas before every sixteenth frame is drawn, kept once reached, so a jump back recomposes at most sixteen frames.
+        private const int KeyEvery = 16;
+
+        private readonly IReadOnlyList<Record> _records;
+        private readonly Dictionary<int, uint[]> _keys = new();
+        private (int Index, uint[] Before)? _next;
+
+        private GifFile(int width, int height, IReadOnlyList<Record> records, IReadOnlyList<TimeSpan> delays)
         {
             Width = width;
             Height = height;
-            Pixels = frames;
+            _records = records;
             Delays = delays;
+            _keys[0] = new uint[width * height];
         }
 
         internal int Width { get; }
         internal int Height { get; }
-
-        // Straight (not premultiplied) 0xAARRGGBB, the whole logical screen per frame.
-        internal IReadOnlyList<uint[]> Pixels { get; }
         internal IReadOnlyList<TimeSpan> Delays { get; }
 
-        internal int Count => Pixels.Count;
+        internal int Count => _records.Count;
 
         // One read per full path; null when the file is missing or is not a GIF this decoder reads.
         internal static GifFile? Open(string path)
@@ -52,8 +60,7 @@ namespace EmuSen.LunaP.Media
             int pos = 13;
             uint[]? global = null;
             if ((b[10] & 0x80) != 0) global = Palette(b, ref pos, 2 << (b[10] & 7));
-            var canvas = new uint[width * height];
-            var frames = new List<uint[]>();
+            var records = new List<Record>();
             var delays = new List<TimeSpan>();
             int disposal = 0, transparent = -1;
             TimeSpan delay = TimeSpan.Zero;
@@ -82,38 +89,74 @@ namespace EmuSen.LunaP.Media
                 pos += 9;
                 uint[] palette = (flags & 0x80) != 0 ? Palette(b, ref pos, 2 << (flags & 7)) : global ?? throw new InvalidDataException("no palette");
                 int minCode = b[pos++];
-                byte[] indices = Lzw(Data(b, ref pos), minCode, w * h);
-                uint[]? previous = disposal == 3 ? (uint[])canvas.Clone() : null;
-                int[] rows = (flags & 0x40) != 0 ? Interlaced(h) : Sequential(h);
-                for (int r = 0; r < h; r++)
-                {
-                    int y = top + rows[r];
-                    if (y < 0 || y >= height) continue;
-                    for (int x = 0; x < w; x++)
-                    {
-                        int cx = left + x;
-                        if (cx < 0 || cx >= width) continue;
-                        int index = indices[r * w + x];
-                        if (index == transparent || index >= palette.Length) continue;
-                        canvas[y * width + cx] = palette[index];
-                    }
-                }
-
-                frames.Add((uint[])canvas.Clone());
+                if (minCode is < 2 or > 11) throw new InvalidDataException("bad code size");
+                records.Add(new Record(left, top, w, h, (flags & 0x40) != 0, palette, transparent, disposal, minCode, Data(b, ref pos)));
                 delays.Add(delay);
-                if (disposal == 2)
-                {
-                    for (int y = Math.Max(0, top); y < Math.Min(height, top + h); y++)
-                        for (int x = Math.Max(0, left); x < Math.Min(width, left + w); x++) canvas[y * width + x] = 0;
-                }
-                else if (previous is not null) canvas = previous;
                 disposal = 0;
                 transparent = -1;
                 delay = TimeSpan.Zero;
             }
 
-            if (frames.Count == 0) throw new InvalidDataException("no frames");
-            return new GifFile(width, height, frames, delays);
+            if (records.Count == 0) throw new InvalidDataException("no frames");
+            return new GifFile(width, height, records, delays);
+        }
+
+        // A frame as shown: straight 0xAARRGGBB over the whole logical screen. Stepping forward draws one frame; a jump back at most sixteen.
+        internal uint[] Pixels(int index)
+        {
+            index = Math.Clamp(index, 0, Count - 1);
+            int from;
+            uint[] canvas;
+            if (_next is { } n && n.Index <= index && index - n.Index < KeyEvery) (from, canvas) = (n.Index, (uint[])n.Before.Clone());
+            else
+            {
+                from = index / KeyEvery * KeyEvery;
+                while (!_keys.ContainsKey(from)) from -= KeyEvery;
+                canvas = (uint[])_keys[from].Clone();
+            }
+
+            for (int j = from; ; j++)
+            {
+                if (j % KeyEvery == 0) _keys.TryAdd(j, (uint[])canvas.Clone());
+                uint[] before = _records[j].Disposal == 3 ? (uint[])canvas.Clone() : canvas;
+                Draw(_records[j], canvas);
+                if (j == index)
+                {
+                    uint[] shown = (uint[])canvas.Clone();
+                    if (j + 1 < Count) _next = (j + 1, Dispose(_records[j], canvas, before));
+                    return shown;
+                }
+
+                canvas = Dispose(_records[j], canvas, before);
+            }
+        }
+
+        private uint[] Dispose(Record r, uint[] canvas, uint[] before)
+        {
+            if (r.Disposal == 3) return before;
+            if (r.Disposal == 2)
+                for (int y = Math.Max(0, r.Top); y < Math.Min(Height, r.Top + r.H); y++)
+                    for (int x = Math.Max(0, r.Left); x < Math.Min(Width, r.Left + r.W); x++) canvas[y * Width + x] = 0;
+            return canvas;
+        }
+
+        private void Draw(Record r, uint[] canvas)
+        {
+            byte[] indices = Lzw(r.Data, r.MinCode, r.W * r.H);
+            int[] rows = r.Interlaced ? Interlaced(r.H) : Sequential(r.H);
+            for (int row = 0; row < r.H; row++)
+            {
+                int y = r.Top + rows[row];
+                if (y < 0 || y >= Height) continue;
+                for (int x = 0; x < r.W; x++)
+                {
+                    int cx = r.Left + x;
+                    if (cx < 0 || cx >= Width) continue;
+                    int i = indices[row * r.W + x];
+                    if (i == r.Transparent || i >= r.Palette.Length) continue;
+                    canvas[y * Width + cx] = r.Palette[i];
+                }
+            }
         }
 
         private static uint[] Palette(byte[] b, ref int pos, int count)
@@ -232,7 +275,7 @@ namespace EmuSen.LunaP.Media
         // A frame as a premultiplied bitmap, with a tint and saturation applied as ImagePixels applies them.
         internal Bitmap Frame(int index, ImageEffects effects)
         {
-            uint[] src = Pixels[index];
+            uint[] src = Pixels(index);
             int stride = Width * 4;
             var px = new byte[stride * Height];
             for (int i = 0; i < src.Length; i++)

@@ -12693,8 +12693,13 @@ references Avalonia alone). Avalonia's `Bitmap` reads a GIF's first frame only, 
 
 **The decoder** (`Media/GifFile`, internal) reads GIF87a and GIF89a: the global and local colour tables, the graphic
 control extension's delay, transparent index and disposal method (none, keep, restore to background, restore to
-previous), interlaced images, and the variable-width LZW. Every frame is composited over the last into a whole
-logical-screen image, cached per file as `ImageFile` caches pictures. A file it cannot read shows nothing.
+previous), interlaced images, and the variable-width LZW. A file it cannot read shows nothing.
+
+**Frames are composited on demand.** The first version composited every frame when the file was read. The first real
+theme drawn with it, Cathode, plays a 600×338 GIF of 338 frames, which that way would have held 274 MB of pixels (338 × 600 × 338 × 4 bytes; computed, not run). The file keeps
+each frame's compressed codes instead (793 KB for that one), the canvas before every sixteenth frame once it has been
+reached, and the canvas after the last frame drawn: stepping forward draws one frame, and a jump back at most sixteen.
+The control keeps at most 32 finished frames as bitmaps and starts again when it has more.
 
 **Timing, as measured from the reference** by recording it at 30 frames a second on probe GIFs whose frames had
 different delays (the consumer's §38):
@@ -12715,5 +12720,6 @@ iteration holds. It fits, tints, desaturates and rounds as `FittedImage` does, a
 the reference's default for an unrotated animation.
 
 **Tests.** `FrameSequenceTests`: a three-frame interlaced GIF compressed by an ordinary encoder decodes to its pattern
-pixel for pixel in every frame; the directions, iterations and speed give the measured sequences; a missing or broken
-file shows nothing.
+pixel for pixel in every frame; two forty-frame GIFs, one of changed rectangles kept over the last frame and one of
+frames cleared after each, give every frame pixel for pixel when asked for out of order, across the kept canvases; the
+directions, iterations and speed give the measured sequences; a missing or broken file shows nothing.

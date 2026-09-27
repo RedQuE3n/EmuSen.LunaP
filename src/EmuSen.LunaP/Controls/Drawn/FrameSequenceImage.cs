@@ -41,6 +41,8 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<double> CornerRadiusProperty = AvaloniaProperty.Register<FrameSequenceImage, double>(nameof(CornerRadius));
         public static readonly StyledProperty<BitmapInterpolationMode> InterpolationProperty = AvaloniaProperty.Register<FrameSequenceImage, BitmapInterpolationMode>(nameof(Interpolation), BitmapInterpolationMode.None);
 
+        private const int KeptFrames = 32;
+
         private readonly Dictionary<(int, ImageEffects), Bitmap> _frames = new();
 
         static FrameSequenceImage()
@@ -161,7 +163,11 @@ namespace EmuSen.LunaP.Controls
             if (file is null || bounds.Width <= 0 || bounds.Height <= 0) return;
             var effects = new ImageEffects(Tint, TintEnd ?? Tint, TintDirection == Orientation.Vertical, Saturation);
             int index = FrameAt(Time);
-            if (!_frames.TryGetValue((index, effects), out Bitmap? frame)) _frames[(index, effects)] = frame = file.Frame(index, effects);
+            if (!_frames.TryGetValue((index, effects), out Bitmap? frame))
+            {
+                if (_frames.Count >= KeptFrames) _frames.Clear(); // a long GIF is decoded as it plays rather than held whole (§194)
+                _frames[(index, effects)] = frame = file.Frame(index, effects);
+            }
             Rect target = Fit == ImageFit.Contain ? FittedImage.Contain(bounds, new Size(file.Width, file.Height)) : bounds;
             using DrawingContext.PushedState options = context.PushRenderOptions(new RenderOptions { BitmapInterpolationMode = Interpolation });
             using DrawingContext.PushedState? clip = CornerRadius > 0 ? context.PushClip(new RoundedRect(bounds, CornerRadius)) : null;
