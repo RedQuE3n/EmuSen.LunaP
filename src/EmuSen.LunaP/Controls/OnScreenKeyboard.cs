@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
@@ -98,6 +99,65 @@ namespace EmuSen.LunaP.Controls
             }
         }
 
+        /// <summary>Whether the keyboard is drawn as a big-screen menu's text popup: a titled, rounded panel in the middle of the window, the text on a dark bar, and the keys as tiles in the menu's typeface, sized by the inherited menu scale. Set it before the keyboard is shown; false by default.</summary>
+        public bool MenuLook { get; init; }
+
+        /// <summary>The popup's title in the menu look, such as "Enter Name", drawn in upper case; null for none. Ignored otherwise.</summary>
+        public string? Title { get; init; }
+
+        // The menu look's design sizes before the menu scale, from the reference's text popup at 800 lines - see docs/LunaP.md §182.10.
+        private const double TileWidth = 78, TileHeight = 52, TileGap = 4, TileText = 30, TitleText = 60, FieldText = 32, FieldHeight = 52, PopupPad = 20, HintText = 18;
+
+        private static readonly Color TileColor = Color.FromRgb(0x2A, 0x2A, 0x2D), TileInk = Color.FromRgb(0x9C, 0x9C, 0xA0), CurrentColor = Color.FromRgb(0x05, 0x05, 0x07),
+            CurrentInk = Color.FromRgb(0xEE, 0xEE, 0xF0), FieldColor = Color.FromRgb(0x05, 0x05, 0x07);
+
+        private readonly FontText _field = new() { Wrap = false, TextVerticalAlignment = VerticalAlignment.Center };
+        private double _keyHeight = 44, _gap = 6, _unit = 1;
+        private string? _font;
+
+        // The menu look: the panel, the title, the text on its bar and the keys as tiles, in the typeface and scale the window's menus inherit.
+        private void ApplyMenuLook()
+        {
+            _unit = MenuPanel.GetScale(Target) is var u && double.IsFinite(u) && u > 0 ? u : 1;
+            _font = MenuPanel.GetFontPath(Target);
+            double k = _unit;
+            HorizontalAlignment = HorizontalAlignment.Center;
+            VerticalAlignment = VerticalAlignment.Center;
+            CornerRadius = new CornerRadius(16 * k);
+            Background = new SolidColorBrush(MenuPanel.PanelColorProperty.GetDefaultValue(typeof(MenuPanel)));
+            BorderThickness = default;
+            FocusAdorner = null;
+            Padding = new Thickness(PopupPad * k, PopupPad * k * 0.6, PopupPad * k, PopupPad * k);
+            _keySize = TileWidth * k;
+            _keyHeight = TileHeight * k;
+            _gap = TileGap * k;
+            _rows.Spacing = _gap;
+
+            var title = new FontText { Text = Title ?? "", FontPath = _font, FontSize = TitleText * k, LetterCase = Media.LetterCase.Upper, Wrap = false, TextAlignment = TextAlignment.Center,
+                Foreground = new SolidColorBrush(MenuPanel.TitleColorProperty.GetDefaultValue(typeof(MenuPanel))), Margin = new Thickness(0, 0, 0, 10 * k), IsVisible = !string.IsNullOrEmpty(Title) };
+            _field.FontPath = _font;
+            _field.FontSize = FieldText * k;
+            _field.Foreground = new SolidColorBrush(CurrentInk);
+            _field.Padding = new Thickness(10 * k, 0);
+            var bar = new Border { Background = new SolidColorBrush(FieldColor), Height = FieldHeight * k, Child = _field, Margin = new Thickness(0, 0, 0, 10 * k) };
+            _hint.FontSize = HintText * k;
+            (Child as DockPanel)?.Children.Clear();
+            Child = null;
+            Child = new StackPanel { Children = { title, bar, _rows, _hint } };
+            Build();
+        }
+
+        // A key drawn as a tile: its words centred in the menu's typeface, its fill and ink set by Refresh.
+        private FuncControlTemplate<Button> TileTemplate() => new((b, _) =>
+        {
+            var text = new FontText { Wrap = false, FontPath = _font, FontSize = TileText * _unit, TextAlignment = TextAlignment.Center, TextVerticalAlignment = VerticalAlignment.Center };
+            text.Bind(FontText.TextProperty, b.GetObservable(ContentControl.ContentProperty, c => c as string));
+            text.Bind(FontText.ForegroundProperty, b.GetObservable(TemplatedControl.ForegroundProperty));
+            var tile = new Border { Child = text, CornerRadius = new CornerRadius(3 * _unit) };
+            tile.Bind(Border.BackgroundProperty, b.GetObservable(TemplatedControl.BackgroundProperty));
+            return tile;
+        });
+
         /// <summary>Whether the keyboard is on screen.</summary>
         public bool IsOpen => _host is not null;
 
@@ -117,6 +177,20 @@ namespace EmuSen.LunaP.Controls
             return keyboard;
         }
 
+        /// <summary>Shows a keyboard over the window holding a text box, drawn as a big-screen menu's text popup with a title.</summary>
+        /// <param name="target">The text box to type into. It must be in a window.</param>
+        /// <param name="layouts">The layouts, the first shown first.</param>
+        /// <param name="hint">A line under the keys, or null for none.</param>
+        /// <param name="title">The popup's title, such as "Enter Name".</param>
+        /// <returns>The keyboard, on screen. Await <see cref="Closed"/> for how it ended.</returns>
+        /// <exception cref="InvalidOperationException">The text box is not in a window with an overlay layer.</exception>
+        public static OnScreenKeyboard ShowAsMenu(TextBox target, IReadOnlyList<KeyboardLayout> layouts, string? hint, string title)
+        {
+            var keyboard = new OnScreenKeyboard(target, layouts) { Hint = hint, MenuLook = true, Title = title };
+            keyboard.Open();
+            return keyboard;
+        }
+
         /// <summary>The keyboard open over the window holding a visual, or null when there is none.</summary>
         /// <param name="visual">Any visual in the window, or the window itself.</param>
         /// <returns>The open keyboard, or null when no keyboard is open over that window.</returns>
@@ -132,6 +206,12 @@ namespace EmuSen.LunaP.Controls
             _host = new Panel { Background = Brushes.Transparent, Children = { this } };
             _host.Width = layer.Bounds.Width;
             _host.Height = layer.Bounds.Height;
+            if (MenuLook)
+            {
+                ApplyMenuLook();
+                // The menu under the popup stays in view, shaded, as a message box's does.
+                _host.Background = new SolidColorBrush(Color.FromArgb(0xB0, 0, 0, 0));
+            }
             layer.Children.Add(_host);
             Refresh();
             Focus(NavigationMethod.Directional);
@@ -143,20 +223,21 @@ namespace EmuSen.LunaP.Controls
             _keys.Clear();
             foreach (IReadOnlyList<(string Key, int Width)> row in Layout.Rows)
             {
-                var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, HorizontalAlignment = HorizontalAlignment.Center };
+                var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = _gap, HorizontalAlignment = HorizontalAlignment.Center };
                 var buttons = new List<Button>();
                 foreach ((string key, int width) in row)
                 {
                     var button = new Button
                     {
                         Focusable = false,
-                        Width = width * _keySize + (width - 1) * 6,
-                        Height = _keySize,
+                        Width = width * _keySize + (width - 1) * _gap,
+                        Height = MenuLook ? _keyHeight : _keySize,
                         FontSize = 18,
                         HorizontalContentAlignment = HorizontalAlignment.Center,
                         VerticalContentAlignment = VerticalAlignment.Center,
                         Tag = key,
                     };
+                    if (MenuLook) button.Template = TileTemplate();
                     string captured = key;
                     button.Click += (_, _) => Type(captured);
                     buttons.Add(button);
@@ -183,6 +264,12 @@ namespace EmuSen.LunaP.Controls
                     button.Content = key == KeyboardLayout.Next ? _layouts[(_layout + 1) % _layouts.Count].Name : Shifted && key.Length == 1 ? key.ToUpperInvariant() : key;
                     bool current = r == _row && c == _column;
                     button.Classes.Set("luna-key-current", current);
+                    if (MenuLook)
+                    {
+                        button.Background = new SolidColorBrush(current ? CurrentColor : TileColor);
+                        button.Foreground = new SolidColorBrush(current ? CurrentInk : TileInk);
+                        continue;
+                    }
                     if (current) button[!BackgroundProperty] = new DynamicResourceExtension("LunaAccent");
                     else button.ClearValue(BackgroundProperty);
                     if (current) button[!TemplatedControl.ForegroundProperty] = new DynamicResourceExtension("LunaOnAccent");
@@ -195,6 +282,7 @@ namespace EmuSen.LunaP.Controls
             if (Target.PasswordChar != default && !Target.RevealPassword) text = new string(Target.PasswordChar, text.Length);
             int caret = Math.Clamp(Target.CaretIndex, 0, text.Length);
             _preview.Text = text[..caret] + "|" + text[caret..];
+            _field.Text = _preview.Text;
         }
 
         /// <summary>Moves the highlight. Across a row it wraps; between rows it goes to the key under the middle of the one it left.</summary>

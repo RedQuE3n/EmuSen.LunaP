@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -205,6 +206,7 @@ namespace EmuSen.LunaP.Tests
             ("P:EmuSen.LunaP.Controls.MenuPanel.ShowsTitleBand", "True by default", () => new MenuPanel().ShowsTitleBand),
             ("P:EmuSen.LunaP.Controls.MenuPanel.FooterMaxLines", "1 by default", () => new MenuPanel().FooterMaxLines),
             ("P:EmuSen.LunaP.Controls.MenuPanel.OpeningScale", "1 by default", () => new MenuPanel().OpeningScale),
+            ("P:EmuSen.LunaP.Controls.OnScreenKeyboard.MenuLook", "false by default", () => new OnScreenKeyboard(new TextBox(), new[] { KeyboardLayout.Letters }).MenuLook),
             ("P:EmuSen.LunaP.Controls.MenuRow.ValueColor", "Null by default", () => new MenuRow().ValueColor),
             ("P:EmuSen.LunaP.Controls.MenuRow.ValueLetterCase", "Null by default", () => new MenuRow().ValueLetterCase),
             ("P:EmuSen.LunaP.Controls.RatingPicker.FilledColor", "Null by default", () => new RatingPicker().FilledColor),
@@ -402,6 +404,7 @@ namespace EmuSen.LunaP.Tests
             ["P:EmuSen.LunaP.Controls.MenuPanel.ShowsTitleBand"] = true,
             ["P:EmuSen.LunaP.Controls.MenuPanel.FooterMaxLines"] = 1,
             ["P:EmuSen.LunaP.Controls.MenuPanel.OpeningScale"] = 1.0,
+            ["P:EmuSen.LunaP.Controls.OnScreenKeyboard.MenuLook"] = false,
             ["P:EmuSen.LunaP.Controls.MenuRow.ValueColor"] = null,
             ["P:EmuSen.LunaP.Controls.MenuRow.ValueLetterCase"] = null,
             ["P:EmuSen.LunaP.Controls.RatingPicker.FilledColor"] = null,

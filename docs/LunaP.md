@@ -12520,6 +12520,30 @@ the menu it came from.
 
 The API baseline, `DocumentedDefaultTests` and the README's count follow.
 
+### 182.10 The keyboard as a menu's text popup
+
+*2026-09-27.* The consumer decided to draw its text popup as its reference's (its §34.16): a titled panel in the middle
+of the screen, the text on a dark bar, and the keys as tiles in the menu's typeface. The keyboard's behaviour is what
+decides whether a person can type with a pad at all, and it is unchanged; only the look is new, and only when asked.
+
+- `OnScreenKeyboard.MenuLook` (false) and `Title` (null), init-only, and `OnScreenKeyboard.ShowAsMenu(target, layouts,
+  hint, title)`, which sets both. The look is applied when the keyboard opens, from the menu scale and font file the
+  target box inherits (`MenuPanel.Scale`, `MenuPanel.FontPath`), so it matches the menu it types for.
+- The panel is centred with 16-pixel corners in the menu's panel colour, and a shade over the window behind it keeps
+  the menu in view, as a message box does (§182.5). The title is upper case at 60 design pixels. The text is on a
+  near-black bar 52 pixels high at 32, with the caret shown as before. The keys are tiles 78 by 52 with 4 pixels between
+  them, their words at 30. The key under the highlight takes the menu row's bar colour and white words; the others
+  are grey on a tile a shade lighter than the panel. At 1280 by 800 the ten-unit rows make a keyboard of 816 pixels,
+  under the 840 of a menu panel.
+- The sizes are the reference's popup's, read from a capture at 1280 by 800: its tiles are about 78 by 52 and its title's
+  capitals the size of a menu title's. Its own layout (thirteen keys a row, symbols, a Clear and a Cancel key) is not
+  copied: the layouts are the toolkit's own (§91, §182.8), and moving through them, typing, erasing, shifting and
+  finishing work as before.
+
+`OnScreenKeyboardTests` gains a case: shown as a menu, the keyboard is centred, its title is upper case, its text
+shows with the caret, the current key is dark and every other a tile, a one-unit key is 78 by 52, and a key pressed
+types into the box as before.
+
 ## 184. A dim layer, and a picture that fades in
 
 *2026-09-27.* The consumer's big-screen library gains its reference frontend's screensaver (ES-DE's; the consumer's

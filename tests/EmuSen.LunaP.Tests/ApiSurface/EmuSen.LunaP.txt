@@ -1255,12 +1255,15 @@ public class EmuSen.LunaP.Controls.OnScreenKeyboard : Avalonia.Controls.Border
     public System.Threading.Tasks.Task<bool> Closed { get; }
     public bool Erase()
     public bool IsOpen { get; }
+    public bool MenuLook { get; init; }
     public bool Shifted { get; }
     public double KeySize { get; set; }
     public static EmuSen.LunaP.Controls.OnScreenKeyboard Show(Avalonia.Controls.TextBox target, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.KeyboardLayout> layouts, string? hint = null)
+    public static EmuSen.LunaP.Controls.OnScreenKeyboard ShowAsMenu(Avalonia.Controls.TextBox target, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.KeyboardLayout> layouts, string? hint, string title)
     public static EmuSen.LunaP.Controls.OnScreenKeyboard? OpenOver(Avalonia.Visual visual)
     public string CurrentKey { get; }
     public string? Hint { get; set; }
+    public string? Title { get; init; }
     public void Cancel()
     public void Finish()
     public void Move(int columns, int rows)
