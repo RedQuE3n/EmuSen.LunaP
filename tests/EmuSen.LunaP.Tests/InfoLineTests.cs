@@ -29,21 +29,19 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(line.LineWidth + (0.47 + 1.06) * 40, withFolder.LineWidth, 6);
         });
 
-        // The reference puts the folder at the left of a right-aligned line and at the right otherwise.
+        // The reference puts the folder at the left of a right-aligned line and at the end otherwise: the tallest ink in the line's first em tells a folder (0.78 ems) from a gamepad (0.58).
         [Fact]
         public Task A_right_aligned_line_draws_the_folder_first() => UiTest.Run(() =>
         {
-            var line = new InfoLine { Items = [new(InfoIcon.Folder), new(InfoIcon.Star, "6")], FontSize = 40, Foreground = Colors.White, Width = 400, Height = 60 };
+            var line = new InfoLine { Items = [new(InfoIcon.Gamepad, "1"), new(InfoIcon.Folder)], FontSize = 40, Foreground = Colors.White, Width = 400, Height = 60 };
             ToolWindow window = Show(new Canvas { Width = 400, Height = 60, Background = Brushes.Black, Children = { line } }, 400, 60);
-            RenderedFrame left = Frame(window);
+            int Tallest(RenderedFrame f, double x0) =>
+                Enumerable.Range((int)x0 + 4, 30).Select(x => Enumerable.Range(0, 60).Count(y => At(f, x, y).G > 128)).Max();
+            int gamepad = Tallest(Frame(window), 0);
             line.TextAlignment = TextAlignment.Right;
-            RenderedFrame right = Frame(window);
-            double ink(RenderedFrame f, int x0, int x1) => Enumerable.Range(x0, x1 - x0).Sum(x => Enumerable.Range(0, 60).Count(y => At(f, x, y).G > 128));
-            double start = 400 - line.LineWidth;
-            // Left-aligned: the star and its text first, the folder last; right-aligned, the folder's 1.06 ems lead.
-            Assert.True(ink(right, (int)start, (int)(start + 0.9 * 40)) > ink(left, (int)start, (int)(start + 0.9 * 40)) || ink(left, 0, 40) > 0);
-            Assert.True(ink(right, (int)start + 2, (int)(start + 40)) > 200, "a folder at the start of the right-aligned line");
-            Assert.True(ink(left, 400 - 44, 400 - 2) == 0 && ink(left, (int)(line.LineWidth - 42), (int)line.LineWidth) > 200, "the folder at the end of the left-aligned line");
+            int folder = Tallest(Frame(window), 400 - line.LineWidth);
+            Assert.InRange(gamepad, 0.5 * 40, 0.66 * 40);
+            Assert.InRange(folder, 0.7 * 40, 0.86 * 40);
             window.Close();
         });
     }

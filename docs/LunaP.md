@@ -12721,5 +12721,19 @@ the reference's default for an unrotated animation.
 
 **Tests.** `FrameSequenceTests`: a three-frame interlaced GIF compressed by an ordinary encoder decodes to its pattern
 pixel for pixel in every frame; two forty-frame GIFs, one of changed rectangles kept over the last frame and one of
-frames cleared after each, give every frame pixel for pixel when asked for out of order, across the kept canvases; the
-directions, iterations and speed give the measured sequences; a missing or broken file shows nothing.
+frames cleared after each, give every frame pixel for pixel when asked for out of order, across the kept canvases;
+GIFs written by the test itself check disposal 2 and 3, a transparent index, interlaced rows, and a restoring frame at a
+kept canvas after a jump back; the directions, iterations and speed give the measured sequences; a missing or broken
+file shows nothing.
+
+### 194.1 Mutants for §191 to §194
+
+Eleven mutants, run by the consumer's runner (its `EmuSen_BigPicture.md` §38.9) against this repository's tests and then
+the consumer's: the first frame not held; the last frame's delay for all; a bounce's pass one way; disposal 2 ignored; a
+kept canvas taken after drawing; interlace ignored; transparency ignored; the margins jumping while the row moves; the
+percentage after a spacing; the rune filling its box; the folder never first. **Six were caught at once and five
+survived the first run**: four of the decoder's (disposal 2, the kept canvas, interlace, transparency), because the only
+GIFs the tests read were an ordinary encoder's, which wrote whole frames; and the folder's, because `InfoLineTests`
+compared amounts of ink. The test now writes its own GIFs for each of the four, and compares the first picture's height
+for the fifth. The kept-canvas mutant survived that too, since the first test reached frame 16 from the canvas after
+frame 1 rather than from the kept one; the test now jumps so that it must use the kept one. All eleven are caught.

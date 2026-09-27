@@ -107,6 +107,103 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // One image block: its rectangle, its colour indices in display order, a transparent index or -1, its disposal method, and whether it is stored interlaced.
+        private sealed record Part(int Left, int Top, int W, int H, int[] Indices, int Transparent = -1, int Disposal = 1, bool Interlaced = false);
+
+        // Writes a GIF of the palette and parts, every code a clear code and a pixel so that no compression is needed.
+        private static string Encode(string name, int w, int h, params Part[] parts)
+        {
+            var b = new System.Collections.Generic.List<byte>();
+            b.AddRange("GIF89a"u8.ToArray());
+            b.AddRange([(byte)w, 0, (byte)h, 0, 0x81, 0, 0]);
+            foreach (Color c in Palette) b.AddRange([c.R, c.G, c.B]);
+            foreach (Part p in parts)
+            {
+                byte packed = (byte)(p.Disposal << 2 | (p.Transparent >= 0 ? 1 : 0));
+                b.AddRange([0x21, 0xF9, 4, packed, 5, 0, (byte)Math.Max(0, p.Transparent), 0]);
+                b.AddRange([0x2C, (byte)p.Left, 0, (byte)p.Top, 0, (byte)p.W, 0, (byte)p.H, 0, (byte)(p.Interlaced ? 0x40 : 0), 2]);
+                var rows = Enumerable.Range(0, p.H).ToList();
+                if (p.Interlaced) rows = new[] { (0, 8), (4, 8), (2, 4), (1, 2) }.SelectMany(s => Enumerable.Range(0, p.H).Where(y => y >= s.Item1 && (y - s.Item1) % s.Item2 == 0)).ToList();
+                var bits = new System.Collections.Generic.List<byte>();
+                int acc = 0, n = 0;
+                void Put(int code) { acc |= code << n; n += 3; while (n >= 8) { bits.Add((byte)acc); acc >>= 8; n -= 8; } }
+                foreach (int y in rows)
+                    for (int x = 0; x < p.W; x++) { Put(4); Put(p.Indices[y * p.W + x]); }
+                Put(5);
+                if (n > 0) bits.Add((byte)acc);
+                for (int i = 0; i < bits.Count; i += 255) { int len = Math.Min(255, bits.Count - i); b.Add((byte)len); b.AddRange(bits.GetRange(i, len)); }
+                b.Add(0);
+            }
+
+            b.Add(0x3B);
+            Directory.CreateDirectory(Folder);
+            string path = Path.Combine(Folder, name + ".gif");
+            File.WriteAllBytes(path, b.ToArray());
+            return path;
+        }
+
+        private static int[] Fill(int n, int index) => Enumerable.Repeat(index, n).ToArray();
+
+        private static Color[] Shown(string path, int frames, int frame)
+        {
+            var image = new FrameSequenceImage { Source = path, Fit = ImageFit.Fill, Width = 8, Height = 8, Time = TimeSpan.FromMilliseconds(50 * (frame + 1) + 10) };
+            ToolWindow window = Show(image, 8, 8);
+            Assert.Equal(frames, image.FrameCount);
+            RenderedFrame f = Frame(window);
+            window.Close();
+            return Enumerable.Range(0, 64).Select(i => At(f, i % 8 + 0.5, i / 8 + 0.5)).ToArray();
+        }
+
+        // Disposal 2 clears the rectangle to nothing, disposal 3 restores what was under it, and a transparent index leaves the frame beneath.
+        [Fact]
+        public Task Disposal_and_transparency_compose_as_the_format_says() => UiTest.Run(() =>
+        {
+            string two = Encode("dispose-2", 8, 8, new Part(0, 0, 8, 8, Fill(64, 0)), new Part(0, 0, 4, 4, Fill(16, 2), Disposal: 2), new Part(4, 4, 4, 4, Fill(16, 1)));
+            Color[] after2 = Shown(two, 3, 2);
+            Assert.Equal(Colors.Black, after2[0]);
+            Assert.Equal(Palette[0], after2[7]);
+            Assert.Equal(Palette[1], after2[63]);
+            string three = Encode("dispose-3", 8, 8, new Part(0, 0, 8, 8, Fill(64, 0)), new Part(0, 0, 4, 4, Fill(16, 2), Disposal: 3), new Part(4, 4, 4, 4, Fill(16, 1)));
+            Assert.Equal(Palette[0], Shown(three, 3, 2)[0]);
+            int[] holes = Enumerable.Range(0, 64).Select(i => i % 2 == 0 ? 3 : 1).ToArray();
+            string clear = Encode("transparent", 8, 8, new Part(0, 0, 8, 8, Fill(64, 0)), new Part(0, 0, 8, 8, holes, Transparent: 3));
+            Color[] t = Shown(clear, 2, 1);
+            Assert.Equal(Palette[0], t[0]);
+            Assert.Equal(Palette[1], t[1]);
+        });
+
+        // Interlaced rows are stored 0, 8, … then 4, … then 2, 6, … then the odd rows; each row here has its own colour.
+        [Fact]
+        public Task Interlaced_rows_land_in_their_place() => UiTest.Run(() =>
+        {
+            int[] rows = Enumerable.Range(0, 64).Select(i => i / 8 % 4).ToArray();
+            string path = Encode("interlaced", 8, 8, new Part(0, 0, 8, 8, rows, Interlaced: true));
+            Color[] shown = Shown(path, 1, 0);
+            for (int y = 0; y < 8; y++) Assert.Equal(Palette[y % 4], shown[y * 8 + 3]);
+        });
+
+        // A jump back recomposes from the canvas kept before frame 16; a frame there that restores what was under it must not survive into frame 17.
+        [Fact]
+        public Task A_restoring_frame_at_a_kept_canvas_is_undone_after_a_jump_back() => UiTest.Run(() =>
+        {
+            var parts = new System.Collections.Generic.List<Part> { new(0, 0, 8, 8, Fill(64, 0)) };
+            for (int k = 1; k < 16; k++) parts.Add(new Part(7, 7, 1, 1, Fill(1, k % 4)));
+            parts.Add(new Part(0, 0, 4, 4, Fill(16, 2), Disposal: 3));
+            for (int k = 17; k < 20; k++) parts.Add(new Part(7, 0, 1, 1, Fill(1, 3)));
+            string path = Encode("restore-at-key", 8, 8, parts.ToArray());
+            var image = new FrameSequenceImage { Source = path, Fit = ImageFit.Fill, Width = 8, Height = 8 };
+            ToolWindow window = Show(image, 8, 8);
+            image.Time = TimeSpan.FromMilliseconds(50 * 20 + 10);
+            Frame(window);
+            image.Time = TimeSpan.FromMilliseconds(50 * 18 + 10);
+            Assert.Equal(17, image.FrameAt(image.Time));
+            Assert.Equal(Palette[0], At(Frame(window), 0.5, 0.5));
+            image.Time = TimeSpan.FromMilliseconds(50 * 17 + 10);
+            Assert.Equal(16, image.FrameAt(image.Time));
+            Assert.Equal(Palette[2], At(Frame(window), 0.5, 0.5));
+            window.Close();
+        });
+
         [Fact]
         public Task A_missing_or_broken_file_shows_nothing() => UiTest.Run(() =>
         {
