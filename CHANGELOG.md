@@ -14,6 +14,9 @@ answer.
 
 ## Unreleased
 
+- **`ImageCarousel.SelectedItemMargins` and `LineSpacing`, new and additive (`§192`).** Room before and after the
+  selected item along a row, followed while it moves; the line pitch of items shown as text, 1.2 by default as before.
+
 - **`DeviceStatusBar`'s built-in icons are drawn, not lettered (`§191`).** Bluetooth is its rune and cellular four
   bars, where they were the letters "B" and "C"; Wi-Fi gains a dot; the battery stands upright in a square box, where it
   lay on its side 1.6 boxes wide; the percentage follows the battery with no spacing. A stored picture of any of them

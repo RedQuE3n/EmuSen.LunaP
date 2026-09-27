@@ -12644,3 +12644,23 @@ icons are placed right to left from the same edge, so the row stands about 20 px
 **Tests.** `IndicatorControlTests.Bluetooth_is_drawn_as_its_rune` checks the stem, the arms' points and the openings
 between them by pixels; the file-icon test's widths were changed to the square battery, and the right-edge test holds
 for every indicator.
+
+## 192. A selected item's margins, and the line pitch of text items
+
+*2026-09-27.* Thirty-two of the 66 themes on the consumer's reference list (ES-DE's) set a carousel's
+`selectedItemMargins`, and thirty-three its `lineSpacing`; the consumer measured both from its reference's captures (its
+`EmuSen_BigPicture.md` §38) and this section adds them to `ImageCarousel`.
+
+- **`SelectedItemMargins`** is extra room along a row before the selected item (X) and after it (Y), in pixels, either
+  negative. Every item on that side of the selection moves by it, not only the neighbour: the reference's captures put
+  the second item before the selection 0.1 of the screen further left, as the first. While the row moves, an item
+  between the selection and its neighbour's slot moves by its fraction of the way: a recording of one step, read frame
+  by frame, followed that linear rule to within a pixel at every frame. The consumer converts its theme's fractions
+  (of the screen, not of the carousel, as measured) into pixels. A wheel ignores the property, as the reference does.
+- **`LineSpacing`** is the pitch of the lines of an item shown as text, as a multiple of `FontSize`; the reference's
+  captures showed 40, 60 and 80 px pitches at a 40 px font for 1, 1.5 and 2. The default stays 1.2, the value the
+  control's text items had before, so a consumer that sets nothing sees no change.
+
+**Tests.** `CarouselWheelTests.Selected_item_margins_open_room_either_side_and_follow_a_moving_row`: both sides, an item
+two slots away, fractional positions, and a vertical row with a negative margin. `DocumentedDefaultTests` checks the two
+new defaults.

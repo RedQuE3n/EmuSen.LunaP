@@ -633,6 +633,7 @@ public class EmuSen.LunaP.Controls.ImageCarousel : Avalonia.Controls.Control
     public Avalonia.Media.Color? ImageSelectedTint { get; set; }
     public Avalonia.Media.IBrush? Background { get; set; }
     public Avalonia.Point ContentOffset { get; set; }
+    public Avalonia.Point SelectedItemMargins { get; set; }
     public Avalonia.Point WheelOrigin { get; set; }
     public Avalonia.Rect ItemRect(double offset, Avalonia.Size bounds)
     public Avalonia.Rect ItemRect(int offset, Avalonia.Size bounds)
@@ -651,6 +652,7 @@ public class EmuSen.LunaP.Controls.ImageCarousel : Avalonia.Controls.Control
     public double FontSize { get; set; }
     public double ImageSaturation { get; set; }
     public double ItemScale { get; set; }
+    public double LineSpacing { get; set; }
     public double MaxItemCount { get; set; }
     public double Position { get; set; }
     public double ReflectionFalloff { get; set; }
@@ -675,6 +677,7 @@ public class EmuSen.LunaP.Controls.ImageCarousel : Avalonia.Controls.Control
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color?> ImageSelectedTintProperty = null
     public static readonly Avalonia.StyledProperty<Avalonia.Media.IBrush?> BackgroundProperty = null
     public static readonly Avalonia.StyledProperty<Avalonia.Point> ContentOffsetProperty = 0, 0
+    public static readonly Avalonia.StyledProperty<Avalonia.Point> SelectedItemMarginsProperty = 0, 0
     public static readonly Avalonia.StyledProperty<Avalonia.Point> WheelOriginProperty = -3, 0.5
     public static readonly Avalonia.StyledProperty<Avalonia.Size> ItemSizeProperty = 0, 0
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.CarouselLayout> LayoutProperty = Row
@@ -687,6 +690,7 @@ public class EmuSen.LunaP.Controls.ImageCarousel : Avalonia.Controls.Control
     public static readonly Avalonia.StyledProperty<double> FontSizeProperty = 24
     public static readonly Avalonia.StyledProperty<double> ImageSaturationProperty = 1
     public static readonly Avalonia.StyledProperty<double> ItemScaleProperty = 1.2
+    public static readonly Avalonia.StyledProperty<double> LineSpacingProperty = 1.2
     public static readonly Avalonia.StyledProperty<double> MaxItemCountProperty = 3
     public static readonly Avalonia.StyledProperty<double> PositionProperty = NaN
     public static readonly Avalonia.StyledProperty<double> ReflectionFalloffProperty = 1
