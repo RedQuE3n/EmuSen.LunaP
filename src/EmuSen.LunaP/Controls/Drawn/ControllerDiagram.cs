@@ -108,6 +108,7 @@ namespace EmuSen.LunaP.Controls
         static ControllerDiagram()
         {
             AffectsRender<ControllerDiagram>(SelectedRegionProperty);
+            AffectsMeasure<ControllerDiagram>(TextElement.FontSizeProperty, TextElement.FontFamilyProperty);
             FocusableProperty.OverrideDefaultValue<ControllerDiagram>(false);
         }
 

@@ -165,6 +165,7 @@ namespace EmuSen.LunaP.Tests
         [InlineData(ControllerLayout.Nintendo64, 760, 480)]
         [InlineData(ControllerLayout.Nintendo64, 1100, 640)]
         [InlineData(ControllerLayout.Nintendo64, 1920, 1080)]
+        [InlineData(ControllerLayout.Nintendo64, 1000, 420)]
         public Task Every_region_has_a_label_and_no_label_overlaps_another(ControllerLayout layout, double w, double h) => UiTest.Run(() =>
         {
             (ToolWindow window, ControllerDiagram diagram) = Shown(layout, w, h);
@@ -182,6 +183,51 @@ namespace EmuSen.LunaP.Tests
             for (int i = 0; i < boxes.Count; i++)
                 for (int j = i + 1; j < boxes.Count; j++)
                     Assert.False(boxes[i].Box.Deflate(0.5).Intersects(boxes[j].Box.Deflate(0.5)), $"{boxes[i].Id} {boxes[i].Box} overlaps {boxes[j].Id} {boxes[j].Box}");
+            window.Close();
+        });
+
+        // Z is drawn behind the middle grip: a click on the shell over it hits nothing, and a click where it shows hits it.
+        [Fact]
+        public Task A_region_drawn_behind_the_shell_is_hit_only_where_it_shows() => UiTest.Run(() =>
+        {
+            (ToolWindow window, ControllerDiagram diagram) = Shown(ControllerLayout.Nintendo64);
+            Rect z = diagram.RegionRect("Z");
+            Assert.Equal("Z", diagram.RegionAt(diagram.PointIn("Z")!.Value));
+            Assert.Null(diagram.RegionAt(new Point(z.Right - 2, z.Center.Y)));
+            window.Close();
+        });
+
+        // The selected region is ringed in the accent, and the ring goes with the selection.
+        [Theory]
+        [MemberData(nameof(Drawn))]
+        public Task The_selected_region_is_ringed_and_the_ring_goes_with_the_selection(ControllerLayout layout) => UiTest.Run(() =>
+        {
+            (ToolWindow window, ControllerDiagram diagram) = Shown(layout);
+            Color accent = Color.Parse("#FF00FF");
+            diagram.Resources["LunaAccentColor"] = accent;
+            ulong none = UiTest.Redraw(window).Hash;
+            foreach (DiagramRegion region in diagram.Regions)
+            {
+                Rect box = diagram.RegionRect(region.Id).Inflate(12);
+                diagram.SelectedRegion = region.Id;
+                int ringed = Count(UiTest.Redraw(window), box, c => Near(c, accent, 30));
+                Assert.True(ringed > 40, $"{region.Id} selected drew {ringed} accent pixels about it");
+            }
+            diagram.SelectedRegion = null;
+            Assert.Equal(none, UiTest.Redraw(window).Hash);
+            window.Close();
+        });
+
+        // A label is never much smaller than the text around it: the same space with larger text around it gives taller labels.
+        [Fact]
+        public Task Labels_follow_the_size_of_the_text_around_them() => UiTest.Run(() =>
+        {
+            (ToolWindow window, ControllerDiagram diagram) = Shown(ControllerLayout.Snes, 1100, 640);
+            double small = diagram.LabelOf("A")!.Bounds.Height;
+            window.FontSize = 26;
+            UiTest.Redraw(window);
+            double large = diagram.LabelOf("A")!.Bounds.Height;
+            Assert.True(large > small * 1.15, $"labels were {small:0.0} high with 14-pixel text and {large:0.0} with 26");
             window.Close();
         });
 
