@@ -14,6 +14,13 @@ answer.
 
 ## Unreleased
 
+- **`ImageCarousel` turns, offsets, clips and reflects (`§190`).** New: `Layout` (`CarouselLayout.Row` or `Wheel`),
+  `WheelRotation`, `WheelOrigin`, `ItemsBefore`, `ItemsAfter`, `ItemsUpright`, `WheelHorizontalAlignment`,
+  `WheelVerticalAlignment`, `ContentOffset`, `Reflections`, `ReflectionOpacity`, `ReflectionFalloff`,
+  `ShownReflections` and `WheelTransform`. **Behaviour changes:** the carousel now clips to its box; a row's selected
+  item grows from the edge its cross-axis alignment names rather than from its centre; each item's `RenderTransform`
+  is a `MatrixTransform`, where it was a `ScaleTransform`.
+
 - **A dim layer and a picture that fades in, new and additive (`§184`).** `DimLayer` turns what is drawn beneath it
   toward the grey of its own luminance by `Saturation` and toward black by `Brightness`, by blending over it rather
   than capturing it; `CrossFadeImage` fades a new picture in over the old one, or over nothing, as `Progress` runs from

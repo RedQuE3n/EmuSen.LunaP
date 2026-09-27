@@ -12549,3 +12549,86 @@ drawn as a plain fill (two cases); the black fill at `Brightness` rather than `1
 the old picture when asked not to (one); `Progress` not clamped (one). The last is caught only because the case reads
 `SourceOpacity` back: the renderer clamps an opacity above 1 itself, so no pixel shows it, and a consumer that reads
 the opacity to schedule its frames would see 7.
+
+## 190. A carousel that turns: wheels, a content offset, clipping, and reflections
+
+*2026-09-27.* The consumer (EmuSen's Mistress) draws its reference frontend's (ES-DE 3.4.1's) themes, and nine of the
+66 themes on the reference's list lay a carousel out as a wheel, some with reflections beneath a straight row. This
+section adds those layouts to `ImageCarousel`. Nothing here names the consumer's format: the properties say what they
+do to a row of pictures, and the consumer maps its theme's words onto them. Every rule below was measured by the
+consumer from captures of its reference drawing flat coloured probe pictures (its `EmuSen_BigPicture.md` §36.3); what
+this section records is the rule as the control now implements it, and which parts were measured rather than chosen.
+
+### 190.1 The wheel
+
+`Layout = CarouselLayout.Wheel` places every item first at one **hub** box, `ItemSize` large: centred along the
+wheel's axis, and across it where `WheelHorizontalAlignment` (a vertical wheel) or `WheelVerticalAlignment` (a
+horizontal one) says. The item a distance `d` from the selection, fractional while the carousel moves, is then turned
+by `d × WheelRotation` degrees, clockwise on screen when positive, about a centre:
+
+- **vertical wheel:** the hub's top left plus `WheelOrigin` in multiples of the item's width and height;
+- **horizontal wheel:** the same point turned a quarter turn anticlockwise about the hub's centre, so that the centre
+  lies `(0.5 − X) × width` below the hub's centre and `(Y − 0.5) × height` to its right. That is what the reference
+  was measured to do; it reads as the vertical construction turned, keeping the item's own width and height, which is
+  why the width measures a vertical distance.
+
+`ItemsBefore` and `ItemsAfter` (8 each) bound the items drawn; a list shorter than the wheel repeats, as a wrapping
+row does. `ItemsUpright` keeps every item level and moves it by the travel the turn would have given the point on the
+hub's leading edge at the origin's height: a translation of `R(θ)·a − a`, where `a` is `(−X × width, 0)` for a
+vertical wheel and `(0, X × width)` for a horizontal one. The origin's Y has no part in it, which the reference showed
+by drawing origins `(−1, 0.5)` and `(−1, 3)` identically.
+
+**The selection's growth.** `ItemScale` grows the selected item about the hub's centre. With a vertical wheel and
+`ItemHorizontalAlignment` left or right, every item also moves sideways by half the growth, `(ItemScale − 1) × width
+/ 2`, towards that side: the reference aligns its pictures to the selected item's grown box. A left-aligned wheel at
+`ItemScale` 1.5 drew its neighbours 72–74 px from where the plain rule puts them, and this term closed it to 0.3 px.
+The same term for a horizontal wheel's vertical alignment was **not measured** and is not applied.
+
+`WheelTransform(offset, size)` returns the transform an item gets, for a host that wants to hit-test or draw beside
+one. The row layout returns the identity.
+
+### 190.2 A row's growth point, the content offset and clipping
+
+- **Growth point.** A row's selected item used to grow about its centre. It now grows about the edge its cross-axis
+  alignment names (the top edge for `ItemVerticalAlignment.Top`, and so on), the centre for `Center`, which is what
+  the reference draws. A consumer that aligned items to an edge will see its selected item grow away from that edge.
+- **`ContentOffset`** moves every item by fractions of the control's width and height, for rows and wheels alike.
+- **Clipping.** `ImageCarousel` now sets `ClipToBounds` in its constructor. The reference clips a carousel to its box,
+  straight or turned; before this section a selected item scaled past the box was drawn outside it.
+- **Transforms.** Every item's placement is now one `MatrixTransform` about the item's top left, where it was a
+  `ScaleTransform` about its centre. Two tests that read `ScaleTransform` were changed to read the matrix's scale.
+
+### 190.3 Reflections
+
+`Reflections` mirrors each picture of a horizontal row directly beneath the picture (not beneath the item box), the same
+size, and the row makes room for it: the cross-axis unit is twice the item's height, placed by `ItemVerticalAlignment`,
+with the item in its upper half. The reflection's opacity is the item's own times `ReflectionOpacity` at the picture's
+edge, falling linearly to nothing at `1 / ReflectionFalloff` of the picture's height (0 never fades). It follows the
+item's growth, so a selected item's reflection stays attached to it. Text items have none, and a vertical row or a
+wheel ignores the property, as the reference does.
+
+**A measurement on the way.** The first build gave the reflection the item's `Opacity` and a mask for the fade. On an
+unselected item at opacity 0.5 with `ReflectionOpacity` 0.5, the reflection's top row came out at 0.12 of full
+coverage, where 0.25 was expected and the reference drew 0.24. With the item's opacity multiplied into the mask's stops
+instead, and the reflection's own `Opacity` left at 1, it reads 0.24 and the whole fade agrees with the reference to one
+grey level. Why `Opacity` and `OpacityMask` together gave a squared factor here was not isolated; the record is the two
+readings.
+
+### 190.4 Tests
+
+`CarouselWheelTests` (6): a vertical wheel's turn about its origin and its item count; a horizontal wheel's
+quarter-turned origin; upright items that travel without turning; the hub's alignment and the side shift; a row's
+offset, clipping and growth edge; a reflection's place and fade by pixels, and its absence from a vertical row.
+`DocumentedDefaultTests` gained the twelve new defaults, `TemplateOrderTests` excuses `WheelTransform` as it excuses
+`ItemRect`, and the API baseline was approved with the new members. The consumer's own tests hold every rule against
+numbers read from the reference's captures.
+
+### 190.5 Mutants for §190
+
+Thirteen mutants of `ImageCarousel`, run by the consumer's runner (its `EmuSen_BigPicture.md` §36.7) against
+`CarouselWheelTests`, `ThemedListTests` and `MotionTests`, then against the consumer's tests that compare with its
+reference: **all 13 caught.** A horizontal wheel's origin read as a vertical one's; turned anticlockwise; upright items'
+arm through the origin; no side shift; no room for reflections; a reflection that never fades; a reflection that
+ignores its item's opacity; no clipping; a row grown from its centre; the vertical offset by the width; a wheel drawing
+the row's reach; a reflection not flipped; the hub not aligned. **One was caught only by the consumer:** a reflection
+that ignores its item's opacity, since this repository's reflection test draws its items at full opacity.
