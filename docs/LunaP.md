@@ -12813,3 +12813,146 @@ GIFs the tests read were an ordinary encoder's, which wrote whole frames; and th
 compared amounts of ink. The test now writes its own GIFs for each of the four, and compares the first picture's height
 for the fifth. The kept-canvas mutant survived that too, since the first test reached frame 16 from the canvas after
 frame 1 rather than from the kept one; the test now jumps so that it must use the kept one. All eleven are caught.
+
+## 196. A menu's look for stock controls, and a sheet framed as a menu
+
+*2026-09-27.* §181 and §182 drew the consumer's big-screen menus as its reference frontend's are, by changing how stock
+controls look. The rest of the consumer's windows keep their own layouts: a table of cheats, two lists and a path, a
+status page with a list of recent games. Decided by the consumer on 2026-09-27: those windows keep their layouts and take
+the menus' look, which is their colours, their typeface and their rounded panels. This section is the toolkit's half of that. The consumer's
+record, its pictures and its questions are its `EmuSen_BigPicture.md` §41 and its settings reference §4.80. Nothing here
+names the consumer, its reference or a game.
+
+### 196.1 `MenuLook`: the look, scoped to one element
+
+`MenuLook.SetIsOn(element, true)` gives the element the style class `menu-look` and adds a fresh copy of
+`Theme/MenuLook.axaml` to the element's own `Styles`. Everything under the element takes the look, and nothing outside
+it changes. `SetIsOn(element, false)` removes that copy and the class. A `Styles` has one owner, so each element gets its own copy.
+
+The file holds two things.
+
+- **A palette.** LunaP's colour and brush keys (`LunaSurface`, `LunaText`, `LunaBorder`, `LunaAccent` and the rest)
+  and the Fluent keys that §48's bridge already reaches are redefined in the scope, with the menu's values:
+  - the panel `#1B1B1E`, the title `#B4B4B8`, a row's words `#9C9CA0`;
+  - the chosen row's bar `#050507` and its words `#EEEEF0`;
+  - the rule `#333337`, a push button's outline `#55555A`, the footer `#86868A`, the switch's accent `#4C9AE8`.
+
+  These are `MenuPanel`'s and `MenuRow`'s defaults (§181). A Fluent template looks a key up from where it draws, so the
+  parts no style reaches (a text box's border, a switch's knob, a check box's box) follow. The values are written out
+  rather than bound, because a resource in the scope must not depend on one further up.
+- **Styles.**
+  - The element's text is inherited from it: the typeface named by the resource key `LunaMenuFontFamily`, at 24 design
+    pixels, in the row's grey. The host puts a `FontFamily` under that key. Without one the application's typeface is
+    used, so the toolkit ships no font and stays MIT.
+  - Push buttons are outlined boxes, their words upper case, filled with the row's bar and light words while focused, as
+    `MenuRows.ApplyButton` draws them.
+  - A list's rows are ruled, 42 design pixels at least, and the chosen or focused row is the bar across the list's
+    whole width. It follows the focus as well as the selection, since a table's rows take the focus without being
+    selected.
+  - Text boxes and dropdowns are dark fields 44 high with a light border while focused.
+  - Tabs, headings (`SectionHeader.LetterCase`, new, drawn upper case) and buttons are upper case.
+  - Scroll bars, progress bars, switches, sliders and check boxes take the palette.
+
+Upper case is drawn, not written: `MenuLook.UpperCaseText` is a data template that shows a string content upper case.
+A button's `Content`, a tab's `Header` and a heading's `Text` stay as written, so whatever reads them reads what it did.
+
+**Sizes are design pixels for a screen 800 high**, as §181's are. Stock controls take no inherited scale, so a host
+lays the content out under a transform of `MenuPanel.Scale`. §196.2's frame does that.
+
+### 196.2 A sheet framed as a menu
+
+`SheetLayer.MenuLook` (false by default): a window presented while it is on, and that draws no chrome of its own
+(§181.5), is framed as a menu.
+
+- **The frame.** The window's content goes in a `MenuPanel` named `SheetMenu`.
+  - The panel's title is bound to the window's `Title`.
+  - The content is under a `LayoutTransformControl` of the inherited `MenuPanel.Scale`, inside a padding of 24 and 12
+    design pixels, with `MenuLook` on.
+  - The panel's rows cap is not rounded (`RowPitch` 1), because content that is not rows has no pitch.
+  - The layer draws no fill, as for a chromeless sheet, so the host's blurred backdrop shows. `DrawsMenu(window)` says
+    whether a presented window is chromeless or framed, for a host that blurs, shades or routes keys by it.
+- **The help bar.** `MenuLook.Hints` (attached to a window) wins. Otherwise the layer's `MenuHintsFor(window)` supplies
+  it; that function is called once the sheet is on the layer, so it can look at the content.
+- **The footer.** `MenuLook.Footer` (attached) is the panel's footer, one line of words wrapped into three lines of 20
+  design pixels. It is meant for words that must stay in view, such as an attribution.
+- **The width.** `MenuLook.WidthFraction` (attached, NaN by default) sets the panel's share of the width. The panel is
+  then no wider than 1.75 times that share of the height, so a fraction chosen for a 16:10 screen holds on a 16:9 one.
+- **Which windows.** `SheetLayer.MenuFrameFor` is a host's function. It answers false for a window that keeps the plain
+  frame, such as one whose own look is still to come. Null frames every window.
+
+Escape, the Tab cycle, embedded popups, the first focus and the message box drawn over a framed sheet
+(`KeepsBeneathDrawn`, §182.9) behave as on any sheet.
+
+### 196.3 `WhenApplied` and `Covers`
+
+The look's styles cannot reach a value a window set on a control itself, such as a heading's font size. They also
+cannot reach a layout that suits a desk but not a television. `MenuLook.WhenApplied(element, action)` runs the action
+once, the first time the element is attached where the look is on. `MenuLook.Covers(element)` says whether the look is
+on for the element or an element above it.
+
+### 196.4 A list's rows left unbuilt under a scaled frame (Avalonia 12.1)
+
+A framed sheet at 1920 by 1200 (scale 1.5) showed one of two cheats in a table with room for both. Measured on
+2026-09-27 on the first build of this section:
+
+- the table's list was 774 by 85 pixels and its scroll viewer's viewport the same;
+- its `VirtualizingStackPanel`'s own viewport was 524 by 39.3, so it built one row;
+- at 1280 by 800 (scale 1) the same sheet built both.
+
+The 39.3 is what a clip of the content host's height divided by the scale a second time gives. The host was 464 high,
+464 / 1.5 = 309.3, and the list began at 270. The host is a `ContentControl` that clips (`ClipToBounds` true) and is the
+direct child of the scaling `LayoutTransformControl`. So Avalonia's effective-viewport calculation mis-scales the clip of
+a clipping child of a scaled control. That is inferred from the numbers; Avalonia's code was not read.
+
+**The fix:** the frame's host no longer clips, and the scaler alone does. After it the panel's viewport was 774 by 85
+and both rows were built. `MenuLookTests` holds a list at the foot of a scaled framed sheet, and its three rows must all
+be built. **What the fix does not cover:** the plain frame (§90) has the same structure, a clipping host under a
+scaling `LayoutTransformControl`, and was not changed. A list near the bottom of a plain sheet at a scale above 1 can
+still leave rows it shows unbuilt. Nothing in this section measured it.
+
+### 196.5 A desktop look later
+
+The look is the attached property, and the frame is the layer's. A desktop window can take the look by
+`MenuLook.SetIsOn(window.Content, true)`, with the font key in the application's resources and a scale of 1. No
+setting does this yet; the consumer asked for the look to be one setting away and not built.
+
+### 196.6 Tests and mutants
+
+`MenuLookTests`, six cases:
+
+- **The stock controls.** Under the look a button's words are drawn upper case, a list's text is in the given family,
+  a surface takes the look's palette, and the chosen row is the bar from one edge of the list to the other. Beside it,
+  outside the look, none of that holds. Taken away, the look leaves nothing behind.
+- **A focused button** is filled with the bar, and is at least 44 high.
+- **`WhenApplied`** runs once under the look and never outside it.
+- **A framed sheet** is titled by its window and follows a changed title. It takes the layer's help or its own, its
+  footer and its width share, and draws no fill. A window the host keeps plain has the plain frame.
+- **The content** is laid out at the menu's scale.
+- **A list at the foot of a sheet at scale 1.5** builds its three rows (§196.4).
+
+`DocumentedDefaultTests` gains three defaults and the API baseline the new members. The README's count is 1434.
+
+Twelve mutants, one at a time, by the consumer's runner:
+
+- the frame's host clipping again;
+- the styles left behind;
+- a button's words not upper case;
+- the typeface's key unused;
+- the chosen row not the bar;
+- a focused button not filled;
+- the host's choice of frame ignored;
+- the layer's help never asked for;
+- the footer kept to one line;
+- the content not scaled;
+- a width share ignored;
+- `WhenApplied` running outside the look.
+
+All twelve were caught on the first run, each by the case written for it. The consumer ran fourteen more against its
+own tests (its §41.7).
+
+### 196.7 What is not here
+
+- **A look for a desktop window**, deliberately (§196.5).
+- **The plain frame's viewport** (§196.4).
+- **An inherited scale for stock controls' sizes.** The frame lays them out under a transform instead, which is why
+  §196.4 arose.

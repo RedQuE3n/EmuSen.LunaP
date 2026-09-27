@@ -221,6 +221,9 @@ namespace EmuSen.LunaP.Tests
             ("P:EmuSen.LunaP.Controls.MenuPanel.SubtitleSize", "26 by default", () => new MenuPanel().SubtitleSize),
             ("P:EmuSen.LunaP.Controls.MenuPanel.SubtitleLetterCase", "Upper by default", () => new MenuPanel().SubtitleLetterCase),
             ("P:EmuSen.LunaP.Controls.MenuPanel.ShowsTitleBand", "True by default", () => new MenuPanel().ShowsTitleBand),
+            ("P:EmuSen.LunaP.Controls.SectionHeader.LetterCase", "None by default", () => new SectionHeader().LetterCase),
+            ("P:EmuSen.LunaP.Windowing.SheetLayer.MenuLook", "False by default", () => new EmuSen.LunaP.Windowing.SheetLayer().MenuLook),
+            ("F:EmuSen.LunaP.Controls.MenuLook.IsOnProperty", "False by default", () => MenuLook.GetIsOn(new Avalonia.Controls.Border())),
             ("P:EmuSen.LunaP.Controls.MenuPanel.FooterMaxLines", "1 by default", () => new MenuPanel().FooterMaxLines),
             ("P:EmuSen.LunaP.Controls.MenuPanel.OpeningScale", "1 by default", () => new MenuPanel().OpeningScale),
             ("P:EmuSen.LunaP.Controls.OnScreenKeyboard.MenuLook", "false by default", () => new OnScreenKeyboard(new TextBox(), new[] { KeyboardLayout.Letters }).MenuLook),
@@ -449,6 +452,9 @@ namespace EmuSen.LunaP.Tests
             ["P:EmuSen.LunaP.Controls.MenuRow.RowHeight"] = 54.0,
             ["P:EmuSen.LunaP.Controls.MenuRow.TextSize"] = 36.0,
             ["P:EmuSen.LunaP.Controls.MenuRow.LetterCase"] = EmuSen.LunaP.Media.LetterCase.Upper,
+            ["P:EmuSen.LunaP.Controls.SectionHeader.LetterCase"] = EmuSen.LunaP.Media.LetterCase.None,
+            ["P:EmuSen.LunaP.Windowing.SheetLayer.MenuLook"] = false,
+            ["F:EmuSen.LunaP.Controls.MenuLook.IsOnProperty"] = false,
         };
     }
 }

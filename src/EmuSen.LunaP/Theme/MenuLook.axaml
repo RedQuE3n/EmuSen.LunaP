@@ -1,0 +1,259 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- A big-screen menu's look for the stock controls under one element - see
+         docs/LunaP.md §196. MenuLook adds a fresh copy of this file to that
+         element's own Styles, so nothing outside it changes and taking the look
+         away is removing one entry.
+
+         The colours are MenuPanel's and MenuRow's defaults (§181): the panel
+         #1B1B1E, the title #B4B4B8, a row's text #9C9CA0, the chosen row's bar
+         #050507 and its text #EEEEF0, the rule #333337, a push button's outline
+         #55555A, the footer #86868A and the switch's accent #4C9AE8. They are
+         written out rather than bound, because a resource defined here must not
+         depend on one defined further up.
+
+         Sizes are design pixels for a screen 800 high: a host that scales its
+         menus (MenuPanel.Scale) lays this content out under the same scale. -->
+
+    <Styles.Resources>
+        <ResourceDictionary>
+            <!-- LunaP's own palette, for every Luna control under the element. -->
+            <Color x:Key="LunaSurfaceColor">#1B1B1E</Color>
+            <Color x:Key="LunaInputSurfaceColor">#0E0E10</Color>
+            <Color x:Key="LunaHudSurfaceColor">#F0161618</Color>
+            <Color x:Key="LunaBorderColor">#55555A</Color>
+            <Color x:Key="LunaTextColor">#9C9CA0</Color>
+            <Color x:Key="LunaMeterTextColor">#B4B4B8</Color>
+            <Color x:Key="LunaMutedColor">#86868A</Color>
+            <Color x:Key="LunaSectionHeaderColor">#B4B4B8</Color>
+            <Color x:Key="LunaAccentColor">#4C9AE8</Color>
+            <Color x:Key="LunaOnAccentColor">#FFFFFF</Color>
+            <SolidColorBrush x:Key="LunaSurface" Color="#1B1B1E" />
+            <SolidColorBrush x:Key="LunaInputSurface" Color="#0E0E10" />
+            <SolidColorBrush x:Key="LunaHudSurface" Color="#F0161618" />
+            <SolidColorBrush x:Key="LunaBorder" Color="#55555A" />
+            <SolidColorBrush x:Key="LunaText" Color="#9C9CA0" />
+            <SolidColorBrush x:Key="LunaMeterText" Color="#B4B4B8" />
+            <SolidColorBrush x:Key="LunaMuted" Color="#86868A" />
+            <SolidColorBrush x:Key="LunaSectionHeader" Color="#B4B4B8" />
+            <SolidColorBrush x:Key="LunaAccent" Color="#4C9AE8" />
+            <SolidColorBrush x:Key="LunaOnAccent" Color="#FFFFFF" />
+            <x:Double x:Key="LunaHintFontSize">20</x:Double>
+            <x:Double x:Key="LunaHeaderFontSize">28</x:Double>
+
+            <!-- Fluent's keys, which its templates look up where they draw, so the parts no style reaches follow too. -->
+            <SolidColorBrush x:Key="TextControlBackground" Color="#0E0E10" />
+            <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#0E0E10" />
+            <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#050507" />
+            <SolidColorBrush x:Key="TextControlForeground" Color="#D2D2D6" />
+            <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#D2D2D6" />
+            <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#EEEEF0" />
+            <SolidColorBrush x:Key="TextControlBorderBrush" Color="#55555A" />
+            <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#86868A" />
+            <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#EEEEF0" />
+            <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#86868A" />
+            <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#86868A" />
+            <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#86868A" />
+            <SolidColorBrush x:Key="TextControlButtonForeground" Color="#9C9CA0" />
+            <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="#4C9AE8" />
+
+            <SolidColorBrush x:Key="ComboBoxBackground" Color="#0E0E10" />
+            <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#0E0E10" />
+            <SolidColorBrush x:Key="ComboBoxBackgroundUnfocused" Color="#0E0E10" />
+            <SolidColorBrush x:Key="ComboBoxBackgroundFocused" Color="#050507" />
+            <SolidColorBrush x:Key="ComboBoxForeground" Color="#9C9CA0" />
+            <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#55555A" />
+            <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#86868A" />
+            <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushUnfocused" Color="#55555A" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#1B1B1E" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#333337" />
+            <SolidColorBrush x:Key="ComboBoxDropDownGlyphForeground" Color="#9C9CA0" />
+            <SolidColorBrush x:Key="ComboBoxItemForeground" Color="#9C9CA0" />
+            <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="#EEEEF0" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="#050507" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="#141416" />
+
+            <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#141416" />
+            <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#050507" />
+            <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
+            <SolidColorBrush x:Key="ButtonForeground" Color="#9C9CA0" />
+            <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#B4B4B8" />
+            <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#EEEEF0" />
+            <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="#55555A" />
+            <SolidColorBrush x:Key="ButtonBorderBrush" Color="#55555A" />
+            <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#86868A" />
+            <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#86868A" />
+            <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="#333337" />
+            <SolidColorBrush x:Key="RepeatButtonBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="RepeatButtonForeground" Color="#9C9CA0" />
+            <SolidColorBrush x:Key="ToggleButtonBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="#050507" />
+            <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="#EEEEF0" />
+
+            <SolidColorBrush x:Key="CheckBoxForegroundUnchecked" Color="#9C9CA0" />
+            <SolidColorBrush x:Key="CheckBoxForegroundChecked" Color="#9C9CA0" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUnchecked" Color="#86868A" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUnchecked" Color="Transparent" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="#4C9AE8" />
+            <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="#4C9AE8" />
+            <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="#FFFFFF" />
+
+            <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#4C9AE8" />
+            <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#4C9AE8" />
+            <SolidColorBrush x:Key="ToggleSwitchFillOff" Color="Transparent" />
+            <SolidColorBrush x:Key="ToggleSwitchStrokeOff" Color="#86868A" />
+            <SolidColorBrush x:Key="ToggleSwitchKnobFillOff" Color="#86868A" />
+            <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="ToggleSwitchContentForeground" Color="#9C9CA0" />
+
+            <SolidColorBrush x:Key="SliderTrackFill" Color="#333337" />
+            <SolidColorBrush x:Key="SliderTrackFillPointerOver" Color="#333337" />
+            <SolidColorBrush x:Key="SliderTrackValueFill" Color="#4C9AE8" />
+            <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="#4C9AE8" />
+            <SolidColorBrush x:Key="SliderThumbBackground" Color="#EEEEF0" />
+            <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="#EEEEF0" />
+            <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="#EEEEF0" />
+
+            <SolidColorBrush x:Key="ScrollBarPanningThumbBackground" Color="#55555A" />
+            <Color x:Key="ScrollBarThumbBackgroundColor">#55555A</Color>
+            <SolidColorBrush x:Key="ScrollBarThumbFillPointerOver" Color="#86868A" />
+            <SolidColorBrush x:Key="ScrollBarThumbFillPressed" Color="#86868A" />
+            <SolidColorBrush x:Key="ScrollBarTrackFill" Color="Transparent" />
+            <SolidColorBrush x:Key="ScrollBarTrackFillPointerOver" Color="#141416" />
+
+            <SolidColorBrush x:Key="TabItemHeaderForegroundUnselected" Color="#86868A" />
+            <SolidColorBrush x:Key="TabItemHeaderForegroundUnselectedPointerOver" Color="#B4B4B8" />
+            <SolidColorBrush x:Key="TabItemHeaderForegroundSelected" Color="#EEEEF0" />
+            <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPointerOver" Color="#EEEEF0" />
+            <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="#EEEEF0" />
+
+            <SolidColorBrush x:Key="ToolTipBackground" Color="#161618" />
+            <SolidColorBrush x:Key="ToolTipForeground" Color="#D2D2D6" />
+            <SolidColorBrush x:Key="ToolTipBorderBrush" Color="#333337" />
+            <Color x:Key="SystemChromeLowColor">#141416</Color>
+            <SolidColorBrush x:Key="SystemControlFocusVisualPrimaryBrush" Color="#EEEEF0" />
+            <SolidColorBrush x:Key="SystemControlFocusVisualSecondaryBrush" Color="#050507" />
+        </ResourceDictionary>
+    </Styles.Resources>
+
+    <!-- The element itself: the typeface, its size and colour, inherited by all text under it. -->
+    <Style Selector=":is(Control).menu-look">
+        <Setter Property="TextElement.FontFamily" Value="{DynamicResource LunaMenuFontFamily}" />
+        <Setter Property="TextElement.FontSize" Value="24" />
+        <Setter Property="TextElement.Foreground" Value="#9C9CA0" />
+    </Style>
+
+    <Style Selector="luna|SectionHeader">
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="FontSize" Value="28" />
+        <Setter Property="Foreground" Value="#B4B4B8" />
+        <Setter Property="LetterCase" Value="Upper" />
+    </Style>
+    <Style Selector="luna|HintText">
+        <Setter Property="Foreground" Value="#86868A" />
+        <Setter Property="FontSize" Value="20" />
+    </Style>
+
+    <!-- A push button: an outlined box in upper case, filled near black with light words while it has the focus, as MenuRows draws one under a menu's rows. -->
+    <Style Selector="Button, ToggleButton, RepeatButton">
+        <Setter Property="FontSize" Value="26" />
+        <Setter Property="MinHeight" Value="44" />
+        <Setter Property="Padding" Value="16,4" />
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="ContentTemplate" Value="{x:Static luna:MenuLook.UpperCaseText}" />
+        <Setter Property="FocusAdorner" Value="{x:Null}" />
+    </Style>
+    <Style Selector="Button:focus /template/ ContentPresenter#PART_ContentPresenter, ToggleButton:focus /template/ ContentPresenter#PART_ContentPresenter, RepeatButton:focus /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#050507" />
+        <Setter Property="Foreground" Value="#EEEEF0" />
+        <Setter Property="BorderBrush" Value="#86868A" />
+    </Style>
+
+    <!-- A list's rows: the menu's rows, ruled, the chosen one a bar across the whole width. -->
+    <Style Selector="ListBox">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="ListBoxItem">
+        <Setter Property="MinHeight" Value="42" />
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="BorderBrush" Value="#333337" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="Foreground" Value="#9C9CA0" />
+        <Setter Property="FocusAdorner" Value="{x:Null}" />
+    </Style>
+    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#141416" />
+        <Setter Property="Foreground" Value="#B4B4B8" />
+    </Style>
+    <!-- The bar follows the focus as well as the selection, for a table whose rows take the focus without being selected. -->
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter, ListBoxItem:focus-within /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#050507" />
+        <Setter Property="Foreground" Value="#EEEEF0" />
+    </Style>
+
+    <Style Selector="TextBox">
+        <Setter Property="FontSize" Value="26" />
+        <Setter Property="MinHeight" Value="44" />
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="CaretBrush" Value="#EEEEF0" />
+    </Style>
+
+    <Style Selector="ComboBox">
+        <Setter Property="FontSize" Value="26" />
+        <Setter Property="MinHeight" Value="44" />
+        <Setter Property="CornerRadius" Value="3" />
+    </Style>
+    <Style Selector="ComboBoxItem">
+        <Setter Property="FontSize" Value="26" />
+        <Setter Property="MinHeight" Value="42" />
+    </Style>
+    <Style Selector="ComboBox:dropdownopen ComboBoxItem:focus /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#050507" />
+        <Setter Property="Foreground" Value="#EEEEF0" />
+    </Style>
+    <Style Selector="ComboBox:dropdownopen ComboBoxItem:selected:not(:focus) /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#26262A" />
+        <Setter Property="Foreground" Value="#B4B4B8" />
+    </Style>
+
+    <Style Selector="CheckBox, ToggleSwitch">
+        <Setter Property="FontSize" Value="24" />
+        <Setter Property="Foreground" Value="#9C9CA0" />
+    </Style>
+
+    <Style Selector="TabItem">
+        <Setter Property="FontSize" Value="30" />
+        <Setter Property="MinHeight" Value="48" />
+        <Setter Property="HeaderTemplate" Value="{x:Static luna:MenuLook.UpperCaseText}" />
+    </Style>
+
+    <Style Selector="ProgressBar">
+        <Setter Property="Foreground" Value="#4C9AE8" />
+        <Setter Property="Background" Value="#333337" />
+        <Setter Property="MinHeight" Value="8" />
+        <Setter Property="CornerRadius" Value="4" />
+    </Style>
+
+    <Style Selector="ScrollBar /template/ Thumb">
+        <Setter Property="CornerRadius" Value="4" />
+    </Style>
+
+    <Style Selector="ToolTip">
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="CornerRadius" Value="3" />
+    </Style>
+
+    <!-- A card, a side panel and every bordered box LunaP draws: the menu's rounding. -->
+    <Style Selector="luna|Card">
+        <Setter Property="CornerRadius" Value="8" />
+    </Style>
+</Styles>

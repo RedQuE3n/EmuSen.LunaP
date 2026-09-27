@@ -1098,6 +1098,27 @@ public class EmuSen.LunaP.Controls.MenuFieldRow : Avalonia.Controls.Control
     public static readonly Avalonia.StyledProperty<string?> LabelProperty = null
     public string? Label { get; set; }
 
+public static class EmuSen.LunaP.Controls.MenuLook
+    public const string ClassName = "menu-look"
+    public const string FontFamilyKey = "LunaMenuFontFamily"
+    public static Avalonia.Styling.Styles CreateStyles()
+    public static System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? GetHints(Avalonia.Controls.Window window)
+    public static bool Covers(Avalonia.Controls.Control element)
+    public static bool GetIsOn(Avalonia.Controls.Control element)
+    public static double GetWidthFraction(Avalonia.Controls.Window window)
+    public static readonly Avalonia.AttachedProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>?> HintsProperty = null
+    public static readonly Avalonia.AttachedProperty<bool> IsOnProperty = false
+    public static readonly Avalonia.AttachedProperty<double> WidthFractionProperty = NaN
+    public static readonly Avalonia.AttachedProperty<string?> FooterProperty = null
+    public static readonly Avalonia.Controls.Templates.IDataTemplate UpperCaseText
+    public static readonly Avalonia.Data.Converters.IValueConverter UpperCase
+    public static string? GetFooter(Avalonia.Controls.Window window)
+    public static void SetFooter(Avalonia.Controls.Window window, string? value)
+    public static void SetHints(Avalonia.Controls.Window window, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? value)
+    public static void SetIsOn(Avalonia.Controls.Control element, bool value)
+    public static void SetWidthFraction(Avalonia.Controls.Window window, double value)
+    public static void WhenApplied(Avalonia.Controls.Control element, System.Action action)
+
 public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override Avalonia.Size ArrangeOverride(Avalonia.Size finalSize)
@@ -1503,7 +1524,11 @@ public class EmuSen.LunaP.Controls.ScrollLetterOverlay : Avalonia.Controls.Contr
     public string? Letters { get; set; }
 
 public class EmuSen.LunaP.Controls.SectionHeader : Avalonia.Controls.TextBlock
+    protected override Avalonia.Media.TextFormatting.TextLayout CreateTextLayout(string? text)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public EmuSen.LunaP.Media.LetterCase LetterCase { get; set; }
     public SectionHeader()
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = None
 
 public class EmuSen.LunaP.Controls.SidePanel : Avalonia.Controls.ContentControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
@@ -2169,10 +2194,15 @@ public class EmuSen.LunaP.Windowing.SheetLayer : Avalonia.Controls.Panel
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     public Avalonia.Controls.Control? SheetOf(Avalonia.Controls.Window window)
     public Avalonia.Controls.Window? Current { get; }
+    public EmuSen.LunaP.Controls.PadFamily HintFamily { get; set; }
     public SheetLayer()
     public System.Collections.Generic.IReadOnlyList<Avalonia.Controls.Window> Presented { get; }
+    public System.Func<Avalonia.Controls.Window, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>?>? MenuHintsFor { get; set; }
+    public System.Func<Avalonia.Controls.Window, bool>? MenuFrameFor { get; set; }
     public System.Threading.Tasks.Task Present(Avalonia.Controls.Window window)
+    public bool DrawsMenu(Avalonia.Controls.Window window)
     public bool IsPresenting { get; }
+    public bool MenuLook { get; set; }
     public bool PresentsWindows { get; set; }
     public double Scale { get; set; }
     public event System.Action PresentedChanged
@@ -2186,6 +2216,8 @@ public class EmuSen.LunaP.Windowing.SheetLayer : Avalonia.Controls.Panel
     public static readonly Avalonia.AttachedProperty<bool> ChromelessProperty = false
     public static readonly Avalonia.AttachedProperty<bool> IsCoveredProperty = false
     public static readonly Avalonia.AttachedProperty<bool> KeepsBeneathDrawnProperty = false
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadFamily> HintFamilyProperty = Generic
+    public static readonly Avalonia.StyledProperty<bool> MenuLookProperty = false
     public static readonly Avalonia.StyledProperty<bool> PresentsWindowsProperty = false
     public static readonly Avalonia.StyledProperty<double> ScaleProperty = 1
     public static readonly Avalonia.StyledProperty<string?> HintProperty = null

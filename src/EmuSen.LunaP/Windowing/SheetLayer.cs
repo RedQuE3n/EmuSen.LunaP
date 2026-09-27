@@ -9,6 +9,7 @@ using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using EmuSen.LunaP.Controls;
 
 namespace EmuSen.LunaP.Windowing
 {
@@ -52,6 +53,20 @@ namespace EmuSen.LunaP.Windowing
         public static readonly AttachedProperty<bool> ChromelessProperty =
             AvaloniaProperty.RegisterAttached<SheetLayer, Window, bool>("Chromeless");
 
+        /// <summary>Whether a sheet that does not draw its own chrome is framed as a big-screen menu, its content in the menu's look - see docs/LunaP.md §196.</summary>
+        public static readonly StyledProperty<bool> MenuLookProperty =
+            AvaloniaProperty.Register<SheetLayer, bool>(nameof(MenuLook));
+
+        /// <summary>The pad family whose buttons a menu-framed sheet's help bar draws.</summary>
+        public static readonly StyledProperty<PadFamily> HintFamilyProperty =
+            AvaloniaProperty.Register<SheetLayer, PadFamily>(nameof(HintFamily));
+
+        /// <summary>Which windows a layer with MenuLook frames as menus; null frames every one. A host keeps a window in the plain frame by answering false, such as one whose own look is still to come.</summary>
+        public Func<Window, bool>? MenuFrameFor { get; set; }
+
+        /// <summary>The help bar of a menu-framed sheet whose window names none of its own (MenuLook.Hints); null shows none.</summary>
+        public Func<Window, IReadOnlyList<HintEntry>?>? MenuHintsFor { get; set; }
+
         private readonly List<Sheet> _sheets = new();
 
         // What had the focus before the first sheet, given back when the last one goes.
@@ -78,6 +93,25 @@ namespace EmuSen.LunaP.Windowing
             get => GetValue(ScaleProperty);
             set => SetValue(ScaleProperty, value);
         }
+
+        /// <summary>Whether sheets presented from now on that do not draw their own chrome are framed as a big-screen menu. False by default.</summary>
+        public bool MenuLook
+        {
+            get => GetValue(MenuLookProperty);
+            set => SetValue(MenuLookProperty, value);
+        }
+
+        /// <summary>The pad family a menu-framed sheet's help bar draws.</summary>
+        public PadFamily HintFamily
+        {
+            get => GetValue(HintFamilyProperty);
+            set => SetValue(HintFamilyProperty, value);
+        }
+
+        /// <summary>Whether a presented window draws a menu of its own over what is behind it: chromeless, or framed as a menu by this layer.</summary>
+        /// <param name="window">A window presented on this layer.</param>
+        /// <returns>True for a menu, false for a plain sheet or a window not presented here.</returns>
+        public bool DrawsMenu(Window window) => _sheets.FirstOrDefault(s => ReferenceEquals(s.Window, window)) is { } sheet && sheet.OwnChrome;
 
         /// <summary>A line shown under every sheet, such as which buttons do what. Null shows none.</summary>
         public string? Hint
@@ -130,6 +164,7 @@ namespace EmuSen.LunaP.Windowing
             _sheets.Add(sheet);
             Presenters[window] = this;
             Children.Add(sheet.Root);
+            sheet.RefreshHints();
             ShowOnly(sheet);
             IsVisible = true;
 
@@ -157,7 +192,7 @@ namespace EmuSen.LunaP.Windowing
         {
             // A message box over a menu leaves the menu drawn and out of reach; any other sheet replaces what is beneath - §182.5.
             int at = _sheets.IndexOf(shown);
-            Sheet? beneath = shown.Chromeless && GetKeepsBeneathDrawn(shown.Window) && at > 0 && _sheets[at - 1].Chromeless ? _sheets[at - 1] : null;
+            Sheet? beneath = shown.Chromeless && GetKeepsBeneathDrawn(shown.Window) && at > 0 && _sheets[at - 1].OwnChrome ? _sheets[at - 1] : null;
             foreach (Sheet other in _sheets)
             {
                 other.Root.IsVisible = ReferenceEquals(other, shown) || ReferenceEquals(other, beneath);
@@ -165,7 +200,7 @@ namespace EmuSen.LunaP.Windowing
                 other.Root.SetValue(IsCoveredProperty, ReferenceEquals(other, beneath));
             }
             // A chromeless sheet's content draws what is behind it itself.
-            if (shown.Chromeless) Background = null;
+            if (shown.OwnChrome) Background = null;
             else this[!BackgroundProperty] = new DynamicResourceExtension("LunaHudSurface");
         }
 
@@ -265,6 +300,8 @@ namespace EmuSen.LunaP.Windowing
             public Window Window { get; }
             public Border Root { get; }
             public bool Chromeless { get; }
+            public bool MenuFramed { get; }
+            public bool OwnChrome => Chromeless || MenuFramed;
             public TaskCompletionSource Done { get; } = new();
 
             public Sheet(SheetLayer layer, Window window)
@@ -282,6 +319,16 @@ namespace EmuSen.LunaP.Windowing
                     Root = new Border { Child = _host, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch };
                     _host.HorizontalContentAlignment = HorizontalAlignment.Stretch;
                     _host.VerticalContentAlignment = VerticalAlignment.Stretch;
+                    KeyboardNavigation.SetTabNavigation(Root, KeyboardNavigationMode.Cycle);
+                    EmbeddedPopups.SetIsEnabled(Root, true);
+                    Root.KeyDown += OnKeyDown;
+                    return;
+                }
+
+                if (layer.MenuLook && layer.MenuFrameFor?.Invoke(window) != false)
+                {
+                    MenuFramed = true;
+                    Root = MenuFrame(layer, window);
                     KeyboardNavigation.SetTabNavigation(Root, KeyboardNavigationMode.Cycle);
                     EmbeddedPopups.SetIsEnabled(Root, true);
                     Root.KeyDown += OnKeyDown;
@@ -324,6 +371,54 @@ namespace EmuSen.LunaP.Windowing
                 Root.KeyDown += OnKeyDown;
                 Restyle();
             }
+
+            // The window's content in the menu's look, scaled as the menus are, in a menu panel titled by the window, with the help bar under it - see docs/LunaP.md §196.
+            private Border MenuFrame(SheetLayer layer, Window window)
+            {
+                _host.Padding = new Thickness(MenuSidePadding, MenuTopPadding, MenuSidePadding, 0);
+                _host.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+                _host.VerticalContentAlignment = VerticalAlignment.Stretch;
+                // Avalonia 12.1 shrinks a list's effective viewport by the scale again for a clipping child of a scaled control, so only the scaler clips - §196.4.
+                _host.ClipToBounds = false;
+                Controls.MenuLook.SetIsOn(_host, true);
+
+                var scaled = new LayoutTransformControl { Child = _host };
+                scaled.Bind(LayoutTransformControl.LayoutTransformProperty, scaled.GetObservable(MenuPanel.ScaleProperty, u => (ITransform)new ScaleTransform(u, u)));
+
+                double fraction = Controls.MenuLook.GetWidthFraction(window);
+                var panel = new MenuPanel { Name = "SheetMenu", RowPitch = 1, Child = scaled };
+                if (double.IsFinite(fraction) && fraction > 0)
+                {
+                    panel.WidthFraction = fraction;
+                    panel.MaxWidthToHeight = fraction * 1.75;
+                }
+                panel[!MenuPanel.TitleProperty] = window[!Window.TitleProperty];
+                panel.FooterSize = MenuFooterSize;
+                panel.Bind(MenuPanel.FooterProperty, window.GetObservable(Controls.MenuLook.FooterProperty, f => f?.ReplaceLineEndings(" ")));
+                panel.Bind(MenuPanel.FooterMaxLinesProperty, window.GetObservable(Controls.MenuLook.FooterProperty, f => string.IsNullOrEmpty(f) ? 1 : MenuFooterLines));
+                panel[!MenuPanel.HintFamilyProperty] = layer[!HintFamilyProperty];
+                _menu = panel;
+                window.PropertyChanged += (_, e) =>
+                {
+                    if (e.Property == Controls.MenuLook.HintsProperty) RefreshHints();
+                };
+                return new Border { Child = panel, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch };
+            }
+
+            private MenuPanel? _menu;
+
+            // The window's own help bar, else the layer's for it, read once the sheet is on the layer so the layer's can look at its content.
+            public void RefreshHints()
+            {
+                if (_menu is not null) _menu.Hints = Controls.MenuLook.GetHints(Window) ?? _layer.MenuHintsFor?.Invoke(Window);
+            }
+
+            // The content's inset inside a menu frame, in design pixels before the menu's scale.
+            private const double MenuSidePadding = 24, MenuTopPadding = 12;
+
+            // A window's footer in a menu frame: its size in design pixels, and the lines kept for it.
+            private const double MenuFooterSize = 20;
+            private const int MenuFooterLines = 3;
 
             public void Restyle()
             {
