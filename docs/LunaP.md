@@ -12488,6 +12488,38 @@ Next:2 . - Space:2 Erase:2 Done:2
 each of the two labels, measured at the key's font with no width limit, fits inside its key less the key's padding.
 Nothing else about the keyboard changed. Code and Game Genie had no key cut and are unchanged.
 
+### 182.9 Since the consumer's measurement of its reference's editor
+
+*2026-09-27.* The consumer captured its reference's own metadata editor at 1280 by 800 and measured it (its
+`EmuSen_BigPicture.md` §34.12). Four changes here follow from it, and one from its decision that a submenu replaces
+the menu it came from.
+
+- **The subtitled title band** is laid out from the measured editor: the title's centre 49 design pixels from the band's
+  top (was 46), the first subtitle line's 107 (was 92), the lines 32 apart as before, and 32 under the last (was 30).
+  Two lines now make a band of 171 (was 154); `MenuEditorTests` reads the new height. The earlier numbers were chosen
+  by eye from a menu without a subtitle; these replace them.
+- **An empty text row shows its placeholder.** `MenuRows.Apply(TextBox)` binds the row's value to the box's text, or to
+  its `PlaceholderText` while the text is empty, as the reference shows "unknown" for a field never set. A box with no
+  placeholder shows nothing, as before.
+- **A slider as an option row.** `MenuRows.Apply(Slider, label)` draws a slider as an option row: the arrows around its
+  value, the attached `MenuRows.Value` when one is set (a host's own words, "5 min") and otherwise the slider's value.
+  The template keeps no parts; Left and Right, and anything that sets `Value`, still move it, and the row follows.
+- **Only a box keeps the menu beneath drawn.** §182.5 drew any chromeless sheet over a chromeless sheet with the one
+  beneath still visible. A submenu, a list screen or a settings sheet over a menu should replace it, as the reference's
+  do; only a message box is drawn over the menu. `SheetLayer.KeepsBeneathDrawn`, an attached property the upper
+  window sets before it is presented, now decides it, and `DialogWindow.MenuConfirm` sets it. `MenuEditorTests`' message
+  box case gains a chromeless menu presented over the same menu, which hides it and restores it when closed.
+- **`MenuPanel.OpeningScale`** (1): the panel, its title, rows, buttons and footer drawn at a scale about the panel's
+  centre, for an opening that grows the menu into place. The help bar is not scaled and nothing is laid out again: the
+  panel is drawn under a transform, and the child and the buttons are given a `ScaleTransform` about the panel's centre,
+  which is taken off again at 1. A transform a host set on the child itself is left alone. The consumer measured its
+  reference's menus growing from half their size to their own, linearly, in 117 ms, the same curve as its launch
+  screen's card (its §34.14), and drives this property along that curve. `MenuEditorTests` checks that at 0.5 the panel's
+  colour covers half the width it covers at 1 across the panel's middle, the help bar and the layout are unchanged,
+  and at 1 the transforms are gone.
+
+The API baseline, `DocumentedDefaultTests` and the README's count follow.
+
 ## 184. A dim layer, and a picture that fades in
 
 *2026-09-27.* The consumer's big-screen library gains its reference frontend's screensaver (ES-DE's; the consumer's

@@ -60,6 +60,7 @@ namespace EmuSen.LunaP.Windowing
             Title = message;
             ClosesOnEscape = true;
             SheetLayer.SetChromeless(this, true);
+            SheetLayer.SetKeepsBeneathDrawn(this, true);
 
             var accept = MenuRows.ApplyButton(new Button { Name = "PART_Accept", Content = acceptText, IsDefault = true });
             accept.Click += (_, _) => Close(true);

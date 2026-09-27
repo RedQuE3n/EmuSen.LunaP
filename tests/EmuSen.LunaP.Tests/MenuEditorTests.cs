@@ -64,6 +64,13 @@ namespace EmuSen.LunaP.Tests
             other.Focus();
             Dispatcher.UIThread.RunJobs();
             Assert.False(row.IsHighlighted);
+
+            // Emptied, the row shows the box's placeholder, and the text again once typed.
+            box.PlaceholderText = "unknown";
+            box.Text = "";
+            Assert.Equal("unknown", row.Value);
+            box.Text = "Drift";
+            Assert.Equal("Drift", row.Value);
             window.Close();
         });
 
@@ -133,7 +140,7 @@ namespace EmuSen.LunaP.Tests
             var buttons = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Children = { MenuRows.ApplyButton(new Button { Content = "Save" }) } };
             var panel = new MenuPanel { Title = "Edit Metadata", Subtitle = "Aurora Drift\nAurora Drift.sfc", Child = rows, Buttons = buttons, FooterMaxLines = 2, FooterSize = 22 };
             ToolWindow window = Show(panel, 1280, 800);
-            Assert.Equal(154, panel.TitleBounds.Height, 0.5);
+            Assert.Equal(171, panel.TitleBounds.Height, 0.5);
             Assert.Equal(panel.TitleBounds.Bottom, rows.Bounds.Top, 0.5);
             Assert.Equal(rows.Bounds.Bottom, panel.ButtonsBounds.Top, 0.5);
             Rect save = new(buttons.TranslatePoint(default, panel)!.Value, buttons.Bounds.Size);
@@ -148,6 +155,38 @@ namespace EmuSen.LunaP.Tests
             window.UpdateLayout();
             Assert.Equal(0, panel.TitleBounds.Height);
             Assert.Equal(panel.PanelBounds.Top, rows.Bounds.Top, 0.5);
+            window.Close();
+        });
+
+        // An opening scale draws the panel and everything in it smaller about the panel's centre, and leaves the help bar and the layout alone.
+        [Fact]
+        public Task An_opening_scale_draws_the_panel_smaller_about_its_centre_and_not_the_help_bar() => UiTest.Run(() =>
+        {
+            var rows = new StackPanel { Children = { new MenuRow { Label = "One" }, new MenuRow { Label = "Two" } } };
+            var buttons = new StackPanel { Children = { MenuRows.ApplyButton(new Button { Content = "Back" }) } };
+            var panel = new MenuPanel { Title = "Main Menu", Child = rows, Buttons = buttons, Hints = [new HintEntry("Select")], PanelColor = Colors.Lime };
+            ToolWindow window = Show(panel, 1280, 800);
+            Rect whole = panel.PanelBounds;
+            Rect help = panel.HelpBar.Bounds;
+            int Lime(RenderedFrame f, int y) { int n = 0; for (int x = 0; x < f.Width; x++) if (Near(At(f, x, y), Colors.Lime)) n++; return n; }
+            int y0 = (int)whole.Center.Y;
+            int full = Lime(Frame(window), y0);
+
+            panel.OpeningScale = 0.5;
+            window.UpdateLayout();
+            RenderedFrame half = Frame(window);
+            Assert.Equal(whole, panel.PanelBounds);
+            Assert.Equal(help, panel.HelpBar.Bounds);
+            Assert.InRange(Lime(half, y0), full * 0.4, full * 0.6);
+            Assert.Equal(0, Lime(half, (int)(whole.Top + whole.Height * 0.1)));
+            Assert.Equal(0.5, Assert.IsType<ScaleTransform>(rows.RenderTransform).ScaleX);
+            Assert.Equal(0.5, Assert.IsType<ScaleTransform>(buttons.RenderTransform).ScaleX);
+
+            panel.OpeningScale = 1;
+            window.UpdateLayout();
+            Assert.Null(rows.RenderTransform);
+            Assert.Null(buttons.RenderTransform);
+            Assert.Equal(full, Lime(Frame(window), y0));
             window.Close();
         });
 
@@ -192,6 +231,17 @@ namespace EmuSen.LunaP.Tests
             host.UpdateLayout();
             Assert.False(menuRoot.IsVisible);
             plain.Close();
+
+            // So does a chromeless menu over it, as a submenu replaces its menu; only a box keeps the menu beneath drawn.
+            var submenu = new ToolWindow { Content = new MenuPanel { Title = "Submenu" } };
+            SheetLayer.SetChromeless(submenu, true);
+            _ = SheetLayer.Show(submenu, host);
+            host.UpdateLayout();
+            Assert.False(menuRoot.IsVisible);
+            Assert.False(SheetLayer.GetIsCovered(under));
+            submenu.Close();
+            host.UpdateLayout();
+            Assert.True(menuRoot.IsVisible);
             menu.Close();
             host.Close();
         });

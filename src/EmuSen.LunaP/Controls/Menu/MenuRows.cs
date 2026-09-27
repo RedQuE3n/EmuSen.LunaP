@@ -184,7 +184,7 @@ namespace EmuSen.LunaP.Controls
             return choice;
         }
 
-        /// <summary>Draws a text box as a row, its text as the value at the right; whatever types into it (a keyboard, an on-screen keyboard) still does, and the row is highlighted while it has the focus.</summary>
+        /// <summary>Draws a text box as a row, its text as the value at the right, or its placeholder while it is empty; whatever types into it (a keyboard, an on-screen keyboard) still does, and the row is highlighted while it has the focus.</summary>
         /// <param name="box">The text box.</param>
         /// <param name="label">The row's label.</param>
         /// <param name="kind">What the row offers beside its label; Submenu, the default, marks that choosing it opens an editor.</param>
@@ -196,7 +196,9 @@ namespace EmuSen.LunaP.Controls
             box.Template = new FuncControlTemplate<TextBox>((t, scope) =>
             {
                 MenuRow row = Row(t, null, t.GetObservable(InputElement.IsFocusedProperty));
-                row.Bind(MenuRow.ValueProperty, t.GetObservable(TextBox.TextProperty, v => t.PasswordChar != default && !t.RevealPassword ? new string(t.PasswordChar, v?.Length ?? 0) : v));
+                // An empty box shows its placeholder as the value, as a menu shows "unknown" for a field never set - §182.9.
+                row.Bind(MenuRow.ValueProperty, t.GetObservable(TextBox.TextProperty, v => string.IsNullOrEmpty(v) ? t.PlaceholderText
+                    : t.PasswordChar != default && !t.RevealPassword ? new string(t.PasswordChar, v.Length) : v));
                 // The box's own part, kept and never shown, since a text box requires it of any template.
                 var presenter = new TextPresenter { Name = "PART_TextPresenter", IsVisible = false };
                 presenter.RegisterInNameScope(scope);
@@ -229,6 +231,28 @@ namespace EmuSen.LunaP.Controls
             Plain(toggle);
             toggle.MinHeight = 0;
             return toggle;
+        }
+
+        /// <summary>Draws a slider as an option row, its value between the arrows: the attached Value when one is set, such as "5 min", else the slider's own value; Left and Right, or anything that sets Value, still move it.</summary>
+        /// <param name="slider">The slider to draw as a row.</param>
+        /// <param name="label">The row's label.</param>
+        /// <returns>The same slider.</returns>
+        public static Slider Apply(Slider slider, string label)
+        {
+            SetKind(slider, MenuRowKind.Option);
+            SetLabel(slider, label);
+            slider.Template = new FuncControlTemplate<Slider>((s, _) =>
+            {
+                MenuRow row = Row(s, null, s.GetObservable(InputElement.IsFocusedProperty));
+                void Show() => row.Value = GetValue(s) ?? s.Value.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+                s.PropertyChanged += (_, e) => { if (e.Property == RangeBase.ValueProperty || e.Property == ValueProperty) Show(); };
+                Show();
+                return row;
+            });
+            Plain(slider);
+            slider.MinHeight = 0;
+            slider.MinWidth = 0;
+            return slider;
         }
 
         /// <summary>Draws a list's rows as menu rows; each row's label, value and kind are read from its container, set when the container is prepared.</summary>

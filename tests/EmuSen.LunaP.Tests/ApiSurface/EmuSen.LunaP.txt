@@ -1032,6 +1032,7 @@ public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     public bool ShowsTitleBand { get; set; }
     public double FooterSize { get; set; }
     public double MaxWidthToHeight { get; set; }
+    public double OpeningScale { get; set; }
     public double PanelCornerRadius { get; set; }
     public double RowPitch { get; set; }
     public double SubtitleSize { get; set; }
@@ -1056,6 +1057,7 @@ public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     public static readonly Avalonia.StyledProperty<bool> ShowsTitleBandProperty = true
     public static readonly Avalonia.StyledProperty<double> FooterSizeProperty = 26
     public static readonly Avalonia.StyledProperty<double> MaxWidthToHeightProperty = 1.05
+    public static readonly Avalonia.StyledProperty<double> OpeningScaleProperty = 1
     public static readonly Avalonia.StyledProperty<double> PanelCornerRadiusProperty = 16
     public static readonly Avalonia.StyledProperty<double> RowPitchProperty = 54
     public static readonly Avalonia.StyledProperty<double> SubtitleSizeProperty = 26
@@ -1141,6 +1143,7 @@ public struct EmuSen.LunaP.Controls.MenuRowLayout : System.ValueType, System.IEq
 
 public static class EmuSen.LunaP.Controls.MenuRows
     public static Avalonia.Controls.ComboBox Apply(Avalonia.Controls.ComboBox choice, string label)
+    public static Avalonia.Controls.Slider Apply(Avalonia.Controls.Slider slider, string label)
     public static Avalonia.Controls.TextBox Apply(Avalonia.Controls.TextBox box, string label, EmuSen.LunaP.Controls.MenuRowKind kind = 1)
     public static Avalonia.Controls.ToggleSwitch Apply(Avalonia.Controls.ToggleSwitch toggle, string label)
     public static Avalonia.Media.Color? GetValueColor(Avalonia.Controls.Control control)
@@ -2086,13 +2089,16 @@ public class EmuSen.LunaP.Windowing.SheetLayer : Avalonia.Controls.Panel
     public static System.Threading.Tasks.Task<TResult?> ShowDialog<TResult>(EmuSen.LunaP.Windowing.ToolWindow dialog, Avalonia.Controls.Window owner)
     public static bool GetChromeless(Avalonia.Controls.Window window)
     public static bool GetIsCovered(Avalonia.Controls.Control element)
+    public static bool GetKeepsBeneathDrawn(Avalonia.Controls.Window window)
     public static readonly Avalonia.AttachedProperty<bool> ChromelessProperty = false
     public static readonly Avalonia.AttachedProperty<bool> IsCoveredProperty = false
+    public static readonly Avalonia.AttachedProperty<bool> KeepsBeneathDrawnProperty = false
     public static readonly Avalonia.StyledProperty<bool> PresentsWindowsProperty = false
     public static readonly Avalonia.StyledProperty<double> ScaleProperty = 1
     public static readonly Avalonia.StyledProperty<string?> HintProperty = null
     public static void Activate(Avalonia.Controls.Window window)
     public static void SetChromeless(Avalonia.Controls.Window window, bool value)
+    public static void SetKeepsBeneathDrawn(Avalonia.Controls.Window window, bool value)
     public string? Hint { get; set; }
     public void BringToFront(Avalonia.Controls.Window window)
 
