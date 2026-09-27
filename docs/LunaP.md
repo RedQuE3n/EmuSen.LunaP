@@ -12619,7 +12619,7 @@ that ignores its item's opacity, since this repository's reflection test draws i
 typeface, and its battery lying on its side. The consumer's side-by-side pictures against its reference (ES-DE 3.4.1)
 showed the letter where the reference draws the Bluetooth rune. The reference was then run with every indicator forced
 on, and each icon's ink box read from its captures at 1280×800 and 1920×1200 (the consumer's `EmuSen_BigPicture.md`
-§38). All four built-in icons are now geometry, each in a **square** box `IconHeight` on a side, where the battery's
+§39). All four built-in icons are now geometry, each in a **square** box `IconHeight` on a side, where the battery's
 used to be 1.6 times as wide:
 
 - **Bluetooth:** the rune, a stem and two crossing arms, 0.54 of the box across and 0.77 down, centred, stroked at
@@ -12649,7 +12649,7 @@ for every indicator.
 
 *2026-09-27.* Thirty-two of the 66 themes on the consumer's reference list (ES-DE's) set a carousel's
 `selectedItemMargins`, and thirty-three its `lineSpacing`; the consumer measured both from its reference's captures (its
-`EmuSen_BigPicture.md` §38) and this section adds them to `ImageCarousel`.
+`EmuSen_BigPicture.md` §39) and this section adds them to `ImageCarousel`.
 
 - **`SelectedItemMargins`** is extra room along a row before the selected item (X) and after it (Y), in pixels, either
   negative. Every item on that side of the selection moves by it, not only the neighbour: the reference's captures put
@@ -12673,7 +12673,7 @@ icon font it ships; the consumer's rule is that such pictures are its own drawin
 Q9). `InfoLine` draws one line of `InfoItem`s, each an `InfoIcon` (`Gamepad`, `Star`, `Filter`, `Folder` or `None`)
 followed by its text, in one typeface, size and colour.
 
-**Proportions, in ems, from the reference's captures at a 36 px em** (the consumer's §38): the gamepad 1.06 wide and
+**Proportions, in ems, from the reference's captures at a 36 px em** (the consumer's §39): the gamepad 1.06 wide and
 0.58 tall standing on the baseline, a rounded body with a cross and two buttons cut out; the star 0.92 wide and 0.87 tall,
 its centre 0.35 above the baseline and its inner corners at half its radius; the funnel 0.78 wide, its stem ending just
 below the baseline; the open folder 1.06 wide and 0.78 tall. A picture is followed by 0.3 ems before its text, and items
@@ -12702,7 +12702,7 @@ reached, and the canvas after the last frame drawn: stepping forward draws one f
 The control keeps at most 32 finished frames as bitmaps and starts again when it has more.
 
 **Timing, as measured from the reference** by recording it at 30 frames a second on probe GIFs whose frames had
-different delays (the consumer's §38):
+different delays (the consumer's §39):
 
 - **Every frame is shown for the first frame's delay.** A GIF of 100, 200, 300 and 400 ms frames played at 100 ms a
   frame; one of 300, 100, 100 and 100 ms at 300 ms a frame; one of 100, 100, 100 and 700 ms at 100 ms. A first delay of
@@ -12728,7 +12728,7 @@ file shows nothing.
 
 ### 194.1 Mutants for §191 to §194
 
-Eleven mutants, run by the consumer's runner (its `EmuSen_BigPicture.md` §38.9) against this repository's tests and then
+Eleven mutants, run by the consumer's runner (its `EmuSen_BigPicture.md` §39.9) against this repository's tests and then
 the consumer's: the first frame not held; the last frame's delay for all; a bounce's pass one way; disposal 2 ignored; a
 kept canvas taken after drawing; interlace ignored; transparency ignored; the margins jumping while the row moves; the
 percentage after a spacing; the rune filling its box; the folder never first. **Six were caught at once and five
