@@ -140,11 +140,7 @@ namespace EmuSen.LunaP.Tests
 
         private static readonly Regex FileCitation = new(@"\b([A-Za-z0-9_][A-Za-z0-9_.-]*\.md)\b");
 
-        // Named on purpose and deliberately absent, for two different reasons.
-        //
-        // CONTRIBUTING.md is gitignored - local working configuration rather than documentation the
-        // project carries - so requiring it would turn a
-        // deliberate absence into a suite that is red on CI and green nowhere else.
+        // Named on purpose and deliberately absent.
         //
         // EmuSen_Project_Overview_v2.md stayed behind when LunaP left EmuSen (§19, §20). LunaApp.cs
         // names it while saying in the same breath that the measurement behind it is unreachable,
@@ -152,7 +148,7 @@ namespace EmuSen.LunaP.Tests
         // That is the §44 register working as intended - a retired source, retired in the open - and
         // an exclusion here rather than a rewritten comment is what keeps it that way.
         private static readonly HashSet<string> AbsentByDesign =
-            new(StringComparer.OrdinalIgnoreCase) { "CONTRIBUTING.md", "EmuSen_Project_Overview_v2.md" };
+            new(StringComparer.OrdinalIgnoreCase) { "EmuSen_Project_Overview_v2.md" };
 
         // TRACKED, NOT MERELY PRESENT - and that distinction is the whole of this guard.
         //

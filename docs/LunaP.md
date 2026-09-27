@@ -8630,9 +8630,7 @@ half of the same job.
 working copy and found nothing, which is the precise reason this one shells out to `git ls-files`.
 Written to fail first: it named `PLAN-table.md` in four files before either plan was staged.
 
-Two exclusions, and both are real rather than convenient. `CONTRIBUTING.md` is gitignored on purpose —
-local working configuration rather than documentation the project carries —
-so requiring it would produce a suite that is red on CI and green nowhere else.
+One exclusion, and it is real rather than convenient.
 `EmuSen_Project_Overview_v2.md` stayed behind when LunaP left EmuSen; `LunaApp.cs` names it while
 saying in the same sentence that the measurement behind it is unreachable, and spells it out rather
 than writing a `§` *precisely so it is not read as a live citation*. The guard's regex matched anyway.
@@ -9334,7 +9332,7 @@ rather than to an argument.
   gets a working program that writes to the wrong place, with nothing said.
 
 That last one is not hypothetical. BIMA-CSharp carries a standing warning in its
-own CONTRIBUTING.md — *"Install the store before anything reads a setting [...] Reaching
+own working notes — *"Install the store before anything reads a setting [...] Reaching
 for a setting first leaves two stores half-populated, and under a test runner it
 writes into a directory named after the runner"* — and its `Program.cs` spends a
 paragraph on the ordering. **A consumer documenting a footgun is the toolkit
@@ -9377,7 +9375,7 @@ The interface is three methods, and one of them is not like the others:
 `Load` and `Save` are a keyed store and say nothing about how it is kept.
 `Directory` returns **a filesystem path**, which forces every implementation to be
 file-backed or to lie. BIMA implements this seam over SQLite and has to hand back
-a real directory anyway; its CONTRIBUTING.md records that the seam *"leaks a file model
+a real directory anyway; its working notes record that the seam *"leaks a file model
 on purpose"*.
 
 The two jobs are genuinely different things: a place to keep settings, and a

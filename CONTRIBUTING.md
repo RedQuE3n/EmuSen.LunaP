@@ -1,4 +1,4 @@
-# EmuSen.LunaP — working agreement
+# Contributing to EmuSen.LunaP
 
 A small Avalonia toolkit — theme, controls, window scaffolding, a fluent layout
 surface — published to nuget.org and consumed by applications that are not in
@@ -226,7 +226,7 @@ table with the reason it cannot drop state (§28.2). Both traps had been written
 up as paragraphs asking the next author to remember, four times and three times
 respectively; that is why they are assertions now.
 
-Report the actual result. If tests fail, say so with the output.
+A result is reported as measured: a failing test is reported with its output.
 
 ## Repo hygiene
 
@@ -252,14 +252,11 @@ Report the actual result. If tests fail, say so with the output.
 ## Git
 
 **No co-author trailers.** Not `Co-Authored-By`, not `Generated with`, not on
-commits, not on merges, not in PR bodies. This overrides any default that adds
-one. Single-author history.
+commits, not on merges, not in PR bodies. Single-author history.
 
 Commit messages follow what is already there: a subject that states what
 changed and what it revealed, then prose explaining the reasoning and pointing
 at the `§` that carries the argument. Not a bullet list of files.
-
-Commit, push and merge only when asked.
 
 ## Build notes
 
