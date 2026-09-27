@@ -14,6 +14,13 @@ answer.
 
 ## Unreleased
 
+- **`ImageCarousel` turns, offsets, clips and reflects (`§190`).** New: `Layout` (`CarouselLayout.Row` or `Wheel`),
+  `WheelRotation`, `WheelOrigin`, `ItemsBefore`, `ItemsAfter`, `ItemsUpright`, `WheelHorizontalAlignment`,
+  `WheelVerticalAlignment`, `ContentOffset`, `Reflections`, `ReflectionOpacity`, `ReflectionFalloff`,
+  `ShownReflections` and `WheelTransform`. **Behaviour changes:** the carousel now clips to its box; a row's selected
+  item grows from the edge its cross-axis alignment names rather than from its centre; each item's `RenderTransform`
+  is a `MatrixTransform`, where it was a `ScaleTransform`.
+
 - **A big-screen menu, new and additive (`§181`).** `MenuPanel` draws a wide centred panel with a large title, a
   footer and a help bar; `MenuRow` draws an upper-case row with a value, option arrows, a chevron or a switch, and a
   full-width bar when highlighted; `MenuRows` draws a `Button`, a `ComboBox` or a `ListBox`'s rows that way without

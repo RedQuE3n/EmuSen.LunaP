@@ -70,8 +70,8 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(new Rect(500, 100, 100, 200), five.Bounds);
             Assert.Equal(0.2 + 0.8 * 0.75, four.Opacity, 9);
             Assert.Equal(0.2 + 0.8 * 0.25, five.Opacity, 9);
-            Assert.Equal(1 + 0.5 * 0.75, Assert.IsType<ScaleTransform>(four.RenderTransform).ScaleX, 9);
-            Assert.Equal(1 + 0.5 * 0.25, Assert.IsType<ScaleTransform>(five.RenderTransform).ScaleX, 9);
+            Assert.Equal(1 + 0.5 * 0.75, Assert.IsType<MatrixTransform>(four.RenderTransform).Matrix.M11, 9);
+            Assert.Equal(1 + 0.5 * 0.25, Assert.IsType<MatrixTransform>(five.RenderTransform).Matrix.M11, 9);
             Assert.Same(four, carousel.Shown[^1].Child);
 
             carousel.Position = 4.75;

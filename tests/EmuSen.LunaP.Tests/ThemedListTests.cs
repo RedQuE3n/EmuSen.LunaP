@@ -189,7 +189,7 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(0, other.Saturation);
             Assert.Equal(Colors.White, selected.Tint);
             Assert.Equal(Color.FromRgb(127, 127, 127), other.Tint);
-            Assert.IsType<ScaleTransform>(selected.RenderTransform);
+            Assert.Equal(1.5, Assert.IsType<MatrixTransform>(selected.RenderTransform).Matrix.M11, 9);
             Assert.Null(other.RenderTransform);
             window.Close();
         });
