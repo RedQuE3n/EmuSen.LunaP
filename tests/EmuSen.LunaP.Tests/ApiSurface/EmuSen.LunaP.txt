@@ -246,6 +246,7 @@ public class EmuSen.LunaP.Controls.ControllerDiagram : Avalonia.Controls.Control
     public System.Collections.Generic.IReadOnlyCollection<string> Pressed { get; }
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.DiagramRegion> Regions { get; }
     public System.Collections.Generic.IReadOnlyList<string> Sticks { get; }
+    public System.ValueTuple<Avalonia.Point, Avalonia.Point>? LeaderOf(string region)
     public bool IsInteractive { get; set; }
     public bool IsPressed(string region)
     public bool MoveSelection(Avalonia.Input.NavigationDirection direction)

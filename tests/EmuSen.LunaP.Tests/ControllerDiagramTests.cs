@@ -206,15 +206,71 @@ namespace EmuSen.LunaP.Tests
             Color accent = Color.Parse("#FF00FF");
             diagram.Resources["LunaAccentColor"] = accent;
             ulong none = UiTest.Redraw(window).Hash;
+            // Counted on the half of the region away from its label, where its line does not reach, so only a ring is counted.
+            static bool Magenta(Color c) => c.R > c.G + 80 && c.B > c.G + 80;
             foreach (DiagramRegion region in diagram.Regions)
             {
-                Rect box = diagram.RegionRect(region.Id).Inflate(12);
+                Rect r = diagram.RegionRect(region.Id).Inflate(12);
+                Rect far = region.Side switch
+                {
+                    DiagramSide.Left => new Rect(r.Center.X, r.Y, r.Width / 2, r.Height),
+                    DiagramSide.Right => new Rect(r.X, r.Y, r.Width / 2, r.Height),
+                    DiagramSide.Top => new Rect(r.X, r.Center.Y, r.Width, r.Height / 2),
+                    _ => new Rect(r.X, r.Y, r.Width, r.Height / 2),
+                };
+                diagram.SelectedRegion = null;
+                int was = Count(UiTest.Redraw(window), far, Magenta);
                 diagram.SelectedRegion = region.Id;
-                int ringed = Count(UiTest.Redraw(window), box, c => Near(c, accent, 30));
-                Assert.True(ringed > 40, $"{region.Id} selected drew {ringed} accent pixels about it");
+                int ringed = Count(UiTest.Redraw(window), far, Magenta);
+                Assert.True(ringed > was + 20, $"{region.Id} selected drew {ringed} accent pixels on its far half, {was} before");
             }
             diagram.SelectedRegion = null;
             Assert.Equal(none, UiTest.Redraw(window).Hash);
+            window.Close();
+        });
+
+        // Each label's line runs from the label to its region, and meets a button at the edge facing the label, not through its letter.
+        [Theory]
+        [InlineData(ControllerLayout.Snes, 1100, 640)]
+        [InlineData(ControllerLayout.Snes, 1700, 500)]
+        [InlineData(ControllerLayout.Snes, 700, 900)]
+        [InlineData(ControllerLayout.Nintendo64, 1100, 640)]
+        [InlineData(ControllerLayout.Nintendo64, 1700, 500)]
+        [InlineData(ControllerLayout.Nintendo64, 700, 900)]
+        public Task Each_label_s_line_runs_from_the_label_to_its_region(ControllerLayout layout, double w, double h) => UiTest.Run(() =>
+        {
+            (ToolWindow window, ControllerDiagram diagram) = Shown(layout, w, h);
+            foreach (DiagramRegion region in diagram.Regions)
+            {
+                (Point from, Point to) = diagram.LeaderOf(region.Id)!.Value;
+                Rect label = diagram.LabelOf(region.Id)!.Bounds.Inflate(1);
+                Assert.True(label.Contains(from), $"{region.Id}'s line starts at {from}, off its label {label}");
+                Assert.True(diagram.RegionRect(region.Id).Inflate(2).Contains(to), $"{region.Id}'s line ends at {to}, off its region {diagram.RegionRect(region.Id)}");
+            }
+            Rect a = diagram.RegionRect(layout == ControllerLayout.Snes ? "X" : "A");
+            Assert.True(diagram.LeaderOf(layout == ControllerLayout.Snes ? "X" : "A")!.Value.To.X > a.Center.X + a.Width * 0.25);
+            Assert.Null(diagram.LeaderOf("NoSuchRegion"));
+            window.Close();
+        });
+
+        // A cross's arm is hit inside the cross's rounded end, not in the square corner of the box it is cut from.
+        [Fact]
+        public Task A_cross_s_arm_is_hit_only_inside_the_cross() => UiTest.Run(() =>
+        {
+            (ToolWindow window, ControllerDiagram diagram) = Shown(ControllerLayout.Snes, 1600, 900);
+            foreach (string arm in new[] { "Up", "Down", "Left", "Right" })
+            {
+                Rect box = diagram.RegionRect(arm);
+                Point corner = arm switch
+                {
+                    "Up" => box.TopLeft + new Vector(1, 1),
+                    "Down" => box.BottomRight - new Vector(1, 1),
+                    "Left" => box.BottomLeft + new Vector(1, -1),
+                    _ => box.TopRight + new Vector(-1, 1),
+                };
+                Assert.NotEqual(arm, diagram.RegionAt(corner));
+                Assert.Equal(arm, diagram.RegionAt(diagram.PointIn(arm)!.Value));
+            }
             window.Close();
         });
 

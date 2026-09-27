@@ -12872,7 +12872,9 @@ the letter printed on the button.
 **Size.** The labels grow with the space (a unit of `min(width / 1100, height / 640)`), and never fall far below the text
 around them: the unit is at least 0.85 of the inherited font size over 14, where the space allows it. The second rule
 was added when the first pictures of a big-screen sheet, whose text is scaled up, showed labels at nine pixels beside
-twenty-pixel text. A column of labels taller than the space shrinks them all, so none spills into the row below: the
+twenty-pixel text. The diagram also measures again when that text changes size; before it did,
+`Labels_follow_the_size_of_the_text_around_them` found labels 54 px high with 14 px text and still 54 px with 26 px
+(66 px with the fix, the unit being capped by the space). A column of labels taller than the space shrinks them all, so none spills into the row below: the
 Nintendo 64's left column at 1920 × 1200 on a big-screen sheet overlapped its bottom row's first label before that rule.
 Everything is drawn as geometry and text at the size it is shown; there is no bitmap and no scaled sampling anywhere.
 
@@ -12886,6 +12888,10 @@ kit's rule that every public templated control gets one (§28.1) holds, and a ho
 `ControllerDiagram.LabelOf` as a `Button`, and asks `RegionOf` which region an element is the label of. Its accessible
 name is the region's name and its help text says the binding ("Key X, pad East").
 
+A label chooses its region on its `Click` event, not in `OnClick`: the consumer's pad router presses a focused button by
+raising `Click` itself, which does not call `OnClick`, and the first version, listening in `OnClick`, did nothing when
+pressed that way. The test that raises `Click` on a label found it.
+
 ### 198.4 What a host sets and asks
 
 - `SetBinding(region, key, pad)`: the two strings a label shows.
@@ -12897,6 +12903,7 @@ name is the region's name and its help text says the binding ("Key X, pad East")
 - `SelectedRegion`: a ring in the accent around the region and its label; it follows the focused label, and `Select`
   sets it and focuses the label.
 - `RegionAt(point)` and `PointIn(region)`: what a click at a point hits, and a point a click on a region would land on.
+- `LeaderOf(region)`: the ends of the line joining the region's label to it.
 - `IsInteractive`: off, the labels take no focus and a click chooses nothing.
 - `RegionInvoked`: a region chosen by a click on the drawing, a click on its label, or its label pressed.
 
@@ -12918,19 +12925,49 @@ and still sends Y right to A, straight across, rather than to X or B, which are 
 
 ### 198.6 Tests
 
-`ControllerDiagramTests` (21 cases): a point in each region hits that region, and the corners hit nothing; pressing each
+`ControllerDiagramTests` (33 cases): a point in each region hits that region, and the corners hit nothing; the Nintendo
+64's Z, drawn behind the middle grip, is hit where it shows and not through the shell; the selected region is ringed in
+the accent (counted on the half of the region away from its label, where its line does not reach) and the ring goes with
+the selection; a cross's arm is hit inside the cross's rounded end and not in the square corner of the box it is cut
+from; each label's line starts on the label and ends on its region, at the edge facing the label, at three sizes each; pressing each
 region draws it in the accent and letting go draws the frame as it was, pixel for pixel; a stick's knob moves by its
 position, stops at its travel and is drawn where it is said to be; every region reaches every other by moving the
 selection; moving goes to the nearest region that way (A up to X, Y right to A) and stops at the edge; at three sizes each,
-every region has a label inside the control and no label overlaps another; a label says its bindings to a reader, and a
+every region has a label inside the control and no label overlaps another (and in a short, wide space, 1000 × 420, where
+the Nintendo 64's columns must shrink); labels follow the size of the text around them; a label says its bindings to a reader, and a
 click on it or on the drawing chooses its region, except when the diagram is not interactive; the arrow keys move from a
 focused label; changing the layout rebuilds the regions; `Spread` centres a group on its wishes and keeps it in the span;
 each drawing is drawn at a thumbnail's size and a large screen's. `Pictures_for_review` writes each drawing, idle and
 lit, to a folder named by `EMUSEN_DIAGRAM_DUMP`, for a person to look at, and does nothing otherwise.
 
-### 198.7 What is not here
+### 198.7 Mutants
+
+Seventeen mutants of this section's code, L1 to L17, one rule each, run by the consumer's runner
+(`~/.cache/emusen/probe/bindings/mutate.py`, its `EmuSen_BigPicture.md` §42.6) against `ControllerDiagramTests`:
+pressed not drawn; a cross's arm hit outside its rounded end; a region behind the shell hit through it; a group of
+labels started at its first label's wish; a move past the edge reported as a move; the router's score for neighbours; the
+labels centred without the drawing; a column too tall not shrunk; the text around the labels ignored; a stick not
+clamped; the knob drawn at rest; a label's click choosing nothing; a click on the drawing choosing nothing; a diagram
+that is not interactive still choosing; no ring for the selected region; a line meeting a button's middle; the diagram
+not measuring again when the text around it changes size.
+
+**Thirteen were caught on the first run and four survived.** The arm's corner (L2): every hit test landed in the middle
+of a region; `A_cross_s_arm_is_hit_only_inside_the_cross` now clicks each arm's square corner. The ring (L15): the test
+counted accent pixels around the region, and the selected region's line and dot are in the accent too, so the count held
+without a ring; it now counts on the half of the region away from its label. The line's end (L16): nothing looked at
+where a line ends; `LeaderOf` was added so a test can, and `Each_label_s_line_runs_from_the_label_to_its_region` does.
+All three were caught on the second run.
+
+**The fourth, L7, still survives, and is recorded rather than excused.** The pass that centres the drawing and its
+labels together moves both by the same amount; the mutant moves the labels and not the drawing, so their lines would no
+longer meet their regions. The line test does not see it, at six sizes of both layouts, because the shift is under the
+test's two pixels: both drawn layouts use all four bands of labels, and bands on opposite sides that are both present
+leave the composition centred already. The pass mattered only for the first Super NES layout, which had no row above. It
+will be measurable with the first drawing that leaves a band empty, and the line test will then catch the mutant; until
+then it is a pass that does nothing measurable for the drawings there are.
+
+### 198.8 What is not here
 
 - The drawings of the NES pad, the Game Boy and a modern gamepad.
-- Mutants.
 - A layout that puts labels in two columns a side when a wide space would let the drawing grow; on a wide, short space
   the drawing is bounded by its height, and the space either side of the labels is left empty.

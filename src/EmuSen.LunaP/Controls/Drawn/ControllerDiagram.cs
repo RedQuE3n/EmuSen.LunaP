@@ -243,6 +243,12 @@ namespace EmuSen.LunaP.Controls
             art.Shape.FillContains(p) && (art.Clip is null || art.Clip.FillContains(p))
             && (!art.Behind || !_art.Body.Any(b => b.Fill is not null && b.Shape.FillContains(p)));
 
+        /// <summary>The line joining a region's label to it: from the label's edge to the point where it meets the region, in the diagram's own coordinates.</summary>
+        /// <param name="region">The region's id.</param>
+        /// <returns>The line's two ends, or null for an id the drawing lacks or before the diagram is arranged.</returns>
+        public (Point From, Point To)? LeaderOf(string region) =>
+            _leaders.FirstOrDefault(l => l.Region == region) is { Region: not null } leader ? (leader.From, leader.To) : null;
+
         /// <summary>The box a region is drawn in, in the diagram's own coordinates.</summary>
         /// <param name="region">The region's id.</param>
         /// <returns>The box; empty for an id the drawing lacks.</returns>
