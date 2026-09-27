@@ -36,6 +36,7 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<PadFamily> HintFamilyProperty = AvaloniaProperty.Register<MenuPanel, PadFamily>(nameof(HintFamily));
         public static readonly StyledProperty<Color> HintColorProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(HintColor), Color.FromRgb(0xD2, 0xD2, 0xD6));
         public static readonly StyledProperty<double> RowPitchProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(RowPitch), 54);
+        public static readonly StyledProperty<double> OpeningScaleProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(OpeningScale), 1.0);
         public static readonly StyledProperty<string?> SubtitleProperty = AvaloniaProperty.Register<MenuPanel, string?>(nameof(Subtitle));
         public static readonly StyledProperty<double> SubtitleSizeProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(SubtitleSize), 26);
         public static readonly StyledProperty<LetterCase> SubtitleLetterCaseProperty = AvaloniaProperty.Register<MenuPanel, LetterCase>(nameof(SubtitleLetterCase), LetterCase.Upper);
@@ -48,7 +49,7 @@ namespace EmuSen.LunaP.Controls
         private const double TitleBand = 100, FooterBand = 78, BareFooter = 20, Edge = 24, HintText = 26, HintGap = 10;
 
         // With a subtitle: the title's centre, the first subtitle line's centre, the lines' pitch, and the space under the last; the buttons' band's padding.
-        private const double SubtitledTitleCentre = 46, FirstSubtitleCentre = 92, SubtitlePitch = 32, UnderSubtitle = 30, ButtonsPad = 12, FooterPad = 14;
+        private const double SubtitledTitleCentre = 49, FirstSubtitleCentre = 107, SubtitlePitch = 32, UnderSubtitle = 32, ButtonsPad = 12, FooterPad = 14;
 
         private readonly HintBar _hints = new() { LetterCase = LetterCase.Upper };
 
@@ -139,6 +140,9 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The height of one row in design pixels before Scale; rows that do not all fit are shown in whole rows of it. 54 by default, MenuRow's own.</summary>
         public double RowPitch { get => GetValue(RowPitchProperty); set => SetValue(RowPitchProperty, value); }
 
+        /// <summary>The panel's scale about its own centre, for an opening that grows it into place: the panel, its title, rows, buttons and footer are drawn at it, the help bar is not, and nothing is laid out again. 1 by default.</summary>
+        public double OpeningScale { get => GetValue(OpeningScaleProperty); set => SetValue(OpeningScaleProperty, value); }
+
         /// <summary>Lines under the title, smaller, such as what the menu is about; separated by line breaks. Null shows none and keeps the title's band its own height.</summary>
         public string? Subtitle { get => GetValue(SubtitleProperty); set => SetValue(SubtitleProperty, value); }
 
@@ -194,6 +198,11 @@ namespace EmuSen.LunaP.Controls
                     VisualChildren.Add(added);
                     LogicalChildren.Add(added);
                 }
+            }
+            if (change.Property == OpeningScaleProperty)
+            {
+                ScaleChildren();
+                InvalidateVisual();
             }
             if (change.Property == HintsProperty || change.Property == HintFamilyProperty || change.Property == HintColorProperty || change.Property == HintBackgroundProperty
                 || change.Property == ScaleProperty || change.Property == FontPathProperty || change.Property == Windowing.SheetLayer.IsCoveredProperty)
@@ -262,6 +271,7 @@ namespace EmuSen.LunaP.Controls
                 Size bs = b.DesiredSize;
                 b.Arrange(new Rect(left + Math.Max(0, (width - bs.Width) / 2), top + TopBand + rows + ButtonsPad * u, Math.Min(width, bs.Width), bs.Height));
             }
+            ScaleChildren();
             if (_hints.IsVisible)
             {
                 Size hs = _hints.DesiredSize;
@@ -270,11 +280,41 @@ namespace EmuSen.LunaP.Controls
             return finalSize;
         }
 
+        // The rows and the buttons scaled about the panel's centre, as the panel is drawn; a scale of 1 takes the transform off again.
+        private void ScaleChildren()
+        {
+            double k = OpeningScale;
+            foreach (Control? c in new[] { Child, Buttons })
+            {
+                if (c is null) continue;
+                bool ours = c.RenderTransform is ScaleTransform t && _openingTransforms.Contains(t);
+                if (k == 1)
+                {
+                    if (ours) c.RenderTransform = null;
+                    continue;
+                }
+                if (c.RenderTransform is not null && !ours) continue;
+                c.RenderTransformOrigin = new RelativePoint(PanelBounds.Center - c.Bounds.TopLeft, RelativeUnit.Absolute);
+                if (ours) ((ScaleTransform)c.RenderTransform!).ScaleX = ((ScaleTransform)c.RenderTransform!).ScaleY = k;
+                else
+                {
+                    var scale = new ScaleTransform(k, k);
+                    _openingTransforms.Add(scale);
+                    c.RenderTransform = scale;
+                }
+            }
+            if (k == 1) _openingTransforms.Clear();
+        }
+
+        private readonly HashSet<ScaleTransform> _openingTransforms = new();
+
         public override void Render(DrawingContext context)
         {
             double u = Unit;
             Rect panel = PanelBounds;
             if (panel.Width <= 0) return;
+            double k = OpeningScale;
+            using DrawingContext.PushedState opening = context.PushTransform(Matrix.CreateTranslation(-panel.Center.X, -panel.Center.Y) * Matrix.CreateScale(k, k) * Matrix.CreateTranslation(panel.Center.X, panel.Center.Y));
             double radius = PanelCornerRadius * u;
             context.DrawRectangle(new ImmutableSolidColorBrush(PanelColor), null, panel, radius, radius);
             double rule = Math.Max(1, Math.Round(u));

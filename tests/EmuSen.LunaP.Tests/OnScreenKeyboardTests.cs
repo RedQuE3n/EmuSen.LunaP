@@ -43,6 +43,64 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         }, default);
 
+        // Shift and Done are two keys wide on the word layout, so their labels fit at the default key size; every row stays ten keys wide - see docs/LunaP.md §182.8.
+        [Fact]
+        public Task The_word_layout_s_Shift_and_Done_are_wide_enough_for_their_labels() => Session.Dispatch(() =>
+        {
+            var rows = KeyboardLayout.Letters.Rows;
+            Assert.All(rows, r => Assert.Equal(10, r.Sum(k => k.Width)));
+            Assert.Equal(2, rows.SelectMany(r => r).Single(k => k.Key == KeyboardLayout.Shift).Width);
+            Assert.Equal(2, rows.SelectMany(r => r).Single(k => k.Key == KeyboardLayout.Done).Width);
+            Assert.Contains(rows.SelectMany(r => r), k => k.Key == ".");
+
+            var (window, box) = Window();
+            OnScreenKeyboard keyboard = OnScreenKeyboard.Show(box, new[] { KeyboardLayout.Letters }, "A  Type");
+            window.UpdateLayout();
+            foreach (string key in new[] { KeyboardLayout.Shift, KeyboardLayout.Done })
+            {
+                Button b = keyboard.GetVisualDescendants().OfType<Button>().Single(k => (string?)k.Tag == key);
+                // The label's own width, unconstrained, against the room the key leaves inside its padding.
+                var label = new TextBlock { Text = key, FontSize = b.FontSize, FontFamily = b.FontFamily };
+                label.Measure(Avalonia.Size.Infinity);
+                double room = b.Bounds.Width - b.Padding.Left - b.Padding.Right;
+                Assert.True(label.DesiredSize.Width <= room, $"{key}: {label.DesiredSize.Width} in {room}");
+            }
+            window.Close();
+        }, default);
+
+        // The menu look: a titled panel in the middle of the window, the text on its bar, the keys as tiles in the menu's typeface, the current one dark; typing is unchanged - see docs/LunaP.md §182.10.
+        [Fact]
+        public Task Shown_as_a_menu_it_is_a_titled_panel_in_the_middle_with_tiles_and_types_as_before() => Session.Dispatch(() =>
+        {
+            var (window, box) = Window("Aurora");
+            window.Width = 1280;
+            window.Height = 800;
+            window.UpdateLayout();
+            OnScreenKeyboard keyboard = OnScreenKeyboard.ShowAsMenu(box, new[] { KeyboardLayout.Letters }, "A  Type", "Enter Name");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            Assert.True(keyboard.MenuLook);
+            Assert.Equal(Avalonia.Layout.VerticalAlignment.Center, keyboard.VerticalAlignment);
+            Assert.Equal(Avalonia.Layout.HorizontalAlignment.Center, keyboard.HorizontalAlignment);
+            FontText title = keyboard.GetVisualDescendants().OfType<FontText>().First(t => t.Text == "Enter Name");
+            Assert.Equal(EmuSen.LunaP.Media.LetterCase.Upper, title.LetterCase);
+            Assert.Contains(keyboard.GetVisualDescendants().OfType<FontText>(), t => t.Text == "Aurora|");
+
+            Button[] keys = keyboard.GetVisualDescendants().OfType<Button>().ToArray();
+            Button current = keys.Single(k => (string?)k.Tag == keyboard.CurrentKey);
+            Assert.Equal(Avalonia.Media.Color.FromRgb(0x05, 0x05, 0x07), ((Avalonia.Media.ISolidColorBrush)current.Background!).Color);
+            Assert.All(keys.Where(k => !ReferenceEquals(k, current)), k => Assert.Equal(Avalonia.Media.Color.FromRgb(0x2A, 0x2A, 0x2D), ((Avalonia.Media.ISolidColorBrush)k.Background!).Color));
+            Assert.Equal(78, keys.Single(k => (string?)k.Tag == "q").Width, 0.5);
+            Assert.Equal(52, keys.Single(k => (string?)k.Tag == "q").Height, 0.5);
+
+            keyboard.Move(1, 0);
+            keyboard.Press();
+            Assert.Equal("Aurora2", box.Text);
+            Assert.Contains(keyboard.GetVisualDescendants().OfType<FontText>(), t => t.Text == "Aurora2|");
+            keyboard.Finish();
+            window.Close();
+        }, default);
+
         // A password box's typed text is masked in the keyboard's own preview as it is in the box - see docs/LunaP.md §110.
         [Fact]
         public Task A_password_box_s_preview_shows_its_mask_and_an_ordinary_box_s_shows_its_text() => Session.Dispatch(() =>

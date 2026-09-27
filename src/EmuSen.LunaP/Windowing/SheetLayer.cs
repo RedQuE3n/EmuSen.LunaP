@@ -34,6 +34,20 @@ namespace EmuSen.LunaP.Windowing
         /// <returns>True while its sheet is drawn beneath another.</returns>
         public static bool GetIsCovered(Control element) => element.GetValue(IsCoveredProperty);
 
+        /// <summary>Set on a chromeless window, such as a message box, whose sheet leaves the chromeless sheet beneath it drawn, out of reach; without it a chromeless sheet over another hides it, as a submenu replaces a menu - see docs/LunaP.md §182.5.</summary>
+        public static readonly AttachedProperty<bool> KeepsBeneathDrawnProperty =
+            AvaloniaProperty.RegisterAttached<SheetLayer, Window, bool>("KeepsBeneathDrawn");
+
+        /// <summary>Reads whether a window's sheet leaves the chromeless sheet beneath it drawn.</summary>
+        /// <param name="window">The window presented, or to be.</param>
+        /// <returns>True for a box drawn over a menu.</returns>
+        public static bool GetKeepsBeneathDrawn(Window window) => window.GetValue(KeepsBeneathDrawnProperty);
+
+        /// <summary>Sets whether a window's sheet leaves the chromeless sheet beneath it drawn. Set it before the window is presented.</summary>
+        /// <param name="window">The window to be presented.</param>
+        /// <param name="value">True for a box drawn over a menu.</param>
+        public static void SetKeepsBeneathDrawn(Window window, bool value) => window.SetValue(KeepsBeneathDrawnProperty, value);
+
         /// <summary>Whether a window's content is presented as it is, filling the layer, for content that draws its own chrome - see docs/LunaP.md §181.5.</summary>
         public static readonly AttachedProperty<bool> ChromelessProperty =
             AvaloniaProperty.RegisterAttached<SheetLayer, Window, bool>("Chromeless");
@@ -141,9 +155,9 @@ namespace EmuSen.LunaP.Windowing
 
         private void ShowOnly(Sheet shown)
         {
-            // A chromeless sheet over a chromeless one, as a message box over a menu, leaves the one beneath drawn and out of reach - §182.5.
+            // A message box over a menu leaves the menu drawn and out of reach; any other sheet replaces what is beneath - §182.5.
             int at = _sheets.IndexOf(shown);
-            Sheet? beneath = shown.Chromeless && at > 0 && _sheets[at - 1].Chromeless ? _sheets[at - 1] : null;
+            Sheet? beneath = shown.Chromeless && GetKeepsBeneathDrawn(shown.Window) && at > 0 && _sheets[at - 1].Chromeless ? _sheets[at - 1] : null;
             foreach (Sheet other in _sheets)
             {
                 other.Root.IsVisible = ReferenceEquals(other, shown) || ReferenceEquals(other, beneath);

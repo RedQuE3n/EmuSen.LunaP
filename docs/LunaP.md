@@ -12468,6 +12468,82 @@ The README's count of tests is now 1397, and the whole suite passed at that coun
 - **A reset control per row.** The consumer places its own Reset button beside a row, outside the `MenuRow`, so the
   row's bar stops short of it (its §34.10).
 
+### 182.8 The word layout's Shift and Done, widened
+
+*2026-09-27.* The consumer's pictures of its editor showed the word layout's *Shift* and *Done* cut to *Shi* and *Do* at
+the default key size: a one-unit key is 44 pixels, and at 18 pixels those labels, with a button's padding, need more.
+`KeyboardLayout.Letters` now gives each two units. To keep every row ten units wide, so that moving between rows lands
+under the middle of the key left as before, *Space* is two units rather than four and *.* moves from the fourth row to
+the fifth, beside *-*:
+
+```
+1 2 3 4 5 6 7 8 9 0
+q w e r t y u i o p
+a s d f g h j k l '
+Shift:2 z x c v b n m ,
+Next:2 . - Space:2 Erase:2 Done:2
+```
+
+`OnScreenKeyboardTests` gains a case: every row is ten units, Shift and Done are two, *.* is still on the layout, and
+each of the two labels, measured at the key's font with no width limit, fits inside its key less the key's padding.
+Nothing else about the keyboard changed. Code and Game Genie had no key cut and are unchanged.
+
+### 182.9 Since the consumer's measurement of its reference's editor
+
+*2026-09-27.* The consumer captured its reference's own metadata editor at 1280 by 800 and measured it (its
+`EmuSen_BigPicture.md` §34.12). Four changes here follow from it, and one from its decision that a submenu replaces
+the menu it came from.
+
+- **The subtitled title band** is laid out from the measured editor: the title's centre 49 design pixels from the band's
+  top (was 46), the first subtitle line's 107 (was 92), the lines 32 apart as before, and 32 under the last (was 30).
+  Two lines now make a band of 171 (was 154); `MenuEditorTests` reads the new height. The earlier numbers were chosen
+  by eye from a menu without a subtitle; these replace them.
+- **An empty text row shows its placeholder.** `MenuRows.Apply(TextBox)` binds the row's value to the box's text, or to
+  its `PlaceholderText` while the text is empty, as the reference shows "unknown" for a field never set. A box with no
+  placeholder shows nothing, as before.
+- **A slider as an option row.** `MenuRows.Apply(Slider, label)` draws a slider as an option row: the arrows around its
+  value, the attached `MenuRows.Value` when one is set (a host's own words, "5 min") and otherwise the slider's value.
+  The template keeps no parts; Left and Right, and anything that sets `Value`, still move it, and the row follows.
+- **Only a box keeps the menu beneath drawn.** §182.5 drew any chromeless sheet over a chromeless sheet with the one
+  beneath still visible. A submenu, a list screen or a settings sheet over a menu should replace it, as the reference's
+  do; only a message box is drawn over the menu. `SheetLayer.KeepsBeneathDrawn`, an attached property the upper
+  window sets before it is presented, now decides it, and `DialogWindow.MenuConfirm` sets it. `MenuEditorTests`' message
+  box case gains a chromeless menu presented over the same menu, which hides it and restores it when closed.
+- **`MenuPanel.OpeningScale`** (1): the panel, its title, rows, buttons and footer drawn at a scale about the panel's
+  centre, for an opening that grows the menu into place. The help bar is not scaled and nothing is laid out again: the
+  panel is drawn under a transform, and the child and the buttons are given a `ScaleTransform` about the panel's centre,
+  which is taken off again at 1. A transform a host set on the child itself is left alone. The consumer measured its
+  reference's menus growing from half their size to their own, linearly, in 117 ms, the same curve as its launch
+  screen's card (its §34.14), and drives this property along that curve. `MenuEditorTests` checks that at 0.5 the panel's
+  colour covers half the width it covers at 1 across the panel's middle, the help bar and the layout are unchanged,
+  and at 1 the transforms are gone.
+
+The API baseline, `DocumentedDefaultTests` and the README's count follow.
+
+### 182.10 The keyboard as a menu's text popup
+
+*2026-09-27.* The consumer decided to draw its text popup as its reference's (its §34.16): a titled panel in the middle
+of the screen, the text on a dark bar, and the keys as tiles in the menu's typeface. The keyboard's behaviour is what
+decides whether a person can type with a pad at all, and it is unchanged; only the look is new, and only when asked.
+
+- `OnScreenKeyboard.MenuLook` (false) and `Title` (null), init-only, and `OnScreenKeyboard.ShowAsMenu(target, layouts,
+  hint, title)`, which sets both. The look is applied when the keyboard opens, from the menu scale and font file the
+  target box inherits (`MenuPanel.Scale`, `MenuPanel.FontPath`), so it matches the menu it types for.
+- The panel is centred with 16-pixel corners in the menu's panel colour, and a shade over the window behind it keeps
+  the menu in view, as a message box does (§182.5). The title is upper case at 60 design pixels. The text is on a
+  near-black bar 52 pixels high at 32, with the caret shown as before. The keys are tiles 78 by 52 with 4 pixels between
+  them, their words at 30. The key under the highlight takes the menu row's bar colour and white words; the others
+  are grey on a tile a shade lighter than the panel. At 1280 by 800 the ten-unit rows make a keyboard of 816 pixels,
+  under the 840 of a menu panel.
+- The sizes are the reference's popup's, read from a capture at 1280 by 800: its tiles are about 78 by 52 and its title's
+  capitals the size of a menu title's. Its own layout (thirteen keys a row, symbols, a Clear and a Cancel key) is not
+  copied: the layouts are the toolkit's own (§91, §182.8), and moving through them, typing, erasing, shifting and
+  finishing work as before.
+
+`OnScreenKeyboardTests` gains a case: shown as a menu, the keyboard is centred, its title is upper case, its text
+shows with the caret, the current key is dark and every other a tile, a one-unit key is 78 by 52, and a key pressed
+types into the box as before.
+
 ## 184. A dim layer, and a picture that fades in
 
 *2026-09-27.* The consumer's big-screen library gains its reference frontend's screensaver (ES-DE's; the consumer's

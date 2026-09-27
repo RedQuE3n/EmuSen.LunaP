@@ -48,8 +48,8 @@ namespace EmuSen.LunaP.Controls
             Row("1 2 3 4 5 6 7 8 9 0"),
             Row("q w e r t y u i o p"),
             Row("a s d f g h j k l '"),
-            Row("Shift z x c v b n m , ."),
-            Row("Next:2 - Space:4 Erase:2 Done:1"),
+            Row("Shift:2 z x c v b n m ,"),
+            Row("Next:2 . - Space:2 Erase:2 Done:2"),
         });
 
         /// <summary>Makes a layout from rows of keys.</summary>
