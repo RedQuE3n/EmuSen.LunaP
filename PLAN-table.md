@@ -628,16 +628,16 @@ once grid semantics turned out to be unavailable to anybody.
 | | Pass | Size | Blocked on |
 |---|---|---|---|
 | ✅ | The two verifications (§7) | done 2026-08-13 | — |
-| ✅ | assign→populate, guards, comments (§7.4) | `d653ca3` | — |
-| ✅ | **A** — §27.7, the defect entry, the sabotage limit | `7d6df5e` | — |
-| ✅ | **B** — `Ui.Cols` / `Ui.Rows` latent trap + guard | `7d6df5e` | — |
-| ✅ | **C** — the audit; §46, and a shortcut bound to the wrong action | `df3dd6a` | — |
+| ✅ | assign→populate, guards, comments (§7.4) | `e9716c3` | — |
+| ✅ | **A** — §27.7, the defect entry, the sabotage limit | `0af6a16` | — |
+| ✅ | **B** — `Ui.Cols` / `Ui.Rows` latent trap + guard | `0af6a16` | — |
+| ✅ | **C** — the audit; §46, and a shortcut bound to the wrong action | `2ec1fa4` | — |
 | ✅ | **D** — column API and sort cycle settled (§4.1, §4.4) | 2026-08-13 | — |
-| ✅ | **E** — sorting; §27.8, §27.9, 8 sabotages | `16f0da0` | — |
-| ✅ | star-column regression from the §27.7 fix; §27.10 | `0e9e960` | — |
-| ✅ | **F** — resize grips, `TableKey`, `tables.json`; §27.11 | `7edf73d` | — |
-| ✅ | **G** — editing and validation; man page §50, 4 traps guarded | `cf8ece9` | — |
-| ✅ | **H** — `ISelectionItemProvider` (already free), `IValueProvider`; §50.6 | `cf8ece9` | — |
+| ✅ | **E** — sorting; §27.8, §27.9, 8 sabotages | `803775b` | — |
+| ✅ | star-column regression from the §27.7 fix; §27.10 | `f122eaf` | — |
+| ✅ | **F** — resize grips, `TableKey`, `tables.json`; §27.11 | `84ec88d` | — |
+| ✅ | **G** — editing and validation; man page §50, 4 traps guarded | `97ecc3c` | — |
+| ✅ | **H** — `ISelectionItemProvider` (already free), `IValueProvider`; §50.6 | `97ecc3c` | — |
 
 **Every pass in this plan is done.** §50.4 and §50.5 are the two findings worth
 carrying: a recycling guard that could not fail, and a row name no screen reader

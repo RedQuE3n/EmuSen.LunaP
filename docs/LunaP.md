@@ -2733,7 +2733,7 @@ Measured by packing both ways and reading the SourceLink map out of the PDB:
 
 | Build | `documents` mapping |
 |---|---|
-| local | `/home/red/Projects/EmuSen.LunaP/*` → `raw.githubusercontent.com/RedQuE3n/EmuSen.LunaP/9019fa4…/*` |
+| local | `/home/red/Projects/EmuSen.LunaP/*` → `raw.githubusercontent.com/RedQuE3n/EmuSen.LunaP/4cf8c72…/*` |
 | `GITHUB_ACTIONS=true` | `/_/*` → the same URL |
 
 The commit in that URL is the commit being packed, so a consumer debugging 0.7.0 fetches the source
@@ -4797,7 +4797,7 @@ table shipped that.
 the correction is recorded here rather than edited into that section, per the rule this document
 keeps.
 
-`v0.7.0` is tagged, at `9f5311f`. What is true instead, and is worth stating exactly because it is
+`v0.7.0` is tagged, at `e02efa1`. What is true instead, and is worth stating exactly because it is
 the kind of thing that goes unnoticed until a publish job runs:
 
 - **0.7.1 was prepared and never released.** Both `.csproj` files carried `0.7.1` and `CHANGELOG.md`
@@ -6985,7 +6985,7 @@ number this document does not print.
 
 | | |
 |---|---|
-| Test methods before §54 | **312** — `[Fact]` and `[Theory]` in the tree at `65e9361~1` |
+| Test methods before §54 | **312** — `[Fact]` and `[Theory]` in the tree at `50cb44c~1` |
 | Test methods now | **527** |
 | Cases the runner executes now | **794** |
 | Table guard files added | ten — `TableParityTests`, `TableScrollTests`, `TableCellKindTests`, `TableRowHeaderTests`, `TableFrozenTests`, `TableCellSelectionTests`, `TableAutomationTests`, `TableColumnTests`, `TableDragTests`, `TableVirtualizationTests` |
@@ -8515,7 +8515,7 @@ is not a command: clicking it opens the menu."* So an owner carrying a `Shortcut
 
 **The history says otherwise, and the history is the evidence.** `Commands()` and the `ActionTests`
 case asserting `{ "Open", "Recent", "smw.sfc", "zelda.sfc", "Quit" }` — the owner explicitly present —
-arrive in the same commit, `15393f5`, on 2026-08-12. The `<returns>` phrase arrives in `f0e8359` on
+arrive in the same commit, `7d17f87`, on 2026-08-12. The `<returns>` phrase arrives in `59d3c34` on
 2026-08-13, a bulk pass titled *"Document every member"*. The behaviour is original and deliberately
 tested; the sentence is a day-later description written across a hundred members at once, and it
 described what the author expected rather than what the code did.
@@ -8643,7 +8643,7 @@ and only the first is a defect.
 
 ### 83.3 0.9.0, published without the work it was numbered for
 
-The tag was pushed while thirty-seven files sat uncommitted. `v0.9.0` therefore points at `b3febae`,
+The tag was pushed while thirty-seven files sat uncommitted. `v0.9.0` therefore points at `8edbe3c`,
 whose tree contains the two README rewrites and §78's three fixes — and no `UiTest.Settle`, no
 `CssTheme.TokenNames`, no `FilterBar` echo guard, none of §§79–83. The workflow ran, packed and
 pushed all four packages before a cancellation could land, roughly fifteen seconds too late.
@@ -12346,7 +12346,7 @@ the layer's fill; a list's bar following the focus instead of the selection; the
 not set; the rows not rounded to whole rows; a dropdown's selection not shown; an option row's left arrow drawn at the
 right edge. The consumer ran six more against its own pixel tests (its §32).
 
-The README's count of tests was already stale when this began: it said 1371 where `openemu-library` at 1bd782b has
+The README's count of tests was already stale when this began: it said 1371 where `openemu-library` at 9e9e0f6 has
 1374, and `AuditRegressionTests` failed on the unmodified branch for that reason alone. It now says 1388, the
 fourteen of this section included.
 

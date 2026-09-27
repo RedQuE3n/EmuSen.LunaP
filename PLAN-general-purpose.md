@@ -404,13 +404,13 @@ which is what made the breaking-change latitude in §47 of `PLAN-table.md` free 
 
 | | |
 |---|---|
-| `d653ca3` | shared size groups never registered; the guard that could not notice |
-| `7d6df5e` | §27.7, and the same trap closed in `Ui.Cols` / `Ui.Rows` |
-| `df3dd6a` | §46, the audit — and a shortcut bound to entirely the wrong action |
-| `16f0da0` | sorting (§27.8, §27.9) |
-| `0e9e960` | the star-column regression the alignment fix introduced (§27.10) |
-| `7edf73d` | resize grips and a remembered layout (§27.11) |
-| `1845f25` | §47, what §21's rule governs |
+| `e9716c3` | shared size groups never registered; the guard that could not notice |
+| `0af6a16` | §27.7, and the same trap closed in `Ui.Cols` / `Ui.Rows` |
+| `2ec1fa4` | §46, the audit — and a shortcut bound to entirely the wrong action |
+| `803775b` | sorting (§27.8, §27.9) |
+| `f122eaf` | the star-column regression the alignment fix introduced (§27.10) |
+| `84ec88d` | resize grips and a remembered layout (§27.11) |
+| `a16f25d` | §47, what §21's rule governs |
 
 **Still open in `PLAN-table.md`:** Pass G, cell editing and validation; Pass H,
 `ISelectionItemProvider` and `IValueProvider`. Both are completions under §47.3 and need no further
