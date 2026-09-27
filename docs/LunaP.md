@@ -12813,3 +12813,124 @@ GIFs the tests read were an ordinary encoder's, which wrote whole frames; and th
 compared amounts of ink. The test now writes its own GIFs for each of the four, and compares the first picture's height
 for the fifth. The kept-canvas mutant survived that too, since the first test reached frame 16 from the canvas after
 frame 1 rather than from the kept one; the test now jumps so that it must use the kept one. All eleven are caught.
+
+## 198. A controller drawn large, with its bindings on it: `ControllerDiagram`
+
+*2026-09-27.* The consumer (EmuSen's Mistress) decided on 2026-09-27 to overhaul its controller bindings window: each
+console's controller drawn as vector art, the bindings mapped onto its buttons, and a button pressed on the pad or the
+keyboard lit on the drawing, so that the window doubles as an input tester (its `EmuSen_BigPicture.md` §10.1 and §42).
+§180's `ControllerGlyph` is a badge a few pixels high; this is the drawing at the size of a window, and every part of it
+a player can press is a region that can be named, lit, chosen and hit.
+
+### 198.1 The drawings, and whose they are
+
+`ControllerLayout` names five: `Gamepad`, `Nes`, `Snes`, `Nintendo64` and `GameBoy`. As of this section two are
+drawn, `Snes` and `Nintendo64`; the other three draw the Super NES pad in their place until theirs are done, and no
+test claims otherwise (the consumer shows no drawing for a console whose layout is not finished).
+
+**The drawings are the toolkit's own**, under the same rule as §180.1. Each is built in code from plain geometry in its
+own design space (1000 units wide): circles, rounded rectangles, pills, an octagon, bands cut from a ring, and a few
+cubic curves for the outlines, all placed by hand. No vendor's artwork, no emulator's controller picture and no photograph
+was traced or measured; what makes each recognisable is what a player remembers of the pad, which is its outline and
+where its buttons are. The Super NES pad is two round grips joined by a bar that dips a little at the top and bottom,
+the cross in a round well on the left, two slanted pills in the middle and four buttons in a diamond on a rounded
+square well; the Nintendo 64 pad is a wide top on three grips, the cross on the left grip, the stick in an octagonal gate
+on the middle grip with Start above it, and A, B and four C buttons on the right. The face buttons carry the colours the
+pads were sold in (red, yellow, green and blue on the Super NES; blue A, green B, yellow C and red Start on the Nintendo
+64), because colour is a large part of what identifies them at a glance; the colours are facts about the products, not
+anyone's drawing of them. The shells are greys, which read on both theme variants.
+
+**What is a region.** Every button, each arm of a cross, each direction of a stick and each trigger is a `DiagramRegion`
+with an `Id` the host binds by, a `Name` a label and a reader use, a `Side` its label stands on, and, for a stick's
+direction, the `Stick` it belongs to. A cross's arms are four regions clipped to the cross's outline, so each lights on
+its own and the lit arm has the cross's rounded end. A stick's four directions are bands of a ring around its gate,
+each with an arrow; the knob itself is not a region on the Nintendo 64 (its stick has no click) and is one on the
+gamepad, where it is L3 or R3. The Nintendo 64's Z trigger is drawn behind the middle grip, showing past its edge, and
+a click on the part hidden under the shell does not hit it.
+
+The ids are the toolkit's and not the consumer's types: `A`, `Up`, `Select`, `CLeft`, `StickUp`, `Z`. The consumer maps
+its own controls onto them (its settings reference §4.81); the toolkit knows nothing of a binding but the two strings
+it is given for each region.
+
+### 198.2 The labels and their lines
+
+Each region has a label beside the drawing, joined to it by a thin line with a dot where it meets the region. The
+drawing is fitted, keeping its proportions, into the space left by up to four bands of labels (a column left, a column
+right, a row above and a row below), and the whole, drawing and labels together, is then centred, so a drawing narrower
+than its box does not leave its labels to one side. Which band a region's label is in is part of its drawing, chosen so
+the lines cross as little of the pad as could be managed: on the Super NES the cross and the left shoulder label to the
+left, the face buttons but Y and the right shoulder to the right, Y above, and the cross's right arm, Select and Start
+below.
+
+Along a band, labels are placed by `ControllerDiagram.Spread`: each wants to be centred on its region's point; labels
+that would overlap are pushed apart as a group about the mean of their wishes, and a group that would leave the band is
+moved back into it. The first version pushed only forwards, which put the Super NES's Y label at the right-hand end of
+the bottom row with its line across B; centring groups on their wishes put it under Y, and moving it above removed the
+crossing altogether. A line meets a button at the edge facing its label, not its middle, so it does not strike through
+the letter printed on the button.
+
+**Size.** The labels grow with the space (a unit of `min(width / 1100, height / 640)`), and never fall far below the text
+around them: the unit is at least 0.85 of the inherited font size over 14, where the space allows it. The second rule
+was added when the first pictures of a big-screen sheet, whose text is scaled up, showed labels at nine pixels beside
+twenty-pixel text. A column of labels taller than the space shrinks them all, so none spills into the row below: the
+Nintendo 64's left column at 1920 × 1200 on a big-screen sheet overlapped its bottom row's first label before that rule.
+Everything is drawn as geometry and text at the size it is shown; there is no bitmap and no scaled sampling anywhere.
+
+### 198.3 A label is a button
+
+A label shows the region's name on a badge in the button's own colour, then the key and the pad button bound to it, each
+behind a small drawn icon, or a dash for neither. It is a `Button`, because what a host's keyboard and pad machinery
+already knows how to reach and press is a button: the consumer's pad router presses the focused button, and its test
+harness finds what a pad can reach by looking for buttons. It draws itself and has no template, so it is internal: the
+kit's rule that every public templated control gets one (§28.1) holds, and a host reaches a label through
+`ControllerDiagram.LabelOf` as a `Button`, and asks `RegionOf` which region an element is the label of. Its accessible
+name is the region's name and its help text says the binding ("Key X, pad East").
+
+### 198.4 What a host sets and asks
+
+- `SetBinding(region, key, pad)`: the two strings a label shows.
+- `SetPressed(region, bool)`: drawn in the accent, with a halo, and its label and line in the accent; `IsPressed` and
+  `Pressed` read it back.
+- `SetStick(stick, x, y)`: the knob moved by that share of its travel, each axis clamped to -1..1, with a line from the
+  centre so a small push shows; `StickPosition` and `StickKnobCentre` read it back.
+- `SetTrigger(region, value)`: a trigger filled from the bottom by that share.
+- `SelectedRegion`: a ring in the accent around the region and its label; it follows the focused label, and `Select`
+  sets it and focuses the label.
+- `RegionAt(point)` and `PointIn(region)`: what a click at a point hits, and a point a click on a region would land on.
+- `IsInteractive`: off, the labels take no focus and a click chooses nothing.
+- `RegionInvoked`: a region chosen by a click on the drawing, a click on its label, or its label pressed.
+
+The colours are the theme's (`LunaAccentColor`, `LunaTextColor`, `LunaMutedColor`, `LunaInputSurfaceColor`,
+`LunaBorderColor`), looked up from the control, so a scope that restyles them restyles the diagram.
+
+### 198.5 Moving between regions
+
+`Neighbour(region, direction)` is the region a pad's direction goes to, measured on the drawing rather than among the
+labels: from the region's shown point (the point of its shape nearest the middle of its box), every other region lying
+more than a few units that way is scored by its distance plus how far it lies across the direction, and five times that
+across when it lies more than 56 degrees off the line. `MoveSelection` moves to it and says false at an edge, so a host
+can move the focus out of the diagram. The arrow keys do the same from a focused label.
+
+The first score (the distance along plus twice the distance across, the consumer's rule for moving between controls in a
+window) sent Up from the Super NES's A to the right shoulder, straight above and far, rather than X, above and to the
+left and near: in a diamond, the neighbour a player means is diagonal. Distance plus the distance across sends A up to X
+and still sends Y right to A, straight across, rather than to X or B, which are nearer but diagonal.
+
+### 198.6 Tests
+
+`ControllerDiagramTests` (21 cases): a point in each region hits that region, and the corners hit nothing; pressing each
+region draws it in the accent and letting go draws the frame as it was, pixel for pixel; a stick's knob moves by its
+position, stops at its travel and is drawn where it is said to be; every region reaches every other by moving the
+selection; moving goes to the nearest region that way (A up to X, Y right to A) and stops at the edge; at three sizes each,
+every region has a label inside the control and no label overlaps another; a label says its bindings to a reader, and a
+click on it or on the drawing chooses its region, except when the diagram is not interactive; the arrow keys move from a
+focused label; changing the layout rebuilds the regions; `Spread` centres a group on its wishes and keeps it in the span;
+each drawing is drawn at a thumbnail's size and a large screen's. `Pictures_for_review` writes each drawing, idle and
+lit, to a folder named by `EMUSEN_DIAGRAM_DUMP`, for a person to look at, and does nothing otherwise.
+
+### 198.7 What is not here
+
+- The drawings of the NES pad, the Game Boy and a modern gamepad.
+- Mutants.
+- A layout that puts labels in two columns a side when a wide space would let the drawing grow; on a wide, short space
+  the drawing is bounded by its height, and the space either side of the labels is left empty.
