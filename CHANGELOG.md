@@ -21,6 +21,13 @@ answer.
   by default, and a filled Generic pad is lettered as an Xbox pad; a menu whose rows run past its panel draws chevrons
   at its title's right. A stored picture of a menu will differ.
 
+- **`ControllerDiagram`, new and additive (`§198`).** A controller drawn large from the toolkit's own geometry, every
+  button, direction and trigger a named region with a label showing its key and pad button, lit while pressed, a stick's
+  knob moved by its position, and chosen by a click or by moving between regions. All five layouts are drawn (Super NES,
+  Nintendo 64, NES, Game Boy and a modern pad); each label's side and line are worked out from the drawing so no line
+  runs across it. `ShowsKeys`, `ShowsLabels`, `SetCaption`, `StickRing` and `IsOnDrawing` for a host that shows a pad
+  itself; `LeaderOf` gives the line's three points.
+
 - **`InfoLine` and `FrameSequenceImage`, new and additive (`§193`, `§194`).** A line of drawn pictures (gamepad, star,
   funnel, open folder) with their numbers; an animated GIF decoded by the toolkit and played from the host's clock by
   the timing rules its consumer measured. Lottie is not supported.

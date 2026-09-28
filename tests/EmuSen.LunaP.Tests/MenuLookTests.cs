@@ -250,17 +250,21 @@ namespace EmuSen.LunaP.Tests
             host.Close();
         });
 
-        // The plain frame had the same structure and the same fault (§196.4, §196.9): a list at the foot of a sheet scaled 1.5 built one of its three rows.
-        [Fact]
-        public Task A_list_at_the_foot_of_a_scaled_plain_sheet_builds_every_row_it_shows() => UiTest.Run(() =>
+        // The plain sheet, whose host is under a scaler too, measured at four heights of what stands above the list: every row is built, so it needed no change - §198.9.
+        [Theory]
+        [InlineData(300)]
+        [InlineData(460)]
+        [InlineData(540)]
+        [InlineData(600)]
+        public Task A_list_at_the_foot_of_a_scaled_plain_sheet_builds_every_row_it_shows(double above) => UiTest.Run(() =>
         {
             var layer = new SheetLayer { PresentsWindows = true, Scale = 1.5 };
             var host = new ToolWindow { Width = 1920, Height = 1200, Content = new Grid { Children = { new Border(), layer } } };
             host.Show();
             var list = new ListBox { ItemsSource = Enumerable.Range(0, 3).Select(i => $"Row {i}").ToArray(), Height = 3 * 42 + 2 };
-            var content = new DockPanel { LastChildFill = true, Children = { new Border { Height = 400 }, list } };
+            var content = new DockPanel { LastChildFill = true, Children = { new Border { Height = above }, list } };
             DockPanel.SetDock(content.Children[0], Dock.Top);
-            var window = new ToolWindow { Title = "Bindings", Width = 700, Height = 560, Content = content };
+            var window = new ToolWindow { Title = "Bindings", Width = 900, Content = content };
             _ = SheetLayer.Show(window, host);
             host.UpdateLayout();
             Dispatcher.UIThread.RunJobs();
