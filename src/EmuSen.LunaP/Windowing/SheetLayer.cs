@@ -395,6 +395,7 @@ namespace EmuSen.LunaP.Windowing
                 panel[!MenuPanel.TitleProperty] = window[!Window.TitleProperty];
                 panel.FooterSize = MenuFooterSize;
                 panel.TitleMinScale = MenuTitleMinScale;
+                panel.TitleMaxLines = MenuTitleMaxLines;
                 // A window's footer is its own words, a path or an attribution among them, so it keeps their casing.
                 panel.FooterLetterCase = Media.LetterCase.None;
                 panel.Bind(MenuPanel.FooterProperty, window.GetObservable(Controls.MenuLook.FooterProperty, f => f?.ReplaceLineEndings(" ")));
@@ -429,6 +430,9 @@ namespace EmuSen.LunaP.Windowing
 
             // A window's name may be long, a screenshot's or a theme's: it shrinks to two thirds before it is cut.
             private const double MenuTitleMinScale = 0.66;
+
+            // One too long for a line at that size wraps onto a second, never cut (§196.11).
+            private const int MenuTitleMaxLines = 2;
 
             public void Restyle()
             {

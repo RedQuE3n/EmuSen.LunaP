@@ -243,7 +243,9 @@ public class EmuSen.LunaP.Controls.ControllerDiagram : Avalonia.Controls.Control
     public ControllerDiagram()
     public EmuSen.LunaP.Controls.ControllerLayout Layout { get; set; }
     public EmuSen.LunaP.Controls.DiagramBinding BindingOf(string region)
+    public System.Collections.Generic.IReadOnlyCollection<EmuSen.LunaP.Controls.DiagramSide> SplitSides { get; }
     public System.Collections.Generic.IReadOnlyCollection<string> Pressed { get; }
+    public System.Collections.Generic.IReadOnlyList<Avalonia.Point> LeaderPath(string region)
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.DiagramRegion> Regions { get; }
     public System.Collections.Generic.IReadOnlyList<string> Sticks { get; }
     public System.ValueTuple<Avalonia.Point, Avalonia.Point, Avalonia.Point>? LeaderOf(string region)
@@ -1257,10 +1259,13 @@ public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     public double PanelCornerRadius { get; set; }
     public double RowPitch { get; set; }
     public double SubtitleSize { get; set; }
+    public double TitleDrawnSize { get; }
     public double TitleMinScale { get; set; }
     public double TitleSize { get; set; }
     public double WidthFraction { get; set; }
     public int FooterMaxLines { get; set; }
+    public int TitleLines { get; }
+    public int TitleMaxLines { get; set; }
     public override void Render(Avalonia.Media.DrawingContext context)
     public static double GetScale(Avalonia.Controls.Control element)
     public static readonly Avalonia.AttachedProperty<double> ScaleProperty = 1
@@ -1291,6 +1296,7 @@ public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     public static readonly Avalonia.StyledProperty<double> TitleSizeProperty = 68
     public static readonly Avalonia.StyledProperty<double> WidthFractionProperty = 0.66
     public static readonly Avalonia.StyledProperty<int> FooterMaxLinesProperty = 1
+    public static readonly Avalonia.StyledProperty<int> TitleMaxLinesProperty = 1
     public static readonly Avalonia.StyledProperty<string?> FooterProperty = null
     public static readonly Avalonia.StyledProperty<string?> SubtitleProperty = null
     public static readonly Avalonia.StyledProperty<string?> TitleProperty = null

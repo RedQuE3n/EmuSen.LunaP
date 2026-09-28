@@ -232,6 +232,7 @@ namespace EmuSen.LunaP.Tests
             ("P:EmuSen.LunaP.Windowing.SheetLayer.MenuLook", "False by default", () => new EmuSen.LunaP.Windowing.SheetLayer().MenuLook),
             ("F:EmuSen.LunaP.Controls.MenuLook.IsOnProperty", "False by default", () => MenuLook.GetIsOn(new Avalonia.Controls.Border())),
             ("P:EmuSen.LunaP.Controls.MenuPanel.TitleMinScale", "1 by default", () => new MenuPanel().TitleMinScale),
+            ("P:EmuSen.LunaP.Controls.MenuPanel.TitleMaxLines", "1 by default", () => new MenuPanel().TitleMaxLines),
             ("P:EmuSen.LunaP.Controls.MenuPanel.FooterLetterCase", "Null by default", () => new MenuPanel().FooterLetterCase),
             ("F:EmuSen.LunaP.Controls.MenuLook.FooterLinesProperty", "3 by default", () => MenuLook.GetFooterLines(new EmuSen.LunaP.Windowing.ToolWindow())),
             ("P:EmuSen.LunaP.Controls.MenuPanel.FooterMaxLines", "1 by default", () => new MenuPanel().FooterMaxLines),
@@ -485,6 +486,7 @@ namespace EmuSen.LunaP.Tests
             ["P:EmuSen.LunaP.Windowing.SheetLayer.MenuLook"] = false,
             ["F:EmuSen.LunaP.Controls.MenuLook.IsOnProperty"] = false,
             ["P:EmuSen.LunaP.Controls.MenuPanel.TitleMinScale"] = 1.0,
+            ["P:EmuSen.LunaP.Controls.MenuPanel.TitleMaxLines"] = 1,
             ["P:EmuSen.LunaP.Controls.MenuPanel.FooterLetterCase"] = null,
             ["F:EmuSen.LunaP.Controls.MenuLook.FooterLinesProperty"] = 3,
         };

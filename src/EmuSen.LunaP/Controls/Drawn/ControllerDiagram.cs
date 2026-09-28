@@ -104,7 +104,8 @@ namespace EmuSen.LunaP.Controls
         private readonly Dictionary<string, string> _captions = new(StringComparer.Ordinal);
         private readonly Dictionary<string, Vector> _sticks = new(StringComparer.Ordinal);
         private readonly Dictionary<string, double> _triggers = new(StringComparer.Ordinal);
-        private readonly List<(Point From, Point Elbow, Point To, string Region)> _leaders = new();
+        private readonly List<(Point From, Point? Pass, Point Elbow, Point To, string Region)> _leaders = new();
+        private readonly HashSet<DiagramSide> _split = new();
         private Matrix _toControl = Matrix.Identity;
         private double _scale = 1;
         private double _unit = 1;
@@ -151,6 +152,12 @@ namespace EmuSen.LunaP.Controls
 
         // The gap a row of labels keeps for its leaders, and the space between two labels, in label units (§196.10).
         private (double Gap, double Space) Spacing => CompactLabels ? (26, 6) : (44, 8);
+
+        /// <summary>The side columns whose labels stand in two staggered columns, as a column of more than four does where that lets its labels grow and the drawing keeps its size; empty before a layout.</summary>
+        public IReadOnlyCollection<DiagramSide> SplitSides => _split;
+
+        // A side column of more labels than this may take a second column (§198.11).
+        private const int SplitAbove = 4;
 
         /// <summary>Prints other words on a region, such as a connected pad's own letter, in place of the drawing's.</summary>
         /// <param name="region">The region's id.</param>
@@ -282,6 +289,14 @@ namespace EmuSen.LunaP.Controls
         /// <returns>The line's three points, or null for an id the drawing lacks or before the diagram is arranged.</returns>
         public (Point From, Point Via, Point To)? LeaderOf(string region) =>
             _leaders.FirstOrDefault(l => l.Region == region) is { Region: not null } leader ? (leader.From, leader.Elbow, leader.To) : null;
+
+        /// <summary>Every point of the line joining a region's label to it, in order from the label, in the diagram's own coordinates: a label in the outer of two columns has one more, where its line has passed between the inner column's labels.</summary>
+        /// <param name="region">The region's id.</param>
+        /// <returns>The line's points, or empty for an id the drawing lacks or before the diagram is arranged.</returns>
+        public IReadOnlyList<Point> LeaderPath(string region) =>
+            _leaders.FirstOrDefault(l => l.Region == region) is { Region: not null } leader
+                ? (leader.Pass is { } pass ? [leader.From, pass, leader.Elbow, leader.To] : [leader.From, leader.Elbow, leader.To])
+                : [];
 
         /// <summary>The box a region is drawn in, in the diagram's own coordinates.</summary>
         /// <param name="region">The region's id.</param>
@@ -449,24 +464,91 @@ namespace EmuSen.LunaP.Controls
             double h = double.IsInfinity(availableSize.Height) ? w * 0.62 : availableSize.Height;
             // Labels grow with the space, and never fall far below the text around them, as on a big-screen sheet whose text is scaled up.
             double text = GetValue(TextElement.FontSizeProperty) / 14 * 0.85;
-            _unit = Math.Clamp(Math.Max(Math.Min(w / 1100, h / 640), Math.Min(text, Math.Min(w / 900, h / (CompactLabels ? 340 : 420)))), 0.45, 3);
-            MeasureLabels();
+            double start = Math.Clamp(Math.Max(Math.Min(w / 1100, h / 640), Math.Min(text, Math.Min(w / 900, h / (CompactLabels ? 340 : 420)))), 0.45, 3);
+            _split.Clear();
+            Fit(start, w, h);
 
-            // A column taller than the space, or a row wider than it, shrinks every label, so none spills past another or the edge.
+            // A tall column that shrank the labels takes a second column when that lets them grow and the width it takes was free: the drawing stays bound by its height (§198.11).
+            DiagramSide[] tall = new[] { DiagramSide.Left, DiagramSide.Right }.Where(s => _regions.Count(r => r.Side == s) > SplitAbove).ToArray();
+            if (ShowsLabels && tall.Length > 0 && _unit < start - 1e-9 && BoundByHeight(w, h))
+            {
+                double single = _unit;
+                _split.UnionWith(tall);
+                Fit(start, w, h);
+                if (_unit <= single + 1e-9 || !BoundByHeight(w, h))
+                {
+                    _split.Clear();
+                    _unit = single;
+                    MeasureLabels();
+                }
+            }
+            return new Size(w, h);
+        }
+
+        // A column taller than the space, or a row wider than it, shrinks every label, so none spills past another or the edge.
+        private void Fit(double start, double w, double h)
+        {
+            _unit = start;
+            MeasureLabels();
             for (int pass = 0; pass < 3 && ShowsLabels; pass++)
             {
-                double chipH = _labels.Values.Select(l => l.DesiredSize.Height).DefaultIfEmpty(0).Max();
-                double gap = Spacing.Gap * _unit, space = Spacing.Space * _unit;
+                double chipH = ChipHeight, gap = Spacing.Gap * _unit, space = Spacing.Space * _unit;
                 int rows = (_regions.Any(r => r.Side == DiagramSide.Top) ? 1 : 0) + (_regions.Any(r => r.Side == DiagramSide.Bottom) ? 1 : 0);
-                int tallest = new[] { DiagramSide.Left, DiagramSide.Right }.Max(side => _regions.Count(r => r.Side == side));
-                double need = tallest * (chipH + space) + rows * (chipH + gap);
+                double tallest = new[] { DiagramSide.Left, DiagramSide.Right }.Max(side => ColumnHeight(side, chipH, space));
+                double need = tallest + rows * (chipH + gap);
                 double across = new[] { DiagramSide.Top, DiagramSide.Bottom }.Max(side => _regions.Where(r => r.Side == side).Sum(r => _labels[r.Id].DesiredSize.Width + space));
                 double over = Math.Max(need / h, across / w);
                 if (over <= 1 || _unit <= 0.45) break;
                 _unit = Math.Max(0.45, _unit / over);
                 MeasureLabels();
             }
-            return new Size(w, h);
+        }
+
+        private double ChipHeight => _labels.Values.Select(l => l.DesiredSize.Height).DefaultIfEmpty(0).Max();
+
+        // Two columns keep twice the space between a column's labels, so an outer label's line passes between two inner ones well clear of both.
+        private double ColumnSpace(DiagramSide side, double space) => _split.Contains(side) ? space * 2 : space;
+
+        // The height a column's labels take: one under another, or in two columns, each label half a step below the one before.
+        private double ColumnHeight(DiagramSide side, double chipH, double space)
+        {
+            int n = _regions.Count(r => r.Side == side);
+            double s = ColumnSpace(side, space);
+            return n == 0 ? 0 : _split.Contains(side) ? (n - 1) * (chipH + s) / 2 + chipH + s : n * (chipH + s);
+        }
+
+        // A side column's labels in order down it, and which of them stand in the outer of two columns: every second one.
+        private List<(DiagramRegion Region, Point Anchor)> Column(DiagramSide side) =>
+            _regions.Where(r => r.Side == side).Select(r => (r, r.Art.Edge.Transform(_toControl))).OrderBy(p => p.Item2.Y).ToList();
+
+        private static bool IsOuter(int index) => index % 2 == 1;
+
+        // The width a band's labels take across: the widest label, or the two columns' widest with the space between them.
+        private double BandWidth(DiagramSide side, double space)
+        {
+            List<DiagramRegion> here = _regions.Where(r => r.Side == side).OrderBy(r => r.Art.Edge.Y).ToList();
+            double Widest(IEnumerable<DiagramRegion> of) => of.Select(r => _labels[r.Id].DesiredSize.Width).DefaultIfEmpty(0).Max();
+            if (!_split.Contains(side)) return Widest(here);
+            return Widest(here.Where((_, i) => !IsOuter(i))) + space + Widest(here.Where((_, i) => IsOuter(i)));
+        }
+
+        private bool Has(DiagramSide side) => ShowsLabels && _regions.Any(r => r.Side == side);
+
+        // The box the drawing is fitted in between the bands of labels, as arranged at this unit.
+        private Rect DrawingBox(double w, double h)
+        {
+            double u = _unit, chipH = ChipHeight;
+            double gap = Spacing.Gap * u, space = Spacing.Space * u, pad = 10 * u;
+            double left = Has(DiagramSide.Left) ? BandWidth(DiagramSide.Left, space) + gap : pad, right = Has(DiagramSide.Right) ? BandWidth(DiagramSide.Right, space) + gap : pad;
+            double top = Has(DiagramSide.Top) ? chipH + gap : pad, bottom = Has(DiagramSide.Bottom) ? chipH + gap : pad;
+            return new Rect(left, top, Math.Max(1, w - left - right), Math.Max(1, h - top - bottom));
+        }
+
+        // Whether the drawing's height, not its width, sets its size: so the space either side of it is free.
+        private bool BoundByHeight(double w, double h)
+        {
+            Rect box = DrawingBox(w, h);
+            return box.Height / _art.Design.Height < box.Width / _art.Design.Width;
         }
 
         private void MeasureLabels()
@@ -481,14 +563,9 @@ namespace EmuSen.LunaP.Controls
         protected override Size ArrangeOverride(Size finalSize)
         {
             double u = _unit, w = finalSize.Width, h = finalSize.Height;
-            double chipH = _labels.Values.Select(l => l.DesiredSize.Height).DefaultIfEmpty(0).Max();
-            double gap = Spacing.Gap * u, space = Spacing.Space * u, pad = 10 * u;
-            double Widest(DiagramSide side) => _regions.Where(r => r.Side == side).Select(r => _labels[r.Id].DesiredSize.Width).DefaultIfEmpty(0).Max();
-            bool Has(DiagramSide side) => ShowsLabels && _regions.Any(r => r.Side == side);
-
-            double left = Has(DiagramSide.Left) ? Widest(DiagramSide.Left) + gap : pad, right = Has(DiagramSide.Right) ? Widest(DiagramSide.Right) + gap : pad;
-            double top = Has(DiagramSide.Top) ? chipH + gap : pad, bottom = Has(DiagramSide.Bottom) ? chipH + gap : pad;
-            var box = new Rect(left, top, Math.Max(1, w - left - right), Math.Max(1, h - top - bottom));
+            double chipH = ChipHeight;
+            double gap = Spacing.Gap * u, space = Spacing.Space * u;
+            Rect box = DrawingBox(w, h);
             _scale = Math.Min(box.Width / _art.Design.Width, box.Height / _art.Design.Height);
             var art = new Rect(box.X + (box.Width - _art.Design.Width * _scale) / 2, box.Y + (box.Height - _art.Design.Height * _scale) / 2,
                 _art.Design.Width * _scale, _art.Design.Height * _scale);
@@ -503,24 +580,45 @@ namespace EmuSen.LunaP.Controls
 
             foreach (DiagramSide side in Enum.GetValues<DiagramSide>())
             {
-                List<DiagramRegion> here = _regions.Where(r => r.Side == side).ToList();
-                if (here.Count == 0 || !ShowsLabels) continue;
-                bool column = side is DiagramSide.Left or DiagramSide.Right;
-                List<(DiagramRegion Region, Point Anchor)> sorted = here.Select(r => (r, r.Art.Edge.Transform(_toControl)))
-                    .OrderBy(p => column ? p.Item2.Y : p.Item2.X).ToList();
-                double[] sizes = sorted.Select(p => column ? chipH : _labels[p.Region.Id].DesiredSize.Width).ToArray();
+                if (!Has(side)) continue;
+                bool column = side is DiagramSide.Left or DiagramSide.Right, split = _split.Contains(side);
+                List<(DiagramRegion Region, Point Anchor)> sorted = column ? Column(side)
+                    : _regions.Where(r => r.Side == side).Select(r => (r, r.Art.Edge.Transform(_toControl))).OrderBy(p => p.Item2.X).ToList();
                 double from = column ? columnFrom : 0, to = column ? columnTo : w;
-                double[] at = Spread(sorted.Select((p, i) => (column ? p.Anchor.Y : p.Anchor.X) - sizes[i] / 2).ToArray(), sizes, space, from, to);
+                // A column stands beside the drawing, clear of the lines a row above or below runs down to it, unless it needs the height (§198.11).
+                if (column)
+                {
+                    double spare = art.Height - (ColumnHeight(side, chipH, space) - ColumnSpace(side, space));
+                    if (Has(DiagramSide.Top)) from = Math.Max(from, art.Top + Math.Min(0, spare / 2));
+                    if (Has(DiagramSide.Bottom)) to = Math.Min(to, art.Bottom - Math.Min(0, spare / 2));
+                }
+                double[] at;
+                double innerWidth = 0;
+                if (split)
+                {
+                    // Two columns staggered: each label starts at least half a step below the one before, so the two in one column keep the column's space between them.
+                    double s = ColumnSpace(side, space), step = (chipH + s) / 2;
+                    double[] half = sorted.Select(_ => step - s).ToArray();
+                    at = Spread(sorted.Select(p => p.Anchor.Y - chipH / 2).ToArray(), half, s, from, to - (chipH - (step - s)));
+                    innerWidth = sorted.Where((_, i) => !IsOuter(i)).Select(p => _labels[p.Region.Id].DesiredSize.Width).DefaultIfEmpty(0).Max();
+                }
+                else
+                {
+                    double[] sizes = sorted.Select(p => column ? chipH : _labels[p.Region.Id].DesiredSize.Width).ToArray();
+                    at = Spread(sorted.Select((p, i) => (column ? p.Anchor.Y : p.Anchor.X) - sizes[i] / 2).ToArray(), sizes, space, from, to);
+                }
 
                 for (int i = 0; i < sorted.Count; i++)
                 {
-                    (DiagramRegion region, Point anchor) = sorted[i];
+                    (DiagramRegion region, _) = sorted[i];
                     DiagramLabel label = _labels[region.Id];
                     double cw = label.DesiredSize.Width;
+                    bool outer = split && IsOuter(i);
+                    double beyond = outer ? innerWidth + space : 0;
                     Rect slot = side switch
                     {
-                        DiagramSide.Left => new Rect(Math.Max(0, art.Left - near - cw), at[i], cw, chipH),
-                        DiagramSide.Right => new Rect(Math.Min(w - cw, art.Right + near), at[i], cw, chipH),
+                        DiagramSide.Left => new Rect(Math.Max(0, art.Left - near - beyond - cw), at[i], cw, chipH),
+                        DiagramSide.Right => new Rect(Math.Min(w - cw, art.Right + near + beyond), at[i], cw, chipH),
                         DiagramSide.Top => new Rect(at[i], rowTop, cw, chipH),
                         _ => new Rect(at[i], rowBottom, cw, chipH),
                     };
@@ -532,9 +630,11 @@ namespace EmuSen.LunaP.Controls
                         DiagramSide.Top => new Point(slot.Center.X, slot.Bottom),
                         _ => new Point(slot.Center.X, slot.Top),
                     };
+                    // An outer label's line runs level between two inner labels, and turns toward its button only in the gap beside the drawing.
+                    Point? pass = outer ? new Point(side == DiagramSide.Left ? art.Left - near / 2 : art.Right + near / 2, start.Y) : null;
                     Point elbow = region.Art.Edge.Transform(_toControl);
                     Point meets = region.Art.Anchor.Transform(_toControl);
-                    _leaders.Add((start, elbow, meets, region.Id));
+                    _leaders.Add((start, pass, elbow, meets, region.Id));
                 }
             }
 
@@ -544,7 +644,10 @@ namespace EmuSen.LunaP.Controls
             _toControl *= Matrix.CreateTranslation(shift);
             foreach ((DiagramLabel label, Rect slot) in slots) label.Arrange(slot.Translate(shift));
             for (int i = 0; i < _leaders.Count; i++)
-                _leaders[i] = (_leaders[i].From + shift, _leaders[i].Elbow + shift, _leaders[i].To + shift, _leaders[i].Region);
+            {
+                var l = _leaders[i];
+                _leaders[i] = (l.From + shift, l.Pass is { } p ? p + shift : null, l.Elbow + shift, l.To + shift, l.Region);
+            }
             return finalSize;
         }
 
@@ -616,11 +719,16 @@ namespace EmuSen.LunaP.Controls
 
             var line = new ImmutablePen(new ImmutableSolidColorBrush(muted), Math.Max(1, 1.5 * _unit), lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
             var lit = new ImmutablePen(new ImmutableSolidColorBrush(accent), Math.Max(1.5, 2.5 * _unit), lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
-            foreach ((Point from, Point elbow, Point to, string region) in _leaders)
+            foreach ((Point from, Point? pass, Point elbow, Point to, string region) in _leaders)
             {
                 bool strong = region == SelectedRegion || _pressed.Contains(region);
                 IPen pen = strong ? lit : line;
-                context.DrawLine(pen, from, elbow);
+                if (pass is { } p)
+                {
+                    context.DrawLine(pen, from, p);
+                    context.DrawLine(pen, p, elbow);
+                }
+                else context.DrawLine(pen, from, elbow);
                 context.DrawLine(pen, elbow, to);
                 double dot = (strong ? 4 : 3) * _unit;
                 context.DrawEllipse(pen.Brush, null, to, dot, dot);

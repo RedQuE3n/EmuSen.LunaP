@@ -54,6 +54,7 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<double> OpeningScaleProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(OpeningScale), 1.0);
         public static readonly StyledProperty<LetterCase?> FooterLetterCaseProperty = AvaloniaProperty.Register<MenuPanel, LetterCase?>(nameof(FooterLetterCase));
         public static readonly StyledProperty<double> TitleMinScaleProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(TitleMinScale), 1.0);
+        public static readonly StyledProperty<int> TitleMaxLinesProperty = AvaloniaProperty.Register<MenuPanel, int>(nameof(TitleMaxLines), 1);
         public static readonly StyledProperty<string?> SubtitleProperty = AvaloniaProperty.Register<MenuPanel, string?>(nameof(Subtitle));
         public static readonly StyledProperty<double> SubtitleSizeProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(SubtitleSize), 26);
         public static readonly StyledProperty<LetterCase> SubtitleLetterCaseProperty = AvaloniaProperty.Register<MenuPanel, LetterCase>(nameof(SubtitleLetterCase), LetterCase.Upper);
@@ -80,7 +81,7 @@ namespace EmuSen.LunaP.Controls
         static MenuPanel()
         {
             AffectsMeasure<MenuPanel>(ScaleProperty, TitleProperty, FooterProperty, WidthFractionProperty, MaxWidthToHeightProperty, HintsProperty, RowPitchProperty,
-                SubtitleProperty, ButtonsProperty, FooterMaxLinesProperty, FooterSizeProperty, ShowsTitleBandProperty);
+                SubtitleProperty, ButtonsProperty, FooterMaxLinesProperty, FooterSizeProperty, ShowsTitleBandProperty, TitleMaxLinesProperty, TitleMinScaleProperty, TitleSizeProperty, FontPathProperty, LetterCaseProperty);
             AffectsRender<MenuPanel>(FontPathProperty, TitleSizeProperty, TitleMinScaleProperty, FooterSizeProperty, PanelCornerRadiusProperty, PanelColorProperty, TitleColorProperty,
                 FooterColorProperty, RuleColorProperty, LetterCaseProperty, FooterLetterCaseProperty, SubtitleSizeProperty, SubtitleLetterCaseProperty, ShowsScrollIndicatorProperty, ScrollIndicatorColorProperty);
         }
@@ -143,21 +144,41 @@ namespace EmuSen.LunaP.Controls
         }
 
         /// <summary>Whether the title, at the size it is drawn, is still cut with an ellipsis because even its smallest size does not fit the band.</summary>
-        public bool IsTitleCut => Title is { Length: > 0 } t && TitleDrawnSize(t) is var (_, cut) && cut;
+        public bool IsTitleCut => Title is { Length: > 0 } t && TitleLayout(t, TitleBounds.Width).Cut;
 
-        // The title's size, shrunk toward TitleMinScale until it fits the band, and whether it still does not.
-        private (double Size, bool Cut) TitleDrawnSize(string title)
+        /// <summary>How many lines the title is drawn on: more than one only where TitleMaxLines lets a title too wide for one line at TitleMinScale wrap.</summary>
+        public int TitleLines => Title is { Length: > 0 } t && TitleLayout(t, TitleBounds.Width).Lines is { } l ? l.Lines.Count : Title is { Length: > 0 } ? 1 : 0;
+
+        /// <summary>The size the title is drawn at, in this control's pixels, as last arranged; 0 with no title.</summary>
+        public double TitleDrawnSize => Title is { Length: > 0 } t ? TitleLayout(t, TitleBounds.Width).Size : 0;
+
+        // A wrapped title may shrink below TitleMinScale by this much more, and no further, before it is cut.
+        private const double WrappedTitleLeast = 0.75;
+
+        // The title at a panel's width: shrunk toward TitleMinScale on one line; then, where TitleMaxLines allows and there is no subtitle, wrapped and shrunk toward WrappedTitleLeast of that; and whether it is still cut (§196.11).
+        private (double Size, FontLayout? Lines, bool Cut) TitleLayout(string title, double panelWidth)
         {
             double u = Unit, full = TitleSize * u;
-            double room = TitleBounds.Width - 48 * u;
-            if (room <= 0) return (full, false);
+            double room = panelWidth - 48 * u;
+            if (room <= 0) return (full, null, false);
             GlyphTypeface typeface = GetValue(FontPathProperty) is { Length: > 0 } p && FontFiles.Load(p) is { } t ? t : FontFiles.Default;
-            double width = FontLayout.Measure(typeface, full, FontLayout.Cased(title, LetterCase));
-            if (width <= room) return (full, false);
+            string cased = FontLayout.Cased(title, LetterCase);
+            double width = FontLayout.Measure(typeface, full, cased);
+            if (width <= room) return (full, null, false);
             double least = full * Math.Clamp(TitleMinScale, 0.1, 1);
             double size = Math.Max(least, full * room / width);
-            return (size, FontLayout.Measure(typeface, size, FontLayout.Cased(title, LetterCase)) > room + 0.5);
+            bool cut = FontLayout.Measure(typeface, size, cased) > room + 0.5;
+            if (!cut || TitleMaxLines <= 1 || SubtitleLines.Length > 0) return (size, null, cut);
+            for (double s = least; ; s = Math.Max(least * WrappedTitleLeast, s * 0.96))
+            {
+                double line = FontLayout.Create(typeface, s, "H", 1, double.PositiveInfinity, double.PositiveInfinity, false, null).LineHeight;
+                FontLayout lines = FontLayout.Create(typeface, s, cased, 1, room, TitleMaxLines * line + 0.5, true, "…");
+                if (!lines.Truncated || s <= least * WrappedTitleLeast + 1e-9) return (s, lines, lines.Truncated);
+            }
         }
+
+        /// <summary>The most lines a title too wide for its band at TitleMinScale may wrap onto, the band growing to hold them, shrinking a little further if it must, before it is cut. 1 by default, which never wraps - see docs/LunaP.md §196.11.</summary>
+        public int TitleMaxLines { get => GetValue(TitleMaxLinesProperty); set => SetValue(TitleMaxLinesProperty, value); }
 
         /// <summary>The footer's em size in design pixels before Scale. 26 by default.</summary>
         public double FooterSize { get => GetValue(FooterSizeProperty); set => SetValue(FooterSizeProperty, value); }
@@ -274,7 +295,16 @@ namespace EmuSen.LunaP.Controls
 
         private string[] SubtitleLines => Subtitle is { Length: > 0 } sub ? sub.Split('\n') : [];
 
-        private double TopBand => !ShowsTitleBand && Title is not { Length: > 0 } ? 0 : (SubtitleLines.Length is var n && n > 0 ? FirstSubtitleCentre + SubtitlePitch * (n - 1) + UnderSubtitle : TitleBand) * Unit;
+        private double TopBand => TopBandAt(PanelBounds.Width);
+
+        // The title's band at a panel's width, taller by a line for each line a wrapped title adds.
+        private double TopBandAt(double panelWidth)
+        {
+            if (!ShowsTitleBand && Title is not { Length: > 0 }) return 0;
+            if (SubtitleLines.Length is var n && n > 0) return (FirstSubtitleCentre + SubtitlePitch * (n - 1) + UnderSubtitle) * Unit;
+            double extra = Title is { Length: > 0 } t && TitleLayout(t, panelWidth).Lines is { Lines.Count: > 1 } l ? (l.Lines.Count - 1) * l.LineHeight : 0;
+            return TitleBand * Unit + extra;
+        }
 
         private double ButtonsBand => Buttons is { IsVisible: true } b ? b.DesiredSize.Height + 2 * ButtonsPad * Unit : 0;
 
@@ -370,7 +400,7 @@ namespace EmuSen.LunaP.Controls
         {
             double u = Unit;
             double width = Math.Max(0, Math.Min(Math.Min(area.Width * WidthFraction, area.Height * MaxWidthToHeight), area.Width - 2 * Edge * u));
-            double rowsMax = Math.Max(0, area.Height - hintHeight - 2 * Edge * u - TopBand - ButtonsBand - BottomBand);
+            double rowsMax = Math.Max(0, area.Height - hintHeight - 2 * Edge * u - TopBandAt(width) - ButtonsBand - BottomBand);
             // Rows that do not all fit scroll, and the last one shown is never cut through.
             double pitch = RowPitch * u;
             if (pitch > 0 && rowsMax >= pitch) rowsMax = Math.Floor((rowsMax + 0.01) / pitch) * pitch;
@@ -395,19 +425,19 @@ namespace EmuSen.LunaP.Controls
             double hintHeight = _hints.IsVisible ? _hints.DesiredSize.Height + HintGap * u : 0;
             (double width, double rowsMax) = Frame(finalSize, hintHeight);
             double rows = Math.Min(Child?.DesiredSize.Height ?? 0, rowsMax);
-            double buttons = ButtonsBand;
-            double height = TopBand + rows + buttons + BottomBand;
+            double buttons = ButtonsBand, band = TopBandAt(width);
+            double height = band + rows + buttons + BottomBand;
             double top = Math.Clamp((finalSize.Height - height) / 2, Edge * u, Math.Max(Edge * u, finalSize.Height - hintHeight - Edge * u - height));
             double left = (finalSize.Width - width) / 2;
             PanelBounds = new Rect(left, top, width, height);
-            TitleBounds = new Rect(left, top, width, TopBand);
-            Child?.Arrange(new Rect(left, top + TopBand, width, rows));
+            TitleBounds = new Rect(left, top, width, band);
+            Child?.Arrange(new Rect(left, top + band, width, rows));
             if (Scroller(Child) is var scroller && !ReferenceEquals(scroller, _watched)) Watch(scroller);
-            ButtonsBounds = Buttons is { IsVisible: true } ? new Rect(left, top + TopBand + rows, width, buttons) : default;
+            ButtonsBounds = Buttons is { IsVisible: true } ? new Rect(left, top + band + rows, width, buttons) : default;
             if (Buttons is { } b)
             {
                 Size bs = b.DesiredSize;
-                b.Arrange(new Rect(left + Math.Max(0, (width - bs.Width) / 2), top + TopBand + rows + ButtonsPad * u, Math.Min(width, bs.Width), bs.Height));
+                b.Arrange(new Rect(left + Math.Max(0, (width - bs.Width) / 2), top + band + rows + ButtonsPad * u, Math.Min(width, bs.Width), bs.Height));
             }
             ScaleChildren();
             if (_hints.IsVisible)
@@ -469,10 +499,10 @@ namespace EmuSen.LunaP.Controls
             }
             if (Title is { Length: > 0 } title)
             {
-                double size = TitleDrawnSize(title).Size;
+                (double size, FontLayout? wrappedTitle, _) = TitleLayout(title, TitleBounds.Width);
                 Rect band = TitleBounds.Deflate(new Thickness(24 * u, 0));
-                double centre = TitleCentre();
-                MenuRow.DrawLine(context, typeface, size, FontLayout.Cased(title, LetterCase), band, centre + MenuRow.CapHeight(typeface, size) / 2, TextAlignment.Center, new ImmutableSolidColorBrush(TitleColor));
+                if (wrappedTitle is { Lines.Count: > 1 }) wrappedTitle.Draw(context, new ImmutableSolidColorBrush(TitleColor), band, TextAlignment.Center, 0.5);
+                else MenuRow.DrawLine(context, typeface, size, FontLayout.Cased(title, LetterCase), band, TitleCentre() + MenuRow.CapHeight(typeface, size) / 2, TextAlignment.Center, new ImmutableSolidColorBrush(TitleColor));
             }
             for (int i = 0; i < lines.Length; i++)
             {

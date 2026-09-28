@@ -13191,6 +13191,43 @@ one at a time. **Eleven were caught on the first run and two survived.**
 
 The consumer's plan, §43.6, has all thirty-seven mutants of this part.
 
+### 196.11 A title on two lines, and a table's cells on one
+
+*2026-09-27.* The consumer widened its audit (its settings reference §4.83.6, its plan §43.11) with windows showing
+names as long as they come: a game's title, a theme's name, a cheat's description and code. Two of the faults it
+found were the look's.
+
+**A title too long for a line (`MenuPanel.TitleMaxLines`).** A framed sheet's title shrank to two thirds of its size
+(§196.9) and was then cut with an ellipsis. A screenshot of a game with a long No-Intro name, a theme's detail and its
+About were all cut at both sizes. Shrinking further was weighed and refused: a title of a hundred characters would need
+a third of the title's size, and a title is the one thing on the sheet meant to read from across a room. The look now
+lets it wrap. A title that does not fit one line at `TitleMinScale` wraps onto up to `TitleMaxLines` lines (1 by
+default, which never wraps; a framed sheet sets 2), shrinking by up to a quarter more if two lines at the one-line
+minimum are not enough, and is cut only past that. The title's band grows by one line's height for each line added,
+and the rows start below it. `TitleLines` and `TitleDrawnSize` report what was drawn. A panel with a subtitle keeps one
+line, since its title's place is fixed above the subtitle's. Measured in the consumer's audit at both sizes: a theme's
+77-character name takes two lines at the one-line minimum, 44.9 design pixels; the screenshot's 117-character title
+takes two lines at 35.1, 0.78 of that minimum; nothing on those sheets is cut.
+
+Why two lines and not more: a third line takes another line's height, some 45 to 55 design pixels, from the rows, and
+the rows are where the sheet's work is. A title too long for two lines is still cut, and `IsTitleCut` still says so, so an audit that holds a
+sheet to that rule still sees it.
+
+**A table's text cell is one line.** The look wraps a list row's words rather than cut them (§196.9), by a style on a
+row's presenter that its text inherits. A table's cells are rows of a list, so a long cheat description in the
+consumer's Active Cheats wrapped to three lines, the row grew to three times its height, and the table, which had room
+for two rows, scrolled in less than one. A table's cell already ends in an ellipsis by design (its `TextTrimming`); it
+now also says it is one line, which outranks the inherited wrapping. A consumer that cuts a cell names where the whole
+text is (the consumer shows it in its panel's footer while the row is chosen).
+
+`MenuLookTests.A_title_too_long_for_a_line_wraps_onto_a_second_and_the_band_grows`: a framed sheet's long title takes
+two lines, is not cut, and the rows start under the band; a short one takes one line and the band is at least 20
+units shorter; with one line allowed it is cut; past two lines it is cut. The §196.9 case now allows the title one line
+before it asserts the cut. `MenuLookTests.A_table_s_long_cell_is_one_line_in_the_look`: in the look, a table held to its
+width draws a long cell on one line ending in its ellipsis, and its row is as high as a short one's. Mutants are in the
+consumer's plan, §43.11 (T1 to T3, C2 and C2L). C2, the cell wrapping again, survives the consumer's window audit, since a
+wrapped cell is whole and its table then has room; the table's own case catches it.
+
 ## 198. A controller drawn large, with its bindings on it: `ControllerDiagram`
 
 *2026-09-27.* The consumer (EmuSen's Mistress) decided on 2026-09-27 to overhaul its controller bindings window: each
@@ -13392,7 +13429,9 @@ then it is a pass that does nothing measurable for the drawings there are.
 ### 198.8 What is not here
 
 - A layout that puts labels in two columns a side when a wide space would let the drawing grow; on a wide, short space
-  the drawing is bounded by its height, and the space either side of the labels is left empty.
+  the drawing is bounded by its height, and the space either side of the labels is left empty. *Superseded in part on
+  2026-09-27:* a column of more than four labels now takes a second column in that space when its labels were shrunk
+  by its height (§198.11). A column of four or fewer, and a drawing bound by its width, are as this said.
 
 ### 198.9 The plain sheet's rows, measured: not lost
 
@@ -13422,3 +13461,62 @@ measured length over the drawing, not what it crossed; R3, because the row shrin
 anyway. The line test that compares each line with the straight ways, the test that a line crosses no other button and
 the band test were added, and the first of them found the modern pad's boxed-in cross (above) before it was run
 against the mutants. All three were caught on the second run, R1 by the line test as well.
+
+### 198.11 A second column where the drawing leaves width free, and columns clear of the rows' lines
+
+*2026-09-27.* The consumer's audit holds every framed sheet's words to 16 design pixels (its settings reference
+§4.83.2). The Nintendo 64's labels met that floor with nothing to spare: 16.0 at 1280 × 800 and at 1920 × 1200, where
+the Super NES, NES and Game Boy drew theirs at 17.1 (§196.10). The cause was one column. The Nintendo 64's right column
+holds five labels (the four C buttons and A), the drawing in the consumer's window is bound by its height, and §198.2's
+rule shrinks every label until the tallest column fits. Measured in the framed window, about 300 pixels either side of
+the drawing were empty at 1280 × 800 (the consumer's Q188).
+
+**The argument.** A column that shrinks the labels because of its height, beside a drawing bound by its height, is a
+column that has width it is not using: the drawing cannot grow into that width, since its height already stops it.
+Taking a second column there costs the drawing nothing, and gives the labels the height back.
+
+**The mechanism.** After the labels are fitted as before, a side column of more than four labels (`SplitAbove`) is tried
+as two when three things hold: the fit shrank the labels below the size the space and the text around them allow; the
+drawing is bound by its height; and the labels grow when the column is split. The split is kept only if the drawing is
+still bound by its height afterwards, that is, if the second column took only width the drawing was not using.
+`SplitSides` says which columns were split. The labels keep their order down the column and alternate between the inner
+column and the outer one, every second label outer; each starts at least half a step below the one before, where a step
+is a label's height and twice the space between labels, so two labels in one column keep twice the usual space between
+them and a column of five takes the height of three. An outer label's line runs level from its label through the gap
+between the two inner labels either side of it, clear of each by at least the space between labels, and turns toward
+its button only in the gap beside the drawing. `LeaderPath` gives every point of a line (four for an outer label);
+`LeaderOf` still gives its first point, the point where it reaches the drawing and its last. The rules of §198.2 hold:
+the part of a line over the drawing is the same way out as before, crossing no other button, stick or printed word.
+
+**The result, measured in the consumer's window.** The Nintendo 64's labels are 17.1 design pixels at 1280 × 800 and at
+1920 × 1200, the same as the other drawings; its right column is split and no other drawing's is. That is 1.1 design
+pixels over the floor for every drawing, which the consumer's audit now holds as a margin. With the longest names a
+keyboard's keys have bound to A and Start (*MediaPreviousTrack*, *LaunchApplication1*), the Nintendo 64's labels are 16.6:
+its top row, six labels, is then what binds, and splitting a column cannot help a row.
+
+**Not adopted: larger caps.** The labels of every drawing stop at 17.1 because of the size caps of §198.2 (the text
+around them times 0.85, and the width over 900), not because of the space. Raising both for compact labels (0.95, and
+the width over 820) was measured before deciding: the Game Boy and NES went to 18.2, the Super NES to 17.7, and the
+Nintendo 64 to 17.2, where its top row binds. The change would alter every drawing to move the one it was for by a tenth
+of a pixel, so it was not made.
+
+**Found on the way: a row's lines through a column's first label.** The new test that no line passes through a label
+other than its own failed on the unmodified layout, before any column was split: at 1100 × 443 in the look the Nintendo
+64's R line ran through C Up's label, and the modern pad's Y line through R2's label at three sizes. A column's labels
+could start above the drawing's top edge, by the gap a row leaves for its lines less the space between labels, which is
+exactly where a row's lines run down to the drawing. A column now stands between the drawing's top and its foot when it
+fits there, and reaches above or below only by what it needs. Looked for afterwards, it is in the consumer's pictures
+of §196.10 too: at 1280 × 800 the Nintendo 64's R line runs under C Up's label, which is drawn over it, so the line
+seems to end at the label's side rather than at the shoulder.
+
+**Tests** (`ControllerDiagramTests`, 72 cases): a tall column bound by the height takes a second column at two sizes in
+the look, its labels larger than one column of five could allow in that height, two of its five labels outer, each outer
+label's line level from the label past the inner column and clear of the inner labels by the space between labels; the
+column stays single where the width is not free (700 ×
+900), where it did not shrink the labels (1100 × 640) and for a drawing with no column over four; no line passes through
+another label, on all five drawings at five sizes, in and out of the look. The §196.10 case now expects its compact
+labels to be 1.2 times the plain ones, not 1.25: both are split in its space, and the ratio measured is the labels' own,
+17.0 against 13.9. Mutants are in the consumer's plan, §43.11 (D1 to D6). One survives and is recorded, not excused:
+D3 removes the check that the drawing is still bound by its height once a column is split, and the Nintendo 64 laid out
+at 1,846 sizes with and without it came out the same at every one. Wherever splitting let the labels grow, the width it
+took was free. The check stays, as the rule's statement of when a split is allowed.

@@ -245,7 +245,65 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(6, panel.FooterMaxLines);
             Assert.False(panel.IsFooterCut);
             panel.TitleMinScale = 1;
+            panel.TitleMaxLines = 1;
             Assert.True(panel.IsTitleCut);
+            window.Close();
+            host.Close();
+        });
+
+        private sealed class Named(string name) { public string Name { get; } = name; }
+
+        // A table's text cell stays one line in the look, which wraps a list row's words: a long cell ends in its ellipsis and its row keeps a short row's height (§196.11).
+        [Fact]
+        public Task A_table_s_long_cell_is_one_line_in_the_look() => UiTest.Run(() =>
+        {
+            var table = new LunaTable<Named> { Key = r => r.Name, Width = 300, Height = 300 };
+            table.Column("Cheat", r => r.Name);
+            table.Refresh([new Named("Infinite lives"), new Named("Infinite health, ammunition and continues for both players, with the timer stopped in every stage")]);
+            MenuLook.SetIsOn(table, true);
+            ToolWindow window = Show(table, 400, 400);
+            // Held to the table's width, as a host that never scrolls a table sideways holds it.
+            foreach (ListBox list in table.GetVisualDescendants().OfType<ListBox>())
+                list.SetValue(ScrollViewer.HorizontalScrollBarVisibilityProperty, Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled);
+            window.UpdateLayout();
+            List<ListBoxItem> rows = table.GetVisualDescendants().OfType<ListBoxItem>().ToList();
+            Assert.Equal(2, rows.Count);
+            Assert.Equal(rows[0].Bounds.Height, rows[1].Bounds.Height, 0.5);
+            TextBlock cell = rows[1].GetVisualDescendants().OfType<TextBlock>().First(t => t.Text?.StartsWith("Infinite health", StringComparison.Ordinal) == true);
+            Assert.Single(cell.TextLayout.TextLines);
+            Assert.True(cell.TextLayout.TextLines[0].HasCollapsed, "the long cell ends in its ellipsis");
+            window.Close();
+        });
+
+        // A framed sheet's title too long for one line at its smallest size wraps onto a second, the band growing by a line and the rows starting under it; one line where it fits; cut only past two (§196.11).
+        [Fact]
+        public Task A_title_too_long_for_a_line_wraps_onto_a_second_and_the_band_grows() => UiTest.Run(() =>
+        {
+            (ToolWindow host, SheetLayer layer) = Host();
+            var body = new Border { Height = 100 };
+            var window = new ToolWindow { Title = "Complete Illustrated Library of Every Console", Content = body };
+            _ = SheetLayer.Show(window, host);
+            host.UpdateLayout();
+            MenuPanel panel = layer.GetVisualDescendants().OfType<MenuPanel>().Single();
+            Assert.Equal(2, panel.TitleMaxLines);
+            Assert.Equal(2, panel.TitleLines);
+            Assert.False(panel.IsTitleCut);
+            double wrapped = panel.TitleBounds.Height;
+            Assert.True(body.TranslatePoint(default, panel)!.Value.Y >= panel.TitleBounds.Bottom - 0.5, "the rows start under the band");
+
+            window.Title = "Screenshot 12";
+            host.UpdateLayout();
+            Assert.Equal(1, panel.TitleLines);
+            Assert.True(wrapped > panel.TitleBounds.Height + 20, $"the band is {wrapped:0} high on two lines and {panel.TitleBounds.Height:0} on one");
+
+            panel.TitleMaxLines = 1;
+            window.Title = "Complete Illustrated Library of Every Console";
+            host.UpdateLayout();
+            Assert.True(panel.IsTitleCut);
+            panel.TitleMaxLines = 2;
+            window.Title = string.Concat(Enumerable.Repeat("A very long name indeed ", 12));
+            host.UpdateLayout();
+            Assert.True(panel.IsTitleCut, "past two lines it is cut, and the audit says so");
             window.Close();
             host.Close();
         });

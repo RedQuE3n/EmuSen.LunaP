@@ -202,6 +202,8 @@ namespace EmuSen.LunaP.Controls
             {
                 Text = _columns[index].Text(item) ?? string.Empty,
                 TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis,
+                // One line even where a look wraps a row's words, so a long cell ends in its ellipsis and the row keeps its height (§196.11).
+                TextWrapping = Avalonia.Media.TextWrapping.NoWrap,
                 VerticalAlignment = VerticalAlignment.Center,
 
                 // Read through the projection so a reader always gets the model's current value,

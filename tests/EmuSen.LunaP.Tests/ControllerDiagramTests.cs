@@ -541,7 +541,8 @@ namespace EmuSen.LunaP.Tests
 
             Assert.False(plain.CompactLabels);
             Assert.True(look.CompactLabels);
-            Assert.True(look.LabelTextSize > plain.LabelTextSize * 1.25, $"{look.LabelTextSize:0.0} in the look, {plain.LabelTextSize:0.0} outside it");
+            // Both take a second column here (§198.11), so the ratio is the labels' own: 17.0 against 13.9 when measured.
+            Assert.True(look.LabelTextSize > plain.LabelTextSize * 1.2, $"{look.LabelTextSize:0.0} in the look, {plain.LabelTextSize:0.0} outside it");
             var boxes = look.Regions.Select(r => (r.Id, Box: look.LabelOf(r.Id)!.Bounds)).ToList();
             foreach ((string id, Rect box) in boxes)
                 Assert.True(box.X >= -0.5 && box.Y >= -0.5 && box.Right <= 1400.5 && box.Bottom <= 450.5, $"{id}'s label {box} leaves the drawing");
@@ -557,6 +558,107 @@ namespace EmuSen.LunaP.Tests
             UiTest.Capture(window);
             Assert.True(look.LabelTextSize > 16.5, $"{look.LabelTextSize:0.0}");
             window.Close();
+        });
+
+        // A diagram in the look, bound with names as long as a host's, in a box of its own with the text around it at 20 pixels.
+        private static (ToolWindow Window, ControllerDiagram Diagram) InTheLook(ControllerLayout layout, double w, double h, string key = "K", string pad = "South")
+        {
+            var diagram = new ControllerDiagram { Layout = layout };
+            foreach (DiagramRegion r in diagram.Regions) diagram.SetBinding(r.Id, r.Id.Length <= 2 ? r.Id : key, pad);
+            var host = new Border { Width = w, Height = h, Child = diagram };
+            MenuLook.SetIsOn(host, true);
+            var window = new ToolWindow { Width = w, Height = h, FontSize = 20, Background = Brushes.Black, Content = host };
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            UiTest.Capture(window);
+            return (window, diagram);
+        }
+
+        // Every label inside the control and none over another, and every line clear of every label but its own.
+        private static List<string> LabelFaults(ControllerDiagram diagram, double w, double h)
+        {
+            var faults = new List<string>();
+            var boxes = diagram.Regions.Select(r => (r.Id, Box: diagram.LabelOf(r.Id)!.Bounds)).ToList();
+            foreach ((string id, Rect box) in boxes)
+                if (box.X < -0.5 || box.Y < -0.5 || box.Right > w + 0.5 || box.Bottom > h + 0.5) faults.Add($"{id}'s label {box} leaves {w}x{h}");
+            for (int i = 0; i < boxes.Count; i++)
+                for (int j = i + 1; j < boxes.Count; j++)
+                    if (boxes[i].Box.Deflate(0.5).Intersects(boxes[j].Box.Deflate(0.5))) faults.Add($"{boxes[i].Id} {boxes[i].Box} overlaps {boxes[j].Id} {boxes[j].Box}");
+            foreach (DiagramRegion region in diagram.Regions)
+            {
+                IReadOnlyList<Point> path = diagram.LeaderPath(region.Id);
+                for (int k = 0; k + 1 < path.Count; k++)
+                {
+                    double length = ((Vector)(path[k + 1] - path[k])).Length;
+                    for (double t = 0; t <= length; t += 1)
+                    {
+                        Point p = path[k] + (path[k + 1] - path[k]) * (length == 0 ? 0 : t / length);
+                        foreach ((string id, Rect box) in boxes)
+                            if (id != region.Id && box.Deflate(1).Contains(p)) { faults.Add($"{region.Id}'s line passes through {id}'s label at {p}"); goto next; }
+                    }
+                }
+                next:;
+            }
+            return faults;
+        }
+
+        // A tall column bound by the height takes a second column in the width the drawing leaves free, its labels grow, and no line passes through a label (§198.11).
+        [Theory]
+        [InlineData(1100, 443)]
+        [InlineData(1400, 450)]
+        public Task A_tall_column_bound_by_the_height_takes_a_second_column_and_its_lines_pass_between_the_labels(double w, double h) => UiTest.Run(() =>
+        {
+            (ToolWindow window, ControllerDiagram diagram) = InTheLook(ControllerLayout.Nintendo64, w, h);
+            Assert.Contains(DiagramSide.Right, diagram.SplitSides);
+            // The most one column of five compact labels and two rows leave the words in this height: 14 units a line, 43.6 a label, 6 between, 26 a row's gap.
+            double oneColumn = 14 * h / (5 * (43.6 + 6) + 2 * (43.6 + 26));
+            Assert.True(diagram.LabelTextSize > oneColumn + 0.3, $"{diagram.LabelTextSize:0.0} at {w}x{h}, where one column allows {oneColumn:0.0}");
+            Assert.Empty(LabelFaults(diagram, w, h));
+            List<DiagramRegion> right = diagram.Regions.Where(r => r.Side == DiagramSide.Right).OrderBy(r => diagram.LabelOf(r.Id)!.Bounds.Y).ToList();
+            double innerLeft = right.Min(r => diagram.LabelOf(r.Id)!.Bounds.Left);
+            foreach (DiagramRegion r in right)
+            {
+                IReadOnlyList<Point> path = diagram.LeaderPath(r.Id);
+                Rect label = diagram.LabelOf(r.Id)!.Bounds;
+                bool outer = label.Left > innerLeft + 1;
+                Assert.Equal(outer ? 4 : 3, path.Count);
+                // An outer label's line runs level from the label past the inner column before it turns, clear of the inner labels by the space between labels (6 units).
+                if (!outer) continue;
+                Assert.True(Math.Abs(path[0].Y - path[1].Y) < 0.01 && path[1].X < innerLeft, $"{r.Id}'s line {string.Join(" ", path)}");
+                double unit = diagram.LabelTextSize / 14;
+                double clear = right.Select(o => diagram.LabelOf(o.Id)!.Bounds).Where(b => b.Left <= innerLeft + 1)
+                    .Min(b => path[0].Y < b.Top ? b.Top - path[0].Y : path[0].Y > b.Bottom ? path[0].Y - b.Bottom : 0);
+                Assert.True(clear >= 6 * unit * 0.9, $"{r.Id}'s line clears the inner labels by {clear:0.0}, where {6 * unit:0.0} is the space between labels");
+            }
+            Assert.Equal(2, right.Count(r => diagram.LabelOf(r.Id)!.Bounds.Left > innerLeft + 1));
+            window.Close();
+        });
+
+        // Where the width is not free, or the column did not shrink the labels, the labels stay in one column.
+        [Theory]
+        [InlineData(ControllerLayout.Nintendo64, 700, 900, true)]
+        [InlineData(ControllerLayout.Nintendo64, 1100, 640, false)]
+        [InlineData(ControllerLayout.Snes, 1100, 443, true)]
+        public Task A_column_stays_single_where_a_second_would_not_help(ControllerLayout layout, double w, double h, bool look) => UiTest.Run(() =>
+        {
+            (ToolWindow window, ControllerDiagram diagram) = look ? InTheLook(layout, w, h) : Shown(layout, w, h);
+            Assert.Empty(diagram.SplitSides);
+            window.Close();
+        });
+
+        // No line passes through a label other than its own, in the look and out of it, whether a column is split or not.
+        [Theory]
+        [MemberData(nameof(Drawn))]
+        public Task No_line_passes_through_another_label(ControllerLayout layout) => UiTest.Run(() =>
+        {
+            var faults = new List<string>();
+            foreach ((double w, double h, bool look) in new[] { (1100.0, 640.0, false), (1000.0, 420.0, false), (1100.0, 443.0, true), (1400.0, 450.0, true), (1600.0, 900.0, true) })
+            {
+                (ToolWindow window, ControllerDiagram diagram) = look ? InTheLook(layout, w, h) : Shown(layout, w, h);
+                faults.AddRange(LabelFaults(diagram, w, h).Select(f => $"{w}x{h}{(look ? " in the look" : "")}, split {string.Join("+", diagram.SplitSides)}, text {diagram.LabelTextSize:0.0}: {f}"));
+                window.Close();
+            }
+            Assert.True(faults.Count == 0, string.Join("\n", faults));
         });
     }
 }
