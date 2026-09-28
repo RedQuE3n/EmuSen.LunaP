@@ -63,6 +63,8 @@ namespace EmuSen.LunaP.Controls
         Guide,
         /// <summary>Either thumbstick pressed in (L3 or R3), as one help entry names both - see docs/LunaP.md §151.</summary>
         ThumbstickClick,
+        /// <summary>The two shoulder buttons as one pair, as one help entry names both (page back and forward) - see docs/LunaP.md §196.8.</summary>
+        Shoulders,
     }
 
     // One gamepad button drawn in one colour as the toolkit's own geometry, in the set for a family of pads - see docs/LunaP.md §103.
@@ -134,6 +136,7 @@ namespace EmuSen.LunaP.Controls
             PadGlyphButton.Start => family switch { PadFamily.Xbox => "Menu", PadFamily.PlayStation => "Options", PadFamily.Nintendo => "Plus", _ => "Start" },
             PadGlyphButton.Select => family switch { PadFamily.Xbox => "View", PadFamily.PlayStation => "Create", PadFamily.Nintendo => "Minus", _ => "Select" },
             PadGlyphButton.ThumbstickClick => family == PadFamily.PlayStation ? "L3 or R3" : "Thumbstick click",
+            PadGlyphButton.Shoulders => PadGlyphDrawing.ShoulderLabel(family, PadGlyphButton.LeftShoulder) + " and " + PadGlyphDrawing.ShoulderLabel(family, PadGlyphButton.RightShoulder),
             _ => "Guide",
         };
     }

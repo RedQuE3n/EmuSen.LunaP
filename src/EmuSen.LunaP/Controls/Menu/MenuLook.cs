@@ -47,6 +47,20 @@ namespace EmuSen.LunaP.Controls
         /// <param name="value">The words, or null for none.</param>
         public static void SetFooter(Window window, string? value) => window.SetValue(FooterProperty, value);
 
+        /// <summary>How many lines a window's footer is given on a sheet in the look. 3 by default.</summary>
+        public static readonly AttachedProperty<int> FooterLinesProperty =
+            AvaloniaProperty.RegisterAttached<Window, int>("FooterLines", typeof(MenuLook), 3);
+
+        /// <summary>Reads how many lines a window's footer is given in the look.</summary>
+        /// <param name="window">The window whose footer this is.</param>
+        /// <returns>The lines, 3 unless the window asks for more.</returns>
+        public static int GetFooterLines(Window window) => window.GetValue(FooterLinesProperty);
+
+        /// <summary>Gives a window's footer more or fewer lines in the look, for words that must stay whole, such as a licence's attribution.</summary>
+        /// <param name="window">The window whose footer this is.</param>
+        /// <param name="value">The lines, at least two.</param>
+        public static void SetFooterLines(Window window, int value) => window.SetValue(FooterLinesProperty, value);
+
         // The styles an element was given, so that turning the look off takes away exactly those.
         private static readonly AttachedProperty<Styles?> AppliedProperty =
             AvaloniaProperty.RegisterAttached<Control, Styles?>("Applied", typeof(MenuLook));
@@ -54,6 +68,11 @@ namespace EmuSen.LunaP.Controls
         static MenuLook()
         {
             IsOnProperty.Changed.AddClassHandler<Control>((control, e) => Update(control, e.GetNewValue<bool>()));
+            // An open dropdown's item taking the focus asks the page around the dropdown to scroll to it; under the look the page stays where it is (§196.9).
+            Control.RequestBringIntoViewEvent.AddClassHandler<ComboBox>((combo, e) =>
+            {
+                if (!ReferenceEquals(e.Source, combo) && combo.IsDropDownOpen && Covers(combo)) e.Handled = true;
+            });
         }
 
         /// <summary>Reads whether an element is drawn in the look.</summary>
@@ -131,12 +150,20 @@ namespace EmuSen.LunaP.Controls
         /// <summary>Upper-cases a string and passes anything else through, for the words a button, a tab or a column heading shows.</summary>
         public static readonly IValueConverter UpperCase = new FuncValueConverter<object?, object?>(v => v is string s ? FontLayout.Cased(s, LetterCase.Upper) : v);
 
-        /// <summary>Draws a string content in upper case, and leaves any other content to its own template.</summary>
-        public static readonly IDataTemplate UpperCaseText = new FuncDataTemplate<string>((_, _) =>
+        /// <summary>Draws a string content in upper case, and a control content as itself.</summary>
+        public static readonly IDataTemplate UpperCaseText = new UpperCaseTemplate();
+
+        // A presenter given a content template uses it for a control content too, so a control is handed back as it is (§196.9).
+        private sealed class UpperCaseTemplate : IDataTemplate
         {
-            var text = new TextBlock();
-            text.Bind(TextBlock.TextProperty, new Binding(".") { Converter = UpperCase });
-            return text;
-        }, supportsRecycling: true);
+            public bool Match(object? data) => data is string or Control;
+
+            public Control? Build(object? param) => param switch
+            {
+                Control control => control,
+                string words => new TextBlock { Text = FontLayout.Cased(words, LetterCase.Upper) },
+                _ => new TextBlock { Text = param?.ToString() },
+            };
+        }
     }
 }

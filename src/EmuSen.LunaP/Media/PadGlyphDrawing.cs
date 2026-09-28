@@ -45,6 +45,9 @@ namespace EmuSen.LunaP.Media
                 case PadGlyphButton.Start or PadGlyphButton.Select:
                     Middle(dc, c, s, family, button == PadGlyphButton.Start, brush, pen, thin);
                     break;
+                case PadGlyphButton.Shoulders:
+                    Pair(dc, c, s, family, (b, at, size) => Shoulder(dc, at, size, family, b, brush, thin));
+                    break;
                 case PadGlyphButton.ThumbstickClick:
                     // A stick's cap from above in its well, pressed: a large disc in a thin ring, the Guide's proportions reversed (§151).
                     dc.DrawEllipse(null, thin, c, s * 0.44, s * 0.44);
@@ -300,6 +303,9 @@ namespace EmuSen.LunaP.Media
                 case PadGlyphButton.DPad or PadGlyphButton.DPadUpDown or PadGlyphButton.DPadLeftRight:
                     (shape, cut) = FilledDPad(c, s, button);
                     break;
+                case PadGlyphButton.Shoulders:
+                    Pair(dc, c, s, family, (b, at, size) => Filled(dc, at, size, family, b, brush));
+                    return true;
                 default:
                     return false;
             }
@@ -370,6 +376,14 @@ namespace EmuSen.LunaP.Media
                 }
             }
             return (plus, arrows);
+        }
+
+        // The two shoulders side by side in one square, each half its width, as one glyph for a pair of presses.
+        private static void Pair(DrawingContext dc, Point c, double s, PadFamily family, Action<PadGlyphButton, Point, double> draw)
+        {
+            double half = s * 0.52;
+            draw(PadGlyphButton.LeftShoulder, new Point(c.X - s * 0.25, c.Y), half);
+            draw(PadGlyphButton.RightShoulder, new Point(c.X + s * 0.25, c.Y), half);
         }
 
         // A shoulder's body, rounded at the top, or a trigger's, rounded at the bottom.

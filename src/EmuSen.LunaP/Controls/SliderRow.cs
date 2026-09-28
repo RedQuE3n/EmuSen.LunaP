@@ -17,7 +17,8 @@ namespace EmuSen.LunaP.Controls
         private readonly TextBlock _label = new() { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
         private readonly TextBlock _value = new() { VerticalAlignment = VerticalAlignment.Center, TextAlignment = TextAlignment.Right, MinWidth = 48, Margin = new Thickness(12, 0, 0, 0) };
         private readonly TextBlock _default = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
-        private readonly Slider _slider = new() { Minimum = 0, Maximum = 1, IsSnapToTickEnabled = true, Margin = new Thickness(0, -4, 0, 0) };
+        // Its margin, drawn up under the row of words above it, is the style's (Theme/Controls/SliderList.axaml), so a look can give it room - see docs/LunaP.md §196.9.
+        private readonly Slider _slider = new() { Minimum = 0, Maximum = 1, IsSnapToTickEnabled = true, Classes = { "luna-slider-row" } };
         private readonly Button _reset = new() { Content = "Reset", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
         private readonly Suppressor _setting = new();
         private double _defaultValue, _step;

@@ -394,8 +394,16 @@ namespace EmuSen.LunaP.Windowing
                 }
                 panel[!MenuPanel.TitleProperty] = window[!Window.TitleProperty];
                 panel.FooterSize = MenuFooterSize;
+                panel.TitleMinScale = MenuTitleMinScale;
+                // A window's footer is its own words, a path or an attribution among them, so it keeps their casing.
+                panel.FooterLetterCase = Media.LetterCase.None;
                 panel.Bind(MenuPanel.FooterProperty, window.GetObservable(Controls.MenuLook.FooterProperty, f => f?.ReplaceLineEndings(" ")));
-                panel.Bind(MenuPanel.FooterMaxLinesProperty, window.GetObservable(Controls.MenuLook.FooterProperty, f => string.IsNullOrEmpty(f) ? 1 : MenuFooterLines));
+                void FooterLines() => panel.FooterMaxLines = string.IsNullOrEmpty(Controls.MenuLook.GetFooter(window)) ? 1 : Math.Max(2, Controls.MenuLook.GetFooterLines(window));
+                FooterLines();
+                window.PropertyChanged += (_, e) =>
+                {
+                    if (e.Property == Controls.MenuLook.FooterProperty || e.Property == Controls.MenuLook.FooterLinesProperty) FooterLines();
+                };
                 panel[!MenuPanel.HintFamilyProperty] = layer[!HintFamilyProperty];
                 _menu = panel;
                 window.PropertyChanged += (_, e) =>
@@ -418,7 +426,9 @@ namespace EmuSen.LunaP.Windowing
 
             // A window's footer in a menu frame: its size in design pixels, and the lines kept for it.
             private const double MenuFooterSize = 20;
-            private const int MenuFooterLines = 3;
+
+            // A window's name may be long, a screenshot's or a theme's: it shrinks to two thirds before it is cut.
+            private const double MenuTitleMinScale = 0.66;
 
             public void Restyle()
             {

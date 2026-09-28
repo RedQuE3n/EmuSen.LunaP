@@ -52,6 +52,8 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<Color> HintColorProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(HintColor), Color.FromRgb(0xD2, 0xD2, 0xD6));
         public static readonly StyledProperty<double> RowPitchProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(RowPitch), 54);
         public static readonly StyledProperty<double> OpeningScaleProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(OpeningScale), 1.0);
+        public static readonly StyledProperty<LetterCase?> FooterLetterCaseProperty = AvaloniaProperty.Register<MenuPanel, LetterCase?>(nameof(FooterLetterCase));
+        public static readonly StyledProperty<double> TitleMinScaleProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(TitleMinScale), 1.0);
         public static readonly StyledProperty<string?> SubtitleProperty = AvaloniaProperty.Register<MenuPanel, string?>(nameof(Subtitle));
         public static readonly StyledProperty<double> SubtitleSizeProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(SubtitleSize), 26);
         public static readonly StyledProperty<LetterCase> SubtitleLetterCaseProperty = AvaloniaProperty.Register<MenuPanel, LetterCase>(nameof(SubtitleLetterCase), LetterCase.Upper);
@@ -79,8 +81,8 @@ namespace EmuSen.LunaP.Controls
         {
             AffectsMeasure<MenuPanel>(ScaleProperty, TitleProperty, FooterProperty, WidthFractionProperty, MaxWidthToHeightProperty, HintsProperty, RowPitchProperty,
                 SubtitleProperty, ButtonsProperty, FooterMaxLinesProperty, FooterSizeProperty, ShowsTitleBandProperty);
-            AffectsRender<MenuPanel>(FontPathProperty, TitleSizeProperty, FooterSizeProperty, PanelCornerRadiusProperty, PanelColorProperty, TitleColorProperty,
-                FooterColorProperty, RuleColorProperty, LetterCaseProperty, SubtitleSizeProperty, SubtitleLetterCaseProperty, ShowsScrollIndicatorProperty, ScrollIndicatorColorProperty);
+            AffectsRender<MenuPanel>(FontPathProperty, TitleSizeProperty, TitleMinScaleProperty, FooterSizeProperty, PanelCornerRadiusProperty, PanelColorProperty, TitleColorProperty,
+                FooterColorProperty, RuleColorProperty, LetterCaseProperty, FooterLetterCaseProperty, SubtitleSizeProperty, SubtitleLetterCaseProperty, ShowsScrollIndicatorProperty, ScrollIndicatorColorProperty);
         }
 
         /// <summary>An empty panel, its help bar hidden until Hints are given.</summary>
@@ -119,6 +121,43 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>The title's em size in design pixels before Scale. 68 by default.</summary>
         public double TitleSize { get => GetValue(TitleSizeProperty); set => SetValue(TitleSizeProperty, value); }
+
+        /// <summary>How far a title too wide for its band shrinks before it is cut with an ellipsis, as a fraction of TitleSize. 1 by default, which never shrinks it - see docs/LunaP.md §196.9.</summary>
+        public double TitleMinScale { get => GetValue(TitleMinScaleProperty); set => SetValue(TitleMinScaleProperty, value); }
+
+        /// <summary>The footer's casing alone, such as None for words that hold a path; null follows LetterCase. Null by default.</summary>
+        public LetterCase? FooterLetterCase { get => GetValue(FooterLetterCaseProperty); set => SetValue(FooterLetterCaseProperty, value); }
+
+        private LetterCase FooterCase => FooterLetterCase ?? LetterCase;
+
+        /// <summary>Whether a wrapped footer (FooterMaxLines above one) needs more lines than it is given and ends in an ellipsis.</summary>
+        public bool IsFooterCut
+        {
+            get
+            {
+                if (Footer is not { Length: > 0 } words || FooterMaxLines <= 1 || PanelBounds.Width <= 0) return false;
+                double u = Unit, size = FooterSize * u, lineHeight = size * 1.25;
+                GlyphTypeface typeface = GetValue(FontPathProperty) is { Length: > 0 } p && FontFiles.Load(p) is { } t ? t : FontFiles.Default;
+                return FontLayout.Create(typeface, size, FontLayout.Cased(words, FooterCase), 1, PanelBounds.Width - 48 * u, FooterMaxLines * lineHeight + 0.5, true, "…").Truncated;
+            }
+        }
+
+        /// <summary>Whether the title, at the size it is drawn, is still cut with an ellipsis because even its smallest size does not fit the band.</summary>
+        public bool IsTitleCut => Title is { Length: > 0 } t && TitleDrawnSize(t) is var (_, cut) && cut;
+
+        // The title's size, shrunk toward TitleMinScale until it fits the band, and whether it still does not.
+        private (double Size, bool Cut) TitleDrawnSize(string title)
+        {
+            double u = Unit, full = TitleSize * u;
+            double room = TitleBounds.Width - 48 * u;
+            if (room <= 0) return (full, false);
+            GlyphTypeface typeface = GetValue(FontPathProperty) is { Length: > 0 } p && FontFiles.Load(p) is { } t ? t : FontFiles.Default;
+            double width = FontLayout.Measure(typeface, full, FontLayout.Cased(title, LetterCase));
+            if (width <= room) return (full, false);
+            double least = full * Math.Clamp(TitleMinScale, 0.1, 1);
+            double size = Math.Max(least, full * room / width);
+            return (size, FontLayout.Measure(typeface, size, FontLayout.Cased(title, LetterCase)) > room + 0.5);
+        }
 
         /// <summary>The footer's em size in design pixels before Scale. 26 by default.</summary>
         public double FooterSize { get => GetValue(FooterSizeProperty); set => SetValue(FooterSizeProperty, value); }
@@ -430,7 +469,7 @@ namespace EmuSen.LunaP.Controls
             }
             if (Title is { Length: > 0 } title)
             {
-                double size = TitleSize * u;
+                double size = TitleDrawnSize(title).Size;
                 Rect band = TitleBounds.Deflate(new Thickness(24 * u, 0));
                 double centre = TitleCentre();
                 MenuRow.DrawLine(context, typeface, size, FontLayout.Cased(title, LetterCase), band, centre + MenuRow.CapHeight(typeface, size) / 2, TextAlignment.Center, new ImmutableSolidColorBrush(TitleColor));
@@ -447,14 +486,14 @@ namespace EmuSen.LunaP.Controls
                 double size = FooterSize * u;
                 var band = new Rect(panel.X + 24 * u, panel.Bottom - BottomBand, panel.Width - 48 * u, BottomBand);
                 double lineHeight = FontLayout.Create(typeface, size, "H", 1, double.PositiveInfinity, double.PositiveInfinity, false, null).LineHeight;
-                FontLayout wrappedLines = FontLayout.Create(typeface, size, FontLayout.Cased(wrapped, LetterCase), 1, band.Width, FooterMaxLines * lineHeight + 0.5, true, "…");
+                FontLayout wrappedLines = FontLayout.Create(typeface, size, FontLayout.Cased(wrapped, FooterCase), 1, band.Width, FooterMaxLines * lineHeight + 0.5, true, "…");
                 wrappedLines.Draw(context, new ImmutableSolidColorBrush(FooterColor), band, TextAlignment.Center, 0.5);
             }
             else if (Footer is { Length: > 0 } footer)
             {
                 double size = FooterSize * u;
                 var band = new Rect(panel.X + 24 * u, panel.Bottom - FooterBand * u, panel.Width - 48 * u, FooterBand * u);
-                MenuRow.DrawLine(context, typeface, size, FontLayout.Cased(footer, LetterCase), band, band.Center.Y + MenuRow.CapHeight(typeface, size) / 2, TextAlignment.Center, new ImmutableSolidColorBrush(FooterColor));
+                MenuRow.DrawLine(context, typeface, size, FontLayout.Cased(footer, FooterCase), band, band.Center.Y + MenuRow.CapHeight(typeface, size) / 2, TextAlignment.Center, new ImmutableSolidColorBrush(FooterColor));
             }
         }
 

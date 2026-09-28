@@ -210,5 +210,64 @@ namespace EmuSen.LunaP.Tests
             window.Close();
             host.Close();
         });
+
+        // A button whose content is a control shows that control in the look, not its type's name (§196.9).
+        [Fact]
+        public Task A_button_whose_content_is_a_control_shows_the_control_in_the_look() => UiTest.Run(() =>
+        {
+            var inner = new TextBlock { Text = "Super Mario World" };
+            var button = new Button { Content = new StackPanel { Children = { inner } } };
+            var look = new StackPanel { Children = { button } };
+            MenuLook.SetIsOn(look, true);
+            ToolWindow window = Show(look, 400, 200);
+            Assert.True(inner.IsEffectivelyVisible);
+            Assert.DoesNotContain(button.GetVisualDescendants().OfType<TextBlock>(), t => t.Text?.Contains("StackPanel") == true);
+            window.Close();
+        });
+
+        // A framed sheet's title shrinks before it is cut, and a footer given more lines is whole (§196.9).
+        [Fact]
+        public Task A_long_title_shrinks_to_fit_and_a_long_footer_takes_the_lines_it_is_given() => UiTest.Run(() =>
+        {
+            (ToolWindow host, SheetLayer layer) = Host();
+            var window = new ToolWindow { Title = "Cobalt Harbor (Synthetic), Screenshot 1", Content = new Border { Height = 100 } };
+            string footer = string.Concat(Enumerable.Repeat("Words that must stay in view, whole. ", 9));
+            MenuLook.SetFooter(window, footer);
+            _ = SheetLayer.Show(window, host);
+            host.UpdateLayout();
+            MenuPanel panel = layer.GetVisualDescendants().OfType<MenuPanel>().Single();
+            Assert.Equal(0.66, panel.TitleMinScale);
+            panel.TitleMinScale = 0.4;
+            Assert.False(panel.IsTitleCut);
+            Assert.True(panel.IsFooterCut);
+            MenuLook.SetFooterLines(window, 6);
+            host.UpdateLayout();
+            Assert.Equal(6, panel.FooterMaxLines);
+            Assert.False(panel.IsFooterCut);
+            panel.TitleMinScale = 1;
+            Assert.True(panel.IsTitleCut);
+            window.Close();
+            host.Close();
+        });
+
+        // The plain frame had the same structure and the same fault (§196.4, §196.9): a list at the foot of a sheet scaled 1.5 built one of its three rows.
+        [Fact]
+        public Task A_list_at_the_foot_of_a_scaled_plain_sheet_builds_every_row_it_shows() => UiTest.Run(() =>
+        {
+            var layer = new SheetLayer { PresentsWindows = true, Scale = 1.5 };
+            var host = new ToolWindow { Width = 1920, Height = 1200, Content = new Grid { Children = { new Border(), layer } } };
+            host.Show();
+            var list = new ListBox { ItemsSource = Enumerable.Range(0, 3).Select(i => $"Row {i}").ToArray(), Height = 3 * 42 + 2 };
+            var content = new DockPanel { LastChildFill = true, Children = { new Border { Height = 400 }, list } };
+            DockPanel.SetDock(content.Children[0], Dock.Top);
+            var window = new ToolWindow { Title = "Bindings", Width = 700, Height = 560, Content = content };
+            _ = SheetLayer.Show(window, host);
+            host.UpdateLayout();
+            Dispatcher.UIThread.RunJobs();
+            host.UpdateLayout();
+            Assert.Equal(3, list.GetRealizedContainers().Count());
+            window.Close();
+            host.Close();
+        });
     }
 }

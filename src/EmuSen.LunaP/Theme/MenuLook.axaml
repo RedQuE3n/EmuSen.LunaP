@@ -158,7 +158,8 @@
     </Style>
 
     <!-- A push button: an outlined box in upper case, filled near black with light words while it has the focus, as MenuRows draws one under a menu's rows. -->
-    <Style Selector="Button, ToggleButton, RepeatButton">
+    <!-- Not RepeatButton: a scroll bar's arrows are RepeatButtons, and a push button's height would stretch them over its track. -->
+    <Style Selector="Button, ToggleButton">
         <Setter Property="FontSize" Value="26" />
         <Setter Property="MinHeight" Value="44" />
         <Setter Property="Padding" Value="16,4" />
@@ -168,10 +169,15 @@
         <Setter Property="ContentTemplate" Value="{x:Static luna:MenuLook.UpperCaseText}" />
         <Setter Property="FocusAdorner" Value="{x:Null}" />
     </Style>
-    <Style Selector="Button:focus /template/ ContentPresenter#PART_ContentPresenter, ToggleButton:focus /template/ ContentPresenter#PART_ContentPresenter, RepeatButton:focus /template/ ContentPresenter#PART_ContentPresenter">
+    <Style Selector="Button:focus /template/ ContentPresenter#PART_ContentPresenter, ToggleButton:focus /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="#050507" />
         <Setter Property="Foreground" Value="#EEEEF0" />
         <Setter Property="BorderBrush" Value="#86868A" />
+    </Style>
+
+    <!-- Words in a button wrap rather than run past it or end in an ellipsis, such as a long name on a result a button stands for (§196.9). -->
+    <Style Selector="Button TextBlock">
+        <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
     <!-- A list's rows: the menu's rows, ruled, the chosen one a bar across the whole width. -->
@@ -188,6 +194,10 @@
         <Setter Property="Foreground" Value="#9C9CA0" />
         <Setter Property="FocusAdorner" Value="{x:Null}" />
     </Style>
+    <!-- A row's words wrap rather than run past the list's edge; a window that would rather cut them says so, and says where they are whole (§196.9). -->
+    <Style Selector="ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
     <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="#141416" />
         <Setter Property="Foreground" Value="#B4B4B8" />
@@ -196,6 +206,16 @@
     <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter, ListBoxItem:focus-within /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="#050507" />
         <Setter Property="Foreground" Value="#EEEEF0" />
+    </Style>
+
+    <!-- A slider row's Reset is a small button, and its slider keeps below the row of words rather than under it. -->
+    <Style Selector="luna|SliderRow Button">
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Padding" Value="10,2" />
+    </Style>
+    <Style Selector="Slider.luna-slider-row">
+        <Setter Property="Margin" Value="0,2,0,0" />
     </Style>
 
     <Style Selector="TextBox">

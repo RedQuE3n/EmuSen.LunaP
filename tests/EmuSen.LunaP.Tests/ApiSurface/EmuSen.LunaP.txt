@@ -1108,14 +1108,17 @@ public static class EmuSen.LunaP.Controls.MenuLook
     public static bool Covers(Avalonia.Controls.Control element)
     public static bool GetIsOn(Avalonia.Controls.Control element)
     public static double GetWidthFraction(Avalonia.Controls.Window window)
+    public static int GetFooterLines(Avalonia.Controls.Window window)
     public static readonly Avalonia.AttachedProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>?> HintsProperty = null
     public static readonly Avalonia.AttachedProperty<bool> IsOnProperty = false
     public static readonly Avalonia.AttachedProperty<double> WidthFractionProperty = NaN
+    public static readonly Avalonia.AttachedProperty<int> FooterLinesProperty = 3
     public static readonly Avalonia.AttachedProperty<string?> FooterProperty = null
     public static readonly Avalonia.Controls.Templates.IDataTemplate UpperCaseText
     public static readonly Avalonia.Data.Converters.IValueConverter UpperCase
     public static string? GetFooter(Avalonia.Controls.Window window)
     public static void SetFooter(Avalonia.Controls.Window window, string? value)
+    public static void SetFooterLines(Avalonia.Controls.Window window, int value)
     public static void SetHints(Avalonia.Controls.Window window, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? value)
     public static void SetIsOn(Avalonia.Controls.Control element, bool value)
     public static void SetWidthFraction(Avalonia.Controls.Window window, double value)
@@ -1143,9 +1146,12 @@ public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     public EmuSen.LunaP.Controls.PadGlyphStyle HintGlyphStyle { get; set; }
     public EmuSen.LunaP.Media.LetterCase LetterCase { get; set; }
     public EmuSen.LunaP.Media.LetterCase SubtitleLetterCase { get; set; }
+    public EmuSen.LunaP.Media.LetterCase? FooterLetterCase { get; set; }
     public MenuPanel()
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? Hints { get; set; }
     public System.ValueTuple<Avalonia.Rect, Avalonia.Rect> ScrollIndicatorBounds { get; }
+    public bool IsFooterCut { get; }
+    public bool IsTitleCut { get; }
     public bool ShowsScrollIndicator { get; set; }
     public bool ShowsTitleBand { get; set; }
     public double FooterSize { get; set; }
@@ -1154,6 +1160,7 @@ public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     public double PanelCornerRadius { get; set; }
     public double RowPitch { get; set; }
     public double SubtitleSize { get; set; }
+    public double TitleMinScale { get; set; }
     public double TitleSize { get; set; }
     public double WidthFraction { get; set; }
     public int FooterMaxLines { get; set; }
@@ -1173,6 +1180,7 @@ public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadGlyphStyle> HintGlyphStyleProperty = Filled
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = Upper
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> SubtitleLetterCaseProperty = Upper
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase?> FooterLetterCaseProperty = null
     public static readonly Avalonia.StyledProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>?> HintsProperty = null
     public static readonly Avalonia.StyledProperty<bool> ShowsScrollIndicatorProperty = true
     public static readonly Avalonia.StyledProperty<bool> ShowsTitleBandProperty = true
@@ -1182,6 +1190,7 @@ public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     public static readonly Avalonia.StyledProperty<double> PanelCornerRadiusProperty = 16
     public static readonly Avalonia.StyledProperty<double> RowPitchProperty = 54
     public static readonly Avalonia.StyledProperty<double> SubtitleSizeProperty = 26
+    public static readonly Avalonia.StyledProperty<double> TitleMinScaleProperty = 1
     public static readonly Avalonia.StyledProperty<double> TitleSizeProperty = 68
     public static readonly Avalonia.StyledProperty<double> WidthFractionProperty = 0.66
     public static readonly Avalonia.StyledProperty<int> FooterMaxLinesProperty = 1
@@ -1468,6 +1477,7 @@ public enum EmuSen.LunaP.Controls.PadGlyphButton
     public const EmuSen.LunaP.Controls.PadGlyphButton RightShoulder = 8
     public const EmuSen.LunaP.Controls.PadGlyphButton RightTrigger = 10
     public const EmuSen.LunaP.Controls.PadGlyphButton Select = 12
+    public const EmuSen.LunaP.Controls.PadGlyphButton Shoulders = 15
     public const EmuSen.LunaP.Controls.PadGlyphButton South = 0
     public const EmuSen.LunaP.Controls.PadGlyphButton Start = 11
     public const EmuSen.LunaP.Controls.PadGlyphButton ThumbstickClick = 14

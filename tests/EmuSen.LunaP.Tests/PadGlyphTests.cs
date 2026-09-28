@@ -123,6 +123,23 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal("L3 or R3", PadGlyph.Describe(PadFamily.PlayStation, PadGlyphButton.ThumbstickClick));
         });
 
+        // One glyph for the two shoulders, a body at each side of the square, named for both (§196.8).
+        [Fact]
+        public Task The_shoulder_pair_is_two_bodies_side_by_side_and_is_named_for_both() => UiTest.Run(() =>
+        {
+            double c = Side / 2.0;
+            foreach (PadFamily family in Enum.GetValues<PadFamily>())
+            {
+                byte[] pair = Glyph(family, PadGlyphButton.Shoulders), one = Glyph(family, PadGlyphButton.LeftShoulder);
+                Assert.True(Differing(pair, one) > 20, $"{family}: the pair looks like one shoulder\n{Ascii(pair)}");
+                Assert.True(Enumerable.Range(0, Side).Any(y => Inked(pair, c - Side * 0.3, y)), $"{family}: a body at the left\n{Ascii(pair)}");
+                Assert.True(Enumerable.Range(0, Side).Any(y => Inked(pair, c + Side * 0.3, y)), $"{family}: a body at the right\n{Ascii(pair)}");
+            }
+            Assert.Equal("LB and RB", PadGlyph.Describe(PadFamily.Xbox, PadGlyphButton.Shoulders));
+            Assert.Equal("L1 and R1", PadGlyph.Describe(PadFamily.PlayStation, PadGlyphButton.Shoulders));
+            Assert.Equal("L and R", PadGlyph.Describe(PadFamily.Nintendo, PadGlyphButton.Shoulders));
+        });
+
         [Fact]
         public Task A_hint_bar_draws_a_named_button_in_its_family_and_a_change_moves_nothing() => UiTest.Run(() =>
         {

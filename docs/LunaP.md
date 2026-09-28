@@ -13048,6 +13048,53 @@ own tests (its §41.7).
 ### 196.7 What is not here
 
 - **A look for a desktop window**, deliberately (§196.5).
-- **The plain frame's viewport** (§196.4).
+- **The plain frame's viewport** (§196.4); sought and not found, §196.9.
 - **An inherited scale for stock controls' sizes.** The frame lays them out under a transform instead, which is why
   §196.4 arose.
+
+### 196.8 The shoulders as one glyph
+
+*2026-09-27.* The consumer's help bar named the two shoulder buttons with two glyphs and one label, the first glyph with
+no words. Decided by the consumer the same day (its Q174): one glyph for the pair. `PadGlyphButton.Shoulders`, appended
+to the enumeration so that no stored value moves, draws both shoulders side by side in one square, each body half its
+width, with its family's label in each (*LB* and *RB*, *L* and *R*, *L1* and *R1*; the generic family's filled halves).
+The filled style draws the two filled bodies with their labels cut out. A screen reader hears *"LB and RB"*.
+
+`PadGlyphTests` gains a case: the pair differs from one shoulder, has ink at both sides of the square, and is named for
+both in three families.
+
+### 196.9 Nothing cut, nothing past its panel, nothing over anything else
+
+*2026-09-27.* The consumer then set a rule for every window framed as a menu: nothing may be cut off, run past its
+panel, or be drawn over other content; what does not fit is shrunk or laid out again. It built an audit of every window
+against that rule (its settings reference §4.81), and the audit found what the toolkit had to change. Each change below
+answers a fault the audit or the consumer's pictures showed.
+
+- **A long window title shrinks before it is cut.** `MenuPanel.TitleMinScale` (1: never shrinks) lets the title shrink
+  to that share of `TitleSize` to fit its band, and only then ends in an ellipsis; `IsTitleCut` says whether it still
+  does. The frame sets 0.66. Found on a screenshot's title, *"Cobalt Harbor (Synthetic), Screenshot 1"*, cut at
+  1280 by 800.
+- **A footer has the lines it needs, and keeps its casing.** `MenuLook.FooterLines` (attached, 3 by default) sets a
+  window's footer band; `MenuPanel.IsFooterCut` says whether the footer still ends in an ellipsis. A framed sheet's
+  footer keeps the words' own casing (`MenuPanel.FooterLetterCase`, null by default, following `LetterCase`): the first
+  footer to hold a path showed it in capitals, which on a case-sensitive file system is a different path.
+- **A button whose content is a control shows the control.** The look's upper-case content template was used by the
+  presenter for control content too, and a result button of the consumer's Find by Name showed
+  *"Avalonia.Controls.StackPanel"*. `MenuLook.UpperCaseText` now hands a control back as itself and cases only strings.
+- **Words wrap rather than run past.** In the look, the words in a list's row and in a button wrap. A window that would
+  rather cut a line (the consumer's list of recent games, whose chosen row is whole in its footer) sets that itself.
+- **An open dropdown's list does not move the page.** An item of an open dropdown taking the focus asked the scrolling
+  page around the dropdown to bring it into view, and a Graphics page at 1280 by 800 jumped 8 pixels on opening a
+  dropdown, then 372 on the next press. Under the look a dropdown handles its own items' requests while open.
+- **A scroll bar's arrows are not push buttons.** The look sized `RepeatButton` as a push button, 44 high, and a scroll
+  bar's arrows overlapped over a short track. The push-button style is now `Button` and `ToggleButton` alone.
+- **A slider row's slider keeps below its words.** `SliderRow` drew its slider 4 pixels up under the row of words, and
+  with the look's Reset button the two overlapped. The margin is now a style (`Slider.luna-slider-row`, the same 4
+  pixels in `SliderList.axaml`), and the look gives the slider 2 pixels below instead and a small Reset.
+- **The plain frame's viewport, checked.** §196.4's fault was sought in the plain frame (the consumer's Q175) with a
+  list at the foot of a sheet at scale 1.5, and not found: all three rows were built without any change. The plain
+  frame puts a dock between the scaler and the clipping host, which the menu frame did not. The case stays as a guard.
+
+`MenuLookTests` gains three cases: a button with a control for content shows it; a long title fits once it may shrink
+and is cut when it may not, and a long footer is cut at three lines and whole at six; the plain frame's list at the
+foot of a scaled sheet builds all its rows.
