@@ -29,6 +29,14 @@ namespace EmuSen.LunaP.Controls
             KeyboardNavigation.SetTabNavigation(this, KeyboardNavigationMode.Continue);
             ItemsPanel = new FuncTemplate<Panel?>(() => new VirtualizingStackPanel { CacheLength = BufferViewports });
             ItemTemplate = new FuncDataTemplate<object>((item, _) => Build(item), supportsRecycling: false);
+            LayoutUpdated += (_, _) => Rearrange();
+        }
+
+        // A view left arranged at its own height while its rows measured taller would not scroll; it is arranged again - see docs/LunaP.md §97.9.
+        private void Rearrange()
+        {
+            if (_scroll?.Presenter is ScrollContentPresenter { CanVerticallyScroll: true, Child: { } rows } view && rows.DesiredSize.Height > view.Extent.Height + 0.5)
+                view.InvalidateArrange();
         }
 
         /// <summary>Raised when a person moves a row's slider or presses its Reset, with the item, whose Value is already the new one. Not raised by setting Value.</summary>

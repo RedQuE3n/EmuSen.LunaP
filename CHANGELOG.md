@@ -14,6 +14,10 @@ answer.
 
 ## Unreleased
 
+- **`SliderList` arranges its view again when the view was left at its own height (`§97.9`).** A list whose scroll
+  presenter kept an extent equal to its viewport after its rows arrived did not scroll, and a pad or the wheel could
+  not pass its first view. No API change.
+
 - **Filled button glyphs, a menu's scroll indicator and `MenuTextPopup`, new (`§195`).** `PadGlyphStyle` (`Outline`,
   `Filled`) on `PadGlyph.Style`, `HintBar.GlyphStyle` and `MenuPanel.HintGlyphStyle`; `MenuPanel.ScrollIndicator`,
   `ScrollIndicatorBounds`, `ShowsScrollIndicator` and `ScrollIndicatorColor`, with `MenuScrollIndicator`; and a text

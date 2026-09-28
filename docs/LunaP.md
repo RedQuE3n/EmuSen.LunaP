@@ -11222,6 +11222,40 @@ a search that matches nothing, new items searched, and the host's object back wh
 **Mutants** (each alone against `SliderListTests`): the focused container kept after the focus leaves (§97.7) is
 caught by the recycling case; keywords not searched, a matching heading not keeping its rows, new items not searched,
 and an emptied search not giving the host's items back are each caught by the search case. The full suite is 1192.
+
+### 97.9 Two ways a row below the view went unbuilt, and one fix here (2026-09-28)
+
+The consumer ran its pad walks over a shader preset's sliders with the sheet above its status bar made shorter by 0
+to 16 pixels, a pixel at a time (its `EmuSen_Settings_Reference.md` §4.83.7). A straight walk down, one press at a
+time and no search, stopped at one row and never left it at eight of the seventeen heights, 0 to 7 pixels shorter.
+Two causes were separated; this section corrects §97.2, which said the buffer always has the next row built.
+
+**The view arranged at its own height (fixed here).** At one height (3 pixels shorter), reached by one route into the
+list, the list's `ScrollViewer`
+reported an extent equal to its viewport, 188 points, so nothing scrolled, and only the rows in the first view were
+built. The panel's own desired height was 1,034 points. The `ScrollContentPresenter` had arranged its child at 188 and
+was not arranged again when the child's desired height grew, when the preset's rows arrived. Measured with the list in
+that state: the panel's `InvalidateMeasure` left the extent at 188, and the presenter's `InvalidateArrange` restored
+1,034, after which the walk went on. The mechanism inside Avalonia that leaves the arrange stale was not found.
+`SliderList` now checks after each layout pass, and when the presenter's extent is short of its child's desired
+height while it scrolls vertically, arranges the presenter again.
+
+A plain `SliderList` given its items after being shown, in a window of every height from 120 to 420 points, never
+showed the fault (a probe, not kept), so no test of this repository reproduces it. The consumer's case at that height
+is the test, and fails with the check removed (its §4.83.7, mutant L1). That is a weaker position than a case here,
+and is recorded as such.
+
+**The buffer not rebuilt near its edge (fixed in the consumer, not here).** At all eight heights (the walk stopped before
+the fifth row from 3 to 7 pixels shorter, before the eighth from 0 to 2) the extent was right, but the row below the focused one was
+not built. §97.2
+assumed the panel rebuilds its buffer as the view moves. Read in Avalonia's source and borne out by the rows built:
+`VirtualizingStackPanel` measures again only when the new view leaves the range it last built for, or comes within
+the buffer of that range's edge by a strict comparison that an unclamped buffer never meets. A view brought flush
+under the focused row can end exactly at the built range's edge, and then the next row stays unbuilt and a directional
+search finds nothing below. The consumer's pad router, finding nothing inside a scrolling area that could scroll
+further, now scrolls it a page that way and back, which makes the panel build around the view as it is, and searches
+again. It is a router's answer because the fault is in how a search meets a virtualising panel, not in the list; any
+host of this list driven by directional focus needs the same, and the gallery has no pad.
 ## 98. Drawn controls: a positioned canvas, a fitted image, and text in a font from a file
 
 *2026-09-24.* EmuSen's Mistress is to draw EmulationStation-DE themes (its `EmuSen_BigPicture.md`, §10.1 and §13). A
