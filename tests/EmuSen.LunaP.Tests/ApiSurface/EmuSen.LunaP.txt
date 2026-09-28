@@ -1304,6 +1304,7 @@ public class EmuSen.LunaP.Controls.MenuTextPopup : Avalonia.Controls.Border
     public MenuTextPopup(Avalonia.Controls.TextBox target, string? title)
     public System.Threading.Tasks.Task<bool> Closed { get; }
     public bool IsOpen { get; }
+    public int Lines { get; set; }
     public static EmuSen.LunaP.Controls.MenuTextPopup Show(Avalonia.Controls.TextBox target, string? title, string? hint = null)
     public static EmuSen.LunaP.Controls.MenuTextPopup? OpenOver(Avalonia.Visual visual)
     public string? Hint { get; set; }

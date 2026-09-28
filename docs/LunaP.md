@@ -12909,6 +12909,10 @@ every visual; and with the lower pair pointing up, because the pixel counts did 
 cases were added for them, one capturing with `UiTest.Capture`, which repaints only what was invalidated, and one
 reading the pixel at each pair's point; rerun alone, both mutants were caught.
 
+**The field shows four lines (2026-09-27).** On the handheld the one-line field showed too little of a longer name or a
+description. `MenuTextPopup.Lines`, four by default, makes the field wrap and keeps it that many lines tall (`MinLines`
+and `MaxLines`); Enter still finishes rather than breaking the line. One line keeps the old single-line field.
+
 ## 196. A menu's look for stock controls, and a sheet framed as a menu
 
 *2026-09-27.* §181 and §182 drew the consumer's big-screen menus as its reference frontend's are, by changing how stock
