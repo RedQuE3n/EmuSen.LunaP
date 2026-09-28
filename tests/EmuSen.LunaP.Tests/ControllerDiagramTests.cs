@@ -20,8 +20,7 @@ namespace EmuSen.LunaP.Tests
     // ControllerDiagram: regions, hit tests, pressed and stick drawing, labels and moving between regions - see docs/LunaP.md §198.
     public class ControllerDiagramTests
     {
-        // The drawings finished so far; the rest stand in with another's until theirs are drawn.
-        public static TheoryData<ControllerLayout> Drawn() => new() { ControllerLayout.Snes, ControllerLayout.Nintendo64 };
+        public static TheoryData<ControllerLayout> Drawn() => new(Enum.GetValues<ControllerLayout>());
 
         private static (ToolWindow Window, ControllerDiagram Diagram) Shown(ControllerLayout layout, double w = 1100, double h = 640)
         {
@@ -242,14 +241,49 @@ namespace EmuSen.LunaP.Tests
             (ToolWindow window, ControllerDiagram diagram) = Shown(layout, w, h);
             foreach (DiagramRegion region in diagram.Regions)
             {
-                (Point from, Point to) = diagram.LeaderOf(region.Id)!.Value;
+                (Point from, _, Point to) = diagram.LeaderOf(region.Id)!.Value;
                 Rect label = diagram.LabelOf(region.Id)!.Bounds.Inflate(1);
                 Assert.True(label.Contains(from), $"{region.Id}'s line starts at {from}, off its label {label}");
                 Assert.True(diagram.RegionRect(region.Id).Inflate(2).Contains(to), $"{region.Id}'s line ends at {to}, off its region {diagram.RegionRect(region.Id)}");
             }
-            Rect a = diagram.RegionRect(layout == ControllerLayout.Snes ? "X" : "A");
-            Assert.True(diagram.LeaderOf(layout == ControllerLayout.Snes ? "X" : "A")!.Value.To.X > a.Center.X + a.Width * 0.25);
+            foreach (string lettered in layout == ControllerLayout.Snes ? new[] { "X", "Y", "A", "B" } : new[] { "A", "B" })
+            {
+                Rect box = diagram.RegionRect(lettered);
+                Point meets = diagram.LeaderOf(lettered)!.Value.To;
+                Assert.True(((Vector)(meets - box.Center)).Length > Math.Min(box.Width, box.Height) * 0.35, $"{lettered}'s line meets it at {meets}, near its middle {box.Center}");
+            }
             Assert.Null(diagram.LeaderOf("NoSuchRegion"));
+            window.Close();
+        });
+
+        // No line runs across the controller: each leaves it by the shortest way that crosses no other button, so the length of it over the drawing is short.
+        [Theory]
+        [MemberData(nameof(Drawn))]
+        public Task No_line_runs_across_the_drawing(ControllerLayout layout) => UiTest.Run(() =>
+        {
+            (ToolWindow window, ControllerDiagram diagram) = Shown(layout);
+            Rect drawn = default;
+            for (double y = 0; y < 640; y += 4)
+                for (double x = 0; x < 1100; x += 4)
+                    if (diagram.IsOnDrawing(new Point(x, y))) drawn = drawn == default ? new Rect(x, y, 1, 1) : drawn.Union(new Rect(x, y, 1, 1));
+            double across = Math.Max(drawn.Width, drawn.Height);
+            var worst = new List<string>();
+            foreach (DiagramRegion region in diagram.Regions)
+            {
+                (Point from, Point elbow, Point to) = diagram.LeaderOf(region.Id)!.Value;
+                double over = 0;
+                foreach ((Point a, Point b) in new[] { (from, elbow), (elbow, to) })
+                {
+                    double length = ((Vector)(b - a)).Length;
+                    for (double t = 0; t < length; t += 1)
+                    {
+                        Point p = a + (b - a) * (t / length);
+                        if (diagram.IsOnDrawing(p) && diagram.RegionAt(p) != region.Id) over += 1;
+                    }
+                }
+                if (over > across * 0.35) worst.Add($"{region.Id} crosses {over:0} px of a {across:0} px drawing");
+            }
+            Assert.Empty(worst);
             window.Close();
         });
 
@@ -344,7 +378,35 @@ namespace EmuSen.LunaP.Tests
             Assert.DoesNotContain(diagram.Regions, r => r.Id == "X");
             Assert.Empty(diagram.Pressed);
             Assert.Null(diagram.SelectedRegion);
-            Assert.Equal(new[] { "StickUp", "StickRight", "StickDown", "StickLeft" }, diagram.Regions.Where(r => r.Stick == "Stick").Select(r => r.Id));
+            Assert.Equal(new[] { "StickUp", "StickDown", "StickLeft", "StickRight" }, diagram.Regions.Where(r => r.Stick == "Stick").Select(r => r.Id));
+            window.Close();
+        });
+
+        // Without labels the drawing fills the control; without keys a label is one line; a caption of the host's is printed in place of the drawing's.
+        [Fact]
+        public Task Labels_keys_captions_and_the_stick_ring_are_the_host_s_to_turn_off_or_on() => UiTest.Run(() =>
+        {
+            (ToolWindow window, ControllerDiagram diagram) = Shown(ControllerLayout.Gamepad);
+            double labelled = diagram.RegionRect("A").Width;
+            double tall = diagram.LabelOf("A")!.Bounds.Width;
+            diagram.ShowsKeys = false;
+            UiTest.Redraw(window);
+            Assert.True(diagram.LabelOf("A")!.Bounds.Width <= tall);
+            diagram.ShowsLabels = false;
+            UiTest.Redraw(window);
+            Assert.False(diagram.LabelOf("A")!.IsVisible);
+            Assert.True(diagram.RegionRect("A").Width > labelled * 1.3, $"the drawing grew from {labelled:0} to {diagram.RegionRect("A").Width:0}");
+            Assert.Null(diagram.LeaderOf("A"));
+
+            ulong plain = UiTest.Redraw(window).Hash;
+            diagram.SetCaption("A", "Z");
+            ulong captioned = UiTest.Redraw(window).Hash;
+            Assert.NotEqual(plain, captioned);
+            diagram.SetCaption("A", null);
+            Assert.Equal(plain, UiTest.Redraw(window).Hash);
+
+            diagram.StickRing = 0.5;
+            Assert.NotEqual(plain, UiTest.Redraw(window).Hash);
             window.Close();
         });
 

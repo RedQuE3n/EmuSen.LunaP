@@ -91,13 +91,16 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<ControllerLayout> LayoutProperty = AvaloniaProperty.Register<ControllerDiagram, ControllerLayout>(nameof(Layout), ControllerLayout.Snes);
         public static readonly StyledProperty<string?> SelectedRegionProperty = AvaloniaProperty.Register<ControllerDiagram, string?>(nameof(SelectedRegion));
         public static readonly StyledProperty<bool> IsInteractiveProperty = AvaloniaProperty.Register<ControllerDiagram, bool>(nameof(IsInteractive), true);
+        public static readonly StyledProperty<bool> ShowsKeysProperty = AvaloniaProperty.Register<ControllerDiagram, bool>(nameof(ShowsKeys), true);
+        public static readonly StyledProperty<bool> ShowsLabelsProperty = AvaloniaProperty.Register<ControllerDiagram, bool>(nameof(ShowsLabels), true);
+        public static readonly StyledProperty<double> StickRingProperty = AvaloniaProperty.Register<ControllerDiagram, double>(nameof(StickRing));
 
         private DiagramArt _art = DiagramArt.For(ControllerLayout.Snes);
         private List<DiagramRegion> _regions = new();
         private readonly Dictionary<string, DiagramLabel> _labels = new(StringComparer.Ordinal);
         private readonly Dictionary<string, DiagramBinding> _bindings = new(StringComparer.Ordinal);
         private readonly HashSet<string> _pressed = new(StringComparer.Ordinal);
-        private readonly Dictionary<string, Point> _centres = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> _captions = new(StringComparer.Ordinal);
         private readonly Dictionary<string, Vector> _sticks = new(StringComparer.Ordinal);
         private readonly Dictionary<string, double> _triggers = new(StringComparer.Ordinal);
         private readonly List<(Point From, Point Elbow, Point To, string Region)> _leaders = new();
@@ -107,7 +110,8 @@ namespace EmuSen.LunaP.Controls
 
         static ControllerDiagram()
         {
-            AffectsRender<ControllerDiagram>(SelectedRegionProperty);
+            AffectsRender<ControllerDiagram>(SelectedRegionProperty, StickRingProperty);
+            AffectsMeasure<ControllerDiagram>(ShowsKeysProperty, ShowsLabelsProperty);
             AffectsMeasure<ControllerDiagram>(TextElement.FontSizeProperty, TextElement.FontFamilyProperty);
             FocusableProperty.OverrideDefaultValue<ControllerDiagram>(false);
         }
@@ -128,6 +132,24 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>Whether the labels take the focus and clicks; off, the diagram only shows. True by default.</summary>
         public bool IsInteractive { get => GetValue(IsInteractiveProperty); set => SetValue(IsInteractiveProperty, value); }
+
+        /// <summary>Whether a label shows a key above its pad button; off, it shows the pad button alone. True by default.</summary>
+        public bool ShowsKeys { get => GetValue(ShowsKeysProperty); set => SetValue(ShowsKeysProperty, value); }
+
+        /// <summary>Whether each region has its label and line beside the drawing; off, the drawing alone fills the control. True by default.</summary>
+        public bool ShowsLabels { get => GetValue(ShowsLabelsProperty); set => SetValue(ShowsLabelsProperty, value); }
+
+        /// <summary>A ring drawn over each stick at this share of its travel, such as a dead zone, or none at 0. 0 by default.</summary>
+        public double StickRing { get => GetValue(StickRingProperty); set => SetValue(StickRingProperty, value); }
+
+        /// <summary>Prints other words on a region, such as a connected pad's own letter, in place of the drawing's.</summary>
+        /// <param name="region">The region's id.</param>
+        /// <param name="caption">The words, or null to print the drawing's own.</param>
+        public void SetCaption(string region, string? caption)
+        {
+            if (caption is null) _captions.Remove(region); else _captions[region] = caption;
+            InvalidateVisual();
+        }
 
         /// <summary>Every region of the drawn controller, in drawing order.</summary>
         public IReadOnlyList<DiagramRegion> Regions => _regions;
@@ -233,21 +255,23 @@ namespace EmuSen.LunaP.Controls
                 for (int i = _regions.Count - 1; i >= 0; i--)
                 {
                     RegionArt art = _regions[i].Art;
-                    if (art.Behind == behind && Hits(art, p)) return art.Id;
+                    if (art.Behind == behind && _art.Hits(art, p)) return art.Id;
                 }
             return null;
         }
 
-        // Whether a design point is on a region where it shows: inside its shape and clip, and not under the shell for one drawn behind it.
-        private bool Hits(RegionArt art, Point p) =>
-            art.Shape.FillContains(p) && (art.Clip is null || art.Clip.FillContains(p))
-            && (!art.Behind || !_art.Body.Any(b => b.Fill is not null && b.Shape.FillContains(p)));
+        /// <summary>Whether a point lies on the drawn controller's shell or any of its parts, rather than on the space around it.</summary>
+        /// <param name="point">A point in the diagram's own coordinates.</param>
+        /// <returns>True over the drawing.</returns>
+        public bool IsOnDrawing(Point point) =>
+            _toControl.TryInvert(out Matrix inverse) && point.Transform(inverse) is var p
+            && _art.Body.Any(b => b.Fill is not null && b.Shape.Bounds.Contains(p) && b.Shape.FillContains(p));
 
-        /// <summary>The line joining a region's label to it: from the label's edge to the point where it meets the region, in the diagram's own coordinates.</summary>
+        /// <summary>The line joining a region's label to it: from the label's edge, by the point where it enters the drawing's box, to the point where it meets the region, in the diagram's own coordinates.</summary>
         /// <param name="region">The region's id.</param>
-        /// <returns>The line's two ends, or null for an id the drawing lacks or before the diagram is arranged.</returns>
-        public (Point From, Point To)? LeaderOf(string region) =>
-            _leaders.FirstOrDefault(l => l.Region == region) is { Region: not null } leader ? (leader.From, leader.To) : null;
+        /// <returns>The line's three points, or null for an id the drawing lacks or before the diagram is arranged.</returns>
+        public (Point From, Point Via, Point To)? LeaderOf(string region) =>
+            _leaders.FirstOrDefault(l => l.Region == region) is { Region: not null } leader ? (leader.From, leader.Elbow, leader.To) : null;
 
         /// <summary>The box a region is drawn in, in the diagram's own coordinates.</summary>
         /// <param name="region">The region's id.</param>
@@ -260,24 +284,7 @@ namespace EmuSen.LunaP.Controls
         /// <returns>The point, or null for an id the drawing lacks.</returns>
         public Point? PointIn(string region)
         {
-            return _centres.TryGetValue(region, out Point p) ? p.Transform(_toControl) : null;
-        }
-
-        // The shown point of a region nearest the middle of its box, in design units: where a click lands and where moving the selection measures from.
-        private Point Inside(RegionArt art)
-        {
-            Rect b = art.Bounds;
-            Point best = b.Center;
-            double bestDistance = double.MaxValue;
-            for (int i = 0; i <= 16; i++)
-                for (int j = 0; j <= 16; j++)
-                {
-                    var p = new Point(b.X + b.Width * i / 16, b.Y + b.Height * j / 16);
-                    if (!Hits(art, p)) continue;
-                    double d = ((Vector)(p - b.Center)).Length;
-                    if (d < bestDistance) { bestDistance = d; best = p; }
-                }
-            return best;
+            return _regions.FirstOrDefault(r => r.Id == region) is { } found ? found.Art.Centre.Transform(_toControl) : null;
         }
 
         /// <summary>The nearest region a way from another on the drawing, or null when none lies that way.</summary>
@@ -296,13 +303,13 @@ namespace EmuSen.LunaP.Controls
                 _ => default,
             };
             if (way == default) return null;
-            Point origin = _centres[from.Id];
+            Point origin = from.Art.Centre;
             string? best = null;
             double bestScore = double.MaxValue;
             foreach (DiagramRegion other in _regions)
             {
                 if (ReferenceEquals(other, from)) continue;
-                Vector d = _centres[other.Id] - origin;
+                Vector d = other.Art.Centre - origin;
                 double along = d.X * way.X + d.Y * way.Y;
                 if (along <= 6) continue;
                 double across = Math.Abs(d.X * way.Y - d.Y * way.X);
@@ -343,14 +350,20 @@ namespace EmuSen.LunaP.Controls
             {
                 foreach (DiagramLabel label in _labels.Values) label.Focusable = IsInteractive;
             }
+            else if (change.Property == ShowsLabelsProperty)
+            {
+                foreach (DiagramLabel label in _labels.Values) label.IsVisible = ShowsLabels;
+            }
+            else if (change.Property == ShowsKeysProperty)
+            {
+                foreach (DiagramLabel label in _labels.Values) { label.InvalidateMeasure(); label.InvalidateVisual(); }
+            }
         }
 
         private void Rebuild()
         {
             _art = DiagramArt.For(Layout);
             _regions = _art.Regions.Select(r => new DiagramRegion(r)).ToList();
-            _centres.Clear();
-            foreach (DiagramRegion region in _regions) _centres[region.Id] = Inside(region.Art);
             foreach (DiagramLabel old in _labels.Values)
             {
                 VisualChildren.Remove(old);
@@ -360,7 +373,7 @@ namespace EmuSen.LunaP.Controls
             _pressed.Clear();
             foreach (DiagramRegion region in _regions)
             {
-                var label = new DiagramLabel(this, region) { Binding = BindingOf(region.Id), Focusable = IsInteractive };
+                var label = new DiagramLabel(this, region) { Binding = BindingOf(region.Id), Focusable = IsInteractive, IsVisible = ShowsLabels };
                 _labels[region.Id] = label;
                 VisualChildren.Add(label);
                 LogicalChildren.Add(label);
@@ -426,19 +439,21 @@ namespace EmuSen.LunaP.Controls
             double h = double.IsInfinity(availableSize.Height) ? w * 0.62 : availableSize.Height;
             // Labels grow with the space, and never fall far below the text around them, as on a big-screen sheet whose text is scaled up.
             double text = GetValue(TextElement.FontSizeProperty) / 14 * 0.85;
-            _unit = Math.Clamp(Math.Max(Math.Min(w / 1100, h / 640), Math.Min(text, Math.Min(w / 900, h / 520))), 0.45, 3);
+            _unit = Math.Clamp(Math.Max(Math.Min(w / 1100, h / 640), Math.Min(text, Math.Min(w / 900, h / 420))), 0.45, 3);
             MeasureLabels();
 
-            // A column of labels taller than the space shrinks them all, so none spills into the row below.
-            for (int pass = 0; pass < 3; pass++)
+            // A column taller than the space, or a row wider than it, shrinks every label, so none spills past another or the edge.
+            for (int pass = 0; pass < 3 && ShowsLabels; pass++)
             {
                 double chipH = _labels.Values.Select(l => l.DesiredSize.Height).DefaultIfEmpty(0).Max();
                 double gap = 44 * _unit, space = 8 * _unit;
                 int rows = (_regions.Any(r => r.Side == DiagramSide.Top) ? 1 : 0) + (_regions.Any(r => r.Side == DiagramSide.Bottom) ? 1 : 0);
                 int tallest = new[] { DiagramSide.Left, DiagramSide.Right }.Max(side => _regions.Count(r => r.Side == side));
                 double need = tallest * (chipH + space) + rows * (chipH + gap);
-                if (need <= h || _unit <= 0.45) break;
-                _unit = Math.Max(0.45, _unit * h / need);
+                double across = new[] { DiagramSide.Top, DiagramSide.Bottom }.Max(side => _regions.Where(r => r.Side == side).Sum(r => _labels[r.Id].DesiredSize.Width + space));
+                double over = Math.Max(need / h, across / w);
+                if (over <= 1 || _unit <= 0.45) break;
+                _unit = Math.Max(0.45, _unit / over);
                 MeasureLabels();
             }
             return new Size(w, h);
@@ -459,7 +474,7 @@ namespace EmuSen.LunaP.Controls
             double chipH = _labels.Values.Select(l => l.DesiredSize.Height).DefaultIfEmpty(0).Max();
             double gap = 44 * u, space = 8 * u, pad = 10 * u;
             double Widest(DiagramSide side) => _regions.Where(r => r.Side == side).Select(r => _labels[r.Id].DesiredSize.Width).DefaultIfEmpty(0).Max();
-            bool Has(DiagramSide side) => _regions.Any(r => r.Side == side);
+            bool Has(DiagramSide side) => ShowsLabels && _regions.Any(r => r.Side == side);
 
             double left = Has(DiagramSide.Left) ? Widest(DiagramSide.Left) + gap : pad, right = Has(DiagramSide.Right) ? Widest(DiagramSide.Right) + gap : pad;
             double top = Has(DiagramSide.Top) ? chipH + gap : pad, bottom = Has(DiagramSide.Bottom) ? chipH + gap : pad;
@@ -479,9 +494,9 @@ namespace EmuSen.LunaP.Controls
             foreach (DiagramSide side in Enum.GetValues<DiagramSide>())
             {
                 List<DiagramRegion> here = _regions.Where(r => r.Side == side).ToList();
-                if (here.Count == 0) continue;
+                if (here.Count == 0 || !ShowsLabels) continue;
                 bool column = side is DiagramSide.Left or DiagramSide.Right;
-                List<(DiagramRegion Region, Point Anchor)> sorted = here.Select(r => (r, r.Art.Anchor.Transform(_toControl)))
+                List<(DiagramRegion Region, Point Anchor)> sorted = here.Select(r => (r, r.Art.Edge.Transform(_toControl)))
                     .OrderBy(p => column ? p.Item2.Y : p.Item2.X).ToList();
                 double[] sizes = sorted.Select(p => column ? chipH : _labels[p.Region.Id].DesiredSize.Width).ToArray();
                 double from = column ? columnFrom : 0, to = column ? columnTo : w;
@@ -507,15 +522,9 @@ namespace EmuSen.LunaP.Controls
                         DiagramSide.Top => new Point(slot.Center.X, slot.Bottom),
                         _ => new Point(slot.Center.X, slot.Top),
                     };
-                    double reach = Math.Min(gap * 0.3, 14 * u);
-                    Point elbow = side switch
-                    {
-                        DiagramSide.Left => start + new Vector(reach, 0),
-                        DiagramSide.Right => start - new Vector(reach, 0),
-                        DiagramSide.Top => start + new Vector(0, reach),
-                        _ => start - new Vector(0, reach),
-                    };
-                    _leaders.Add((start, elbow, anchor, region.Id));
+                    Point elbow = region.Art.Edge.Transform(_toControl);
+                    Point meets = region.Art.Anchor.Transform(_toControl);
+                    _leaders.Add((start, elbow, meets, region.Id));
                 }
             }
 
@@ -642,7 +651,7 @@ namespace EmuSen.LunaP.Controls
             finally { clip?.Dispose(); }
 
             if (region.Mark is { } mark) context.DrawGeometry(new ImmutableSolidColorBrush(pressed ? Colors.White : region.MarkColour), null, mark);
-            if (region.Caption is { } caption)
+            if ((_captions.TryGetValue(region.Id, out string? own) ? own : region.Caption) is { } caption)
                 DrawText(context, caption, region.Bounds.Center, region.CaptionSize, region.CaptionColour, region.CaptionAngle, true, font);
         }
 
@@ -656,6 +665,9 @@ namespace EmuSen.LunaP.Controls
             if (selected) context.DrawEllipse(null, new ImmutablePen(new ImmutableSolidColorBrush(accent), 14), at, stick.KnobRadius, stick.KnobRadius);
             context.DrawEllipse(new ImmutableSolidColorBrush(clicked ? accent : stick.KnobFill), new ImmutablePen(new ImmutableSolidColorBrush(stick.KnobStroke), 3), at, stick.KnobRadius, stick.KnobRadius);
             context.DrawEllipse(null, new ImmutablePen(new ImmutableSolidColorBrush(DiagramArt.Darken(stick.KnobFill, 0.18)), 3), at, stick.KnobRadius * 0.62, stick.KnobRadius * 0.62);
+            if (StickRing > 0)
+                context.DrawEllipse(null, new ImmutablePen(new ImmutableSolidColorBrush(Color.FromArgb(220, accent.R, accent.G, accent.B)), 3, new ImmutableDashStyle(new double[] { 2, 2 }, 0)),
+                    stick.Centre, stick.Travel * StickRing, stick.Travel * StickRing);
             if (at != stick.Centre) context.DrawEllipse(new ImmutableSolidColorBrush(accent), null, at, 7, 7);
         }
 
@@ -749,7 +761,7 @@ namespace EmuSen.LunaP.Controls
         {
             (double nameSize, double lineSize, double pad) = Sizes;
             double badge = Math.Max(Text(Region.Name, nameSize, true, Colors.White).Width + 14 * _scale, 34 * _scale);
-            double lines = Math.Max(Text(Binding.Key ?? Unbound, lineSize, false, Colors.White).Width, Text(Binding.Pad ?? Unbound, lineSize, false, Colors.White).Width);
+            double lines = Math.Max(_owner.ShowsKeys ? Text(Binding.Key ?? Unbound, lineSize, false, Colors.White).Width : 0, Text(Binding.Pad ?? Unbound, lineSize, false, Colors.White).Width);
             double width = pad + badge + 8 * _scale + 16 * _scale + Math.Max(lines, 64 * _scale) + pad;
             double height = pad * 2 + lineSize * 1.45 * 2;
             return new Size(Math.Ceiling(width), Math.Ceiling(height));
@@ -781,12 +793,12 @@ namespace EmuSen.LunaP.Controls
             context.DrawText(name, new Point(badge.Center.X - name.Width / 2, badge.Center.Y - name.Height / 2));
 
             double x = badge.Right + 8 * _scale, row = lineSize * 1.45;
-            double y0 = box.Y + pad, y1 = y0 + row;
-            KeyIcon(context, new Rect(x, y0 + (row - 12 * _scale) / 2, 15 * _scale, 12 * _scale), muted);
+            double y0 = box.Y + pad, y1 = _owner.ShowsKeys ? y0 + row : box.Center.Y - row / 2;
+            if (_owner.ShowsKeys) KeyIcon(context, new Rect(x, y0 + (row - 12 * _scale) / 2, 15 * _scale, 12 * _scale), muted);
             BadgeGlyphDrawing.Draw(context, new Rect(x - 1 * _scale, y1 + (row - 17 * _scale) / 2, 17 * _scale, 17 * _scale), ControllerShape.Gamepad, muted);
             FormattedText key = Text(Binding.Key ?? Unbound, lineSize, false, Binding.Key is null ? muted : text);
             FormattedText padText = Text(Binding.Pad ?? Unbound, lineSize, false, Binding.Pad is null ? muted : text);
-            context.DrawText(key, new Point(x + 20 * _scale, y0 + (row - key.Height) / 2));
+            if (_owner.ShowsKeys) context.DrawText(key, new Point(x + 20 * _scale, y0 + (row - key.Height) / 2));
             context.DrawText(padText, new Point(x + 20 * _scale, y1 + (row - padText.Height) / 2));
         }
 

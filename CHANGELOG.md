@@ -23,8 +23,10 @@ answer.
 
 - **`ControllerDiagram`, new and additive (`§198`).** A controller drawn large from the toolkit's own geometry, every
   button, direction and trigger a named region with a label showing its key and pad button, lit while pressed, a stick's
-  knob moved by its position, and chosen by a click or by moving between regions. The Super NES and Nintendo 64 pads are
-  drawn; `Nes`, `GameBoy` and `Gamepad` draw the Super NES pad in their place until theirs are done.
+  knob moved by its position, and chosen by a click or by moving between regions. All five layouts are drawn (Super NES,
+  Nintendo 64, NES, Game Boy and a modern pad); each label's side and line are worked out from the drawing so no line
+  runs across it. `ShowsKeys`, `ShowsLabels`, `SetCaption`, `StickRing` and `IsOnDrawing` for a host that shows a pad
+  itself; `LeaderOf` gives the line's three points.
 
 - **`InfoLine` and `FrameSequenceImage`, new and additive (`§193`, `§194`).** A line of drawn pictures (gamepad, star,
   funnel, open folder) with their numbers; an animated GIF decoded by the toolkit and played from the host's clock by

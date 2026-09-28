@@ -533,6 +533,8 @@ namespace EmuSen.LunaP.Tests
             [(typeof(ControllerDiagram), nameof(ControllerDiagram.PointIn))] = "ControllerDiagram has no template; its regions and labels are built with its layout, before it is shown.",
             [(typeof(ControllerDiagram), nameof(ControllerDiagram.Neighbour))] = "ControllerDiagram has no template; its regions and labels are built with its layout, before it is shown.",
             [(typeof(ControllerDiagram), nameof(ControllerDiagram.MoveSelection))] = "ControllerDiagram has no template; its regions and labels are built with its layout, before it is shown.",
+            [(typeof(ControllerDiagram), nameof(ControllerDiagram.SetCaption))] = "ControllerDiagram has no template; a caption is kept by region and drawn whenever the diagram draws.",
+            [(typeof(ControllerDiagram), nameof(ControllerDiagram.IsOnDrawing))] = "ControllerDiagram has no template; the answer is its drawing's geometry under the layout it last had.",
             [(typeof(ControllerDiagram), nameof(ControllerDiagram.LeaderOf))] = "ControllerDiagram has no template; its lines are laid out with its labels, and before that the answer is null.",
             [(typeof(ControllerDiagram), nameof(ControllerDiagram.Select))] = "ControllerDiagram has no template; its regions and labels are built with its layout, before it is shown.",
             [(typeof(TextRowList), nameof(TextRowList.RowRect))] = "TextRowList has no template; the answer is arithmetic on its properties and its bounds.",

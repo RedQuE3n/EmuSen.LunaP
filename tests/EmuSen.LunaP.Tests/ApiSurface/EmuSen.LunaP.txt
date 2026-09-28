@@ -246,16 +246,23 @@ public class EmuSen.LunaP.Controls.ControllerDiagram : Avalonia.Controls.Control
     public System.Collections.Generic.IReadOnlyCollection<string> Pressed { get; }
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.DiagramRegion> Regions { get; }
     public System.Collections.Generic.IReadOnlyList<string> Sticks { get; }
-    public System.ValueTuple<Avalonia.Point, Avalonia.Point>? LeaderOf(string region)
+    public System.ValueTuple<Avalonia.Point, Avalonia.Point, Avalonia.Point>? LeaderOf(string region)
     public bool IsInteractive { get; set; }
+    public bool IsOnDrawing(Avalonia.Point point)
     public bool IsPressed(string region)
     public bool MoveSelection(Avalonia.Input.NavigationDirection direction)
+    public bool ShowsKeys { get; set; }
+    public bool ShowsLabels { get; set; }
+    public double StickRing { get; set; }
     public double TriggerValue(string region)
     public event System.EventHandler<EmuSen.LunaP.Controls.DiagramRegionEventArgs> RegionInvoked
     public override void Render(Avalonia.Media.DrawingContext context)
     public static double[] Spread(double[] wish, double[] size, double space, double from, double to)
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.ControllerLayout> LayoutProperty = Snes
     public static readonly Avalonia.StyledProperty<bool> IsInteractiveProperty = true
+    public static readonly Avalonia.StyledProperty<bool> ShowsKeysProperty = true
+    public static readonly Avalonia.StyledProperty<bool> ShowsLabelsProperty = true
+    public static readonly Avalonia.StyledProperty<double> StickRingProperty = 0
     public static readonly Avalonia.StyledProperty<string?> SelectedRegionProperty = null
     public static string Describe(EmuSen.LunaP.Controls.ControllerLayout layout)
     public string? Neighbour(string region, Avalonia.Input.NavigationDirection direction)
@@ -264,6 +271,7 @@ public class EmuSen.LunaP.Controls.ControllerDiagram : Avalonia.Controls.Control
     public string? SelectedRegion { get; set; }
     public void Select(string region, Avalonia.Input.NavigationMethod method = 0)
     public void SetBinding(string region, string? key, string? pad)
+    public void SetCaption(string region, string? caption)
     public void SetPressed(string region, bool pressed)
     public void SetStick(string stick, double x, double y)
     public void SetTrigger(string region, double value)
