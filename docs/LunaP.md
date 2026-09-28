@@ -13124,6 +13124,10 @@ and so treats every scrolling area the same way. The fade is left off where it w
 scroller (its caret shows where the text goes), an area that does not scroll up and down, and an area under twice the
 fade's height, which the consumer's audit already refuses as too little room. The look only ever removes a mask it put
 there. The mask is worked out once layout has placed the rows, after a scroll, a change of size or a change of focus.
+An area that scrolls only sideways, such as a `TileStrip` (the consumer's rewind reel), fades its left and right edges
+by the same rule, and `MenuLook.FadesLeft` and `MenuLook.FadesRight` report them. The consumer's pictures of the reel
+showed its first tile sliced at the strip's left edge, *".87 s ago"*. One mask brush fades along one axis, so an area
+that scrolls both ways fades only its top and foot.
 
 The first version kept the focused row clear of the fade the other way, by widening every request to bring a control
 into view by the fade's height, so the area scrolled until the row stood 36 units from the edge. It was measured on
@@ -13168,11 +13172,24 @@ the floor. Outside the look, the diagram lays out exactly as before.
 
 `MenuLookTests` gains two cases: a list in the look fades its lower edge and not its upper, a plain list neither; a
 focused row brought into view sits flush at the foot and the foot does not fade; scrolled 20 units further, the foot
-fades from the focused row's foot exactly; scrolled to the end, only the upper edge fades. A switch and a check box in the look have no adorner and the bar behind them only
-while focused. `PadGlyphTests` gains one: in a help bar the pair's box is twice a face button's, and each half carries
+fades from the focused row's foot exactly; scrolled to the end, only the upper edge fades; a strip that scrolls only
+sideways fades its right side at the start and both sides in the middle; a text box's own scroller never fades. A
+switch and a check box under a host style that gives them a focus outline have none in the look, and the bar behind
+them only while focused. `PadGlyphTests` gains one: in a help bar the pair's box is twice a face button's, and each half carries
 the ink of that shoulder drawn alone, within 15 per cent. `ControllerDiagramTests` gains one: a Nintendo 64 drawing
 1400 by 450 with 20-pixel text draws its labels' lines more than 1.25 times larger in the look than outside it, every
-label inside the drawing and none over another.
+label inside the drawing and none over another; and a Super NES drawing 1100 by 450, bound by the height cap rather than
+by its tallest column, draws them above 16.5 pixels, which the plain cap would hold to about 15.
+
+**Mutants** (the consumer's `mutate_fit.py`, its L series, run against these three test classes). Thirteen were run,
+one at a time. **Eleven were caught on the first run and two survived.**
+- L17, the switch keeping the stock outline, survived because the test's own theme gives a switch no focus adorner.
+  The outline in the consumer's pictures comes from its host theme. The case now puts a host style with an outline
+  above the look, and L17 is caught.
+- L23, the compact height cap left at the plain one, survived because the Nintendo 64 case is bound by its tallest
+  column, not by the cap. The Super NES case above was added for it, and L23 is caught.
+
+The consumer's plan, §43.6, has all thirty-seven mutants of this part.
 
 ## 198. A controller drawn large, with its bindings on it: `ControllerDiagram`
 

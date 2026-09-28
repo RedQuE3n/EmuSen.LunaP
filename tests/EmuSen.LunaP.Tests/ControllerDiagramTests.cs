@@ -548,6 +548,14 @@ namespace EmuSen.LunaP.Tests
             for (int i = 0; i < boxes.Count; i++)
                 for (int j = i + 1; j < boxes.Count; j++)
                     Assert.False(boxes[i].Box.Deflate(0.5).Intersects(boxes[j].Box.Deflate(0.5)), $"{boxes[i].Id} {boxes[i].Box} overlaps {boxes[j].Id} {boxes[j].Box}");
+
+            // A drawing bound by the height cap rather than by its tallest column, the Super NES in 1100 by 450, is let grow to its text's size.
+            look.Layout = ControllerLayout.Snes;
+            foreach (DiagramRegion r in look.Regions) look.SetBinding(r.Id, r.Id.Length <= 2 ? r.Id : "K", "South");
+            lookHost.Width = 1100;
+            Dispatcher.UIThread.RunJobs();
+            UiTest.Capture(window);
+            Assert.True(look.LabelTextSize > 16.5, $"{look.LabelTextSize:0.0}");
             window.Close();
         });
     }

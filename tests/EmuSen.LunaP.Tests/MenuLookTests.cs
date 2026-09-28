@@ -330,6 +330,36 @@ namespace EmuSen.LunaP.Tests
             Assert.True(MenuLook.GetFadesTop(lv));
             Assert.False(MenuLook.GetFadesBottom(lv));
             window.Close();
+
+            // A strip that scrolls only sideways fades its sides instead.
+            var strip = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+            for (int i = 0; i < 20; i++) strip.Children.Add(new Border { Width = 80, Height = 60, Background = Brushes.Gray });
+            var across = new ScrollViewer { Width = 300, Height = 80, Content = strip, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto, VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
+            var acrossRoot = new StackPanel { Children = { across } };
+            MenuLook.SetIsOn(acrossRoot, true);
+            ToolWindow acrossWindow = Show(acrossRoot, 400, 200);
+            Settle(acrossWindow);
+            Assert.True(MenuLook.GetFadesRight(across));
+            Assert.False(MenuLook.GetFadesLeft(across));
+            Assert.False(MenuLook.GetFadesBottom(across));
+            across.Offset = new Vector(400, 0);
+            Settle(acrossWindow);
+            Assert.True(MenuLook.GetFadesLeft(across));
+            Assert.True(MenuLook.GetFadesRight(across));
+            Assert.Equal(1, ((LinearGradientBrush)((ScrollContentPresenter)across.Presenter!).OpacityMask!).EndPoint.Point.X);
+            acrossWindow.Close();
+
+            // A text box's own scroller never fades: its caret shows where the text goes.
+            var box = new TextBox { AcceptsReturn = true, Height = 120, Width = 300, Text = string.Join("\n", Enumerable.Range(0, 20).Select(i => $"Line {i}")) };
+            var boxRoot = new StackPanel { Children = { box } };
+            MenuLook.SetIsOn(boxRoot, true);
+            ToolWindow boxWindow = Show(boxRoot, 400, 200);
+            Settle(boxWindow);
+            ScrollViewer inner = box.GetVisualDescendants().OfType<ScrollViewer>().First();
+            Assert.True(inner.Extent.Height > inner.Viewport.Height + 36, $"{inner.Extent.Height} in {inner.Viewport.Height}");
+            Assert.False(MenuLook.GetFadesBottom(inner));
+            Assert.Null(((ScrollContentPresenter)inner.Presenter!).OpacityMask);
+            boxWindow.Close();
         });
 
         // A switch or a box with the focus has the near-black bar behind it, as a row does, and no outline through its words (§196.10).
@@ -340,14 +370,19 @@ namespace EmuSen.LunaP.Tests
             var box = new CheckBox { Content = "Ask again" };
             var look = new StackPanel { Spacing = 10, Width = 360, Background = new SolidColorBrush(Color.Parse("#1B1B1E")), Children = { toggle, box } };
             MenuLook.SetIsOn(look, true);
-            ToolWindow window = Show(look, 400, 240);
+            // A host theme's focus outline, as Fluent gives one while the focus is visible, which the look takes away.
+            var outline = new Avalonia.Controls.Templates.FuncTemplate<Control>(() => new Border { BorderThickness = new Thickness(2), BorderBrush = Brushes.White });
+            var host = new Border { Child = look };
+            host.Styles.Add(new Avalonia.Styling.Style(x => Avalonia.Styling.Selectors.OfType<ToggleSwitch>(x)) { Setters = { new Avalonia.Styling.Setter(Avalonia.Controls.Primitives.TemplatedControl.FocusAdornerProperty, outline) } });
+            host.Styles.Add(new Avalonia.Styling.Style(x => Avalonia.Styling.Selectors.OfType<CheckBox>(x)) { Setters = { new Avalonia.Styling.Setter(Avalonia.Controls.Primitives.TemplatedControl.FocusAdornerProperty, outline) } });
+            ToolWindow window = Show(host, 400, 240);
             foreach (Avalonia.Controls.Primitives.TemplatedControl control in new Avalonia.Controls.Primitives.TemplatedControl[] { toggle, box })
             {
-                Assert.Null(control.FocusAdorner);
                 Rect at = In(control, window);
                 Assert.False(Near(At(Frame(window), at.Right - 5, at.Center.Y), Bar), $"{control.GetType().Name} before the focus");
                 control.Focus(NavigationMethod.Directional);
                 RenderedFrame f = Frame(window);
+                Assert.Null(control.FocusAdorner);
                 Assert.True(Near(At(f, at.Right - 5, at.Center.Y), Bar), $"{control.GetType().Name}: {At(f, at.Right - 5, at.Center.Y)}");
             }
             window.Close();

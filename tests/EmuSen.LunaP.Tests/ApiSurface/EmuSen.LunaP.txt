@@ -1196,12 +1196,16 @@ public static class EmuSen.LunaP.Controls.MenuLook
     public static System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? GetHints(Avalonia.Controls.Window window)
     public static bool Covers(Avalonia.Controls.Control element)
     public static bool GetFadesBottom(Avalonia.Controls.ScrollViewer viewer)
+    public static bool GetFadesLeft(Avalonia.Controls.ScrollViewer viewer)
+    public static bool GetFadesRight(Avalonia.Controls.ScrollViewer viewer)
     public static bool GetFadesTop(Avalonia.Controls.ScrollViewer viewer)
     public static bool GetIsOn(Avalonia.Controls.Control element)
     public static double GetWidthFraction(Avalonia.Controls.Window window)
     public static int GetFooterLines(Avalonia.Controls.Window window)
     public static readonly Avalonia.AttachedProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>?> HintsProperty = null
     public static readonly Avalonia.AttachedProperty<bool> FadesBottomProperty = false
+    public static readonly Avalonia.AttachedProperty<bool> FadesLeftProperty = false
+    public static readonly Avalonia.AttachedProperty<bool> FadesRightProperty = false
     public static readonly Avalonia.AttachedProperty<bool> FadesTopProperty = false
     public static readonly Avalonia.AttachedProperty<bool> IsOnProperty = false
     public static readonly Avalonia.AttachedProperty<double> WidthFractionProperty = NaN
