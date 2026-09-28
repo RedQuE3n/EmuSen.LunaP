@@ -108,6 +108,7 @@ namespace EmuSen.LunaP.Media
                         if (Hits(Regions[k], p)) owner[i, j] = k;
                     for (int g = 0; g < Sticks.Count && owner[i, j] == -1; g++)
                         if (Sticks[g].Gate is { } gate && gate.Bounds.Contains(p) && gate.FillContains(p)) owner[i, j] = -2 - g;
+                    if (owner[i, j] == -1 && Words.Any(w => Printed(w).Contains(p))) owner[i, j] = Word;
                 }
 
             // Each region's cheapest way out through each side: the length crossed of the drawing, a little for the whole line and for leaning off an axis.
@@ -137,7 +138,7 @@ namespace EmuSen.LunaP.Media
                         own = false;
                         int i = Math.Min(nx - 1, (int)(p.X / Cell)), j = Math.Min(ny - 1, (int)(p.Y / Cell));
                         int o = owner[i, j];
-                        if ((o <= -2 && Sticks[-2 - o].ClickRegion != region.Id) || (o >= 0 && o != k)) blocked = true;
+                        if (o == Word || (o <= -2 && o > Word && Sticks[-2 - o].ClickRegion != region.Id) || (o >= 0 && o != k)) blocked = true;
                         if (body[i, j]) crossed += 2;
                     }
                     double cost = crossed + 0.05 * t + 60 * (1 - Math.Max(Math.Abs(way.X), Math.Abs(way.Y))) + (blocked ? 1e6 : 0);
@@ -171,6 +172,15 @@ namespace EmuSen.LunaP.Media
 
         // How many labels a row above or below, and a column either side, is given before the next best side is used.
         private const int RowRoom = 6, ColumnRoom = 8;
+
+        // What the words printed on the shell cover, roughly, so no line is drawn through them.
+        private const int Word = -1000;
+
+        private static Rect Printed(ArtText word)
+        {
+            double w = word.Size * 0.62 * word.Text.Length + 8, h = word.Size + 8;
+            return new Rect(word.Centre.X - w / 2, word.Centre.Y - h / 2, w, h);
+        }
 
         // The shown point of a region nearest the middle of its box.
         private Point Inside(RegionArt art)

@@ -13114,7 +13114,9 @@ across the controller; each label goes on the side nearest its button. In the fi
 each drawing by hand, and the lines went straight from label to button: the pictures showed the Nintendo 64's cross
 right arm and two stick directions, and the Super NES's cross right arm, drawn across much of the shell. Now, when a
 drawing is first used, every region casts a ray every three degrees from its shown point until it leaves the drawing's
-box. A ray that crosses any other button, or a stick's gate other than its own knob's, is refused; the others are scored by the length they run
+box. A ray that crosses any other button, a stick's gate other than its own knob's, or the words printed on the shell
+(roughly boxed: the pictures of the framed window showed the NES's B line struck through the printed "B" under it) is
+refused; the others are scored by the length they run
 over the shell, plus a twentieth of their whole length and a little for leaning off the horizontal or vertical, so that
 of two equal ways out the shorter and squarer one wins. The side of the box a ray leaves by is its band. The line is
 then drawn along that ray from the point where it leaves its own button to the drawing's edge, and from there to its
