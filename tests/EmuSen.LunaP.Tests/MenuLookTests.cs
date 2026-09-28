@@ -282,32 +282,51 @@ namespace EmuSen.LunaP.Tests
             return item.TranslatePoint(new Point(0, item.Bounds.Height), viewer)!.Value.Y;
         }
 
-        // A part-row at a scrolling edge fades out where more lies beyond, and a row brought into view stops clear of the fade (§196.10).
+        private static void Settle(ToolWindow window)
+        {
+            for (int i = 0; i < 3; i++) { window.UpdateLayout(); Dispatcher.UIThread.RunJobs(); }
+        }
+
+        // Where the look's mask stops fading at the foot, in the area's units.
+        private static double FadeFrom(ScrollViewer viewer) =>
+            ((LinearGradientBrush)((ScrollContentPresenter)viewer.Presenter!).OpacityMask!).GradientStops[2].Offset * viewer.Viewport.Height;
+
+        // A part-row at a scrolling edge fades out where more lies beyond, and the fade stops where the focused row begins (§196.10).
         [Fact]
-        public Task A_scrolling_area_in_the_look_fades_an_edge_with_more_beyond_and_brings_a_row_clear_of_the_fade() => UiTest.Run(() =>
+        public Task A_scrolling_area_in_the_look_fades_an_edge_with_more_beyond_and_never_the_focused_row() => UiTest.Run(() =>
         {
             ListBox Rows() => new() { ItemsSource = Enumerable.Range(0, 30).Select(i => $"Row {i}").ToArray(), Height = 240, Width = 300 };
             ListBox look = Rows(), plain = Rows();
             var lookRoot = new StackPanel { Children = { look } };
             MenuLook.SetIsOn(lookRoot, true);
             ToolWindow window = Show(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 20, Children = { lookRoot, plain } }, 700, 400);
+            Settle(window);
             ScrollViewer lv = Viewer(look), pv = Viewer(plain);
 
             Assert.True(MenuLook.GetFadesBottom(lv));
             Assert.False(MenuLook.GetFadesTop(lv));
-            Assert.IsType<LinearGradientBrush>(((ScrollContentPresenter)lv.Presenter!).OpacityMask);
+            Assert.Equal(lv.Viewport.Height - MenuLook.EdgeFade, FadeFrom(lv), 0.5);
             Assert.False(MenuLook.GetFadesBottom(pv));
             Assert.Null(((ScrollContentPresenter)pv.Presenter!).OpacityMask);
 
+            // A row brought into view with the focus sits flush at the foot, and nothing past it shows, so the foot does not fade.
             look.ScrollIntoView(12);
-            plain.ScrollIntoView(12);
-            for (int i = 0; i < 2; i++) { window.UpdateLayout(); Dispatcher.UIThread.RunJobs(); }
-            Assert.True(FootOf(look, 12, lv) <= lv.Viewport.Height - MenuLook.EdgeFade + 1, $"the row ends at {FootOf(look, 12, lv):0.0} of {lv.Viewport.Height:0.0}");
-            Assert.True(FootOf(plain, 12, pv) > pv.Viewport.Height - MenuLook.EdgeFade, $"the plain row ends at {FootOf(plain, 12, pv):0.0} of {pv.Viewport.Height:0.0}");
+            Settle(window);
+            look.ContainerFromIndex(12)!.Focus(NavigationMethod.Directional);
+            Settle(window);
+            Assert.Equal(lv.Viewport.Height, FootOf(look, 12, lv), 1.0);
+            Assert.False(MenuLook.GetFadesBottom(lv));
             Assert.True(MenuLook.GetFadesTop(lv));
 
+            // Scrolled 20 further, a 20-unit part-row shows under the focused row, and only it fades.
+            lv.Offset = new Vector(0, lv.Offset.Y + 20);
+            Settle(window);
+            Assert.True(MenuLook.GetFadesBottom(lv));
+            Assert.Equal(FootOf(look, 12, lv), FadeFrom(lv), 0.5);
+            Assert.Equal(lv.Viewport.Height - 20, FootOf(look, 12, lv), 1.0);
+
             lv.Offset = new Vector(0, lv.Extent.Height);
-            for (int i = 0; i < 2; i++) { window.UpdateLayout(); Dispatcher.UIThread.RunJobs(); }
+            Settle(window);
             Assert.True(MenuLook.GetFadesTop(lv));
             Assert.False(MenuLook.GetFadesBottom(lv));
             window.Close();

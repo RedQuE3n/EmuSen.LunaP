@@ -2,84 +2,118 @@ using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
+using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 
 namespace EmuSen.LunaP.Controls
 {
-    // A scrolling area's edges in the look: faded where more lies beyond, and a control brought into view kept clear of the fade - see docs/LunaP.md §196.10.
+    // A scrolling area's edges in the look: faded where more lies beyond, the fade ending where the focused row begins - see docs/LunaP.md §196.10.
     public static partial class MenuLook
     {
         /// <summary>The height of a scrolling area's faded edge, in the area's own units (design pixels in a framed sheet).</summary>
         public const double EdgeFade = 36;
 
-        /// <summary>Whether a scrolling area in the look fades its top edge, as it does while content lies above it.</summary>
+        /// <summary>Whether a scrolling area in the look fades its top edge, as it does while content lies above it and the focused row leaves room for a fade.</summary>
         public static readonly AttachedProperty<bool> FadesTopProperty =
             AvaloniaProperty.RegisterAttached<ScrollViewer, bool>("FadesTop", typeof(MenuLook));
 
-        /// <summary>Whether a scrolling area in the look fades its bottom edge, as it does while content lies below it.</summary>
+        /// <summary>Whether a scrolling area in the look fades its bottom edge, as it does while content lies below it and the focused row leaves room for a fade.</summary>
         public static readonly AttachedProperty<bool> FadesBottomProperty =
             AvaloniaProperty.RegisterAttached<ScrollViewer, bool>("FadesBottom", typeof(MenuLook));
 
         /// <summary>Reads whether a scrolling area fades its top edge.</summary>
         /// <param name="viewer">The scrolling area.</param>
-        /// <returns>True while content lies above it in the look.</returns>
+        /// <returns>True while its top edge fades in the look.</returns>
         public static bool GetFadesTop(ScrollViewer viewer) => viewer.GetValue(FadesTopProperty);
 
         /// <summary>Reads whether a scrolling area fades its bottom edge.</summary>
         /// <param name="viewer">The scrolling area.</param>
-        /// <returns>True while content lies below it in the look.</returns>
+        /// <returns>True while its bottom edge fades in the look.</returns>
         public static bool GetFadesBottom(ScrollViewer viewer) => viewer.GetValue(FadesBottomProperty);
 
         private static void SetUpEdges()
         {
-            ScrollViewer.OffsetProperty.Changed.AddClassHandler<ScrollViewer>((viewer, _) => Fade(viewer));
-            ScrollViewer.ExtentProperty.Changed.AddClassHandler<ScrollViewer>((viewer, _) => Fade(viewer));
-            ScrollViewer.ViewportProperty.Changed.AddClassHandler<ScrollViewer>((viewer, _) => Fade(viewer));
-            // A control brought into view is brought clear of the faded edges, so the one with the focus is never under a fade.
-            Control.RequestBringIntoViewEvent.AddClassHandler<Control>((control, e) =>
-            {
-                if (!ReferenceEquals(e.Source, control) || !Covers(control) || control.FindAncestorOfType<ScrollViewer>() is not { } viewer || !Fades(viewer)) return;
-                e.TargetRect = e.TargetRect.Inflate(new Thickness(0, EdgeFade));
-            });
+            ScrollViewer.OffsetProperty.Changed.AddClassHandler<ScrollViewer>((viewer, _) => FadeSoon(viewer));
+            ScrollViewer.ExtentProperty.Changed.AddClassHandler<ScrollViewer>((viewer, _) => FadeSoon(viewer));
+            ScrollViewer.ViewportProperty.Changed.AddClassHandler<ScrollViewer>((viewer, _) => FadeSoon(viewer));
+            InputElement.GotFocusEvent.AddClassHandler<ScrollViewer>((viewer, _) => FadeSoon(viewer));
+            InputElement.LostFocusEvent.AddClassHandler<ScrollViewer>((viewer, _) => FadeSoon(viewer));
         }
 
         // A scrolling area that moves up and down, other than a text box's own.
         private static bool Fades(ScrollViewer viewer) =>
             viewer.TemplatedParent is not TextBox && viewer.VerticalScrollBarVisibility != Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled && Covers(viewer);
 
+        // Once layout has placed the rows, so the focused row's place is where it is drawn.
+        private static void FadeSoon(ScrollViewer viewer)
+        {
+            if (viewer.GetValue(FadePendingProperty) || !Covers(viewer)) return;
+            viewer.SetValue(FadePendingProperty, true);
+            Dispatcher.UIThread.Post(() =>
+            {
+                viewer.SetValue(FadePendingProperty, false);
+                Fade(viewer);
+            }, DispatcherPriority.Loaded);
+        }
+
         private static void Fade(ScrollViewer viewer)
         {
             if (viewer.Presenter is not ScrollContentPresenter presenter) return;
-            bool on = Fades(viewer) && viewer.Extent.Height > viewer.Viewport.Height + 0.5 && viewer.Viewport.Height > 2 * EdgeFade;
-            bool top = on && viewer.Offset.Y > 0.5;
-            bool bottom = on && viewer.Offset.Y < viewer.Extent.Height - viewer.Viewport.Height - 0.5;
-            viewer.SetValue(FadesTopProperty, top);
-            viewer.SetValue(FadesBottomProperty, bottom);
-            if (!top && !bottom)
+            double height = viewer.Viewport.Height;
+            bool on = Fades(viewer) && viewer.Extent.Height > height + 0.5 && height > 2 * EdgeFade;
+            double top = on && viewer.Offset.Y > 0.5 ? EdgeFade : 0;
+            double bottom = on && viewer.Offset.Y < viewer.Extent.Height - height - 0.5 ? EdgeFade : 0;
+            // The fade stops at the focused row, so the row with the focus is never dimmed and only what lies past it fades (§196.10).
+            if (FocusedRow(presenter) is { } row && row.Bottom > 0 && row.Top < height)
             {
-                if (presenter.OpacityMask is LinearGradientBrush { } ours && ReferenceEquals(ours, presenter.GetValue(FadeMaskProperty))) presenter.OpacityMask = null;
+                if (row.Top < top) top = Math.Max(0, row.Top);
+                if (row.Bottom > height - bottom) bottom = Math.Max(0, height - row.Bottom);
+            }
+            bool fadesTop = top > 0.5, fadesBottom = bottom > 0.5;
+            viewer.SetValue(FadesTopProperty, fadesTop);
+            viewer.SetValue(FadesBottomProperty, fadesBottom);
+            if (!fadesTop && !fadesBottom)
+            {
+                if (presenter.OpacityMask is { } ours && ReferenceEquals(ours, presenter.GetValue(FadeMaskProperty))) presenter.OpacityMask = null;
                 return;
             }
-            double f = Math.Clamp(EdgeFade / viewer.Viewport.Height, 0, 0.5);
             var mask = new LinearGradientBrush
             {
                 StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
                 EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
                 GradientStops =
                 {
-                    new GradientStop(top ? Colors.Transparent : Colors.Black, 0),
-                    new GradientStop(Colors.Black, f),
-                    new GradientStop(Colors.Black, 1 - f),
-                    new GradientStop(bottom ? Colors.Transparent : Colors.Black, 1),
+                    new GradientStop(fadesTop ? Colors.Transparent : Colors.Black, 0),
+                    new GradientStop(Colors.Black, Math.Clamp(top / height, 0, 0.5)),
+                    new GradientStop(Colors.Black, 1 - Math.Clamp(bottom / height, 0, 0.5)),
+                    new GradientStop(fadesBottom ? Colors.Transparent : Colors.Black, 1),
                 },
             };
             presenter.SetValue(FadeMaskProperty, mask);
             presenter.OpacityMask = mask;
         }
 
+        // Where the focused control's row lies in the area's viewport: its item's container when it is in a list, else itself; null when the focus is elsewhere.
+        private static Rect? FocusedRow(ScrollContentPresenter presenter)
+        {
+            if (TopLevel.GetTopLevel(presenter)?.FocusManager?.GetFocusedElement() is not Visual focused || !presenter.IsVisualAncestorOf(focused)) return null;
+            Visual row = focused;
+            for (Visual? at = focused; at is not null && !ReferenceEquals(at, presenter); at = at.GetVisualParent())
+                if (at is Control c && ItemsControl.ItemsControlFromItemContainer(c) is not null)
+                {
+                    row = c;
+                    break;
+                }
+            return row.TransformToVisual(presenter) is { } m ? new Rect(row.Bounds.Size).TransformToAABB(m) : null;
+        }
+
         // The mask the look put on a presenter, so it only ever takes away its own.
         private static readonly AttachedProperty<IBrush?> FadeMaskProperty =
             AvaloniaProperty.RegisterAttached<ScrollContentPresenter, IBrush?>("FadeMask", typeof(MenuLook));
+
+        private static readonly AttachedProperty<bool> FadePendingProperty =
+            AvaloniaProperty.RegisterAttached<ScrollViewer, bool>("FadePending", typeof(MenuLook));
     }
 }

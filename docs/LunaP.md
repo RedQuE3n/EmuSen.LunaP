@@ -13113,16 +13113,25 @@ look, so every window framed as a menu has the answer, and the desktop has none 
 words *REBIND KEY* and *CLEAR* cut through their middle. Three answers were weighed. Sizing the area to whole rows works
 for a list of equal rows and for nothing else: a settings page mixes rows of several heights, and the area's height is
 the sheet's to give, not the rows'. Keeping the focused row whole is needed, and does nothing for the row at the other
-edge, which is as sliced as before. The look does both of the others' work with a fade: while content lies beyond an
-edge, the last `MenuLook.EdgeFade` units (36, design pixels in a framed sheet) of that edge fade to nothing, by an
-opacity mask on the area's `ScrollContentPresenter`, so what is cut there reads as *more this way* rather than as
-damage. A control brought into view is brought that far clear of both edges (a class handler on
-`RequestBringIntoView` widens the target), so the row with the focus is never under a fade. `MenuLook.FadesTop` and
-`MenuLook.FadesBottom` say, per `ScrollViewer`, which edges fade now; the consumer's audit counts a scrolling edge with
-content beyond it and no fade as a fault, and so treats every scrolling area the same way. The fade is left off where
-it would be wrong: a text box's own scroller (its caret shows where the text goes), an area that does not scroll up and
-down, and an area under twice the fade's height, which the consumer's audit already refuses as too little room. The
-look only ever removes a mask it put there.
+edge, which is as sliced as before. The look fades: while content lies beyond an edge, the last `MenuLook.EdgeFade`
+units (36, design pixels in a framed sheet) of that edge fade to nothing, by an opacity mask on the area's
+`ScrollContentPresenter`, so what is cut there reads as *more this way* rather than as damage. The fade stops where the
+focused row begins: the row with the focus (its item's container, when it is in a list) is never dimmed, and only what
+lies between it and the edge fades. A row brought into view by the focus sits flush with the edge, nothing past it
+shows, and that edge does not fade at all. `MenuLook.FadesTop` and `MenuLook.FadesBottom` say, per `ScrollViewer`,
+which edges fade now; the consumer's audit counts a control sliced by a scrolling edge that does not fade as a fault,
+and so treats every scrolling area the same way. The fade is left off where it would be wrong: a text box's own
+scroller (its caret shows where the text goes), an area that does not scroll up and down, and an area under twice the
+fade's height, which the consumer's audit already refuses as too little room. The look only ever removes a mask it put
+there. The mask is worked out once layout has placed the rows, after a scroll, a change of size or a change of focus.
+
+The first version kept the focused row clear of the fade the other way, by widening every request to bring a control
+into view by the fade's height, so the area scrolled until the row stood 36 units from the edge. It was measured on
+2026-09-27 against the consumer's pad tests, and two of them that pass without it failed: a 944-parameter preset's
+first slider could no longer be reached, and a search typed on a preset was found empty after walking back to it. With
+the widening switched off and the fade kept, both passed; with the widening kept and the fade switched off, both failed.
+Every move of the focus near an edge now scrolled the area, which changed which control the next press reached. Ending
+the fade at the focused row keeps what the focus does exactly as it was, and was chosen for that reason.
 
 **A focused switch (the consumer's Q187).** A `ToggleSwitch` with the focus drew the stock focus outline, a rectangle
 hugging its content, through the lower half of its own words in the menu's typeface. In the look a switch and a check
@@ -13157,9 +13166,9 @@ binding name widens the top row, and a sheet that shows it smaller fails the aud
 words printed on the controller itself (*START*, *Z*) are part of the drawing, stay at its scale and are not held to
 the floor. Outside the look, the diagram lays out exactly as before.
 
-`MenuLookTests` gains two cases: a list in the look fades its lower edge and not its upper, a plain list neither; a row
-scrolled into view stops at least the fade's height above the edge in the look and flush with it outside; scrolled to
-the end, only the upper edge fades. A switch and a check box in the look have no adorner and the bar behind them only
+`MenuLookTests` gains two cases: a list in the look fades its lower edge and not its upper, a plain list neither; a
+focused row brought into view sits flush at the foot and the foot does not fade; scrolled 20 units further, the foot
+fades from the focused row's foot exactly; scrolled to the end, only the upper edge fades. A switch and a check box in the look have no adorner and the bar behind them only
 while focused. `PadGlyphTests` gains one: in a help bar the pair's box is twice a face button's, and each half carries
 the ink of that shoulder drawn alone, within 15 per cent. `ControllerDiagramTests` gains one: a Nintendo 64 drawing
 1400 by 450 with 20-pixel text draws its labels' lines more than 1.25 times larger in the look than outside it, every
