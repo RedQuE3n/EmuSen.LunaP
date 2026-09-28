@@ -13114,7 +13114,7 @@ across the controller; each label goes on the side nearest its button. In the fi
 each drawing by hand, and the lines went straight from label to button: the pictures showed the Nintendo 64's cross
 right arm and two stick directions, and the Super NES's cross right arm, drawn across much of the shell. Now, when a
 drawing is first used, every region casts a ray every three degrees from its shown point until it leaves the drawing's
-box. A ray that crosses any other button (or a stick's gate) is refused; the others are scored by the length they run
+box. A ray that crosses any other button, or a stick's gate other than its own knob's, is refused; the others are scored by the length they run
 over the shell, plus a twentieth of their whole length and a little for leaning off the horizontal or vertical, so that
 of two equal ways out the shorter and squarer one wins. The side of the box a ray leaves by is its band. The line is
 then drawn along that ray from the point where it leaves its own button to the drawing's edge, and from there to its
@@ -13128,6 +13128,11 @@ the longest: its way out is down across the lower face, 161 pixels of a 509-pixe
 way to the right crosses A or B. The test holds every line to at most 0.35 of the drawing's larger side over the shell;
 the first stage's Nintendo 64 right arm ran about half of it. Lines may still cross one another in the gaps beside the
 drawing, where labels are spread along their band.
+
+The modern pad's cross first had no way out at all: its up arm was boxed in by its other arms, the left stick, Select
+and the left bumper, and took the least bad way, across the bumper. Its bumpers were shortened toward the grips by 44
+units each, which leaves the up arm a straight way up between the bumper and Select; and a stick's click, drawn inside
+its own gate, may now leave through that gate.
 
 Along a band, labels are placed by `ControllerDiagram.Spread`: each wants to be centred on its region's point; labels
 that would overlap are pushed apart as a group about the mean of their wishes, and a group that would leave the band is
@@ -13259,6 +13264,18 @@ the plain frame has the same structure was wrong on both counts. Nothing was cha
 
 ### 198.10 The second stage's tests and mutants
 
-`ControllerDiagramTests` now runs every test that ran on two layouts on all five (51 cases in all). New: no line runs over
-more than 0.35 of the drawing's larger side (the first stage's routing ran about half); labels, keys, captions and the
-stick ring are the host's to turn off and on.
+`ControllerDiagramTests` now runs every test that ran on two layouts on all five (61 cases in all). New: no line runs over
+more than 0.35 of the drawing's larger side (the first stage's routing ran about half); each line is no longer over the
+drawing than any straight way along the axes or diagonals that crosses no other button, plus a twentieth of the
+drawing's size, and crosses no other button itself; no band takes more labels than its room; labels, keys, captions and
+the stick ring are the host's to turn off and on.
+
+Seven mutants of this stage's LunaP code, R1 to R7, run by the consumer's runner as before (its `EmuSen_BigPicture.md`
+§42.14): a line's way out ignoring the drawing it crosses; a way out through another button allowed; a band's room
+ignored; no labels still leaving room for them; a host's caption ignored; the stick ring never drawn; a row too wide not
+shrunk. **Four were caught on the first run and three survived.** R1 was caught only by a test about label sizes, by
+accident of layout, since the line test allowed any line under 0.35 of the drawing; R2, because the only line test
+measured length over the drawing, not what it crossed; R3, because the row shrink of §198.2 made an over-full row fit
+anyway. The line test that compares each line with the straight ways, the test that a line crosses no other button and
+the band test were added, and the first of them found the modern pad's boxed-in cross (above) before it was run
+against the mutants. All three were caught on the second run, R1 by the line test as well.

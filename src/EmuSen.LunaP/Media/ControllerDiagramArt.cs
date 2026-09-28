@@ -106,7 +106,8 @@ namespace EmuSen.LunaP.Media
                     owner[i, j] = -1;
                     for (int k = Regions.Count - 1; k >= 0 && owner[i, j] == -1; k--)
                         if (Hits(Regions[k], p)) owner[i, j] = k;
-                    if (owner[i, j] == -1 && Sticks.Any(s => s.Gate is { } g && g.Bounds.Contains(p) && g.FillContains(p))) owner[i, j] = -2;
+                    for (int g = 0; g < Sticks.Count && owner[i, j] == -1; g++)
+                        if (Sticks[g].Gate is { } gate && gate.Bounds.Contains(p) && gate.FillContains(p)) owner[i, j] = -2 - g;
                 }
 
             // Each region's cheapest way out through each side: the length crossed of the drawing, a little for the whole line and for leaning off an axis.
@@ -135,7 +136,8 @@ namespace EmuSen.LunaP.Media
                         if (own && Hits(region, p)) { anchor = p; continue; }
                         own = false;
                         int i = Math.Min(nx - 1, (int)(p.X / Cell)), j = Math.Min(ny - 1, (int)(p.Y / Cell));
-                        if (owner[i, j] == -2 || (owner[i, j] >= 0 && owner[i, j] != k)) blocked = true;
+                        int o = owner[i, j];
+                        if ((o <= -2 && Sticks[-2 - o].ClickRegion != region.Id) || (o >= 0 && o != k)) blocked = true;
                         if (body[i, j]) crossed += 2;
                     }
                     double cost = crossed + 0.05 * t + 60 * (1 - Math.Max(Math.Abs(way.X), Math.Abs(way.Y))) + (blocked ? 1e6 : 0);
@@ -466,8 +468,8 @@ namespace EmuSen.LunaP.Media
 
             art.Regions.Add(new RegionArt { Id = "L2", Name = "L2", Shape = Path("M 190,150 C 200,90 250,62 320,60 C 345,60 352,80 350,112 L 346,150 Z"), Fill = trigger, Stroke = edge, StrokeWidth = 3, IsTrigger = true });
             art.Regions.Add(new RegionArt { Id = "R2", Name = "R2", Shape = Path("M 810,150 C 800,90 750,62 680,60 C 655,60 648,80 650,112 L 654,150 Z"), Fill = trigger, Stroke = edge, StrokeWidth = 3, IsTrigger = true });
-            art.Regions.Add(new RegionArt { Id = "L", Name = "L1", Shape = Path("M 150,196 C 175,150 240,134 330,134 L 380,138 C 392,140 394,160 380,166 C 300,170 220,180 170,212 Z"), Fill = Hex("#5E6069"), Stroke = edge, StrokeWidth = 3 });
-            art.Regions.Add(new RegionArt { Id = "R", Name = "R1", Shape = Path("M 850,196 C 825,150 760,134 670,134 L 620,138 C 608,140 606,160 620,166 C 700,170 780,180 830,212 Z"), Fill = Hex("#5E6069"), Stroke = edge, StrokeWidth = 3 });
+            art.Regions.Add(new RegionArt { Id = "L", Name = "L1", Shape = Path("M 150,196 C 175,150 240,134 300,134 L 336,138 C 348,140 350,160 336,166 C 280,170 215,180 170,212 Z"), Fill = Hex("#5E6069"), Stroke = edge, StrokeWidth = 3 });
+            art.Regions.Add(new RegionArt { Id = "R", Name = "R1", Shape = Path("M 850,196 C 825,150 760,134 700,134 L 664,138 C 652,140 650,160 664,166 C 720,170 785,180 830,212 Z"), Fill = Hex("#5E6069"), Stroke = edge, StrokeWidth = 3 });
 
             art.Body.Add(new ArtPart(Path(
                 "M 260,160 C 380,142 620,142 740,160 C 850,176 905,220 935,320 C 975,460 1000,590 950,650 " +

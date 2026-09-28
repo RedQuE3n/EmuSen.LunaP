@@ -287,6 +287,73 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // A line's way out is no longer over the drawing than any straight way along the axes or diagonals that crosses no other button, and crosses no button itself.
+        [Theory]
+        [MemberData(nameof(Drawn))]
+        public Task Each_line_leaves_by_the_shortest_way_that_crosses_no_other_button(ControllerLayout layout) => UiTest.Run(() =>
+        {
+            (ToolWindow window, ControllerDiagram diagram) = Shown(layout);
+            Rect box = default;
+            for (double y = 0; y < 640; y += 4)
+                for (double x = 0; x < 1100; x += 4)
+                    if (diagram.IsOnDrawing(new Point(x, y))) box = box == default ? new Rect(x, y, 1, 1) : box.Union(new Rect(x, y, 1, 1));
+            double size = Math.Max(box.Width, box.Height);
+            string? last = null;
+
+            // How far a straight way from a point at an angle runs before it has left the drawing's box.
+            double Reach(Point p, double a)
+            {
+                double dx = Math.Cos(a), dy = Math.Sin(a), t = double.MaxValue;
+                if (Math.Abs(dx) > 1e-9) t = Math.Min(t, ((dx > 0 ? box.Right + 2 : box.Left - 2) - p.X) / dx);
+                if (Math.Abs(dy) > 1e-9) t = Math.Min(t, ((dy > 0 ? box.Bottom + 2 : box.Top - 2) - p.Y) / dy);
+                return t;
+            }
+
+            // Over the drawing along a straight path, and whether it crosses a button other than its own.
+            (double Over, bool Crosses) Walk(string region, Point a, Point b)
+            {
+                double over = 0, length = ((Vector)(b - a)).Length;
+                int crossed = 0;
+                string? hit = null;
+                for (double t = 0; t < length; t += 1)
+                {
+                    Point p = a + (b - a) * (t / length);
+                    string? at = diagram.RegionAt(p);
+                    if (at is not null && at != region) { crossed++; hit = at; }
+                    if (diagram.IsOnDrawing(p) && at != region) over += 1;
+                }
+                last = hit;
+                return (over, crossed > 2);
+            }
+
+            var worse = new List<string>();
+            foreach (DiagramRegion region in diagram.Regions)
+            {
+                (_, Point via, Point to) = diagram.LeaderOf(region.Id)!.Value;
+                (double over, bool crosses) = Walk(region.Id, to, via);
+                if (crosses) worse.Add($"{region.Id}'s line crosses {last}");
+                Point from = diagram.PointIn(region.Id)!.Value;
+                double straight = Enumerable.Range(0, 8).Select(i => i * Math.PI / 4).Select(a => from + new Vector(Math.Cos(a), Math.Sin(a)) * Reach(from, a))
+                    .Select(end => Walk(region.Id, from, end)).Where(w => !w.Crosses).Select(w => w.Over).DefaultIfEmpty(double.MaxValue).Min();
+                if (over > straight + size * 0.05) worse.Add($"{region.Id} runs {over:0} px over the drawing where a straight way runs {straight:0}");
+            }
+            Assert.Empty(worse);
+            window.Close();
+        });
+
+        // No row or column takes more labels than it has room for: six in a row, eight in a column.
+        [Theory]
+        [MemberData(nameof(Drawn))]
+        public Task No_band_takes_more_labels_than_its_room(ControllerLayout layout) => UiTest.Run(() =>
+        {
+            var diagram = new ControllerDiagram { Layout = layout };
+            foreach (DiagramSide side in Enum.GetValues<DiagramSide>())
+            {
+                int count = diagram.Regions.Count(r => r.Side == side);
+                Assert.True(count <= (side is DiagramSide.Top or DiagramSide.Bottom ? 6 : 8), $"{layout}'s {side} takes {count} labels");
+            }
+        });
+
         // A cross's arm is hit inside the cross's rounded end, not in the square corner of the box it is cut from.
         [Fact]
         public Task A_cross_s_arm_is_hit_only_inside_the_cross() => UiTest.Run(() =>
