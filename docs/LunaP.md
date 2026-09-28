@@ -13055,3 +13055,233 @@ own tests (its §41.7).
 - **The plain frame's viewport** (§196.4).
 - **An inherited scale for stock controls' sizes.** The frame lays them out under a transform instead, which is why
   §196.4 arose.
+
+## 198. A controller drawn large, with its bindings on it: `ControllerDiagram`
+
+*2026-09-27.* The consumer (EmuSen's Mistress) decided on 2026-09-27 to overhaul its controller bindings window: each
+console's controller drawn as vector art, the bindings mapped onto its buttons, and a button pressed on the pad or the
+keyboard lit on the drawing, so that the window doubles as an input tester (its `EmuSen_BigPicture.md` §10.1 and §42).
+§180's `ControllerGlyph` is a badge a few pixels high; this is the drawing at the size of a window, and every part of it
+a player can press is a region that can be named, lit, chosen and hit.
+
+### 198.1 The drawings, and whose they are
+
+`ControllerLayout` names five: `Gamepad`, `Nes`, `Snes`, `Nintendo64` and `GameBoy`. The first stage drew `Snes` and
+`Nintendo64` and stopped for the drawings to be looked at; once they were approved (2026-09-27) the other three were
+drawn in the same way, and all five are drawn now.
+
+**The drawings are the toolkit's own**, under the same rule as §180.1. Each is built in code from plain geometry in its
+own design space (1000 units wide): circles, rounded rectangles, pills, an octagon, bands cut from a ring, and a few
+cubic curves for the outlines, all placed by hand. No vendor's artwork, no emulator's controller picture and no photograph
+was traced or measured; what makes each recognisable is what a player remembers of the pad, which is its outline and
+where its buttons are. The Super NES pad is two round grips joined by a bar that dips a little at the top and bottom,
+the cross in a round well on the left, two slanted pills in the middle and four buttons in a diamond on a rounded
+square well; the Nintendo 64 pad is a wide top on three grips, the cross on the left grip, the stick in an octagonal gate
+on the middle grip with Start above it, and A, B and four C buttons on the right. The face buttons carry the colours the
+pads were sold in (red, yellow, green and blue on the Super NES; blue A, green B, yellow C and red Start on the Nintendo
+64), because colour is a large part of what identifies them at a glance; the colours are facts about the products, not
+anyone's drawing of them. The shells are greys, which read on both theme variants.
+
+The second stage's three: the NES pad is a flat oblong with rounded corners, a dark face, the cross in a square well on
+the left, a grey panel of three stripes in the middle with Select and Start as dark pills under their red names, and
+two red buttons in square grey wells with their letters under them. The Game Boy stands upright with one large rounded
+corner at the bottom right, a groove along its top, the screen in a slate bezel with a power light, the cross on the
+left, A and B on a slanted well to the right with their letters under them, two slanted pills for Select and Start,
+and a grille of six slanted slots. The modern pad is a body with two grips, the left stick above the cross, four face
+buttons above the right stick, Select, Start and a guide button between them, two bumpers and two triggers behind
+them; its face buttons are neutral and carry the RetroPad's letters, which a host may replace with a connected pad's
+own (`SetCaption`). Its sticks show where they are rather than four directions each: with them it had twenty-five
+regions, whose labels overran its width and whose lines crossed each other through the body; the consumer uses it
+as a tester of the pad itself, where a stick's position is the thing to see.
+
+**What is a region.** Every button, each arm of a cross, each direction of a stick and each trigger is a `DiagramRegion`
+with an `Id` the host binds by, a `Name` a label and a reader use, the `Side` its label stands on (worked out from the
+drawing, §198.2), and, for a stick's direction, the `Stick` it belongs to. A cross's arms are four regions clipped to the cross's outline, so each lights on
+its own and the lit arm has the cross's rounded end. A stick's four directions are bands of a ring around its gate,
+each with an arrow; the knob itself is not a region on the Nintendo 64 (its stick has no click) and is one on the
+gamepad, where it is L3 or R3. The Nintendo 64's Z trigger is drawn behind the middle grip, showing past its edge, and
+a click on the part hidden under the shell does not hit it.
+
+The ids are the toolkit's and not the consumer's types: `A`, `Up`, `Select`, `CLeft`, `StickUp`, `Z`. The consumer maps
+its own controls onto them (its settings reference §4.81); the toolkit knows nothing of a binding but the two strings
+it is given for each region.
+
+### 198.2 The labels and their lines
+
+Each region has a label beside the drawing, joined to it by a thin line with a dot where it meets the region. The
+drawing is fitted, keeping its proportions, into the space left by up to four bands of labels (a column left, a column
+right, a row above and a row below), and the whole, drawing and labels together, is then centred, so a drawing narrower
+than its box does not leave its labels to one side.
+
+**Which band, and the line's path, are worked out from the drawing.** *Decided 2026-09-27:* leader lines must not run
+across the controller; each label goes on the side nearest its button. In the first stage the band was written into
+each drawing by hand, and the lines went straight from label to button: the pictures showed the Nintendo 64's cross
+right arm and two stick directions, and the Super NES's cross right arm, drawn across much of the shell. Now, when a
+drawing is first used, every region casts a ray every three degrees from its shown point until it leaves the drawing's
+box. A ray that crosses any other button, a stick's gate other than its own knob's, or the words printed on the shell
+(roughly boxed: the pictures of the framed window showed the NES's B line struck through the printed "B" under it) is
+refused; the others are scored by the length they run
+over the shell, plus a twentieth of their whole length and a little for leaning off the horizontal or vertical, so that
+of two equal ways out the shorter and squarer one wins. The side of the box a ray leaves by is its band. The line is
+then drawn along that ray from the point where it leaves its own button to the drawing's edge, and from there to its
+label, which stands in the band beyond; so the only part of any line over the drawing is the shortest way out that
+crosses no other button. Bands are filled in turn by the regions that would lose most by moving (the gap between their
+best and second-best side), and a band takes at most six labels in a row or eight in a column before the next best side
+is used, so no row outgrows the control: the modern pad put seven labels in its top row before that rule.
+
+The rule cannot make a line cross none of the drawing where a button sits inside it. The Game Boy's cross right arm is
+the longest: its way out is down across the lower face, 161 pixels of a 509-pixel drawing at 1100 × 640, because every
+way to the right crosses A or B. The test holds every line to at most 0.35 of the drawing's larger side over the shell;
+the first stage's Nintendo 64 right arm ran about half of it. Lines may still cross one another in the gaps beside the
+drawing, where labels are spread along their band.
+
+The modern pad's cross first had no way out at all: its up arm was boxed in by its other arms, the left stick, Select
+and the left bumper, and took the least bad way, across the bumper. Its bumpers were shortened toward the grips by 44
+units each, which leaves the up arm a straight way up between the bumper and Select; and a stick's click, drawn inside
+its own gate, may now leave through that gate.
+
+Along a band, labels are placed by `ControllerDiagram.Spread`: each wants to be centred on its region's point; labels
+that would overlap are pushed apart as a group about the mean of their wishes, and a group that would leave the band is
+moved back into it. A label's wish is where its line reaches the drawing's edge. The first version pushed only forwards,
+which put the Super NES's Y label at the right-hand end of the bottom row with its line across B. A line meets a button
+where its ray leaves the button, at its edge, not its middle, so it does not strike through the letter printed on it.
+
+**Size.** The labels grow with the space (a unit of `min(width / 1100, height / 640)`), and never fall far below the text
+around them: the unit is at least 0.85 of the inherited font size over 14, where the space allows it (up to
+`min(width / 900, height / 420)`; it was `height / 520` until ES-DE's look, whose panel leaves the drawing about 370
+pixels of height at 1280 × 800, where the labels came out at nine pixels). The second rule
+was added when the first pictures of a big-screen sheet, whose text is scaled up, showed labels at nine pixels beside
+twenty-pixel text. The diagram also measures again when that text changes size; before it did,
+`Labels_follow_the_size_of_the_text_around_them` found labels 54 px high with 14 px text and still 54 px with 26 px
+(66 px with the fix, the unit being capped by the space). A column of labels taller than the space, or a row wider than it, shrinks them all, so none spills past another or the edge: the
+Nintendo 64's left column at 1920 × 1200 on a big-screen sheet overlapped its bottom row's first label before that rule.
+Everything is drawn as geometry and text at the size it is shown; there is no bitmap and no scaled sampling anywhere.
+
+### 198.3 A label is a button
+
+A label shows the region's name on a badge in the button's own colour, then the key and the pad button bound to it, each
+behind a small drawn icon, or a dash for neither. It is a `Button`, because what a host's keyboard and pad machinery
+already knows how to reach and press is a button: the consumer's pad router presses the focused button, and its test
+harness finds what a pad can reach by looking for buttons. It draws itself and has no template, so it is internal: the
+kit's rule that every public templated control gets one (§28.1) holds, and a host reaches a label through
+`ControllerDiagram.LabelOf` as a `Button`, and asks `RegionOf` which region an element is the label of. Its accessible
+name is the region's name and its help text says the binding ("Key X, pad East").
+
+A label chooses its region on its `Click` event, not in `OnClick`: the consumer's pad router presses a focused button by
+raising `Click` itself, which does not call `OnClick`, and the first version, listening in `OnClick`, did nothing when
+pressed that way. The test that raises `Click` on a label found it.
+
+### 198.4 What a host sets and asks
+
+- `SetBinding(region, key, pad)`: the two strings a label shows.
+- `SetPressed(region, bool)`: drawn in the accent, with a halo, and its label and line in the accent; `IsPressed` and
+  `Pressed` read it back.
+- `SetStick(stick, x, y)`: the knob moved by that share of its travel, each axis clamped to -1..1, with a line from the
+  centre so a small push shows; `StickPosition` and `StickKnobCentre` read it back.
+- `SetTrigger(region, value)`: a trigger filled from the bottom by that share.
+- `SelectedRegion`: a ring in the accent around the region and its label; it follows the focused label, and `Select`
+  sets it and focuses the label.
+- `RegionAt(point)` and `PointIn(region)`: what a click at a point hits, and a point a click on a region would land on.
+- `LeaderOf(region)`: the line joining the region's label to it: from the label, by the point where it reaches the
+  drawing's edge, to the point where it meets the region.
+- `IsInteractive`: off, the labels take no focus and a click chooses nothing.
+- `ShowsKeys`: off, a label shows its pad button alone. `ShowsLabels`: off, there are no labels or lines and the drawing
+  fills the control, as a tester of a pad needs.
+- `SetCaption(region, words)`: other words printed on a button, such as a connected pad's own letter; an empty string
+  prints nothing.
+- `StickRing`: a dashed ring on each stick at that share of its travel, such as a dead zone.
+- `IsOnDrawing(point)`: whether a point is over the drawing, for a host or a test measuring what lies over it.
+- `RegionInvoked`: a region chosen by a click on the drawing, a click on its label, or its label pressed.
+
+The colours are the theme's (`LunaAccentColor`, `LunaTextColor`, `LunaMutedColor`, `LunaInputSurfaceColor`,
+`LunaBorderColor`), looked up from the control, so a scope that restyles them restyles the diagram.
+
+### 198.5 Moving between regions
+
+`Neighbour(region, direction)` is the region a pad's direction goes to, measured on the drawing rather than among the
+labels: from the region's shown point (the point of its shape nearest the middle of its box), every other region lying
+more than a few units that way is scored by its distance plus how far it lies across the direction, and five times that
+across when it lies more than 56 degrees off the line. `MoveSelection` moves to it and says false at an edge, so a host
+can move the focus out of the diagram. The arrow keys do the same from a focused label.
+
+The first score (the distance along plus twice the distance across, the consumer's rule for moving between controls in a
+window) sent Up from the Super NES's A to the right shoulder, straight above and far, rather than X, above and to the
+left and near: in a diamond, the neighbour a player means is diagonal. Distance plus the distance across sends A up to X
+and still sends Y right to A, straight across, rather than to X or B, which are nearer but diagonal.
+
+### 198.6 Tests
+
+`ControllerDiagramTests` (33 cases): a point in each region hits that region, and the corners hit nothing; the Nintendo
+64's Z, drawn behind the middle grip, is hit where it shows and not through the shell; the selected region is ringed in
+the accent (counted on the half of the region away from its label, where its line does not reach) and the ring goes with
+the selection; a cross's arm is hit inside the cross's rounded end and not in the square corner of the box it is cut
+from; each label's line starts on the label and ends on its region, at the edge facing the label, at three sizes each; pressing each
+region draws it in the accent and letting go draws the frame as it was, pixel for pixel; a stick's knob moves by its
+position, stops at its travel and is drawn where it is said to be; every region reaches every other by moving the
+selection; moving goes to the nearest region that way (A up to X, Y right to A) and stops at the edge; at three sizes each,
+every region has a label inside the control and no label overlaps another (and in a short, wide space, 1000 × 420, where
+the Nintendo 64's columns must shrink); labels follow the size of the text around them; a label says its bindings to a reader, and a
+click on it or on the drawing chooses its region, except when the diagram is not interactive; the arrow keys move from a
+focused label; changing the layout rebuilds the regions; `Spread` centres a group on its wishes and keeps it in the span;
+each drawing is drawn at a thumbnail's size and a large screen's. `Pictures_for_review` writes each drawing, idle and
+lit, to a folder named by `EMUSEN_DIAGRAM_DUMP`, for a person to look at, and does nothing otherwise.
+
+### 198.7 Mutants
+
+Seventeen mutants of this section's code, L1 to L17, one rule each, run by the consumer's runner
+(`~/.cache/emusen/probe/bindings/mutate.py`, its `EmuSen_BigPicture.md` §42.6) against `ControllerDiagramTests`:
+pressed not drawn; a cross's arm hit outside its rounded end; a region behind the shell hit through it; a group of
+labels started at its first label's wish; a move past the edge reported as a move; the router's score for neighbours; the
+labels centred without the drawing; a column too tall not shrunk; the text around the labels ignored; a stick not
+clamped; the knob drawn at rest; a label's click choosing nothing; a click on the drawing choosing nothing; a diagram
+that is not interactive still choosing; no ring for the selected region; a line meeting a button's middle; the diagram
+not measuring again when the text around it changes size.
+
+**Thirteen were caught on the first run and four survived.** The arm's corner (L2): every hit test landed in the middle
+of a region; `A_cross_s_arm_is_hit_only_inside_the_cross` now clicks each arm's square corner. The ring (L15): the test
+counted accent pixels around the region, and the selected region's line and dot are in the accent too, so the count held
+without a ring; it now counts on the half of the region away from its label. The line's end (L16): nothing looked at
+where a line ends; `LeaderOf` was added so a test can, and `Each_label_s_line_runs_from_the_label_to_its_region` does.
+All three were caught on the second run.
+
+**The fourth, L7, still survives, and is recorded rather than excused.** The pass that centres the drawing and its
+labels together moves both by the same amount; the mutant moves the labels and not the drawing, so their lines would no
+longer meet their regions. The line test does not see it, at six sizes of both layouts, because the shift is under the
+test's two pixels: both drawn layouts use all four bands of labels, and bands on opposite sides that are both present
+leave the composition centred already. The pass mattered only for the first Super NES layout, which had no row above. It
+will be measurable with the first drawing that leaves a band empty, and the line test will then catch the mutant; until
+then it is a pass that does nothing measurable for the drawings there are.
+
+### 198.8 What is not here
+
+- A layout that puts labels in two columns a side when a wide space would let the drawing grow; on a wide, short space
+  the drawing is bounded by its height, and the space either side of the labels is left empty.
+
+### 198.9 The plain sheet's rows, measured: not lost
+
+§196.4 found a list's rows left unbuilt at the foot of a menu-framed sheet scaled by 1.5, blamed a clipping host under a
+scaling `LayoutTransformControl`, and recorded that the plain frame (§90) has the same structure and was not measured.
+The consumer asked for it to be fixed too, with the bindings window, which is the plain frame's largest user (its Q175).
+It was measured first. `A_list_at_the_foot_of_a_scaled_plain_sheet_builds_every_row_it_shows` presents a sheet at 1920
+× 1200 with the plain frame's scale at 1.5 and a three-row list under a block 300, 460, 540 and 600 pixels high: **every
+row was built in all four**, on the unmodified frame. The plain frame's host is a `ContentControl` with Avalonia's
+default, which does not clip, and it is not the direct child of the scaler (a `DockPanel` is); §196.4's sentence that
+the plain frame has the same structure was wrong on both counts. Nothing was changed. The four cases stay as a guard.
+
+### 198.10 The second stage's tests and mutants
+
+`ControllerDiagramTests` now runs every test that ran on two layouts on all five (61 cases in all). New: no line runs over
+more than 0.35 of the drawing's larger side (the first stage's routing ran about half); each line is no longer over the
+drawing than any straight way along the axes or diagonals that crosses no other button, plus a twentieth of the
+drawing's size, and crosses no other button itself; no band takes more labels than its room; labels, keys, captions and
+the stick ring are the host's to turn off and on.
+
+Seven mutants of this stage's LunaP code, R1 to R7, run by the consumer's runner as before (its `EmuSen_BigPicture.md`
+§42.14): a line's way out ignoring the drawing it crosses; a way out through another button allowed; a band's room
+ignored; no labels still leaving room for them; a host's caption ignored; the stick ring never drawn; a row too wide not
+shrunk. **Four were caught on the first run and three survived.** R1 was caught only by a test about label sizes, by
+accident of layout, since the line test allowed any line under 0.35 of the drawing; R2, because the only line test
+measured length over the drawing, not what it crossed; R3, because the row shrink of §198.2 made an over-full row fit
+anyway. The line test that compares each line with the straight ways, the test that a line crosses no other button and
+the band test were added, and the first of them found the modern pad's boxed-in cross (above) before it was run
+against the mutants. All three were caught on the second run, R1 by the line test as well.
