@@ -79,6 +79,9 @@ namespace EmuSen.LunaP.Controls
             }
         }
 
+        /// <summary>How many lines of text the field shows; above one the text wraps and the field keeps that height. Four by default.</summary>
+        public int Lines { get; set; } = 4;
+
         /// <summary>Whether the popup is on screen.</summary>
         public bool IsOpen => _host is not null;
 
@@ -123,8 +126,19 @@ namespace EmuSen.LunaP.Controls
             var title = new FontText { Text = Title ?? "", FontPath = font, FontSize = TitleText * k, LetterCase = LetterCase.Upper, Wrap = false, TextAlignment = TextAlignment.Center,
                 Foreground = new SolidColorBrush(MenuPanel.TitleColorProperty.GetDefaultValue(typeof(MenuPanel))), Margin = new Thickness(0, 0, 0, 10 * k), IsVisible = !string.IsNullOrEmpty(Title) };
             Field.FontSize = FieldText * k * 0.8;
-            Field.Height = FieldHeight * k;
-            Field.Padding = new Thickness(10 * k, 0);
+            if (Lines > 1)
+            {
+                Field.TextWrapping = TextWrapping.Wrap;
+                Field.MinLines = Lines;
+                Field.MaxLines = Lines;
+                Field.VerticalContentAlignment = VerticalAlignment.Top;
+                Field.Padding = new Thickness(10 * k, 8 * k);
+            }
+            else
+            {
+                Field.Height = FieldHeight * k;
+                Field.Padding = new Thickness(10 * k, 0);
+            }
             Field.CornerRadius = default;
             _hint.FontPath = font;
             _hint.FontSize = HintText * k;
