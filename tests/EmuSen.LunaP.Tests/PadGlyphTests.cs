@@ -237,5 +237,38 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(TimeSpan.FromSeconds(3.5), list.NextMarqueeChange(TimeSpan.FromSeconds(3.5)));
             window.Close();
         });
+
+        // In a hint bar the pair takes two squares, and each shoulder is drawn as large as a shoulder alone (§196.8).
+        [Fact]
+        public Task A_hint_bar_draws_the_shoulder_pair_as_two_full_size_shoulders() => UiTest.Run(() =>
+        {
+            HintBar Bar(PadGlyphButton button) => new()
+            {
+                Entries = new[] { new HintEntry("Rebind") { Button = PadGlyphButton.South }, new HintEntry("Console") { Button = button } },
+                FontSize = 30, IconColor = Colors.White, TextColor = Colors.Red, PadFamily = PadFamily.Xbox,
+            };
+            HintBar pair = Bar(PadGlyphButton.Shoulders), left = Bar(PadGlyphButton.LeftShoulder), right = Bar(PadGlyphButton.RightShoulder);
+            var canvas = new StackPanel { Children = { pair, left, right } };
+            ToolWindow window = Show(canvas, 600, 300);
+            RenderedFrame f = Frame(window);
+            Rect face = pair.Layout(pair.Bounds.Size)[0].Icon, two = pair.Layout(pair.Bounds.Size)[1].Icon, one = left.Layout(left.Bounds.Size)[1].Icon;
+            Assert.Equal(2 * face.Width, two.Width, 1.0);
+            Assert.Equal(face.Height, two.Height, 1.0);
+
+            int Ink(HintBar bar, Rect r)
+            {
+                Point o = bar.TranslatePoint(default, window)!.Value;
+                int n = 0;
+                for (int y = (int)r.Top; y < (int)r.Bottom; y++)
+                    for (int x = (int)r.Left; x < (int)r.Right; x++)
+                        if (At(f, o.X + x, o.Y + y) is { R: > 128, G: > 128 }) n++;
+                return n;
+            }
+            int alone = Ink(left, one), aloneRight = Ink(right, right.Layout(right.Bounds.Size)[1].Icon), leftHalf = Ink(pair, new Rect(two.X, two.Y, two.Width / 2, two.Height)), rightHalf = Ink(pair, new Rect(two.Center.X, two.Y, two.Width / 2, two.Height));
+            Assert.True(alone > 20, $"{alone}");
+            Assert.InRange(leftHalf, alone * 0.85, alone * 1.15);
+            Assert.InRange(rightHalf, aloneRight * 0.85, aloneRight * 1.15);
+            window.Close();
+        });
     }
 }

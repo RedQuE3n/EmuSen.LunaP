@@ -273,5 +273,65 @@ namespace EmuSen.LunaP.Tests
             window.Close();
             host.Close();
         });
+
+        private static ScrollViewer Viewer(ListBox list) => list.GetVisualDescendants().OfType<ScrollViewer>().First();
+
+        private static double FootOf(ListBox list, int row, ScrollViewer viewer)
+        {
+            Control item = list.ContainerFromIndex(row)!;
+            return item.TranslatePoint(new Point(0, item.Bounds.Height), viewer)!.Value.Y;
+        }
+
+        // A part-row at a scrolling edge fades out where more lies beyond, and a row brought into view stops clear of the fade (§196.10).
+        [Fact]
+        public Task A_scrolling_area_in_the_look_fades_an_edge_with_more_beyond_and_brings_a_row_clear_of_the_fade() => UiTest.Run(() =>
+        {
+            ListBox Rows() => new() { ItemsSource = Enumerable.Range(0, 30).Select(i => $"Row {i}").ToArray(), Height = 240, Width = 300 };
+            ListBox look = Rows(), plain = Rows();
+            var lookRoot = new StackPanel { Children = { look } };
+            MenuLook.SetIsOn(lookRoot, true);
+            ToolWindow window = Show(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 20, Children = { lookRoot, plain } }, 700, 400);
+            ScrollViewer lv = Viewer(look), pv = Viewer(plain);
+
+            Assert.True(MenuLook.GetFadesBottom(lv));
+            Assert.False(MenuLook.GetFadesTop(lv));
+            Assert.IsType<LinearGradientBrush>(((ScrollContentPresenter)lv.Presenter!).OpacityMask);
+            Assert.False(MenuLook.GetFadesBottom(pv));
+            Assert.Null(((ScrollContentPresenter)pv.Presenter!).OpacityMask);
+
+            look.ScrollIntoView(12);
+            plain.ScrollIntoView(12);
+            for (int i = 0; i < 2; i++) { window.UpdateLayout(); Dispatcher.UIThread.RunJobs(); }
+            Assert.True(FootOf(look, 12, lv) <= lv.Viewport.Height - MenuLook.EdgeFade + 1, $"the row ends at {FootOf(look, 12, lv):0.0} of {lv.Viewport.Height:0.0}");
+            Assert.True(FootOf(plain, 12, pv) > pv.Viewport.Height - MenuLook.EdgeFade, $"the plain row ends at {FootOf(plain, 12, pv):0.0} of {pv.Viewport.Height:0.0}");
+            Assert.True(MenuLook.GetFadesTop(lv));
+
+            lv.Offset = new Vector(0, lv.Extent.Height);
+            for (int i = 0; i < 2; i++) { window.UpdateLayout(); Dispatcher.UIThread.RunJobs(); }
+            Assert.True(MenuLook.GetFadesTop(lv));
+            Assert.False(MenuLook.GetFadesBottom(lv));
+            window.Close();
+        });
+
+        // A switch or a box with the focus has the near-black bar behind it, as a row does, and no outline through its words (§196.10).
+        [Fact]
+        public Task A_focused_switch_or_box_in_the_look_has_the_bar_behind_it_and_no_outline() => UiTest.Run(() =>
+        {
+            var toggle = new ToggleSwitch { Content = "Use the left stick", IsChecked = true };
+            var box = new CheckBox { Content = "Ask again" };
+            var look = new StackPanel { Spacing = 10, Width = 360, Background = new SolidColorBrush(Color.Parse("#1B1B1E")), Children = { toggle, box } };
+            MenuLook.SetIsOn(look, true);
+            ToolWindow window = Show(look, 400, 240);
+            foreach (Avalonia.Controls.Primitives.TemplatedControl control in new Avalonia.Controls.Primitives.TemplatedControl[] { toggle, box })
+            {
+                Assert.Null(control.FocusAdorner);
+                Rect at = In(control, window);
+                Assert.False(Near(At(Frame(window), at.Right - 5, at.Center.Y), Bar), $"{control.GetType().Name} before the focus");
+                control.Focus(NavigationMethod.Directional);
+                RenderedFrame f = Frame(window);
+                Assert.True(Near(At(f, at.Right - 5, at.Center.Y), Bar), $"{control.GetType().Name}: {At(f, at.Right - 5, at.Center.Y)}");
+            }
+            window.Close();
+        });
     }
 }

@@ -104,7 +104,9 @@ namespace EmuSen.LunaP.Controls
             double rowHeight = Math.Max(icon, size * 1.2);
             foreach (HintEntry e in Entries ?? Array.Empty<HintEntry>())
             {
-                double iconW = e.IconPath is { Length: > 0 } && PictureFiles.Intrinsic(e.IconPath) is { Width: > 0, Height: > 0 } own ? icon * own.Width / own.Height : icon;
+                // The shoulder pair takes two squares, so each shoulder and its label are drawn at the size of any other button (§196.10).
+                double iconW = e.IconPath is { Length: > 0 } && PictureFiles.Intrinsic(e.IconPath) is { Width: > 0, Height: > 0 } own ? icon * own.Width / own.Height
+                    : e.IconPath is not { Length: > 0 } && e.Button == PadGlyphButton.Shoulders ? 2 * icon : icon;
                 var iconBox = new Rect(x, y + (rowHeight - icon) / 2, iconW, icon);
                 x += iconW + IconTextSpacing;
                 double w = FontLayout.Measure(typeface, size, FontLayout.Cased(e.Label, LetterCase));

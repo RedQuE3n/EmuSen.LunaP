@@ -156,6 +156,10 @@
         <Setter Property="Foreground" Value="#86868A" />
         <Setter Property="FontSize" Value="20" />
     </Style>
+    <!-- A controller drawing's labels set close, so their words stay near the text around them on a short sheet (§196.10). -->
+    <Style Selector="luna|ControllerDiagram">
+        <Setter Property="CompactLabels" Value="True" />
+    </Style>
 
     <!-- A push button: an outlined box in upper case, filled near black with light words while it has the focus, as MenuRows draws one under a menu's rows. -->
     <!-- Not RepeatButton: a scroll bar's arrows are RepeatButtons, and a push button's height would stretch them over its track. -->
@@ -248,6 +252,17 @@
     <Style Selector="CheckBox, ToggleSwitch">
         <Setter Property="FontSize" Value="24" />
         <Setter Property="Foreground" Value="#9C9CA0" />
+    </Style>
+    <!-- A switch or a box has the focus as a row has it, the near-black bar behind it; the stock outline crossed the menu typeface's descenders (§196.10). -->
+    <Style Selector="CheckBox, ToggleSwitch">
+        <Setter Property="FocusAdorner" Value="{x:Null}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="6,6" />
+        <Setter Property="CornerRadius" Value="3" />
+    </Style>
+    <Style Selector="CheckBox:focus, ToggleSwitch:focus">
+        <Setter Property="Background" Value="#050507" />
+        <Setter Property="Foreground" Value="#EEEEF0" />
     </Style>
 
     <Style Selector="TabItem">

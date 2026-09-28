@@ -13103,6 +13103,68 @@ answers a fault the audit or the consumer's pictures showed.
 `MenuLookTests` gains two cases: a button with a control for content shows it; a long title fits once it may shrink
 and is cut when it may not, and a long footer is cut at three lines and whole at six.
 
+### 196.10 A scrolling edge, a focused switch, the shoulder pair in a help bar, and a drawing's labels
+
+*2026-09-27.* The consumer's pictures of its controller bindings window, framed in the look, showed three faults the
+look itself caused, and its audit (§196.9) then asked a fourth question of the same window. Each is answered in the
+look, so every window framed as a menu has the answer, and the desktop has none of it.
+
+**A part-row at a scrolling edge (the consumer's Q186).** A scrolling area showed a row sliced at its lower edge, the
+words *REBIND KEY* and *CLEAR* cut through their middle. Three answers were weighed. Sizing the area to whole rows works
+for a list of equal rows and for nothing else: a settings page mixes rows of several heights, and the area's height is
+the sheet's to give, not the rows'. Keeping the focused row whole is needed, and does nothing for the row at the other
+edge, which is as sliced as before. The look does both of the others' work with a fade: while content lies beyond an
+edge, the last `MenuLook.EdgeFade` units (36, design pixels in a framed sheet) of that edge fade to nothing, by an
+opacity mask on the area's `ScrollContentPresenter`, so what is cut there reads as *more this way* rather than as
+damage. A control brought into view is brought that far clear of both edges (a class handler on
+`RequestBringIntoView` widens the target), so the row with the focus is never under a fade. `MenuLook.FadesTop` and
+`MenuLook.FadesBottom` say, per `ScrollViewer`, which edges fade now; the consumer's audit counts a scrolling edge with
+content beyond it and no fade as a fault, and so treats every scrolling area the same way. The fade is left off where
+it would be wrong: a text box's own scroller (its caret shows where the text goes), an area that does not scroll up and
+down, and an area under twice the fade's height, which the consumer's audit already refuses as too little room. The
+look only ever removes a mask it put there.
+
+**A focused switch (the consumer's Q187).** A `ToggleSwitch` with the focus drew the stock focus outline, a rectangle
+hugging its content, through the lower half of its own words in the menu's typeface. In the look a switch and a check
+box have no focus adorner; the focus is the near-black bar (`#050507`) behind the whole control with light words, as
+a row and a push button have it, 6 units of padding, 3 of corner.
+
+**The shoulder pair in a help bar (the consumer's Q174, again).** The consumer's bindings window still named its two
+shoulder buttons as two entries, *LB* with no words and *RB CONSOLE*, which read as a gap; it now uses one
+`PadGlyphButton.Shoulders` entry (§196.8). In a help bar's square the pair's two bodies are each half as wide as a
+shoulder alone, and their labels half as large. A `HintBar` now gives a `Shoulders` entry a box twice as wide as high,
+and the drawing, given a box at least 1.8 times as wide as high, draws the two shoulders side by side at full size, one
+to each square. In a square (a `PadGlyph`, or any host that asks for one) the pair is drawn as §196.8 says.
+
+**A drawing's labels set close (`ControllerDiagram.CompactLabels`).** Asked whether the Nintendo 64 drawing's small words
+read at arm's length, the consumer measured them: in the framed bindings window at 1280 × 800 the labels' key and pad
+lines were 11.6 pixels for the Nintendo 64 and 14.0 for the NES, Game Boy and Super NES, beside 20-pixel text
+everywhere else on the sheet; at 1920 × 1200, 17.8 and 21.4 (11.9 and 14.3 design pixels). The Nintendo 64 is the
+binding case because its right column holds five labels (the four C buttons and A) and it is bound by height; the
+others are bound by `width / 900`. Making the words larger alone could not help a drawing bound by height, since the
+fitting rule (§198.2) shrinks every label until the tallest column fits; what a label spends its height on had to
+change. `CompactLabels` (false by default; the look sets it) sets a label's padding at 5 units rather than 8, its two
+lines at 1.2 times their size apart rather than 1.45, its lines' words at 14 units rather than 13, the gap a row leaves
+for its lines at 26 rather than 44, the space between labels at 6 rather than 8, and the height cap on the unit at
+`height / 340` rather than `/ 420`, the ratio of the compact label's height to the plain one's. The measured result at
+1280 × 800: 16.0 pixels for the Nintendo 64 and 17.1 for the others, and at 1920 × 1200, 24.6 and 25.6. The first
+compact pictures showed *Right Shoulder* running to its label's border: a label's words start 20 units past the badge,
+and the width had counted 16 of them plus the padding, which with 8 units of padding left 4 to spare and with 5 left
+one. A compact label counts the 20 and keeps 8 clear of its right edge. `ControllerDiagram.LabelTextSize` reports the
+lines' size after fitting, in the diagram's units, so that a host can hold them to a floor; the consumer's audit holds
+every framed sheet's words to 16 design pixels. The Nintendo 64 meets that floor with no margin at 1280 × 800: a longer
+binding name widens the top row, and a sheet that shows it smaller fails the audit rather than passing unseen. The
+words printed on the controller itself (*START*, *Z*) are part of the drawing, stay at its scale and are not held to
+the floor. Outside the look, the diagram lays out exactly as before.
+
+`MenuLookTests` gains two cases: a list in the look fades its lower edge and not its upper, a plain list neither; a row
+scrolled into view stops at least the fade's height above the edge in the look and flush with it outside; scrolled to
+the end, only the upper edge fades. A switch and a check box in the look have no adorner and the bar behind them only
+while focused. `PadGlyphTests` gains one: in a help bar the pair's box is twice a face button's, and each half carries
+the ink of that shoulder drawn alone, within 15 per cent. `ControllerDiagramTests` gains one: a Nintendo 64 drawing
+1400 by 450 with 20-pixel text draws its labels' lines more than 1.25 times larger in the look than outside it, every
+label inside the drawing and none over another.
+
 ## 198. A controller drawn large, with its bindings on it: `ControllerDiagram`
 
 *2026-09-27.* The consumer (EmuSen's Mistress) decided on 2026-09-27 to overhaul its controller bindings window: each
@@ -13202,6 +13264,8 @@ twenty-pixel text. The diagram also measures again when that text changes size; 
 `Labels_follow_the_size_of_the_text_around_them` found labels 54 px high with 14 px text and still 54 px with 26 px
 (66 px with the fix, the unit being capped by the space). A column of labels taller than the space, or a row wider than it, shrinks them all, so none spills past another or the edge: the
 Nintendo 64's left column at 1920 × 1200 on a big-screen sheet overlapped its bottom row's first label before that rule.
+In ES-DE's look the labels are also set closer (`CompactLabels`, §196.10), which the Nintendo 64's five-label column
+needed to keep its words at 16 pixels at 1280 × 800.
 Everything is drawn as geometry and text at the size it is shown; there is no bitmap and no scaled sampling anywhere.
 
 ### 198.3 A label is a button

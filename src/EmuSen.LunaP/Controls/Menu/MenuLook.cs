@@ -13,7 +13,7 @@ namespace EmuSen.LunaP.Controls
 {
     // A big-screen menu's look for stock controls, scoped to one element and everything under it - see docs/LunaP.md §196.
     /// <summary>The look of a big-screen menu given to stock controls: its colours, a typeface a host names by resource key, rounded corners and a full-width bar on a list's chosen row, applied to one element and everything under it.</summary>
-    public static class MenuLook
+    public static partial class MenuLook
     {
         /// <summary>The style class the look puts on the element it is applied to.</summary>
         public const string ClassName = "menu-look";
@@ -73,6 +73,7 @@ namespace EmuSen.LunaP.Controls
             {
                 if (!ReferenceEquals(e.Source, combo) && combo.IsDropDownOpen && Covers(combo)) e.Handled = true;
             });
+            SetUpEdges();
         }
 
         /// <summary>Reads whether an element is drawn in the look.</summary>

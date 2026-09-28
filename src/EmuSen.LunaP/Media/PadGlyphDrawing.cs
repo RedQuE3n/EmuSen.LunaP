@@ -25,6 +25,13 @@ namespace EmuSen.LunaP.Media
         {
             double s = Math.Min(box.Width, box.Height);
             if (s <= 0) return;
+            // Given a box twice as wide as high, as a help bar gives it, the pair is two shoulders at full size, one to each square (§196.10).
+            if (button == PadGlyphButton.Shoulders && box.Width >= 1.8 * box.Height)
+            {
+                Draw(dc, new Rect(box.X, box.Y, box.Width / 2, box.Height), family, PadGlyphButton.LeftShoulder, colour, style);
+                Draw(dc, new Rect(box.X + box.Width / 2, box.Y, box.Width / 2, box.Height), family, PadGlyphButton.RightShoulder, colour, style);
+                return;
+            }
             if (style == PadGlyphStyle.Filled && Filled(dc, box.Center, s, Lettered(family, style), button, new ImmutableSolidColorBrush(colour))) return;
             var brush = new ImmutableSolidColorBrush(colour);
             var pen = new ImmutablePen(brush, Math.Max(1, s * 0.075), lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);

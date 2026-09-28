@@ -519,5 +519,36 @@ namespace EmuSen.LunaP.Tests
                 window.Close();
             }
         });
+
+        // In the look the labels are set close, so their words stay larger in a short space; outside it they are as they were (§196.10).
+        [Fact]
+        public Task A_diagram_in_the_look_sets_its_labels_close_and_keeps_their_words_larger() => UiTest.Run(() =>
+        {
+            ControllerDiagram Make()
+            {
+                var d = new ControllerDiagram { Layout = ControllerLayout.Nintendo64 };
+                foreach (DiagramRegion r in d.Regions) d.SetBinding(r.Id, r.Id.Length <= 2 ? r.Id : "K", "Right Shoulder");
+                return d;
+            }
+            ControllerDiagram plain = Make(), look = Make();
+            var lookHost = new Border { Width = 1400, Height = 450, Child = look };
+            MenuLook.SetIsOn(lookHost, true);
+            var window = new ToolWindow { Width = 1400, Height = 900, FontSize = 20, Background = Brushes.Black,
+                Content = new StackPanel { Children = { new Border { Width = 1400, Height = 450, Child = plain }, lookHost } } };
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            UiTest.Capture(window);
+
+            Assert.False(plain.CompactLabels);
+            Assert.True(look.CompactLabels);
+            Assert.True(look.LabelTextSize > plain.LabelTextSize * 1.25, $"{look.LabelTextSize:0.0} in the look, {plain.LabelTextSize:0.0} outside it");
+            var boxes = look.Regions.Select(r => (r.Id, Box: look.LabelOf(r.Id)!.Bounds)).ToList();
+            foreach ((string id, Rect box) in boxes)
+                Assert.True(box.X >= -0.5 && box.Y >= -0.5 && box.Right <= 1400.5 && box.Bottom <= 450.5, $"{id}'s label {box} leaves the drawing");
+            for (int i = 0; i < boxes.Count; i++)
+                for (int j = i + 1; j < boxes.Count; j++)
+                    Assert.False(boxes[i].Box.Deflate(0.5).Intersects(boxes[j].Box.Deflate(0.5)), $"{boxes[i].Id} {boxes[i].Box} overlaps {boxes[j].Id} {boxes[j].Box}");
+            window.Close();
+        });
     }
 }

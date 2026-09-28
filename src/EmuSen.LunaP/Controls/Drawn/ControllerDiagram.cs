@@ -94,6 +94,7 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<bool> ShowsKeysProperty = AvaloniaProperty.Register<ControllerDiagram, bool>(nameof(ShowsKeys), true);
         public static readonly StyledProperty<bool> ShowsLabelsProperty = AvaloniaProperty.Register<ControllerDiagram, bool>(nameof(ShowsLabels), true);
         public static readonly StyledProperty<double> StickRingProperty = AvaloniaProperty.Register<ControllerDiagram, double>(nameof(StickRing));
+        public static readonly StyledProperty<bool> CompactLabelsProperty = AvaloniaProperty.Register<ControllerDiagram, bool>(nameof(CompactLabels));
 
         private DiagramArt _art = DiagramArt.For(ControllerLayout.Snes);
         private List<DiagramRegion> _regions = new();
@@ -111,7 +112,7 @@ namespace EmuSen.LunaP.Controls
         static ControllerDiagram()
         {
             AffectsRender<ControllerDiagram>(SelectedRegionProperty, StickRingProperty);
-            AffectsMeasure<ControllerDiagram>(ShowsKeysProperty, ShowsLabelsProperty);
+            AffectsMeasure<ControllerDiagram>(ShowsKeysProperty, ShowsLabelsProperty, CompactLabelsProperty);
             AffectsMeasure<ControllerDiagram>(TextElement.FontSizeProperty, TextElement.FontFamilyProperty);
             FocusableProperty.OverrideDefaultValue<ControllerDiagram>(false);
         }
@@ -141,6 +142,15 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>A ring drawn over each stick at this share of its travel, such as a dead zone, or none at 0. 0 by default.</summary>
         public double StickRing { get => GetValue(StickRingProperty); set => SetValue(StickRingProperty, value); }
+
+        /// <summary>Whether labels are set closer, with less padding, tighter lines and shorter leaders, so their words stay large where the height is short, as on a big-screen menu. False by default.</summary>
+        public bool CompactLabels { get => GetValue(CompactLabelsProperty); set => SetValue(CompactLabelsProperty, value); }
+
+        /// <summary>The size the labels' key and pad lines are drawn at, in the diagram's own units, after the labels are fitted to the space; 0 before a layout.</summary>
+        public double LabelTextSize => ShowsLabels && _labels.Values.FirstOrDefault() is { } label && IsMeasureValid ? label.LineSize : 0;
+
+        // The gap a row of labels keeps for its leaders, and the space between two labels, in label units (§196.10).
+        private (double Gap, double Space) Spacing => CompactLabels ? (26, 6) : (44, 8);
 
         /// <summary>Prints other words on a region, such as a connected pad's own letter, in place of the drawing's.</summary>
         /// <param name="region">The region's id.</param>
@@ -354,7 +364,7 @@ namespace EmuSen.LunaP.Controls
             {
                 foreach (DiagramLabel label in _labels.Values) label.IsVisible = ShowsLabels;
             }
-            else if (change.Property == ShowsKeysProperty)
+            else if (change.Property == ShowsKeysProperty || change.Property == CompactLabelsProperty)
             {
                 foreach (DiagramLabel label in _labels.Values) { label.InvalidateMeasure(); label.InvalidateVisual(); }
             }
@@ -439,14 +449,14 @@ namespace EmuSen.LunaP.Controls
             double h = double.IsInfinity(availableSize.Height) ? w * 0.62 : availableSize.Height;
             // Labels grow with the space, and never fall far below the text around them, as on a big-screen sheet whose text is scaled up.
             double text = GetValue(TextElement.FontSizeProperty) / 14 * 0.85;
-            _unit = Math.Clamp(Math.Max(Math.Min(w / 1100, h / 640), Math.Min(text, Math.Min(w / 900, h / 420))), 0.45, 3);
+            _unit = Math.Clamp(Math.Max(Math.Min(w / 1100, h / 640), Math.Min(text, Math.Min(w / 900, h / (CompactLabels ? 340 : 420)))), 0.45, 3);
             MeasureLabels();
 
             // A column taller than the space, or a row wider than it, shrinks every label, so none spills past another or the edge.
             for (int pass = 0; pass < 3 && ShowsLabels; pass++)
             {
                 double chipH = _labels.Values.Select(l => l.DesiredSize.Height).DefaultIfEmpty(0).Max();
-                double gap = 44 * _unit, space = 8 * _unit;
+                double gap = Spacing.Gap * _unit, space = Spacing.Space * _unit;
                 int rows = (_regions.Any(r => r.Side == DiagramSide.Top) ? 1 : 0) + (_regions.Any(r => r.Side == DiagramSide.Bottom) ? 1 : 0);
                 int tallest = new[] { DiagramSide.Left, DiagramSide.Right }.Max(side => _regions.Count(r => r.Side == side));
                 double need = tallest * (chipH + space) + rows * (chipH + gap);
@@ -472,7 +482,7 @@ namespace EmuSen.LunaP.Controls
         {
             double u = _unit, w = finalSize.Width, h = finalSize.Height;
             double chipH = _labels.Values.Select(l => l.DesiredSize.Height).DefaultIfEmpty(0).Max();
-            double gap = 44 * u, space = 8 * u, pad = 10 * u;
+            double gap = Spacing.Gap * u, space = Spacing.Space * u, pad = 10 * u;
             double Widest(DiagramSide side) => _regions.Where(r => r.Side == side).Select(r => _labels[r.Id].DesiredSize.Width).DefaultIfEmpty(0).Max();
             bool Has(DiagramSide side) => ShowsLabels && _regions.Any(r => r.Side == side);
 
@@ -755,15 +765,22 @@ namespace EmuSen.LunaP.Controls
             new(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
                 new Typeface(GetValue(TextElement.FontFamilyProperty), FontStyle.Normal, bold ? FontWeight.Bold : FontWeight.Normal), size, new ImmutableSolidColorBrush(colour));
 
-        private (double Name, double Line, double Pad) Sizes => (15 * _scale, 13 * _scale, 8 * _scale);
+        private (double Name, double Line, double Pad) Sizes => _owner.CompactLabels ? (15 * _scale, 14 * _scale, 5 * _scale) : (15 * _scale, 13 * _scale, 8 * _scale);
+
+        // A line's height for its words' size: set closer in a compact label (§196.10).
+        private double Row(double lineSize) => lineSize * (_owner.CompactLabels ? 1.2 : 1.45);
+
+        internal double LineSize => Sizes.Line;
 
         protected override Size MeasureOverride(Size availableSize)
         {
             (double nameSize, double lineSize, double pad) = Sizes;
             double badge = Math.Max(Text(Region.Name, nameSize, true, Colors.White).Width + 14 * _scale, 34 * _scale);
             double lines = Math.Max(_owner.ShowsKeys ? Text(Binding.Key ?? Unbound, lineSize, false, Colors.White).Width : 0, Text(Binding.Pad ?? Unbound, lineSize, false, Colors.White).Width);
-            double width = pad + badge + 8 * _scale + 16 * _scale + Math.Max(lines, 64 * _scale) + pad;
-            double height = pad * 2 + lineSize * 1.45 * 2;
+            // A compact label's words start 20 units past the badge as ever, and keep 8 units clear of its right edge though its padding is less.
+            double width = _owner.CompactLabels ? pad + badge + 28 * _scale + Math.Max(lines, 60 * _scale) + 8 * _scale
+                : pad + badge + 8 * _scale + 16 * _scale + Math.Max(lines, 64 * _scale) + pad;
+            double height = pad * 2 + Row(lineSize) * 2;
             return new Size(Math.Ceiling(width), Math.Ceiling(height));
         }
 
@@ -792,7 +809,7 @@ namespace EmuSen.LunaP.Controls
             context.DrawRectangle(new ImmutableSolidColorBrush(badgeFill), null, badge, 5 * _scale, 5 * _scale);
             context.DrawText(name, new Point(badge.Center.X - name.Width / 2, badge.Center.Y - name.Height / 2));
 
-            double x = badge.Right + 8 * _scale, row = lineSize * 1.45;
+            double x = badge.Right + 8 * _scale, row = Row(lineSize);
             double y0 = box.Y + pad, y1 = _owner.ShowsKeys ? y0 + row : box.Center.Y - row / 2;
             if (_owner.ShowsKeys) KeyIcon(context, new Rect(x, y0 + (row - 12 * _scale) / 2, 15 * _scale, 12 * _scale), muted);
             BadgeGlyphDrawing.Draw(context, new Rect(x - 1 * _scale, y1 + (row - 17 * _scale) / 2, 17 * _scale, 17 * _scale), ControllerShape.Gamepad, muted);
