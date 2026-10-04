@@ -72,6 +72,9 @@ namespace EmuSen.LunaP.Windowing
         // What had the focus before the first sheet, given back when the last one goes.
         private IInputElement? _focusBefore;
 
+        // The window this layer is in while it presents anything; its Closed closes the sheets, as an owner closes its owned windows - see docs/LunaP.md §90.7.
+        private Window? _host;
+
         /// <summary>Hidden until something is presented.</summary>
         public SheetLayer()
         {
@@ -158,7 +161,12 @@ namespace EmuSen.LunaP.Windowing
             if (window.IsVisible) throw new InvalidOperationException("A shown window cannot also be presented on a sheet.");
             if (PresenterOf(window) is not null) throw new InvalidOperationException("That window is already presented.");
 
-            if (_sheets.Count == 0) _focusBefore = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
+            if (_sheets.Count == 0)
+            {
+                _focusBefore = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
+                _host = TopLevel.GetTopLevel(this) as Window;
+                if (_host is not null) _host.Closed += OnHostClosed;
+            }
 
             var sheet = new Sheet(this, window);
             _sheets.Add(sheet);
@@ -222,10 +230,18 @@ namespace EmuSen.LunaP.Windowing
                 IsVisible = false;
                 if (_focusBefore is InputElement before && TopLevel.GetTopLevel(before) is not null) before.Focus();
                 _focusBefore = null;
+                if (_host is not null) _host.Closed -= OnHostClosed;
+                _host = null;
             }
 
             sheet.Done.TrySetResult();
             PresentedChanged?.Invoke();
+        }
+
+        // Newest first, as each sheet's own close takes it off the layer.
+        private void OnHostClosed(object? sender, EventArgs e)
+        {
+            foreach (Sheet sheet in Enumerable.Reverse(_sheets.ToList())) sheet.Window.Close();
         }
 
         // Which layer presents a window, so a presented window's own children land on the same layer.

@@ -10707,6 +10707,45 @@ Close.
 - **The platform's file pickers** are asked of the window's own `TopLevel`, which on a sheet is a window that was
   never shown. Whether a picker opens from one is the platform's answer and is not measured here.
 
+### 90.7 A sheet closes with its host
+
+**The defect.** Until 2026-10-04 a sheet ended only when its own window closed. A host closed while a sheet was still
+up left the sheet's window open for ever: its `Done` task never completed, so whatever awaited `Show` waited for
+good, and the window kept the host alive. The consumer found it as memory: its test host grew to 3.8 GB over 1,892
+user-interface tests, and to 16.4 GB under load. A heap dump taken part-way through 127 of those tests held 58 main
+windows, 57 of them closed, and `dotnet-dump gcroot` gave every one of the 57 the same path: the static `Presenters`
+dictionary, a sheet's window as its key, the sheet's chrome, and up through the visual tree to the host. The
+prediction written before the dump was a static subscription or a running timer in the consumer's own window; it was
+neither.
+
+**Why the registry was not the whole of it.** Making `Presenters` a `ConditionalWeakTable` was tried first and was not
+enough, and the reason is worth carrying: Avalonia itself holds every window that was constructed and never closed,
+through a handler its `TopLevel` adds to the application's theme-variant event and removes only on close. A sheet's
+window is constructed and never shown, so until it is closed nothing a toolkit does to its own references lets it go;
+and the sheet's window holds the host through the `Closed` handler `Present` adds and through the content it lent.
+The only fix is to close it.
+
+**The rule now.** While a layer presents anything it listens to its host window's `Closed`, and on it closes every
+sheet still up, newest first; each sheet's own close then takes it off the layer and completes its task. This is
+what Avalonia does for an ordinary owned window, which `Show` would have shown had the layer not presented it, so a
+consumer's code meets the same event whichever way its window was shown.
+
+**Where it differs from an owned window, measured from Avalonia 12.1's `Window.CloseCore`.** An owner raises its
+children's `Closing` before its own and closes them before its own `Closed`; a child that cancels its close cancels
+the owner's. A sheet hears its `Closing` and `Closed` only after the host's `Closed`, and cannot cancel the host's
+close. Listening to the host's `Closing` instead was considered and not done: a later handler can still cancel it,
+and a sheet closed for a close that then does not happen cannot be reopened. What both orders share is the one fact
+the consumer tripped on: a child's `Closed` runs after its owner's `Closing`, so anything the owner disposed there has
+gone. The consumer's Preferences window refreshed its library from a database the main window had closed, on the
+desktop as well as on a sheet, and was fixed there (EmuSen's `EmuSen_Settings_Reference.md` §4.88).
+
+**Tests.** `Closing_the_host_closes_the_sheets_still_on_it` presents a sheet on a sheet, closes the host, and asserts
+both tasks complete, the upper closes first and nothing is left presented; without the change its tasks are still
+waiting. `A_host_closed_under_a_sheet_is_collected_with_it` closes a host under a sheet and asserts, after forced
+collections, that neither is reachable; without the change the host is. It ticks the headless render timer before
+collecting, because the compositor keeps a closed window's last batch until a frame takes it: without the tick the
+case failed when it ran after the class's other cases and passed alone, with or without the fix.
+
 ## 91. An on-screen keyboard, and a path that can be typed
 
 **What was missing.** A consumer on a handheld's game session needs text from a pad: a cheat code, a description, a

@@ -1,5 +1,7 @@
+using System;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -256,6 +258,54 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(0, tabs.SelectedIndex);
             child.Close();
             host.Close();
+        }, default);
+        // A host closed with sheets still up closes them, newest first, as an owner closes its owned windows - §90.7.
+        [Fact]
+        public Task Closing_the_host_closes_the_sheets_still_on_it() => Session.Dispatch(() =>
+        {
+            var (host, layer, _) = Host();
+            ToolWindow lower = Child("Lower", out _, out _);
+            ToolWindow upper = Child("Upper", out _, out _);
+            Task lowerDone = SheetLayer.Show(lower, host);
+            Task upperDone = SheetLayer.Show(upper, lower);
+            var order = new System.Collections.Generic.List<string>();
+            lower.Closed += (_, _) => order.Add("Lower");
+            upper.Closed += (_, _) => order.Add("Upper");
+
+            host.Close();
+
+            Assert.True(lowerDone.IsCompleted && upperDone.IsCompleted, "a sheet's task is still waiting");
+            Assert.Equal(new[] { "Upper", "Lower" }, order);
+            Assert.False(layer.IsPresenting);
+            Assert.Null(SheetLayer.PresenterOf(lower));
+        }, default);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static (WeakReference Host, WeakReference Sheet) ClosedUnderASheet()
+        {
+            var (host, _, _) = Host();
+            ToolWindow child = Child("Settings", out _, out _);
+            _ = SheetLayer.Show(child, host);
+            host.Close();
+            return (new WeakReference(host), new WeakReference(child));
+        }
+
+        // Nor is the host kept alive by the sheet it closed under, which held it through the layer - §90.7.
+        [Fact]
+        public Task A_host_closed_under_a_sheet_is_collected_with_it() => Session.Dispatch(() =>
+        {
+            (WeakReference host, WeakReference sheet) = ClosedUnderASheet();
+            for (int i = 0; i < 4; i++)
+            {
+                // The compositor holds a closed window's last batch until a frame takes it.
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Dispatcher.UIThread.RunJobs();
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
+
+            Assert.False(host.IsAlive, "the closed host is still reachable");
+            Assert.False(sheet.IsAlive, "the sheet left on it is still reachable");
         }, default);
     }
 }

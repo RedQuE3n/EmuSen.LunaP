@@ -14,6 +14,12 @@ answer.
 
 ## Unreleased
 
+- **A sheet closes with its host (`§90.7`).** Closing a window that still has sheets up now closes them, newest
+  first, as Avalonia closes an owned window with its owner; their `Show` tasks complete. Before, the sheets stayed
+  open and kept the host, and everything it held, alive. **Behaviour change:** a presented window's `Closing` and
+  `Closed` now run when its host closes, after the host's own `Closed`; a handler that reads something the host
+  disposed in its `Closing` has to check for it, as it already had to for an owned window.
+
 - **`SliderList` arranges its view again when the view was left at its own height (`§97.9`).** A list whose scroll
   presenter kept an extent equal to its viewport after its rows arrived did not scroll, and a pad or the wheel could
   not pass its first view. No API change.
