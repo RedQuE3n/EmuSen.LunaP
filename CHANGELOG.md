@@ -14,6 +14,9 @@ answer.
 
 ## Unreleased
 
+- **The Genesis's pads in `ControllerDiagram` (`§198.12`).** `ControllerLayout.Genesis` (the three-button pad) and
+  `ControllerLayout.GenesisSixButton`, appended after `GameBoy`, so no existing value moved. No other API change.
+
 - **A sheet closes with its host (`§90.7`).** Closing a window that still has sheets up now closes them, newest
   first, as Avalonia closes an owned window with its owner; their `Show` tasks complete. Before, the sheets stayed
   open and kept the host, and everything it held, alive. **Behaviour change:** a presented window's `Closing` and
