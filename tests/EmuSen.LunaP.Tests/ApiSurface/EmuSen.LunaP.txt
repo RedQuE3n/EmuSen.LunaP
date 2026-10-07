@@ -297,6 +297,8 @@ public class EmuSen.LunaP.Controls.ControllerGlyph : Avalonia.Controls.Control
 public enum EmuSen.LunaP.Controls.ControllerLayout
     public const EmuSen.LunaP.Controls.ControllerLayout GameBoy = 4
     public const EmuSen.LunaP.Controls.ControllerLayout Gamepad = 0
+    public const EmuSen.LunaP.Controls.ControllerLayout Genesis = 5
+    public const EmuSen.LunaP.Controls.ControllerLayout GenesisSixButton = 6
     public const EmuSen.LunaP.Controls.ControllerLayout Nes = 1
     public const EmuSen.LunaP.Controls.ControllerLayout Nintendo64 = 3
     public const EmuSen.LunaP.Controls.ControllerLayout Snes = 2
