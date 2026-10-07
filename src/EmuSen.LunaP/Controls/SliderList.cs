@@ -172,6 +172,7 @@ namespace EmuSen.LunaP.Controls
                 Step = item.Step,
                 DefaultValue = item.DefaultValue,
                 Value = item.Value,
+                Choices = item.Choices,
                 Margin = new Thickness(0, 0, 0, 4),
             };
             if (item.Name is { Length: > 0 } name) row.Name = name;
@@ -228,6 +229,9 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>Further text a SliderList search matches besides the label, such as a parameter's id. Not shown. Null for none.</summary>
         public string? Keywords { get; init; }
+
+        /// <summary>Names for the values from Minimum by Step, shown by the row in place of numbers; see SliderRow.Choices. Null for numbers.</summary>
+        public IReadOnlyList<string>? Choices { get; init; }
 
         /// <summary>Whatever the host knows this number by, such as a parameter's id. Not shown.</summary>
         public object? Tag { get; init; }

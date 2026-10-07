@@ -45,6 +45,18 @@ namespace EmuSen.LunaP.Tests
 
         private static ScrollViewer Scroll(SliderList list) => list.GetVisualDescendants().OfType<ScrollViewer>().First();
 
+        // An item's choices reach the row built for it, so a list of settings can mix numbers and choices - see docs/LunaP.md §199.
+        [Fact]
+        public Task An_item_with_choices_is_shown_by_name() => UiTest.Run(() =>
+        {
+            var (window, list) = Show(new object[] { new SliderItem("Quality", 0, 2, 1, 1, 2) { Name = "Quality", Choices = new[] { "Performance", "Balanced", "Accurate" } } });
+            SliderRow row = list.Realized.Single();
+            string[] texts = row.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsVisible).Select(t => t.Text ?? "").ToArray();
+            Assert.Contains("Accurate", texts);
+            Assert.Contains("default Balanced", texts);
+            window.Close();
+        });
+
         [Fact]
         public Task A_thousand_numbers_build_only_the_rows_in_view_and_their_headings() => UiTest.Run(() =>
         {

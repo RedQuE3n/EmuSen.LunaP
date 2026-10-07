@@ -77,6 +77,27 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // A row of choices reads as names: its value's, its default's when they differ, and the next one's after a press.
+        [Fact]
+        public Task A_row_of_choices_shows_names_and_steps_from_one_to_the_next() => UiTest.Run(() =>
+        {
+            var (window, row, changes) = Show(new SliderRow { Label = "Signal", Minimum = 0, Maximum = 2, Step = 1, DefaultValue = 2, Value = 2, Choices = new[] { "RGB", "S-Video", "Composite" } });
+            Assert.Contains("Composite", Texts(row));
+            Assert.DoesNotContain("2", Texts(row));
+            Slider slider = Slider(row);
+            slider.Focus();
+            Key(slider, Avalonia.Input.Key.Left);
+            Assert.Equal(new[] { 1.0 }, changes);
+            Assert.Contains("S-Video", Texts(row));
+            Assert.Contains("default Composite", Texts(row));
+            Assert.Equal(TickPlacement.BottomRight, slider.TickPlacement);
+
+            row.Choices = null;
+            Assert.Contains("1", Texts(row));
+            Assert.Equal(TickPlacement.None, slider.TickPlacement);
+            window.Close();
+        });
+
         [Theory]
         [InlineData(0.05, 0.35, "0.35")]
         [InlineData(1.0, -8.0, "-8")]
