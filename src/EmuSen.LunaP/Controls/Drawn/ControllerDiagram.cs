@@ -31,6 +31,10 @@ namespace EmuSen.LunaP.Controls
         Nintendo64,
         /// <summary>A handheld whose controls are its own face: a cross, A, B, Select and Start.</summary>
         GameBoy,
+        /// <summary>A wide two-lobed pad with a cross on a round plate, Start, and A, B and C in a rising row: the Genesis's three-button pad.</summary>
+        Genesis,
+        /// <summary>The same pad with X, Y and Z in a second row above A, B and C, and Mode on its right shoulder: the Genesis's six-button pad.</summary>
+        GenesisSixButton,
     }
 
     /// <summary>The side of a ControllerDiagram a region's label stands on.</summary>
@@ -453,6 +457,8 @@ namespace EmuSen.LunaP.Controls
             ControllerLayout.Snes => "Super NES controller",
             ControllerLayout.Nintendo64 => "Nintendo 64 controller",
             ControllerLayout.GameBoy => "Game Boy",
+            ControllerLayout.Genesis => "Genesis controller",
+            ControllerLayout.GenesisSixButton => "Genesis six-button controller",
             _ => "Gamepad",
         };
 

@@ -164,6 +164,11 @@ namespace EmuSen.LunaP.Tests
         [InlineData(ControllerLayout.Nintendo64, 760, 480)]
         [InlineData(ControllerLayout.Nintendo64, 1100, 640)]
         [InlineData(ControllerLayout.Nintendo64, 1920, 1080)]
+        [InlineData(ControllerLayout.Genesis, 700, 440)]
+        [InlineData(ControllerLayout.Genesis, 1920, 1080)]
+        [InlineData(ControllerLayout.GenesisSixButton, 700, 440)]
+        [InlineData(ControllerLayout.GenesisSixButton, 1100, 640)]
+        [InlineData(ControllerLayout.GenesisSixButton, 1920, 1080)]
         [InlineData(ControllerLayout.Nintendo64, 1000, 420)]
         public Task Every_region_has_a_label_and_no_label_overlaps_another(ControllerLayout layout, double w, double h) => UiTest.Run(() =>
         {
@@ -236,6 +241,9 @@ namespace EmuSen.LunaP.Tests
         [InlineData(ControllerLayout.Nintendo64, 1100, 640)]
         [InlineData(ControllerLayout.Nintendo64, 1700, 500)]
         [InlineData(ControllerLayout.Nintendo64, 700, 900)]
+        [InlineData(ControllerLayout.Genesis, 1100, 640)]
+        [InlineData(ControllerLayout.GenesisSixButton, 1100, 640)]
+        [InlineData(ControllerLayout.GenesisSixButton, 700, 900)]
         public Task Each_label_s_line_runs_from_the_label_to_its_region(ControllerLayout layout, double w, double h) => UiTest.Run(() =>
         {
             (ToolWindow window, ControllerDiagram diagram) = Shown(layout, w, h);

@@ -76,6 +76,8 @@ namespace EmuSen.LunaP.Media
                 ControllerLayout.Nintendo64 => Nintendo64(),
                 ControllerLayout.Nes => Nes(),
                 ControllerLayout.GameBoy => GameBoy(),
+                ControllerLayout.Genesis => Genesis(six: false),
+                ControllerLayout.GenesisSixButton => Genesis(six: true),
                 _ => Gamepad(),
             };
             art.Route();
@@ -466,6 +468,48 @@ namespace EmuSen.LunaP.Media
             art.Words.Add(new ArtText("START", new Point(358, 884), 15, ink, -28));
 
             for (int i = 0; i < 6; i++) art.Marks.Add(new ArtPart(Pill(478 + i * 22, 890 - i * 8, 86, 9, -62), Hex("#8F8B82")));
+            return art;
+        }
+
+        // --- Genesis: two round lobes joined by a bridge that arches up underneath, a cross on a round plate, Start in the middle, and A, B, C rising to the right; the six-button pad adds X, Y, Z above them and Mode on the right shoulder ---
+
+        private static DiagramArt Genesis(bool six)
+        {
+            var art = new DiagramArt { Design = new Size(1000, 540) };
+            Color shell = Hex("#34343A"), edge = Hex("#6A6A74"), well = Hex("#26262B"), plate = Hex("#3F3F47"), dark = Hex("#18181B"), words = Hex("#B8B8C2");
+            const string button = "#55555F";
+
+            art.Body.Add(new ArtPart(Path("M 500,84 C 500,50 510,30 524,4"), null, edge, 9));
+            if (six) art.Regions.Add(new RegionArt { Id = "Mode", Name = "Mode", Shape = ArcBand(760, 290, 208, 234, 294, 332), Fill = Hex(button), Stroke = edge, StrokeWidth = 3 });
+
+            Geometry body = Union(Circle(240, 290, 220), Circle(760, 290, 220), Path("M 240,74 Q 500,44 760,74 L 760,440 Q 500,330 240,440 Z"));
+            art.Body.Add(new ArtPart(body, shell, edge, 5));
+            art.Body.Add(new ArtPart(Circle(240, 290, 132), well));
+            art.Body.Add(new ArtPart(Circle(240, 290, 112), plate));
+            DirectionPad(art, 240, 290, 66, 100, dark, Hex("#6A6A74"), Cross, 10, Hex("#5A5A64"));
+
+            const double startY = 232;
+            art.Body.Add(new ArtPart(Pill(500, startY, 96, 40, 0), well));
+            art.Regions.Add(new RegionArt { Id = "Start", Name = "Start", Shape = Pill(500, startY, 78, 24, 0), Fill = Hex(button) });
+            art.Words.Add(new ArtText("START", new Point(500, startY + 42), 17, words));
+
+            if (!six)
+            {
+                art.Body.Add(new ArtPart(Pill(760, 295, 300, 128, -28), well));
+                Round(art, "A", 668, 344, 42, button, "A", 32);
+                Round(art, "B", 760, 295, 42, button, "B", 32);
+                Round(art, "C", 852, 246, 42, button, "C", 32);
+                return art;
+            }
+
+            art.Body.Add(new ArtPart(Pill(750, 250, 232, 76, -24), well));
+            art.Body.Add(new ArtPart(Pill(770, 340, 270, 96, -24), well));
+            Round(art, "X", 682, 280, 27, button, "X", 24);
+            Round(art, "Y", 750, 250, 27, button, "Y", 24);
+            Round(art, "Z", 818, 220, 27, button, "Z", 24);
+            Round(art, "A", 691, 375, 36, button, "A", 30);
+            Round(art, "B", 770, 340, 36, button, "B", 30);
+            Round(art, "C", 849, 305, 36, button, "C", 30);
             return art;
         }
 

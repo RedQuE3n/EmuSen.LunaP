@@ -13593,3 +13593,21 @@ labels to be 1.2 times the plain ones, not 1.25: both are split in its space, an
 D3 removes the check that the drawing is still bound by its height once a column is split, and the Nintendo 64 laid out
 at 1,846 sizes with and without it came out the same at every one. Wherever splitting let the labels grow, the width it
 took was free. The check stays, as the rule's statement of when a split is allowed.
+
+### 198.12 The Genesis pads (2026-10-06)
+
+`ControllerLayout` gains `Genesis`, the three-button pad, and `GenesisSixButton`; seven are drawn now. They are drawn
+as §198.1's are, from plain geometry in a design space 1000 wide, and are the toolkit's own under the same rule: two
+round lobes joined by a bridge whose underside arches up between them, the cross on a round plate in a well on the
+left lobe, Start as a pill in the middle with its name under it, and A, B and C as three round buttons on a slanted
+well, rising to the right. The six-button pad is the same shell with X, Y and Z as a second, smaller row above A, B and
+C, and Mode as a band on the right lobe's shoulder, drawn as the Super NES's R is. The shell is the pad's black, drawn
+as a dark grey with a lighter edge so that it reads on both theme variants; the buttons are a mid grey with their
+letters in white, since the pad's own black on black would not show. Start stands in the same place on both: nearer
+the bridge's underside its line ran 161 pixels over the drawing where a shorter way out existed, which
+`Each_line_leaves_by_the_shortest_way_that_crosses_no_other_button` refuses.
+
+The ids are `Up`, `Down`, `Left`, `Right`, `Start`, `A`, `B`, `C`, and on the six-button pad `X`, `Y`, `Z` and `Mode`;
+the consumer maps its own controls onto them. `Describe` names them "Genesis controller" and "Genesis six-button
+controller". The tests that run over every layout (`Drawn`) take both, and the label and line theories carry rows for
+them at a small, a middling and a large size: 96 pass.
