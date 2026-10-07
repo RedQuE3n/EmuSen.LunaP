@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Automation;
@@ -111,6 +112,21 @@ namespace EmuSen.LunaP.Controls
         /// <summary>Whether the value is the default, to within a thousandth of the step.</summary>
         public bool IsDefault => Math.Abs(Value - _defaultValue) <= EffectiveStep / 1000;
 
+        // Names for the values Minimum, Minimum + Step and so on, so the row reads as one of a few choices - see docs/LunaP.md §199.
+        /// <summary>Names for the values Minimum, Minimum + Step, Minimum + 2 Step and so on. Set, the row shows the name of its value and of its default instead of numbers, and marks each choice on the slider. Null, the default, shows numbers.</summary>
+        public IReadOnlyList<string>? Choices
+        {
+            get => _choices;
+            set
+            {
+                _choices = value;
+                _slider.TickPlacement = value is { Count: > 0 } ? TickPlacement.BottomRight : TickPlacement.None;
+                Show();
+            }
+        }
+
+        private IReadOnlyList<string>? _choices;
+
         /// <summary>Raised when the slider is moved or the reset button pressed, with the new value. Not raised by setting Value.</summary>
         public event Action<double>? ValueChanged;
 
@@ -129,9 +145,17 @@ namespace EmuSen.LunaP.Controls
         private void Show()
         {
             int decimals = Math.Max(Decimals(EffectiveStep), Math.Max(Decimals(Minimum), Decimals(_defaultValue)));
-            _value.Text = Format(Value, decimals);
-            _default.Text = IsDefault ? string.Empty : $"default {Format(_defaultValue, decimals)}";
+            _value.Text = Name(Value) ?? Format(Value, decimals);
+            _default.Text = IsDefault ? string.Empty : $"default {Name(_defaultValue) ?? Format(_defaultValue, decimals)}";
             _default.IsVisible = !IsDefault;
+        }
+
+        // The choice a value is, by its number of steps from Minimum; null when there are no choices or the value is past them.
+        private string? Name(double value)
+        {
+            if (_choices is not { Count: > 0 } choices) return null;
+            int index = (int)Math.Round((value - Minimum) / EffectiveStep);
+            return index >= 0 && index < choices.Count ? choices[index] : null;
         }
 
         private static string Format(double value, int decimals) => value.ToString("F" + decimals, CultureInfo.InvariantCulture);

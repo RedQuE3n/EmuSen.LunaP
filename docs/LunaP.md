@@ -13611,3 +13611,23 @@ The ids are `Up`, `Down`, `Left`, `Right`, `Start`, `A`, `B`, `C`, and on the si
 the consumer maps its own controls onto them. `Describe` names them "Genesis controller" and "Genesis six-button
 controller". The tests that run over every layout (`Drawn`) take both, and the label and line theories carry rows for
 them at a small, a middling and a large size: 96 pass.
+
+## 199. A row of choices: `SliderRow.Choices` and `SliderItem.Choices`
+
+*2026-10-07.* EmuSen's CRT filter has settings that are one of a few named choices (a signal, a screen, a
+quality), declared as parameters over whole numbers so that they travel with the numeric ones. Shown as numbers
+they read "Signal 2". `SliderRow.Choices` names the values `Minimum`, `Minimum + Step` and so on; set, the row
+shows the name of its value, "default" and the name of its default when the two differ, and a tick at each
+choice on the slider. Left and right step from one choice to the next as they step any value, so a pad, a
+keyboard and a mouse use it as before. `SliderItem.Choices` carries the names to the row a `SliderList` builds.
+A value between choices, or past the last, is shown as its number. Null, the default, is the row as it was.
+
+**Why a stepped slider and not a dropdown.** A dropdown opens a popup, which a pad has to enter and leave, and in a
+virtualised list the popup outlives the row's container when the list scrolls (§97.3's kind of defect). The
+stepped slider keeps the row's one focusable part, its keys and its reset, and the choices are few enough (two to
+six here) that every one has a tick.
+
+**Tests.** `SliderRowTests.A_row_of_choices_shows_names_and_steps_from_one_to_the_next`: "Composite" for 2, a press
+of Left to "S-Video" with the event raised and "default Composite" shown, ticks while there are choices and none
+after they are cleared. `SliderListTests.An_item_with_choices_is_shown_by_name`: the built row shows "Accurate"
+and "default Balanced".
