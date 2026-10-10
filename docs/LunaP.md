@@ -14,9 +14,9 @@
 
 **The layering rule is load-bearing and is the reason the project is worth having:**
 
-> LunaP may reference **Avalonia** and **`EmuSen.Galaxia`** and nothing else. Not `EmuSen` (the core), not `EmuSen.DianaOS`, not `EmuSen.Cauldron`, not `EmuSen.Endymion`.
+> LunaP may reference **Avalonia** and **`EmuSen.Galaxia`** and nothing else. Not `EmuSen` (the core), not `EmuSen.DianaSh`, not `EmuSen.Cauldron`, not `EmuSen.Endymion`.
 
-The launcher's entire value is browsing a library with no core loaded. One upward reference here hands it the whole emulator, permanently. `EmuSen.Serenity` already holds this line on the video side — it presents frames while taking `(byte[] rgba, int width, int height)` rather than an `ICore` — and **every LunaP control takes plain data or a delegate for the same reason.** A meter row takes `(string, double, string)`, never a `DebugLoadInfo`. A console pane takes a `Func<string, string>`, never a `DianaOSInterpreter`.
+The launcher's entire value is browsing a library with no core loaded. One upward reference here hands it the whole emulator, permanently. `EmuSen.Serenity` already holds this line on the video side — it presents frames while taking `(byte[] rgba, int width, int height)` rather than an `ICore` — and **every LunaP control takes plain data or a delegate for the same reason.** A meter row takes `(string, double, string)`, never a `DebugLoadInfo`. A console pane takes a `Func<string, string>`, never a `DianaShInterpreter`.
 
 This is also why the two frontends share *widgets* but not *windows*: `CoretopWindow` consumes `ICoreTelemetry`, so it stays a file in each frontend even though almost everything inside it is now shared. See `EmuSen_LunaP_Gameplan.md` (in EmuSen) §2.
 
@@ -59,7 +59,7 @@ One brush was deliberately *not* absorbed: `InputSettingsWindow`'s conflict high
 
 `LunaPalette.ForLoad(percent)` returns green below 60, gold from 60, orange-red from 85. Those thresholds came from three separate hand-written `ColorForPercent` copies (both `CoretopWindow`s and `VstopWindow`) that agreed by luck; all three are deleted and call this instead. `LunaPaletteTests` pins the boundaries at 59.9/60 and 84.9/85 so a future edit cannot quietly shift them.
 
-The convention deliberately matches DianaOS's own terminal `ColoredBar`, so the GUI dashboards and `coretop` in a real terminal never disagree about what counts as hot.
+The convention deliberately matches DianaSh's own terminal `ColoredBar`, so the GUI dashboards and `coretop` in a real terminal never disagree about what counts as hot.
 
 ---
 
@@ -95,7 +95,7 @@ The dump harness was a throwaway and was deleted. **Phase 5 of the gameplan is w
 
 ## 5. The control kit
 
-Eleven controls in `Controls/`, all styled from `Theme/Controls.axaml`, all usable from XAML (`xmlns:luna="clr-namespace:EmuSen.LunaP.Controls;assembly=EmuSen.LunaP"`) and from C#. None of them names a core, a telemetry type or a DianaOS type — §1.
+Eleven controls in `Controls/`, all styled from `Theme/Controls.axaml`, all usable from XAML (`xmlns:luna="clr-namespace:EmuSen.LunaP.Controls;assembly=EmuSen.LunaP"`) and from C#. None of them names a core, a telemetry type or a DianaSh type — §1.
 
 **Every control has a test that asserts its style actually applied**, because the failure mode of a style that stops matching is not an exception, it is a control that renders as plain or as nothing at all. §5.5 is a real instance of exactly that, caught by exactly that.
 
@@ -109,7 +109,7 @@ Three `TextBlock` subclasses carrying no code at all; the whole definition is a 
 
 `MeterList` takes an `IReadOnlyList<MeterEntry>` and rebuilds its rows wholesale on every assignment. **That is deliberate and is not the waste it looks like**: the original code rebuilt its rows from scratch four times a second on purpose, because a handful of cheap control allocations at 4 Hz is far simpler than diffing and updating a cached control per entry, and the refresh rate makes the cost irrelevant. Phase 3's "suspend the timer while hidden" removes even that.
 
-**Grouping deliberately stays with the caller.** `coretop` groups its load bars by kind and labels each group with `DebugLoadKindText.Header(...)` — DianaOS vocabulary, which §1 forbids here. A window that needs groups emits a `SectionHeader` and a `MeterList` per group.
+**Grouping deliberately stays with the caller.** `coretop` groups its load bars by kind and labels each group with `DebugLoadKindText.Header(...)` — DianaSh vocabulary, which §1 forbids here. A window that needs groups emits a `SectionHeader` and a `MeterList` per group.
 
 ### 5.3 `RgbaImageView`
 
@@ -133,7 +133,7 @@ That rule was restated three more times before anything enforced it (§14.1, §2
 
 ### 5.6 `ConsolePane`
 
-The terminal-shaped pane: scrolling output, prompt, input box, and Up/Down history recall — the whole of the byte-identical XAML plus the recall state machine both console windows had. It knows nothing about DianaOS:
+The terminal-shaped pane: scrolling output, prompt, input box, and Up/Down history recall — the whole of the byte-identical XAML plus the recall state machine both console windows had. It knows nothing about DianaSh:
 
 - `Submitted` is an `Action<string>`; running the line is the caller's business.
 - `HistorySource` is a `Func<IReadOnlyList<string>>`, which is exactly the seam the two callers need — Mistress reads its interpreter's history, Hotaru reads the *live core's* history once a game attaches.
@@ -290,7 +290,7 @@ The consequence is real and applies to every assertion in that file: **a project
 
 ## 11. The migration
 
-Six windows moved onto the kit, in six commits: `VstopWindow`, both `CoretopWindow`s, `FeedWindow`, both DianaOS console windows, `PreferencesWindow`, `DebugSettingsWindow`, plus every `WindowSlot` call site. **863 lines net removed from the two frontends**, and eight `.axaml` files deleted — the frontends are down to `App.axaml` plus five windows that were never in scope (`MainWindow`, `GameWindow`, `ActiveCheatsWindow`, `CheatDatabaseWindow`, `InputSettingsWindow`, `RomBrowserWindow`).
+Six windows moved onto the kit, in six commits: `VstopWindow`, both `CoretopWindow`s, `FeedWindow`, both DianaSh console windows, `PreferencesWindow`, `DebugSettingsWindow`, plus every `WindowSlot` call site. **863 lines net removed from the two frontends**, and eight `.axaml` files deleted — the frontends are down to `App.axaml` plus five windows that were never in scope (`MainWindow`, `GameWindow`, `ActiveCheatsWindow`, `CheatDatabaseWindow`, `InputSettingsWindow`, `RomBrowserWindow`).
 
 What actually went away: three `BuildMeterRow` copies with their `Grid.SetColumn` wiring, three RGBA→bitmap paths (two of which reallocated a `WriteableBitmap` on every 4 Hz tick), five hand-rolled `DispatcherTimer`s, seven "at most one, else `Activate()`" blocks, two copies of the Up/Down history recall state machine, and two byte-identical console layouts.
 
@@ -324,7 +324,7 @@ The two `CoretopWindow`s were 138 lines each and **differed by six lines, all na
 
 Windows that build their own tree have no XAML namescope, so `GetControl<T>(name)` no longer resolves. Test lookups go through `FindNamed<T>` over the visual tree instead (the idiom `InputSettingsWindowLayoutTests` already used).
 
-The eleven `DianaOSShellWindow` tests are the case worth noting: **their bodies were not touched at all**, only the three lookup helpers. Those tests drive real key routing — Enter through `KeyPress`, Up-arrow recall, live-shell attach — so keeping the bodies intact is what makes them a genuine safety net across the rewrite rather than a restatement of whatever the new code happens to do.
+The eleven `DianaShShellWindow` tests are the case worth noting: **their bodies were not touched at all**, only the three lookup helpers. Those tests drive real key routing — Enter through `KeyPress`, Up-arrow recall, live-shell attach — so keeping the bodies intact is what makes them a genuine safety net across the rewrite rather than a restatement of whatever the new code happens to do.
 
 `CoretopWindow` and `FeedWindow` had no tests at all before this; they have sixteen now, along with a `FakeTelemetry` fixture that lets any dashboard be driven with no core loaded.
 
@@ -455,7 +455,7 @@ The keyboard scheme both frontends start from — arrows for the d-pad, `Z`/`X`/
 
 **It was spelled twice**, in Hotaru's `HotaruKeyMap` and Mistress's `ControllerKeyMap`, along with two copies of the reverse-lookup loop. A test asserted the two tables stayed equal, which is the shape of a problem being *guarded* rather than *fixed*.
 
-**Why here and not in `EmuSen.Galaxia`, which is where the config models live.** Galaxia's csproj states the constraint plainly: it is a leaf with no `ProjectReference` and no `PackageReference`, because `EmuSen.DianaOS` references it and `EmuSen` references DianaOS — anything Galaxia depended on upward would close a cycle. So **Galaxia cannot name `Avalonia.Input.Key`**, and "the typed maps that use foreign enums keep their own homes" is that csproj's own conclusion. This table needs `Key` *and* `PadButton`, and LunaP was the one project that already referenced both Avalonia and Galaxia.
+**Why here and not in `EmuSen.Galaxia`, which is where the config models live.** Galaxia's csproj states the constraint plainly: it is a leaf with no `ProjectReference` and no `PackageReference`, because `EmuSen.DianaSh` references it and `EmuSen` references DianaSh — anything Galaxia depended on upward would close a cycle. So **Galaxia cannot name `Avalonia.Input.Key`**, and "the typed maps that use foreign enums keep their own homes" is that csproj's own conclusion. This table needs `Key` *and* `PadButton`, and LunaP was the one project that already referenced both Avalonia and Galaxia.
 
 **And that is exactly why it had to leave.** "The one project that references both" was a statement about this repository, not about the toolkit's subject. A general Avalonia toolkit has no business naming a console gamepad button, and the argument above never claimed otherwise — it argued from what was convenient. Endymion already owns the mapping of physical input onto `PadButton` (`GamepadBindingMap`), already references Galaxia, and is already referenced by both frontends; it took one `Avalonia` base package reference to hold this file too, which is a smaller price than a toolkit that cannot leave the repository.
 
@@ -481,7 +481,7 @@ Everything below is the original reasoning, kept.
 
 The distinction that keeps this from becoming a slippery slope: **controls take plain data or a delegate, dashboards may take a contract.** A `MeterRow` still takes `(string, double, string)` and never a `DebugLoadInfo`. If a control wants an `ICoreTelemetry`, it is a control that should have taken plain data.
 
-`EmuSen`, `EmuSen.DianaOS` and `EmuSen.Endymion` remain forbidden, and none of them is a leaf. A window needing `IDebugTarget` is not a dashboard — that interface stays in DianaOS (`EmuSen_Cauldron.md` (in EmuSen) §3.1) and such a window belongs in a frontend.
+`EmuSen`, `EmuSen.DianaSh` and `EmuSen.Endymion` remain forbidden, and none of them is a leaf. A window needing `IDebugTarget` is not a dashboard — that interface stays in DianaSh (`EmuSen_Cauldron.md` (in EmuSen) §3.1) and such a window belongs in a frontend.
 
 ### 16.1 The wrong turn, recorded because the doc caused it
 
@@ -493,7 +493,7 @@ The general form, since a plan naming exactly one option is how this happened: *
 
 ### 16.2 `CoretopWindow`
 
-The GUI counterpart to DianaOS's own `coretop` (`man coretop`). A `PollingWindow` on the same 250 ms/4 Hz cadence the console version uses. Both frontends open the same class and differ only in how they reach it — Hotaru via `DebugWindows.ShowCoretopWindow` from `coretop -w`, Mistress via `MainWindow.OpenCoretopWindow` from the Hardware Dashboard menu item.
+The GUI counterpart to DianaSh's own `coretop` (`man coretop`). A `PollingWindow` on the same 250 ms/4 Hz cadence the console version uses. Both frontends open the same class and differ only in how they reach it — Hotaru via `DebugWindows.ShowCoretopWindow` from `coretop -w`, Mistress via `MainWindow.OpenCoretopWindow` from the Hardware Dashboard menu item.
 
 Two behaviours that are load-bearing and non-obvious, both pinned by tests:
 
@@ -726,7 +726,7 @@ So the package's documentation is part of its design, not an afterthought to it:
 
 §2.1 already argued this side of the question without meaning to. It refused to fold the input-conflict highlight into `LunaHot` because *"'this binding collides with another' is not 'this subsystem is at 85% load', and giving them one key would encode a relationship that does not exist."* **That is an argument for semantic tokens, not against them:** the reason those colours must not reuse the load ramp is exactly the reason they need keys of their own. What the load ramp is to a meter, an error/success/info triple would be to a message.
 
-**`ConsolePane` has two defects, and they ship today.** `Controls/ConsolePane.cs:57` appends with `_text = _text + "\n" + text`, which reallocates the entire buffer per line and has no cap, and `:59` calls `ScrollToEnd()` unconditionally, so a reader scrolled back through output is dragged to the bottom by the next line that arrives. Both console windows depend on this control entirely (`DianaOSConsoleWindow.cs:27`, `DianaOSShellWindow.cs:24`). These are behaviours, not gaps — they belong in this section as defects with a reproduction, and the second one is the sort of thing that is invisible in a test and obvious within ten seconds of real use.
+**`ConsolePane` has two defects, and they ship today.** `Controls/ConsolePane.cs:57` appends with `_text = _text + "\n" + text`, which reallocates the entire buffer per line and has no cap, and `:59` calls `ScrollToEnd()` unconditionally, so a reader scrolled back through output is dragged to the bottom by the next line that arrives. Both console windows depend on this control entirely (`DianaShConsoleWindow.cs:27`, `DianaShShellWindow.cs:24`). These are behaviours, not gaps — they belong in this section as defects with a reproduction, and the second one is the sort of thing that is invisible in a test and obvious within ten seconds of real use.
 
 **Accessibility is the exception to this section's rule, and it is worth being blunt about why.** `ToolTip`, `AutomationProperties`, `TabIndex` and `IsTabStop` appear **zero times** across Pegasus, all three EmuSen frontends, *and this toolkit's own `src/`*. There is no hand-roll to count because nobody built it anywhere, so the method that produced every other item in this section produces nothing here. Focus is managed in exactly one place in the entire corpus (`Pegasus/SignIn.fs:82`). For a toolkit whose whole subject is chrome, that is the largest blank area on the map, and the absence of evidence is the finding rather than a reason to skip it.
 
@@ -974,7 +974,7 @@ Three places build this by hand and one of them wrote the reason the kit's neare
 
 §21.5 warned about this and here it is. `ThemeVocabularyTests` stayed in EmuSen (§20.2) and compares `man theme` against `CssTheme`'s allow-lists **by set equality in both directions**. This change adds one element (`empty-state`, with `message` and `detail` parts) and three palette tokens.
 
-**So EmuSen's suite goes red the moment it takes this version**, in a repository this change never touched, and the fix is to add four entries to `EmuSen.DianaOS`'s `man theme` page. That is not a defect in either project — it is the arrangement §20.2 chose deliberately, working as designed. It is recorded here so that whoever bumps the package next knows the failure is expected and knows what closes it.
+**So EmuSen's suite goes red the moment it takes this version**, in a repository this change never touched, and the fix is to add four entries to `EmuSen.DianaSh`'s `man theme` page. That is not a defect in either project — it is the arrangement §20.2 chose deliberately, working as designed. It is recorded here so that whoever bumps the package next knows the failure is expected and knows what closes it.
 
 `LunaList<T>` is deliberately **not** in the CSS vocabulary. Element names are derived from the type name, and a generic's is `LunaList\`1`; it also carries no LunaP-specific styling to name, since it borrows `ListBox`'s theme wholesale. A theme that wants to restyle it should style `ListBox`.
 
@@ -10031,7 +10031,7 @@ particular leak is.
 
 Reading the gallery's strings to fix the four BIMA instances turned up the other
 domain in it. **23 of `GalleryWindow.cs`'s 467 lines carry emulator vocabulary**:
-`DianaOS`, `coretop`, `S-CPU`, `S-PPU`, `SuperFX`, `NES`, `SNES`, "All consoles",
+`DianaSh`, `coretop`, `S-CPU`, `S-PPU`, `SuperFX`, `NES`, `SNES`, "All consoles",
 "smw.sfc", "ROM Directory", "Open ROM...", "Emulator Core", "Save State Folder",
 "No ROMs in the library.", "Emulation". Counted by reading the file's own strings,
 not by grepping a guessed word list — the count is exact for those terms and
@@ -10104,7 +10104,7 @@ and `FilterBar` with `NES`/`SNES`, `EmptyState` with "No ROM loaded.", the tree
 tables with a directory of `.sfc` files. None of it reaches a consumer and all of
 it teaches the next reader of those files what this toolkit is presumed to be for.
 
-Counted with a grep over named terms — `DianaOS`, `coretop`, `S-CPU`, `S-PPU`,
+Counted with a grep over named terms — `DianaSh`, `coretop`, `S-CPU`, `S-PPU`,
 `SuperFX`, `NES`, `SNES`, `ROM`, "Save State", `Emulat*`, `smw.sfc`, `Hotaru`,
 `cheat`, `framebuffer`. **The zeros are zeros for those terms and claim nothing
 about terms not in the list**, which is the same limit §86.7 put on itself and the
@@ -10169,8 +10169,8 @@ None of these was citing anything. They needed an example and took the nearest
 one.
 
 **One got materially stronger.** `MeterList`'s comment said grouping stays with
-the caller because group headers are "core/DianaOS vocabulary" — an agnosticism
-argument that could only be understood by someone who knew what DianaOS was. It
+the caller because group headers are "core/DianaSh vocabulary" — an agnosticism
+argument that could only be understood by someone who knew what DianaSh was. It
 now says a group header names whatever the meters are *of*, so the control cannot
 emit one without knowing what it is being used for. Same decision, and the reason
 is now legible to the reader it was written for.
