@@ -13612,6 +13612,27 @@ the consumer maps its own controls onto them. `Describe` names them "Genesis con
 controller". The tests that run over every layout (`Drawn`) take both, and the label and line theories carry rows for
 them at a small, a middling and a large size: 96 pass.
 
+### 198.13 The PlayStation pads (2026-10-11)
+
+`ControllerLayout` gains `PlayStation`, Sony's digital controller, and `DualShock`, appended after `GenesisSixButton`;
+nine are drawn now. They are drawn as §198.1's are, from plain geometry in a design space 1000 wide (620 high for the
+digital pad, 720 for the DualShock): a grey shell with two grips; the cross as four separate keys in a round well, each
+with its arrow; the four face buttons in a well on the right, dark grey with their symbols drawn in the colours of the
+console's own buttons (a green triangle, a red circle, a blue cross and a pink square, each an outline cut from a filled
+shape, since a printed glyph would depend on a font); Select as a pill and Start as a small bar, their names under
+them; and the shoulder pairs as four bars above the shell, L2 and R2 behind L1 and R1, because a front view hides
+them. The DualShock is the same shell made deeper, with two sticks drawn as the modern pad's are (their clicks are the
+regions `L3` and `R3`, their knobs set by `SetStick` on `LeftStick` and `RightStick`) and the Analog button between
+them near the bottom edge with its light beside it. The Analog button sat higher, between the sticks, in the first
+drawing; its line then ran 155 pixels over the drawing where a straight way out existed, which
+`Each_line_leaves_by_the_shortest_way_that_crosses_no_other_button` refused, and it was moved.
+
+The ids are `Up`, `Down`, `Left`, `Right`, `Triangle`, `Circle`, `Cross`, `Square`, `L1`, `R1`, `L2`, `R2`, `Select`,
+`Start`, and on the DualShock `L3`, `R3` and `Analog`; the consumer maps its own controls onto them. `Describe` names
+them "PlayStation controller" and "DualShock controller". The tests that run over every layout (`Drawn`) take both,
+the label theory carries rows for each at three sizes and the line theory three more, and the theory that checks a
+lettered button's line does not meet it at its middle reads the four face buttons for these two layouts.
+
 ## 199. A row of choices: `SliderRow.Choices` and `SliderItem.Choices`
 
 *2026-10-07.* EmuSen's CRT filter has settings that are one of a few named choices (a signal, a screen, a

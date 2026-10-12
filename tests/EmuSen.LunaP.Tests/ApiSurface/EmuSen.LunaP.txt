@@ -295,12 +295,14 @@ public class EmuSen.LunaP.Controls.ControllerGlyph : Avalonia.Controls.Control
     public static string Describe(EmuSen.LunaP.Controls.ControllerShape shape)
 
 public enum EmuSen.LunaP.Controls.ControllerLayout
+    public const EmuSen.LunaP.Controls.ControllerLayout DualShock = 8
     public const EmuSen.LunaP.Controls.ControllerLayout GameBoy = 4
     public const EmuSen.LunaP.Controls.ControllerLayout Gamepad = 0
     public const EmuSen.LunaP.Controls.ControllerLayout Genesis = 5
     public const EmuSen.LunaP.Controls.ControllerLayout GenesisSixButton = 6
     public const EmuSen.LunaP.Controls.ControllerLayout Nes = 1
     public const EmuSen.LunaP.Controls.ControllerLayout Nintendo64 = 3
+    public const EmuSen.LunaP.Controls.ControllerLayout PlayStation = 7
     public const EmuSen.LunaP.Controls.ControllerLayout Snes = 2
     public int value__
 
@@ -1706,6 +1708,7 @@ public class EmuSen.LunaP.Controls.SidePanel : Avalonia.Controls.ContentControl
 
 public sealed class EmuSen.LunaP.Controls.SliderItem
     public SliderItem(string label, double minimum, double maximum, double step, double defaultValue, double value)
+    public System.Collections.Generic.IReadOnlyList<string>? Choices { get; init; }
     public bool IsDefault { get; }
     public double DefaultValue { get; }
     public double Maximum { get; }
@@ -1733,6 +1736,7 @@ public class EmuSen.LunaP.Controls.SliderList : Avalonia.Controls.ItemsControl
 
 public class EmuSen.LunaP.Controls.SliderRow : Avalonia.Controls.Border
     public SliderRow()
+    public System.Collections.Generic.IReadOnlyList<string>? Choices { get; set; }
     public bool IsDefault { get; }
     public double DefaultValue { get; set; }
     public double Maximum { get; set; }

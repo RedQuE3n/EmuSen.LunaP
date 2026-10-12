@@ -14,6 +14,10 @@ answer.
 
 ## Unreleased
 
+- **The PlayStation's pads in `ControllerDiagram` (`§198.13`).** `ControllerLayout.PlayStation` (the digital
+  controller) and `ControllerLayout.DualShock`, appended after `GenesisSixButton`, so no existing value moved. No other
+  API change.
+
 - **The Genesis's pads in `ControllerDiagram` (`§198.12`).** `ControllerLayout.Genesis` (the three-button pad) and
   `ControllerLayout.GenesisSixButton`, appended after `GameBoy`, so no existing value moved. No other API change.
 

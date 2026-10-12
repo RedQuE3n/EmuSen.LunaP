@@ -35,6 +35,10 @@ namespace EmuSen.LunaP.Controls
         Genesis,
         /// <summary>The same pad with X, Y and Z in a second row above A, B and C, and Mode on its right shoulder: the Genesis's six-button pad.</summary>
         GenesisSixButton,
+        /// <summary>A pad with two grips, a cross of four keys, Select, Start, the four face buttons with their symbols, and two shoulder pairs drawn above it: the PlayStation's digital controller.</summary>
+        PlayStation,
+        /// <summary>The same pad with two sticks that click as L3 and R3, and the Analog button with its light between them: the PlayStation's DualShock.</summary>
+        DualShock,
     }
 
     /// <summary>The side of a ControllerDiagram a region's label stands on.</summary>
@@ -459,6 +463,8 @@ namespace EmuSen.LunaP.Controls
             ControllerLayout.GameBoy => "Game Boy",
             ControllerLayout.Genesis => "Genesis controller",
             ControllerLayout.GenesisSixButton => "Genesis six-button controller",
+            ControllerLayout.PlayStation => "PlayStation controller",
+            ControllerLayout.DualShock => "DualShock controller",
             _ => "Gamepad",
         };
 

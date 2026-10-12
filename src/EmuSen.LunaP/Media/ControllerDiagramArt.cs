@@ -78,6 +78,8 @@ namespace EmuSen.LunaP.Media
                 ControllerLayout.GameBoy => GameBoy(),
                 ControllerLayout.Genesis => Genesis(six: false),
                 ControllerLayout.GenesisSixButton => Genesis(six: true),
+                ControllerLayout.PlayStation => PlayStation(analog: false),
+                ControllerLayout.DualShock => PlayStation(analog: true),
                 _ => Gamepad(),
             };
             art.Route();
@@ -512,6 +514,63 @@ namespace EmuSen.LunaP.Media
             Round(art, "C", 849, 305, 36, button, "C", 30);
             return art;
         }
+
+        // --- PlayStation: a grey pad with two grips, a cross of four separate keys in a round well, the four face buttons with their symbols in Sony's colours, Select and Start, and the shoulder pairs drawn above it since a front view hides them; the DualShock adds two sticks and the Analog button with its light ---
+
+        private static DiagramArt PlayStation(bool analog)
+        {
+            var art = new DiagramArt { Design = new Size(1000, analog ? 720 : 620) };
+            Color shell = Hex("#B9BAC2"), edge = Hex("#4E4F58"), well = Hex("#A3A4AD"), key = Hex("#5A5B64"), shoulder = Hex("#7C7D87"), words = Hex("#4A4B55");
+
+            art.Body.Add(new ArtPart(Path("M 500,150 C 500,110 506,60 520,4"), null, edge, 9));
+            art.Regions.Add(new RegionArt { Id = "L2", Name = "L2", Shape = Box(150, 34, 180, 38, 16), Fill = shoulder, Stroke = edge, StrokeWidth = 3, Caption = "L2", CaptionSize = 22, CaptionColour = Hex("#E4E4EA") });
+            art.Regions.Add(new RegionArt { Id = "L1", Name = "L1", Shape = Box(160, 86, 180, 38, 16), Fill = shoulder, Stroke = edge, StrokeWidth = 3, Caption = "L1", CaptionSize = 22, CaptionColour = Hex("#E4E4EA") });
+            art.Regions.Add(new RegionArt { Id = "R2", Name = "R2", Shape = Box(670, 34, 180, 38, 16), Fill = shoulder, Stroke = edge, StrokeWidth = 3, Caption = "R2", CaptionSize = 22, CaptionColour = Hex("#E4E4EA") });
+            art.Regions.Add(new RegionArt { Id = "R1", Name = "R1", Shape = Box(660, 86, 180, 38, 16), Fill = shoulder, Stroke = edge, StrokeWidth = 3, Caption = "R1", CaptionSize = 22, CaptionColour = Hex("#E4E4EA") });
+
+            double low = analog ? 100 : 0;
+            art.Body.Add(new ArtPart(Path(
+                FormattableString.Invariant($"M 230,150 C 380,136 620,136 770,150 C 880,160 932,210 952,300 C 978,420 992,{520 + low} 952,{572 + low} C 912,{616 + low} 842,{602 + low} 802,{542 + low} ") +
+                FormattableString.Invariant($"C 772,{492 + low} 732,{440 + low} 662,{430 + low} L 338,{430 + low} C 268,{440 + low} 228,{492 + low} 198,{542 + low} ") +
+                FormattableString.Invariant($"C 158,{602 + low} 88,{616 + low} 48,{572 + low} C 8,{520 + low} 22,420 48,300 C 68,210 120,160 230,150 Z")), shell, edge, 5));
+
+            art.Body.Add(new ArtPart(Circle(250, 290, 112), well));
+            (string Id, double X, double Y, double W, double H, int Dx, int Dy)[] keys =
+            {
+                ("Up", 224, 202, 52, 66, 0, -1), ("Down", 224, 312, 52, 66, 0, 1), ("Left", 162, 264, 66, 52, -1, 0), ("Right", 272, 264, 66, 52, 1, 0),
+            };
+            foreach (var (id, x, y, w, h, dx, dy) in keys)
+                art.Regions.Add(new RegionArt { Id = id, Name = id, Shape = Box(x, y, w, h, 10), Fill = key, Stroke = edge, StrokeWidth = 2, Mark = Arrow(x + w / 2, y + h / 2, 20, dx, dy), MarkColour = Hex("#2E2F35") });
+
+            art.Body.Add(new ArtPart(Circle(750, 290, 120), well));
+            Color face = Hex("#3B3C44");
+            void Face(string id, double x, double y, Geometry mark, string colour) => art.Regions.Add(new RegionArt
+            {
+                Id = id, Name = id, Shape = Circle(x, y, 34), Fill = face, Stroke = Darken(face, 0.4), StrokeWidth = 3, Mark = mark, MarkColour = Hex(colour),
+            });
+            Face("Triangle", 750, 212, Ring(Path("M 750,194 L 769,226 L 731,226 Z"), Path("M 750,203 L 762,222 L 738,222 Z")), "#3FB58A");
+            Face("Circle", 828, 290, Ring(Circle(828, 290, 18), Circle(828, 290, 12)), "#E0505A");
+            Face("Cross", 750, 368, Union(Pill(750, 368, 40, 7, 45), Pill(750, 368, 40, 7, -45)), "#6C8FE0");
+            Face("Square", 672, 290, Ring(Box(656, 274, 32, 32, 2), Box(662, 280, 20, 20, 1)), "#D88CC8");
+
+            art.Body.Add(new ArtPart(Pill(440, 300, 74, 32, 0), well));
+            art.Body.Add(new ArtPart(Pill(560, 300, 74, 32, 0), well));
+            art.Regions.Add(new RegionArt { Id = "Select", Name = "Select", Shape = Pill(440, 300, 58, 20, 0), Fill = Hex("#3A3B42") });
+            art.Regions.Add(new RegionArt { Id = "Start", Name = "Start", Shape = Box(533, 290, 54, 20, 4), Fill = Hex("#3A3B42") });
+            art.Words.Add(new ArtText("SELECT", new Point(440, 340), 16, words));
+            art.Words.Add(new ArtText("START", new Point(560, 340), 16, words));
+            if (!analog) return art;
+
+            Stick(art, "LeftStick", 370, 470, 58, 40, 18, octagonal: false, null, Hex("#2E2F35"), Hex("#4A4B53"), edge, Hex("#6E6F79"), Hex("#C4C5CD"), "L3");
+            Stick(art, "RightStick", 630, 470, 58, 40, 18, octagonal: false, null, Hex("#2E2F35"), Hex("#4A4B53"), edge, Hex("#6E6F79"), Hex("#C4C5CD"), "R3");
+            Round(art, "Analog", 500, 506, 18, "#3A3B42");
+            art.Marks.Add(new ArtPart(Circle(462, 506, 7), Hex("#D23A3A"), Hex("#6E2020"), 2));
+            art.Words.Add(new ArtText("ANALOG", new Point(500, 470), 14, words));
+            return art;
+        }
+
+        // An outline drawn as a filled shape: the outer one less the inner one.
+        internal static Geometry Ring(Geometry outer, Geometry inner) => new CombinedGeometry(GeometryCombineMode.Exclude, outer, inner);
 
         // --- A modern pad: two grips, the left stick over the cross, four face buttons over the right stick, two bumpers and two triggers; its sticks show where they are rather than four directions each ---
 

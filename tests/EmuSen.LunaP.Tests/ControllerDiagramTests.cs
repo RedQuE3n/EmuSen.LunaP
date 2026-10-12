@@ -169,6 +169,12 @@ namespace EmuSen.LunaP.Tests
         [InlineData(ControllerLayout.GenesisSixButton, 700, 440)]
         [InlineData(ControllerLayout.GenesisSixButton, 1100, 640)]
         [InlineData(ControllerLayout.GenesisSixButton, 1920, 1080)]
+        [InlineData(ControllerLayout.PlayStation, 700, 440)]
+        [InlineData(ControllerLayout.PlayStation, 1100, 640)]
+        [InlineData(ControllerLayout.PlayStation, 1920, 1080)]
+        [InlineData(ControllerLayout.DualShock, 700, 440)]
+        [InlineData(ControllerLayout.DualShock, 1100, 640)]
+        [InlineData(ControllerLayout.DualShock, 1920, 1080)]
         [InlineData(ControllerLayout.Nintendo64, 1000, 420)]
         public Task Every_region_has_a_label_and_no_label_overlaps_another(ControllerLayout layout, double w, double h) => UiTest.Run(() =>
         {
@@ -244,6 +250,9 @@ namespace EmuSen.LunaP.Tests
         [InlineData(ControllerLayout.Genesis, 1100, 640)]
         [InlineData(ControllerLayout.GenesisSixButton, 1100, 640)]
         [InlineData(ControllerLayout.GenesisSixButton, 700, 900)]
+        [InlineData(ControllerLayout.PlayStation, 1100, 640)]
+        [InlineData(ControllerLayout.DualShock, 1100, 640)]
+        [InlineData(ControllerLayout.DualShock, 700, 900)]
         public Task Each_label_s_line_runs_from_the_label_to_its_region(ControllerLayout layout, double w, double h) => UiTest.Run(() =>
         {
             (ToolWindow window, ControllerDiagram diagram) = Shown(layout, w, h);
@@ -254,7 +263,13 @@ namespace EmuSen.LunaP.Tests
                 Assert.True(label.Contains(from), $"{region.Id}'s line starts at {from}, off its label {label}");
                 Assert.True(diagram.RegionRect(region.Id).Inflate(2).Contains(to), $"{region.Id}'s line ends at {to}, off its region {diagram.RegionRect(region.Id)}");
             }
-            foreach (string lettered in layout == ControllerLayout.Snes ? new[] { "X", "Y", "A", "B" } : new[] { "A", "B" })
+            string[] faces = layout switch
+            {
+                ControllerLayout.Snes => new[] { "X", "Y", "A", "B" },
+                ControllerLayout.PlayStation or ControllerLayout.DualShock => new[] { "Triangle", "Circle", "Cross", "Square" },
+                _ => new[] { "A", "B" },
+            };
+            foreach (string lettered in faces)
             {
                 Rect box = diagram.RegionRect(lettered);
                 Point meets = diagram.LeaderOf(lettered)!.Value.To;
