@@ -6,6 +6,7 @@ using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.Styling;
 using EmuSen.LunaP.Media;
@@ -18,6 +19,9 @@ namespace EmuSen.LunaP.Controls
     {
         /// <summary>The row's label where it is not the control's content, such as a ListBox row's or a ComboBox's.</summary>
         public static readonly AttachedProperty<string?> LabelProperty = AvaloniaProperty.RegisterAttached<Control, string?>("Label", typeof(MenuRows));
+
+        // The label a row draws is the name a reader hears, below any name the caller gives the control - see docs/LunaP.md §200.2.
+        static MenuRows() => LabelProperty.Changed.AddClassHandler<Control>((c, e) => c.SetValue(Avalonia.Automation.AutomationProperties.NameProperty, e.NewValue as string, Avalonia.Data.BindingPriority.Style));
 
         /// <summary>The row's value, shown at its right.</summary>
         public static readonly AttachedProperty<string?> ValueProperty = AvaloniaProperty.RegisterAttached<Control, string?>("Value", typeof(MenuRows));
@@ -129,21 +133,25 @@ namespace EmuSen.LunaP.Controls
                 text.Bind(FontText.TextProperty, Text(b, ContentControl.ContentProperty));
                 text.Bind(FontText.FontPathProperty, b.GetObservable(MenuPanel.FontPathProperty));
                 text.Bind(FontText.FontSizeProperty, b.GetObservable(MenuPanel.ScaleProperty, u => textSize * u));
-                text.Bind(FontText.ForegroundProperty, b.GetObservable(InputElement.IsFocusedProperty, f => (IBrush)new SolidColorBrush(f ? PushTextFocused : PushText)));
-                var frame = new Border { Child = text, BorderBrush = new SolidColorBrush(PushOutline) };
+                var frame = new Border { Child = text };
+                frame[!Border.BorderBrushProperty] = new DynamicResourceExtension("ButtonBorderBrush");
                 frame.Bind(Border.BorderThicknessProperty, b.GetObservable(MenuPanel.ScaleProperty, u => new Thickness(Math.Max(1, Math.Round(u)))));
                 frame.Bind(Border.CornerRadiusProperty, b.GetObservable(MenuPanel.ScaleProperty, u => new CornerRadius(3 * u)));
                 frame.Bind(Decorator.PaddingProperty, b.GetObservable(MenuPanel.ScaleProperty, u => new Thickness(12 * u * k, 2 * u * k)));
-                frame.Bind(Border.BackgroundProperty, b.GetObservable(InputElement.IsFocusedProperty, f => (IBrush?)(f ? new SolidColorBrush(PushFill) : null)));
+                // The theme's button colours, filled while it has the focus as a pressed one is - see docs/LunaP.md §200.3.
+                void Paint(bool focused)
+                {
+                    text[!FontText.ForegroundProperty] = new DynamicResourceExtension(focused ? "ButtonForegroundPressed" : "ButtonForeground");
+                    if (focused) frame[!Border.BackgroundProperty] = new DynamicResourceExtension("ButtonBackgroundPressed");
+                    else frame.ClearValue(Border.BackgroundProperty);
+                }
+                b.GetObservable(InputElement.IsFocusedProperty).Subscribe(new Avalonia.Reactive.AnonymousObserver<bool>(Paint));
                 return frame;
             });
             Plain(button);
             button.HorizontalAlignment = HorizontalAlignment.Center;
             return button;
         }
-
-        // A push button's colours: a grey outline and text, filled near black with light text while focused, as a row's bar is.
-        private static readonly Color PushOutline = Color.FromRgb(0x55, 0x55, 0x5A), PushText = Color.FromRgb(0x9C, 0x9C, 0xA0), PushTextFocused = Color.FromRgb(0xEE, 0xEE, 0xF0), PushFill = Color.FromRgb(0x05, 0x05, 0x07);
 
         /// <summary>Draws a dropdown as an option row, its selection between arrows; Left and Right still step it and opening it still drops the list down.</summary>
         /// <param name="choice">The dropdown.</param>
@@ -166,8 +174,8 @@ namespace EmuSen.LunaP.Controls
                     IsLightDismissEnabled = true,
                     Child = new Border
                     {
-                        Background = new SolidColorBrush(Color.FromRgb(0x1B, 0x1B, 0x1E)),
-                        BorderBrush = new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x37)),
+                        [!Border.BackgroundProperty] = new DynamicResourceExtension("ComboBoxDropDownBackground"),
+                        [!Border.BorderBrushProperty] = new DynamicResourceExtension("ComboBoxDropDownBorderBrush"),
                         BorderThickness = new Thickness(1),
                         Child = new ScrollViewer { Content = items, MaxHeight = 360 },
                     },

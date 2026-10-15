@@ -250,6 +250,46 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal("Save folder", ControlAutomationPeer.CreatePeerForElement(replacement).GetName());
         }, default);
 
+        // A choice inside a panel, beside the note under it, hears the row's label; a button beside it keeps its own words, and a caller's name still wins - §200.1.
+        [Fact]
+        public Task A_field_row_lends_its_label_through_a_panel_to_the_inputs_without_words() => Session.Dispatch(() =>
+        {
+            var choice = new ComboBox();
+            var box = new TextBox();
+            var named = new Slider();
+            AutomationProperties.SetName(named, "Volume");
+            var button = new Button { Content = "Shaders..." };
+            var field = new FieldRow { Label = "Overscan", Content = new StackPanel { Children = { button, new DockPanel { Children = { choice, box } }, named, new TextBlock { Text = "A note" } } } };
+            using var host = Host(field);
+
+            Assert.Equal("Overscan", ControlAutomationPeer.CreatePeerForElement(choice).GetName());
+            Assert.Equal("Overscan", ControlAutomationPeer.CreatePeerForElement(box).GetName());
+            Assert.Equal("Volume", ControlAutomationPeer.CreatePeerForElement(named).GetName());
+            Assert.Equal("Shaders...", ControlAutomationPeer.CreatePeerForElement(button).GetName());
+        }, default);
+
+        // A menu row's label is drawn, not given; it is now what a reader hears, unless the caller names the control - §200.2.
+        [Fact]
+        public Task A_menu_row_s_label_is_the_name_a_reader_hears() => Session.Dispatch(() =>
+        {
+            ComboBox choice = MenuRows.Apply(new ComboBox(), "Sort Games By");
+            TextBox box = MenuRows.Apply(new TextBox(), "Name");
+            Slider slider = MenuRows.Apply(new Slider(), "Volume");
+            ToggleSwitch toggle = MenuRows.Apply(new ToggleSwitch(), "Rewind");
+            var named = new ComboBox();
+            AutomationProperties.SetName(named, "Jump to letter");
+            MenuRows.Apply(named, "Jump To");
+            using var host = Host(choice, box, slider, toggle, named);
+
+            Assert.Equal("Sort Games By", ControlAutomationPeer.CreatePeerForElement(choice).GetName());
+            Assert.Equal("Name", ControlAutomationPeer.CreatePeerForElement(box).GetName());
+            Assert.Equal("Volume", ControlAutomationPeer.CreatePeerForElement(slider).GetName());
+            Assert.Equal("Rewind", ControlAutomationPeer.CreatePeerForElement(toggle).GetName());
+            Assert.Equal("Jump to letter", ControlAutomationPeer.CreatePeerForElement(named).GetName());
+            MenuRows.SetLabel(choice, "Order By");
+            Assert.Equal("Order By", ControlAutomationPeer.CreatePeerForElement(choice).GetName());
+        }, default);
+
         // Four picker rows on a settings page were four buttons all called "Browse...". The visible
         // word stays the name - voice control needs it to - and BrowseTitle becomes the help text.
         [Fact]

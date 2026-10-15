@@ -1198,6 +1198,7 @@ public static class EmuSen.LunaP.Controls.MenuLook
     public const double EdgeFade = 36
     public const string ClassName = "menu-look"
     public const string FontFamilyKey = "LunaMenuFontFamily"
+    public static Avalonia.Controls.ResourceDictionary CreatePalette()
     public static Avalonia.Styling.Styles CreateStyles()
     public static System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? GetHints(Avalonia.Controls.Window window)
     public static bool Covers(Avalonia.Controls.Control element)

@@ -89,6 +89,8 @@ namespace EmuSen.LunaP.Controls
         /// <summary>An empty panel, its help bar hidden until Hints are given.</summary>
         public MenuPanel()
         {
+            // The look's palette, so what the menu holds is painted from tokens a theme can reach - see docs/LunaP.md §200.3.
+            Resources.MergedDictionaries.Add(MenuLook.CreatePalette());
             _hints.IsVisible = false;
             VisualChildren.Add(_hints);
             LogicalChildren.Add(_hints);

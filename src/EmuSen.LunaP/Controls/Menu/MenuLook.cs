@@ -110,6 +110,10 @@ namespace EmuSen.LunaP.Controls
         /// <returns>The styles; a Styles has one owner, so each element takes its own copy.</returns>
         public static Styles CreateStyles() => (Styles)AvaloniaXamlLoader.Load(new Uri("avares://EmuSen.LunaP/Theme/MenuLook.axaml"));
 
+        /// <summary>A fresh copy of the look's palette alone, for an element that draws in the look's colours without restyling the stock controls under it, such as a menu that draws itself.</summary>
+        /// <returns>The palette; a dictionary has one owner, so each element takes its own copy.</returns>
+        public static ResourceDictionary CreatePalette() => (ResourceDictionary)AvaloniaXamlLoader.Load(new Uri("avares://EmuSen.LunaP/Theme/MenuPalette.axaml"));
+
         /// <summary>Whether an element is drawn in the look: the look is on for it or for an element above it.</summary>
         /// <param name="element">The element.</param>
         /// <returns>True under an element the look was applied to.</returns>
