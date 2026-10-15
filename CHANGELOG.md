@@ -14,6 +14,13 @@ answer.
 
 ## Unreleased
 
+- **Names a reader hears, and a menu's palette (`§200`).** `FieldRow` lends its label through a panel to the
+  dropdowns, text boxes and sliders inside; `MenuRows.Label` is the name a reader hears unless the caller names the
+  control; `MenuLook.CreatePalette()` and `Theme/MenuPalette.axaml`, the look's resources alone, merged by every
+  `MenuPanel`; `ApplyButton` and the option row's list paint from theme keys; the token `LunaCaptionSurface`.
+  **Behaviour changes:** a push button outside a menu takes the host theme's button colours; stock controls inside a
+  `MenuPanel` take the look's Fluent keys.
+
 - **The PlayStation's pads in `ControllerDiagram` (`§198.13`).** `ControllerLayout.PlayStation` (the digital
   controller) and `ControllerLayout.DualShock`, appended after `GenesisSixButton`, so no existing value moved. No other
   API change.

@@ -94,6 +94,35 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // A push button in a menu is drawn in the theme's button colours, which the menu's palette declares; a focused dropdown in the look paints none of the stock template's white - see docs/LunaP.md §200.3.
+        [Fact]
+        public Task A_push_button_in_a_menu_and_a_focused_dropdown_in_the_look_paint_from_the_palette() => UiTest.Run(() =>
+        {
+            Button push = MenuRows.ApplyButton(new Button { Content = "Back" });
+            var menu = new MenuPanel { Child = new StackPanel { Children = { push } } };
+            var choice = new ComboBox { ItemsSource = new[] { "One", "Two" }, SelectedIndex = 0, Width = 200 };
+            var look = new StackPanel { Children = { choice } };
+            MenuLook.SetIsOn(look, true);
+            ToolWindow window = Show(new Grid { Children = { menu, look } }, 800, 600);
+            Border frame = push.GetVisualDescendants().OfType<Border>().First();
+            Assert.Equal(Color.Parse("#55555A"), ((ISolidColorBrush)frame.BorderBrush!).Color);
+            Assert.Null(frame.Background);
+            push.Focus(NavigationMethod.Directional);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(Bar, ((ISolidColorBrush)frame.Background!).Color);
+            // A theme reaches it: the key given another colour where the menu is, the outline follows.
+            menu.Resources["ButtonBorderBrush"] = new SolidColorBrush(Colors.Red);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(Colors.Red, ((ISolidColorBrush)frame.BorderBrush!).Color);
+
+            choice.Focus(NavigationMethod.Directional);
+            Dispatcher.UIThread.RunJobs();
+            var painted = choice.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.TemplatedControl>().SelectMany(c => new[] { c.Background, c.Foreground, c.BorderBrush })
+                .OfType<ISolidColorBrush>().Select(b => b.Color).ToList();
+            Assert.DoesNotContain(Color.Parse("#CCFFFFFF"), painted);
+            window.Close();
+        });
+
         [Fact]
         public Task WhenApplied_runs_once_where_the_look_is_on_and_never_where_it_is_not() => UiTest.Run(() =>
         {

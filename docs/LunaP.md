@@ -13652,3 +13652,63 @@ six here) that every one has a tick.
 of Left to "S-Video" with the event raised and "default Composite" shown, ticks while there are choices and none
 after they are cleared. `SliderListTests.An_item_with_choices_is_shown_by_name`: the built row shows "Accurate"
 and "default Balanced".
+
+## 200. Names a reader hears through a panel and from a menu row; a menu's palette for what draws itself
+
+*2026-10-15.* EmuSen's interface specification (its `EmuSen_InterfaceSpec.md`) records every state of its frontend
+and checks it against §2.4 of the kit's plan: every operable control has a name a reader speaks, and every colour a
+control paints is one a resource in reach declares, so a theme can reach it. Three faults it found were the toolkit's.
+
+### 200.1 A field row lends its label through a panel
+
+`FieldRow` lent its label (§24.2) to its `Content` alone. A row whose content is a panel, such as a choice with a note
+under it or a dropdown beside a button, labelled the panel, and the dropdown inside was a choice with no name: ten such
+in the consumer's graphics and memory card pages. Now, when the content is a `Panel`, the row also sets `LabeledBy` on
+the `ComboBox`, `TextBox`, `Slider` and `NumericUpDown` controls inside it, through nested panels but not past another
+`FieldRow`. Those four kinds have no words of their own; a button, a switch or a check box names itself by its content
+and is left alone, since `LabeledBy` would win over that content and a button that says "Shaders..." must stay
+"Shaders..." (voice control, §24.2). A caller's own `AutomationProperties.Name` still wins, as `LabeledBy` is only
+read when there is none.
+
+**Where a row holds two inputs, both hear the row's label.** The consumer's "Shader and shape" row holds the Shaders
+button and the picture's shape; the shape's dropdown is now "Shader and shape", the words on screen beside it. A row
+that holds two inputs of the four kinds should name them itself; the toolkit cannot tell them apart.
+
+`AccessibilityTests.A_field_row_lends_its_label_through_a_panel_to_the_inputs_without_words`.
+
+### 200.2 A menu row's label is its name
+
+`MenuRows.Apply` on a `ComboBox`, `TextBox`, `Slider` or `ToggleSwitch` draws the row's label (`MenuRows.Label`) and
+gave a reader nothing: four option rows and seven text rows in the consumer's big-screen menus had no name. Setting
+`MenuRows.Label` now sets `AutomationProperties.Name` to it at style priority, so a name the caller sets locally wins,
+before or after, and a label changed later is followed. A list row given a label (§181.3) is named by it too, which is
+the label it draws.
+
+`AccessibilityTests.A_menu_row_s_label_is_the_name_a_reader_hears`.
+
+### 200.3 A menu's palette, for what draws itself
+
+The look's colours (§196) lived in `MenuLook.axaml`'s resources, reached only under an element the look was applied
+to. A big-screen menu that draws itself, a `MenuPanel` over a scene, had none of them in reach, and two parts painted
+literals: `MenuRows.ApplyButton`'s outline, words and focused fill (`#55555A`, `#9C9CA0`, `#050507`, `#EEEEF0`), and
+the option row's dropdown list (`#1B1B1E`, `#333337`). No theme could reach them.
+
+- **`Theme/MenuPalette.axaml`** holds the look's resources, unchanged in value; `MenuLook.axaml` merges it, so a sheet
+  in the look is as it was. `MenuLook.CreatePalette()` gives an element a fresh copy, without the look's styles.
+- **`MenuPanel` merges a copy** into its own resources, so everything a menu holds is painted from tokens. The look's
+  styles are not applied: they size and restyle stock controls, which a menu drawing its own rows does not want.
+- **`ApplyButton` paints from the theme's button keys** (`ButtonBorderBrush`, `ButtonForeground`, and while focused
+  `ButtonBackgroundPressed` and `ButtonForegroundPressed`), which the palette declares as the look's push button. Outside
+  any menu or look a push button takes the host theme's button colours.
+- **The option row's list** takes `ComboBoxDropDownBackground` and `ComboBoxDropDownBorderBrush`.
+- **A focused dropdown in the look** drew its words and arrow in the stock template's white at 80% (`#CCFFFFFF`), from
+  keys the look did not declare; `ComboBoxForegroundFocused`, `ComboBoxDropDownGlyphForegroundFocused` and their
+  pressed forms are now the bar's text, `#EEEEF0`.
+- **One new token, `LunaCaptionSurface`** (`#AA000000`), a caption's box over a picture, for the consumer's
+  screensaver, whose box ES-DE draws black at two thirds. `LunaHudSurface` means the same thing but is the notice
+  plate's `#F0161618` here and OpenEmu's `#E61C1C1C` in the desktop palette; using it would have changed a measured
+  colour.
+
+**What it costs.** Every `MenuPanel` loads the palette once when it is made. The stock controls a menu holds take the
+look's Fluent keys where they did not before; a menu's rows are drawn by `MenuRow` and do not change, and the consumer's
+recordings show only the colours a drawn row's hidden chrome reports. `MenuLookTests.A_push_button_in_a_menu_and_a_focused_dropdown_in_the_look_paint_from_the_palette`.

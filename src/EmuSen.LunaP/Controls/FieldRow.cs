@@ -3,6 +3,8 @@ using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.LogicalTree;
+using System.Collections.Generic;
 using EmuSen.LunaP.Automation;
 
 namespace EmuSen.LunaP.Controls
@@ -140,6 +142,19 @@ namespace EmuSen.LunaP.Controls
             if (_labelBlock is null || Content is not Control content) return;
 
             AutomationProperties.SetLabeledBy(content, _labelBlock);
+            // A panel around the control, such as a choice with its note under it, lends the label on to the inputs inside that have no words of their own - see docs/LunaP.md §200.1.
+            if (content is Panel) foreach (Control input in Unworded(content)) AutomationProperties.SetLabeledBy(input, _labelBlock);
+        }
+
+        // The choices, text boxes and sliders inside a panel, not past another field's row; a button or a switch names itself by its words.
+        private static IEnumerable<Control> Unworded(Control within)
+        {
+            foreach (ILogical child in within.GetLogicalChildren())
+            {
+                if (child is FieldRow || child is not Control c) continue;
+                if (c is ComboBox or TextBox or Slider or NumericUpDown) yield return c;
+                else if (c is Panel) foreach (Control inner in Unworded(c)) yield return inner;
+            }
         }
     }
 }
