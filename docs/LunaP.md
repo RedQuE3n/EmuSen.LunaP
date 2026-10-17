@@ -13712,3 +13712,38 @@ the option row's dropdown list (`#1B1B1E`, `#333337`). No theme could reach them
 **What it costs.** Every `MenuPanel` loads the palette once when it is made. The stock controls a menu holds take the
 look's Fluent keys where they did not before; a menu's rows are drawn by `MenuRow` and do not change, and the consumer's
 recordings show only the colours a drawn row's hidden chrome reports. `MenuLookTests.A_push_button_in_a_menu_and_a_focused_dropdown_in_the_look_paint_from_the_palette`.
+
+## 201. A path row returned to blank: `PathPickerRow.IsClearable`
+
+### 201.1 The gap
+
+A path row could be set and changed but not emptied. Browse… only ever returns a path, and §91.4 deliberately refuses
+a committed blank box, because to most consumers a blank box is a slip of the keyboard rather than a choice. A
+consumer for which blank has a meaning of its own (EmuSen's folder settings, where blank means "use the default
+folder") had no way to let the person return to it, short of editing the settings file by hand. In a session that
+shows only typed rows, the row could not be undone from where it was set.
+
+### 201.2 The property
+
+`IsClearable`, false by default so that no existing consumer changes, gives the row two ways back to blank:
+
+- **A Clear button** after Browse…, shown on a clearable row and enabled while the row holds a path. It sets `Path`
+  to the empty string and raises `PathPicked` with it. Its help text is `BrowseTitle`, as Browse…'s is (§24.2), so a
+  page with several such rows still tells their Clear buttons apart. When the button had the focus, the focus moves
+  to Browse… before the button is disabled, since a disabled control drops the focus and a keyboard or pad user would
+  otherwise be left with none.
+- **A blank box committed** in an editable row (§91.4) is a pick of the empty string rather than a slip. This is the
+  only way back in a template that leaves Browse… and Clear out, as a consumer's typed-row template may.
+
+The empty string, not null, is what is raised, because `Path` is a non-nullable string and `PathPicked`'s argument
+has always been the new `Path`. What blank means is the consumer's: the row only reports it.
+
+**What it costs.** A clearable row is one button wider. A consumer that walked the template for "the" button of a
+row, as one test here did, now finds two on a clearable row and three parts in every row's template; `PART_Browse`
+and `PART_Clear` are the names to select by.
+
+### 201.3 Tests
+
+`PathPickerTypingTests.A_clearable_row_picks_blank_from_Clear_and_from_a_blank_box` (Clear raises the empty string,
+disables itself and gives up the focus; a path set again enables it; a blank box committed is picked as blank) and
+`A_row_that_is_not_clearable_shows_no_Clear`; the default in `DocumentedDefaultTests`; the API baseline.

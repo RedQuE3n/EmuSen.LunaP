@@ -36,8 +36,20 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<bool> IsEditableProperty =
             AvaloniaProperty.Register<PathPickerRow, bool>(nameof(IsEditable));
 
+        public static readonly StyledProperty<bool> IsClearableProperty =
+            AvaloniaProperty.Register<PathPickerRow, bool>(nameof(IsClearable));
+
         private Button? _browse;
+        private Button? _clear;
         private TextBox? _box;
+
+        // Blank means unset to the consumer, so a blank box is a pick of the empty string - see docs/LunaP.md §201.
+        /// <summary>Whether the path can be returned to blank: a Clear button is shown, enabled while there is a path, and a blank box committed in an editable row is picked as the empty string. False by default.</summary>
+        public bool IsClearable
+        {
+            get => GetValue(IsClearableProperty);
+            set => SetValue(IsClearableProperty, value);
+        }
 
         /// <summary>Whether a path can be typed into the box as well as picked, committed on Enter or on leaving the box. False by default, which keeps the box read-only.</summary>
         public bool IsEditable
@@ -95,6 +107,11 @@ namespace EmuSen.LunaP.Controls
             _browse = e.NameScope.Find<Button>("PART_Browse");
             if (_browse is not null) _browse.Click += OnBrowseClick;
 
+            if (_clear is not null) _clear.Click -= OnClearClick;
+            _clear = e.NameScope.Find<Button>("PART_Clear");
+            if (_clear is not null) _clear.Click += OnClearClick;
+            ShowClear();
+
             if (_box is not null)
             {
                 _box.LostFocus -= OnBoxLeft;
@@ -115,13 +132,13 @@ namespace EmuSen.LunaP.Controls
             if (e.Key == Avalonia.Input.Key.Enter) CommitTyped();
         }
 
-        // A typed path is a pick like any other; blank or unchanged text is not, and the box goes back to the path.
+        // A typed path is a pick like any other; unchanged text is not, nor blank text unless the row is clearable, and the box goes back to the path.
         private void CommitTyped()
         {
             if (!IsEditable || _box is null) return;
 
             string typed = (_box.Text ?? string.Empty).Trim();
-            if (typed.Length == 0 || typed == Path)
+            if ((typed.Length == 0 && !IsClearable) || typed == Path)
             {
                 _box.Text = Path;
                 return;
@@ -129,6 +146,28 @@ namespace EmuSen.LunaP.Controls
 
             Path = typed;
             PathPicked?.Invoke(typed);
+        }
+
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+        {
+            base.OnPropertyChanged(change);
+            if (change.Property == PathProperty || change.Property == IsClearableProperty) ShowClear();
+        }
+
+        private void ShowClear()
+        {
+            if (_clear is null) return;
+            _clear.IsVisible = IsClearable;
+            _clear.IsEnabled = !string.IsNullOrEmpty(Path);
+        }
+
+        private void OnClearClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            if (Path.Length == 0) return;
+            // A disabled button drops the focus, so a pad or keyboard user lands on Browse... instead of nowhere.
+            if (_clear?.IsFocused == true) _browse?.Focus(Avalonia.Input.NavigationMethod.Directional);
+            Path = string.Empty;
+            PathPicked?.Invoke(string.Empty);
         }
 
         private async void OnBrowseClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)

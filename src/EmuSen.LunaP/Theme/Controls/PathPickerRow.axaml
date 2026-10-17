@@ -5,7 +5,7 @@
     <Style Selector="luna|PathPickerRow">
         <Setter Property="Template">
             <ControlTemplate>
-                <Grid ColumnDefinitions="*,Auto">
+                <Grid ColumnDefinitions="*,Auto,Auto">
                     <!-- Read-only and still a tab stop, on purpose: the path is
                          often long and truncated on screen, and focusing it is
                          how a keyboard reads or copies the whole thing. That
@@ -28,6 +28,13 @@
                             Name="PART_Browse"
                             Content="Browse..."
                             AutomationProperties.HelpText="{TemplateBinding BrowseTitle}"
+                            Margin="8,0,0,0" />
+                    <!-- Shown on a clearable row, enabled while it holds a path; clearing raises PathPicked with the empty string (§201). -->
+                    <Button Grid.Column="2"
+                            Name="PART_Clear"
+                            Content="Clear"
+                            AutomationProperties.HelpText="{TemplateBinding BrowseTitle}"
+                            IsVisible="False"
                             Margin="8,0,0,0" />
                 </Grid>
             </ControlTemplate>

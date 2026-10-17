@@ -269,9 +269,9 @@ namespace EmuSen.LunaP.Tests
         private static readonly Avalonia.Headless.HeadlessUnitTestSession Session =
             Avalonia.Headless.HeadlessUnitTestSession.GetOrStartForAssembly(typeof(PathPickerTypingTests).Assembly);
 
-        private static (EmuSen.LunaP.Windowing.ToolWindow, EmuSen.LunaP.Controls.PathPickerRow, Avalonia.Controls.TextBox, Avalonia.Controls.Button) Row(bool editable)
+        private static (EmuSen.LunaP.Windowing.ToolWindow, EmuSen.LunaP.Controls.PathPickerRow, Avalonia.Controls.TextBox, Avalonia.Controls.Button) Row(bool editable, bool clearable = false)
         {
-            var row = new EmuSen.LunaP.Controls.PathPickerRow { Path = "/old", IsEditable = editable };
+            var row = new EmuSen.LunaP.Controls.PathPickerRow { Path = "/old", IsEditable = editable, IsClearable = clearable };
             var other = new Avalonia.Controls.Button { Content = "Other" };
             var window = new EmuSen.LunaP.Windowing.ToolWindow { Width = 600, Height = 200, Content = new Avalonia.Controls.StackPanel { Children = { row, other } } };
             window.Show();
@@ -302,6 +302,45 @@ namespace EmuSen.LunaP.Tests
             other.Focus();
             Assert.Equal(2, picked.Count);
             Assert.Equal("/newer", box.Text);
+            window.Close();
+        }, default);
+
+        private static Avalonia.Controls.Button Clear(EmuSen.LunaP.Controls.PathPickerRow row) =>
+            System.Linq.Enumerable.Single(System.Linq.Enumerable.OfType<Avalonia.Controls.Button>(Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(row)), b => b.Name == "PART_Clear");
+
+        // Blank means unset to a consumer that opts in - see docs/LunaP.md §201.
+        [Fact]
+        public System.Threading.Tasks.Task A_clearable_row_picks_blank_from_Clear_and_from_a_blank_box() => Session.Dispatch(() =>
+        {
+            var (window, row, box, other) = Row(editable: true, clearable: true);
+            var picked = new System.Collections.Generic.List<string>();
+            row.PathPicked += picked.Add;
+            Avalonia.Controls.Button clear = Clear(row);
+            Assert.True(clear.IsVisible);
+            Assert.True(clear.IsEnabled);
+
+            clear.Focus();
+            clear.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
+            Assert.Equal(new[] { "" }, picked);
+            Assert.Equal("", row.Path);
+            Assert.False(clear.IsEnabled);
+            Assert.False(clear.IsFocused);
+
+            row.Path = "/again";
+            Assert.True(clear.IsEnabled);
+            box.Focus();
+            box.Text = "   ";
+            other.Focus();
+            Assert.Equal(new[] { "", "" }, picked);
+            Assert.Equal("", row.Path);
+            window.Close();
+        }, default);
+
+        [Fact]
+        public System.Threading.Tasks.Task A_row_that_is_not_clearable_shows_no_Clear() => Session.Dispatch(() =>
+        {
+            var (window, row, _, _) = Row(editable: true);
+            Assert.False(Clear(row).IsVisible);
             window.Close();
         }, default);
 

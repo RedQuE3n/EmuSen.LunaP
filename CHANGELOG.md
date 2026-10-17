@@ -14,6 +14,10 @@ answer.
 
 ## Unreleased
 
+- **A path row returned to blank (`§201`).** `PathPickerRow.IsClearable`, false by default: a Clear button, and a
+  blank box committed in an editable row picked as the empty string. **Behaviour change** for a consumer that walks the
+  template: every row's template now holds a `PART_Clear` button, hidden unless the row is clearable.
+
 - **Names a reader hears, and a menu's palette (`§200`).** `FieldRow` lends its label through a panel to the
   dropdowns, text boxes and sliders inside; `MenuRows.Label` is the name a reader hears unless the caller names the
   control; `MenuLook.CreatePalette()` and `Theme/MenuPalette.axaml`, the look's resources alone, merged by every

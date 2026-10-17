@@ -299,8 +299,8 @@ namespace EmuSen.LunaP.Tests
             var exportTo = new PathPickerRow { BrowseTitle = "Choose an export folder" };
             using var host = Host(savedTo, exportTo);
 
-            Button savedButton = savedTo.GetVisualDescendants().OfType<Button>().Single();
-            Button exportButton = exportTo.GetVisualDescendants().OfType<Button>().Single();
+            Button savedButton = savedTo.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PART_Browse");
+            Button exportButton = exportTo.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PART_Browse");
 
             AutomationPeer savedPeer = ControlAutomationPeer.CreatePeerForElement(savedButton);
             AutomationPeer exportPeer = ControlAutomationPeer.CreatePeerForElement(exportButton);

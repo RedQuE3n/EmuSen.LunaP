@@ -1612,11 +1612,14 @@ public enum EmuSen.LunaP.Controls.PathPickerMode
 public class EmuSen.LunaP.Controls.PathPickerRow : Avalonia.Controls.Primitives.TemplatedControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     public EmuSen.LunaP.Controls.PathPickerMode Mode { get; set; }
     public PathPickerRow()
+    public bool IsClearable { get; set; }
     public bool IsEditable { get; set; }
     public event System.Action<string> PathPicked
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PathPickerMode> ModeProperty = Folder
+    public static readonly Avalonia.StyledProperty<bool> IsClearableProperty = false
     public static readonly Avalonia.StyledProperty<bool> IsEditableProperty = false
     public static readonly Avalonia.StyledProperty<string> BrowseTitleProperty = "Choose"
     public static readonly Avalonia.StyledProperty<string> PathProperty = ""
