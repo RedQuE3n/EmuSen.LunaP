@@ -39,6 +39,10 @@ namespace EmuSen.LunaP.Controls
         PlayStation,
         /// <summary>The same pad with two sticks that click as L3 and R3, and the Analog button with its light between them: the PlayStation's DualShock.</summary>
         DualShock,
+        /// <summary>A flat oblong pad with a rounded square direction pad and buttons 1 and 2, and the console's Pause and Reset drawn apart above it: the Master System's control pad.</summary>
+        MasterSystem,
+        /// <summary>A box seen from above with a stick in its middle and buttons 1 and 2 on its sides, and the console's Pause drawn apart above it: the SG-1000's joystick.</summary>
+        Sg1000,
     }
 
     /// <summary>The side of a ControllerDiagram a region's label stands on.</summary>
@@ -465,6 +469,8 @@ namespace EmuSen.LunaP.Controls
             ControllerLayout.GenesisSixButton => "Genesis six-button controller",
             ControllerLayout.PlayStation => "PlayStation controller",
             ControllerLayout.DualShock => "DualShock controller",
+            ControllerLayout.MasterSystem => "Master System controller",
+            ControllerLayout.Sg1000 => "SG-1000 joystick",
             _ => "Gamepad",
         };
 
@@ -705,8 +711,13 @@ namespace EmuSen.LunaP.Controls
         private Point KnobAt(StickArt stick)
         {
             Vector at = StickPosition(stick.Id);
+            if (stick.Ways is { } ways && at == default) at = Leaning(ways);
             return stick.Centre + at * stick.Travel;
         }
+
+        // A switched stick leans toward the directions drawn pressed, as a host sets none of its position (§198.14).
+        private Vector Leaning(IReadOnlyList<string> ways) =>
+            new((IsPressed(ways[3]) ? 1 : 0) - (IsPressed(ways[2]) ? 1 : 0), (IsPressed(ways[1]) ? 1 : 0) - (IsPressed(ways[0]) ? 1 : 0));
 
         internal Color Themed(string key, Color fallback) =>
             this.TryFindResource(key, ActualThemeVariant, out object? found) && found is Color c ? c : fallback;

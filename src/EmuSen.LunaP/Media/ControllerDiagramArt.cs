@@ -53,6 +53,8 @@ namespace EmuSen.LunaP.Media
         public Color KnobFill { get; init; }
         public Color KnobStroke { get; init; }
         public string? ClickRegion { get; init; }
+        // A switched stick's direction regions, up, down, left and right, which lean its knob while pressed (§198.14).
+        public IReadOnlyList<string>? Ways { get; init; }
     }
 
     // One controller's drawing: shell parts under the regions, marks and words over them - see docs/LunaP.md §198.
@@ -80,6 +82,8 @@ namespace EmuSen.LunaP.Media
                 ControllerLayout.GenesisSixButton => Genesis(six: true),
                 ControllerLayout.PlayStation => PlayStation(analog: false),
                 ControllerLayout.DualShock => PlayStation(analog: true),
+                ControllerLayout.MasterSystem => MasterSystem(),
+                ControllerLayout.Sg1000 => Sg1000(),
                 _ => Gamepad(),
             };
             art.Route();
@@ -290,12 +294,13 @@ namespace EmuSen.LunaP.Media
 
         // A stick: its gate, and its four directions as bands of a ring around the gate, each with an arrow.
         private static void Stick(DiagramArt art, string id, double sx, double sy, double gate, double knob, double travel, bool octagonal,
-            (string Id, string Name)[]? ways, Color gateFill, Color knobFill, Color edge, Color band, Color arrow, string? click = null)
+            (string Id, string Name)[]? ways, Color gateFill, Color knobFill, Color edge, Color band, Color arrow, string? click = null, bool switched = false)
         {
             art.Sticks.Add(new StickArt
             {
                 Id = id, Centre = new Point(sx, sy), KnobRadius = knob, Travel = travel,
                 Gate = octagonal ? Octagon(sx, sy, gate) : Circle(sx, sy, gate), GateFill = gateFill, KnobFill = knobFill, KnobStroke = edge, ClickRegion = click,
+                Ways = switched && ways is not null ? ways.Select(w => w.Id).ToArray() : null,
             });
             double inner = gate + 8, outer = gate + 28;
             (double From, double To)[] arcs = { (-132, -48), (48, 132), (138, 222), (-42, 42) };
@@ -566,6 +571,86 @@ namespace EmuSen.LunaP.Media
             Round(art, "Analog", 500, 506, 18, "#3A3B42");
             art.Marks.Add(new ArtPart(Circle(462, 506, 7), Hex("#D23A3A"), Hex("#6E2020"), 2));
             art.Words.Add(new ArtText("ANALOG", new Point(500, 470), 14, words));
+            return art;
+        }
+
+        // A rounded square direction pad cut corner to corner into four regions (up, down, left, right), an arrow on each, and a hole in its middle.
+        private static void SquarePad(DiagramArt art, double cx, double cy, double half, Color fill, Color edge, Color arrow, Color hole, (string Id, string Name)[] arms)
+        {
+            Geometry plate = Box(cx - half, cy - half, 2 * half, 2 * half, half * 0.24);
+            art.Body.Add(new ArtPart(plate, fill, edge, 3));
+            (int Dx, int Dy)[] ways = { (0, -1), (0, 1), (-1, 0), (1, 0) };
+            for (int i = 0; i < 4; i++)
+            {
+                (int dx, int dy) = ways[i];
+                // The side the arm points to, as its two corners, and the middle.
+                Point a = new(cx + (dx != 0 ? dx : -1) * half, cy + (dy != 0 ? dy : -1) * half);
+                Point b = new(cx + (dx != 0 ? dx : 1) * half, cy + (dy != 0 ? dy : 1) * half);
+                art.Regions.Add(new RegionArt
+                {
+                    Id = arms[i].Id, Name = arms[i].Name, Clip = plate,
+                    Shape = Path(FormattableString.Invariant($"M {a.X},{a.Y} L {b.X},{b.Y} L {cx},{cy} Z")),
+                    Mark = Arrow(cx + dx * half * 0.62, cy + dy * half * 0.62, half * 0.3, dx, dy), MarkColour = arrow,
+                });
+            }
+            art.Marks.Add(new ArtPart(Circle(cx, cy, half * 0.15), hole, edge, 2));
+        }
+
+        // The console's own buttons, drawn apart from the pad as a strip of the console's front with each button's name under it.
+        private static void ConsoleStrip(DiagramArt art, double x, double width, (string Id, double X)[] buttons, Color face, Color edge, Color well, Color key, Color words)
+        {
+            art.Body.Add(new ArtPart(Box(x, 16, width, 112, 16), face, edge, 4));
+            art.Body.Add(new ArtPart(Box(x + 14, 30, width - 28, 6, 3), Hex("#B8323A")));
+            foreach ((string id, double bx) in buttons)
+            {
+                art.Body.Add(new ArtPart(Pill(bx, 66, 100, 42, 0), well));
+                art.Regions.Add(new RegionArt { Id = id, Name = id, Shape = Pill(bx, 66, 82, 26, 0), Fill = key, Stroke = Darken(key, 0.4), StrokeWidth = 2 });
+                art.Words.Add(new ArtText(id.ToUpperInvariant(), new Point(bx, 108), 16, words));
+            }
+        }
+
+        // --- Master System: a flat dark oblong, its cord leaving on the right, a rounded square direction pad with a hole in its middle on the left, and buttons 1 and 2 on the right; the console's Pause and Reset drawn apart above it, as they are on the console and not the pad (§198.14) ---
+
+        private static DiagramArt MasterSystem()
+        {
+            var art = new DiagramArt { Design = new Size(1000, 590) };
+            Color shell = Hex("#2E2E33"), edge = Hex("#6A6A74"), well = Hex("#222226"), plate = Hex("#4A4A53"), words = Hex("#B8B8C2");
+            const string button = "#55555F";
+
+            ConsoleStrip(art, 300, 400, new[] { ("Pause", 420.0), ("Reset", 580.0) }, Hex("#26262B"), edge, well, Hex("#4A4A53"), words);
+
+            art.Body.Add(new ArtPart(Path("M 980,330 C 990,330 994,318 998,300"), null, edge, 9));
+            art.Body.Add(new ArtPart(Box(20, 170, 960, 400, 36), shell, edge, 5));
+            art.Body.Add(new ArtPart(Box(96, 256, 268, 268, 36), well));
+            SquarePad(art, 230, 390, 112, plate, Hex("#5E5E68"), Hex("#2A2A30"), Hex("#18181B"), Cross);
+
+            art.Body.Add(new ArtPart(Pill(770, 390, 330, 140, 0), well));
+            Round(art, "1", 690, 390, 52, button, "1", 36);
+            Round(art, "2", 850, 390, 52, button, "2", 36);
+            return art;
+        }
+
+        // --- SG-1000: the joystick wired to the first SG-1000, a box seen from above with the stick in a round boot in its middle and buttons 1 and 2 on its left and right sides; its cord runs to the console, whose Pause is drawn apart above it (§198.14) ---
+
+        private static DiagramArt Sg1000()
+        {
+            var art = new DiagramArt { Design = new Size(1000, 560) };
+            Color shell = Hex("#34343A"), edge = Hex("#6A6A74"), well = Hex("#222226"), words = Hex("#B8B8C2");
+            const string button = "#B8323A";
+
+            ConsoleStrip(art, 640, 240, new[] { ("Pause", 760.0) }, Hex("#26262B"), edge, well, Hex("#4A4A53"), words);
+            art.Body.Add(new ArtPart(Path("M 700,200 C 700,170 704,150 704,128"), null, edge, 9));
+
+            art.Body.Add(new ArtPart(Box(80, 200, 840, 330, 30), shell, edge, 5));
+            Stick(art, "Stick", 500, 365, 62, 38, 30, octagonal: false, Cross, well, Hex("#4A4A53"), edge, Hex("#55555F"), Hex("#C4C4CC"), switched: true);
+
+            foreach ((string id, double x) in new[] { ("1", 36.0), ("2", 888.0) })
+            {
+                Color c = Hex(button);
+                art.Regions.Add(new RegionArt { Id = id, Name = id, Shape = Box(x, 228, 76, 104, 18), Fill = c, Stroke = Darken(c, 0.35), StrokeWidth = 3 });
+            }
+            art.Words.Add(new ArtText("1", new Point(150, 280), 30, words));
+            art.Words.Add(new ArtText("2", new Point(850, 280), 30, words));
             return art;
         }
 

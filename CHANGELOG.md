@@ -14,6 +14,11 @@ answer.
 
 ## Unreleased
 
+- **The Master System's pad and the SG-1000's joystick in `ControllerDiagram` (`§198.14`).** `ControllerLayout.MasterSystem`
+  and `ControllerLayout.Sg1000`, appended after `DualShock`, so no existing value moved. A console's own buttons, Pause and
+  Reset, are drawn apart above the pad. **Behaviour change** for a switched stick only: the SG-1000's knob leans toward
+  the directions drawn pressed while no position is set; the other sticks are as before. No other API change.
+
 - **A path row returned to blank (`§201`).** `PathPickerRow.IsClearable`, false by default: a Clear button, and a
   blank box committed in an editable row picked as the empty string. **Behaviour change** for a consumer that walks the
   template: every row's template now holds a `PART_Clear` button, hidden unless the row is clearable.

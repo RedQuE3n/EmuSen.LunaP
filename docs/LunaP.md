@@ -13633,6 +13633,81 @@ them "PlayStation controller" and "DualShock controller". The tests that run ove
 the label theory carries rows for each at three sizes and the line theory three more, and the theory that checks a
 lettered button's line does not meet it at its middle reads the four face buttons for these two layouts.
 
+### 198.14 The Master System's pad and the SG-1000's joystick (2026-10-19)
+
+*Decided 2026-10-19:* the consumer had drawn its Master System and SG-1000 on the NES pad since it first offered them
+(its `Endou_Native.md` §14.3). They now have drawings of their own. `ControllerLayout` gains `MasterSystem` and
+`Sg1000`, appended after `DualShock`, so eleven layouts are drawn now. They are drawn as §198.1's are, from plain
+geometry in a design space 1000 wide (590 high for the pad, 560 for the joystick), and they are the toolkit's own under
+the same rule. They are drawn from the shape the products are described as having, not from a picture of them. The
+Master System's control pad is "a rectangle with a D-pad and two buttons", labelled 1 and 2. Its direction pad is a
+rounded square rather than a cross, the first model has a hole in its middle where a small stick could be screwed in,
+and its cord leaves on the right. The SG-1000's joystick, the SJ-200 wired to the first SG-1000, is a small box with a
+stick and two independent buttons, one on its left side and one on its right, near the top. No photograph or vendor
+drawing was traced or measured. The colours are not facts about the products, which were black. The shells are the
+Genesis's dark grey with a lighter edge (§198.12), the Master System's buttons are its mid grey, and the joystick's
+buttons are red so that they show on its dark shell.
+
+**The Master System pad** is a dark oblong with rounded corners. On the left, the direction pad is a rounded square
+plate in a well. It is cut corner to corner into four triangular regions, each with its arrow, and the first model's
+hole is a mark in its middle. Each region is clipped to the plate, as a cross's arm is clipped to the cross (§198.1), so
+a lit direction keeps the plate's rounded corner. On the right, buttons 1 and 2 are two round buttons on a pill-shaped
+well, each with its number printed on it.
+
+**The SG-1000 joystick** is seen from above: a box about two and a half times as wide as it is deep, with the stick in a
+round boot in its middle. Buttons 1 and 2 are red caps standing out of its left and right sides, their numbers printed
+on the shell beside them. The stick is drawn as the Nintendo 64's is (§198.1): four bands of a ring around its boot,
+each with an arrow, and a knob over them. Its direction regions are `Up`, `Down`, `Left` and `Right` rather than
+`StickUp` and the rest, because the stick is four switches and the consumer binds it as a cross.
+
+**A switched stick leans.** A host moves a stick's knob with `SetStick`, from the axes it reads. The SG-1000's stick
+has no axes, so nothing would move its knob. A stick drawn as switched therefore leans its knob toward the directions
+drawn pressed (`SetPressed`) while its position is zero. A diagonal goes to the corner of its travel, as
+`SetStick(1, -1)` would, and a position set by `SetStick` wins. Only the SG-1000's stick is switched. The Nintendo 64's
+and the modern pad's sticks are not, and their knobs stay where the host puts them whatever is pressed. This is internal
+to the drawing (`StickArt.Ways`): the two enum values are the only change to the public surface.
+
+**The console's buttons.** The Master System's Pause and Reset, and the SG-1000's Pause, are on the console, not the
+pad. The consumer binds them alongside the pad's buttons all the same (its `Endou_Plan.md` §4.2: Pause on Start, Reset
+on Select). No earlier drawing had a console button to show. The Game Boy is its own console, and the nearest case is
+the PlayStation's shoulder pairs: parts of the pad drawn apart from it, because a front view hides them (§198.13). The
+console buttons are drawn apart in the same way, on a strip of the console's front above the pad. The strip is dark
+with a red line along it, and each button is a pill in a well with its name under it. Nothing is drawn between the
+strip and the pad, so the drawing does not suggest the buttons are on the pad. On the SG-1000 the joystick's cord runs
+up into the strip, since the joystick is wired to the console. The SG-1000's strip stands off to the right, so the
+stick's Up line goes straight up past it.
+
+The ids are `Up`, `Down`, `Left`, `Right`, `1`, `2` and `Pause`, with `Reset` on the Master System only. They are the
+names the consumer's engine gives the buttons, and the consumer maps its own controls onto them. `Describe` names them
+"Master System controller" and "SG-1000 joystick". The Mark III, the Japanese model of the same console, shares the
+Master System's drawing: its pad has the same layout, and the consumer offers it as a model of that console, not as a
+console of its own.
+
+**Tests.** The tests that run over every layout (`Drawn`) take both. The label theory has rows for each at three sizes,
+and the line theory has three more. The theory that checks that a lettered button's line does not meet it at its
+middle reads `1` and `2` on the Master System's pad. It does not read the joystick's side buttons: they are too narrow
+for that rule's measure, and their lines meet them at the side facing their labels anyway. Three tests are new:
+
+- `A_switched_stick_leans_toward_its_pressed_directions`: Up and Right pressed lean the knob up and right by the same
+  amount; a position set wins; let go, the knob returns; the Nintendo 64's stick does not lean.
+- `The_console_s_buttons_stand_apart_above_the_pad`: each drawing has exactly its ids, and each console button stands
+  above the pad's buttons with undrawn space between.
+- `A_square_pad_s_direction_is_hit_only_inside_the_plate`: a point in the rounded corner of the plate's box hits no
+  direction.
+
+The picture tool (`EMUSEN_DIAGRAM_DUMP`) writes both drawings. Measured on 2026-10-19: all 160 cases of
+`ControllerDiagramTests`, `ApiSurfaceTests` and `DocumentedDefaultTests` pass.
+
+**Seeded faults, 2026-10-19.** Each fault was made in the source, `ControllerDiagramTests` was run, and the file was
+restored byte for byte:
+
+| # | Fault | Caught by |
+|---|---|---|
+| L1 | the Master System's Reset left out of the console strip | `The_console_s_buttons_stand_apart_above_the_pad` |
+| L2 | the square pad's directions not clipped to the plate | `A_square_pad_s_direction_is_hit_only_inside_the_plate`, written with the drawing because no earlier test clicked a corner of a square pad |
+| L3 | a switched stick that does not lean | `A_switched_stick_leans_toward_its_pressed_directions` |
+| L4 | the console strip drawn down onto the pad | `The_console_s_buttons_stand_apart_above_the_pad` |
+
 ## 199. A row of choices: `SliderRow.Choices` and `SliderItem.Choices`
 
 *2026-10-07.* EmuSen's CRT filter has settings that are one of a few named choices (a signal, a screen, a

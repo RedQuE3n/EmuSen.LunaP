@@ -113,6 +113,56 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // The SG-1000's stick is switched: its knob leans toward the directions pressed while no position is set, and a position set wins (§198.14).
+        [Fact]
+        public Task A_switched_stick_leans_toward_its_pressed_directions() => UiTest.Run(() =>
+        {
+            (ToolWindow window, ControllerDiagram diagram) = Shown(ControllerLayout.Sg1000);
+            string stick = Assert.Single(diagram.Sticks);
+            Assert.Equal(new[] { "Up", "Down", "Left", "Right" }, diagram.Regions.Where(r => r.Stick == stick).Select(r => r.Id));
+            Point rest = diagram.StickKnobCentre(stick)!.Value;
+            diagram.SetPressed("Up", true);
+            diagram.SetPressed("Right", true);
+            Point leant = diagram.StickKnobCentre(stick)!.Value;
+            Assert.True(leant.X > rest.X + 5 && leant.Y < rest.Y - 5, $"the knob went from {rest} to {leant}");
+            Assert.Equal(leant.X - rest.X, rest.Y - leant.Y, 3);
+            Assert.Equal(default, diagram.StickPosition(stick));
+            diagram.SetStick(stick, -1, 0);
+            Assert.True(diagram.StickKnobCentre(stick)!.Value.X < rest.X - 5);
+            diagram.SetStick(stick, 0, 0);
+            diagram.SetPressed("Up", false);
+            diagram.SetPressed("Right", false);
+            Assert.Equal(rest, diagram.StickKnobCentre(stick)!.Value);
+
+            // A stick with a position of its own, the Nintendo 64's, does not lean.
+            diagram.Layout = ControllerLayout.Nintendo64;
+            rest = diagram.StickKnobCentre("Stick")!.Value;
+            diagram.SetPressed("StickUp", true);
+            Assert.Equal(rest, diagram.StickKnobCentre("Stick")!.Value);
+            window.Close();
+        });
+
+        // The console's buttons are drawn apart from the pad, above it: Pause and Reset on the Master System, Pause alone on the SG-1000 (§198.14).
+        [Theory]
+        [InlineData(ControllerLayout.MasterSystem, new[] { "Up", "Down", "Left", "Right", "1", "2", "Pause", "Reset" })]
+        [InlineData(ControllerLayout.Sg1000, new[] { "Up", "Down", "Left", "Right", "1", "2", "Pause" })]
+        public Task The_console_s_buttons_stand_apart_above_the_pad(ControllerLayout layout, string[] ids) => UiTest.Run(() =>
+        {
+            (ToolWindow window, ControllerDiagram diagram) = Shown(layout);
+            Assert.Equal(ids.Order(), diagram.Regions.Select(r => r.Id).Order());
+            Rect pad = diagram.RegionRect("1").Union(diagram.RegionRect("2")).Union(diagram.RegionRect("Up")).Union(diagram.RegionRect("Down"));
+            foreach (string console in ids.Where(i => i is "Pause" or "Reset"))
+            {
+                Rect box = diagram.RegionRect(console);
+                Assert.True(box.Bottom < pad.Top, $"{console} {box} is not above the pad {pad}");
+                // Somewhere between the console's button and the pad's buttons nothing is drawn: the strip and the pad are two pieces.
+                bool apart = false;
+                for (double y = box.Bottom; y < pad.Top && !apart; y += 1) apart = !diagram.IsOnDrawing(new Point(box.Center.X, y));
+                Assert.True(apart, $"{console}'s strip is not drawn apart from the pad");
+            }
+            window.Close();
+        });
+
         // Every region reaches every other by the four directions, so a pad alone can choose any of them.
         [Theory]
         [MemberData(nameof(Drawn))]
@@ -175,6 +225,12 @@ namespace EmuSen.LunaP.Tests
         [InlineData(ControllerLayout.DualShock, 700, 440)]
         [InlineData(ControllerLayout.DualShock, 1100, 640)]
         [InlineData(ControllerLayout.DualShock, 1920, 1080)]
+        [InlineData(ControllerLayout.MasterSystem, 700, 440)]
+        [InlineData(ControllerLayout.MasterSystem, 1100, 640)]
+        [InlineData(ControllerLayout.MasterSystem, 1920, 1080)]
+        [InlineData(ControllerLayout.Sg1000, 700, 440)]
+        [InlineData(ControllerLayout.Sg1000, 1100, 640)]
+        [InlineData(ControllerLayout.Sg1000, 1920, 1080)]
         [InlineData(ControllerLayout.Nintendo64, 1000, 420)]
         public Task Every_region_has_a_label_and_no_label_overlaps_another(ControllerLayout layout, double w, double h) => UiTest.Run(() =>
         {
@@ -253,6 +309,12 @@ namespace EmuSen.LunaP.Tests
         [InlineData(ControllerLayout.PlayStation, 1100, 640)]
         [InlineData(ControllerLayout.DualShock, 1100, 640)]
         [InlineData(ControllerLayout.DualShock, 700, 900)]
+        [InlineData(ControllerLayout.MasterSystem, 1100, 640)]
+        [InlineData(ControllerLayout.MasterSystem, 1700, 500)]
+        [InlineData(ControllerLayout.MasterSystem, 700, 900)]
+        [InlineData(ControllerLayout.Sg1000, 1100, 640)]
+        [InlineData(ControllerLayout.Sg1000, 1700, 500)]
+        [InlineData(ControllerLayout.Sg1000, 700, 900)]
         public Task Each_label_s_line_runs_from_the_label_to_its_region(ControllerLayout layout, double w, double h) => UiTest.Run(() =>
         {
             (ToolWindow window, ControllerDiagram diagram) = Shown(layout, w, h);
@@ -267,6 +329,8 @@ namespace EmuSen.LunaP.Tests
             {
                 ControllerLayout.Snes => new[] { "X", "Y", "A", "B" },
                 ControllerLayout.PlayStation or ControllerLayout.DualShock => new[] { "Triangle", "Circle", "Cross", "Square" },
+                ControllerLayout.MasterSystem => new[] { "1", "2" },
+                ControllerLayout.Sg1000 => Array.Empty<string>(),
                 _ => new[] { "A", "B" },
             };
             foreach (string lettered in faces)
@@ -392,6 +456,20 @@ namespace EmuSen.LunaP.Tests
                     "Left" => box.BottomLeft + new Vector(1, -1),
                     _ => box.TopRight + new Vector(-1, 1),
                 };
+                Assert.NotEqual(arm, diagram.RegionAt(corner));
+                Assert.Equal(arm, diagram.RegionAt(diagram.PointIn(arm)!.Value));
+            }
+            window.Close();
+        });
+
+        // The Master System's square pad: each direction is hit inside the plate and not in the rounded corner of the plate's box (§198.14).
+        [Fact]
+        public Task A_square_pad_s_direction_is_hit_only_inside_the_plate() => UiTest.Run(() =>
+        {
+            (ToolWindow window, ControllerDiagram diagram) = Shown(ControllerLayout.MasterSystem, 1600, 900);
+            Rect plate = new[] { "Up", "Down", "Left", "Right" }.Select(diagram.RegionRect).Aggregate((a, b) => a.Union(b));
+            foreach ((string arm, Point corner) in new[] { ("Up", plate.TopLeft + new Vector(4, 1)), ("Up", plate.TopRight + new Vector(-4, 1)), ("Down", plate.BottomLeft + new Vector(4, -1)), ("Left", plate.TopLeft + new Vector(1, 4)), ("Right", plate.BottomRight + new Vector(-1, -4)) })
+            {
                 Assert.NotEqual(arm, diagram.RegionAt(corner));
                 Assert.Equal(arm, diagram.RegionAt(diagram.PointIn(arm)!.Value));
             }
