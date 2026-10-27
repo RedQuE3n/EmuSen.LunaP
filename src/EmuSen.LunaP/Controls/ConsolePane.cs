@@ -202,6 +202,28 @@ namespace EmuSen.LunaP.Controls
             }
         }
 
+        /// <summary>Recalls the previous history line into the input, as Up does.</summary>
+        public void HistoryBack() => RecallHistory(older: true);
+
+        /// <summary>Recalls the next history line, or the line being typed after the newest, as Down does.</summary>
+        public void HistoryForward() => RecallHistory(older: false);
+
+        /// <summary>The text now in the input box.</summary>
+        public string InputText => _input?.Text ?? "";
+
+        /// <summary>Replaces the input box text and puts the caret at its end.</summary>
+        public void SetInput(string text) => SetInputText(text);
+
+        /// <summary>Inserts text at the caret in the input box.</summary>
+        public void Insert(string text)
+        {
+            if (_input is null) return;
+            string cur = _input.Text ?? "";
+            int at = System.Math.Clamp(_input.CaretIndex, 0, cur.Length);
+            _input.Text = cur.Insert(at, text);
+            _input.CaretIndex = at + text.Length;
+        }
+
         private void RecallHistory(bool older)
         {
             IReadOnlyList<string> entries = HistorySource?.Invoke() ?? Array.Empty<string>();
