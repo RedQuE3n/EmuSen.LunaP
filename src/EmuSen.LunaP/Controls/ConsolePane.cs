@@ -99,8 +99,12 @@ namespace EmuSen.LunaP.Controls
             _scroll = e.NameScope.Find<ScrollViewer>("PART_Scroll");
 
             if (_input is not null) _input.KeyDown += OnInputKeyDown;
+            if (_output is not null) _output.Focusable = OutputFocusable;
             Flush();
         }
+
+        /// <summary>Whether the output block takes the keyboard focus. A host driven by a pad turns it off so Down from above reaches the input box.</summary>
+        public bool OutputFocusable { get; set; } = true;
 
         /// <summary>Adds a line of output, scrolling to it if the view was already at the bottom.</summary>
         /// <param name="text">The line. Not interpreted: a caller echoing input adds it themselves.</param>
