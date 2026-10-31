@@ -105,6 +105,11 @@
     <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillIndeterminateDisabled" Color="{DynamicResource LunaMutedColor}" />
     <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundIndeterminateDisabled" Color="{DynamicResource LunaOnAccentColor}" />
 
+    <!-- A disabled button's words in the palette's muted grey rather than
+         Fluent's translucent white, found by ManagerLayout's Apply button,
+         disabled until a row is marked (§203.6). -->
+    <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="{DynamicResource LunaMutedColor}" />
+
     <SolidColorBrush x:Key="RadioButtonForeground" Color="{DynamicResource LunaTextColor}" />
     <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFill" Color="{DynamicResource LunaAccentColor}" />
 

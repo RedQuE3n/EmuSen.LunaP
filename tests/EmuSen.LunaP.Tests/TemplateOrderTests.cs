@@ -504,6 +504,38 @@ namespace EmuSen.LunaP.Tests
                 "moves focus, which is an act rather than state; there is nothing to be dropped and nothing to read back.",
             [(typeof(FilterBar), nameof(FilterBar.FocusSearch))] =
                 "as ConsolePane.FocusInput.",
+            [(typeof(ConsolePane), nameof(ConsolePane.HistoryBack))] =
+                "a host toolbar's Up, acting on the input box as a key press would; before the template there is no box "
+                + "and nothing typed, so there is nothing to recall into and nothing is held.",
+            [(typeof(ConsolePane), nameof(ConsolePane.HistoryForward))] = "as ConsolePane.HistoryBack.",
+            [(typeof(ConsolePane), nameof(ConsolePane.SetInput))] =
+                "a host toolbar's edit of the line being typed, as typing is; before the template there is no box to "
+                + "type in and the call does nothing, which a constructor never needs since nothing is typed yet.",
+            [(typeof(ConsolePane), nameof(ConsolePane.Insert))] = "as ConsolePane.SetInput.",
+            // §202, §203: the layouts have no template; their parts are built in the constructor and arranged in code, so every method acts on parts that exist.
+            [(typeof(AdaptiveLayout), nameof(AdaptiveLayout.SetSections))] = "AdaptiveLayout has no template: its parts are built in the constructor and arranged in code at once; AdaptiveLayoutTests configures every one before the window is shown.",
+            [(typeof(AdaptiveLayout), nameof(AdaptiveLayout.SelectSection))] = "AdaptiveLayout has no template: its parts are built in the constructor and arranged in code at once; AdaptiveLayoutTests configures every one before the window is shown.",
+            [(typeof(AdaptiveLayout), nameof(AdaptiveLayout.StepSection))] = "AdaptiveLayout has no template: its parts are built in the constructor and arranged in code at once; AdaptiveLayoutTests configures every one before the window is shown.",
+            [(typeof(AdaptiveLayout), nameof(AdaptiveLayout.SetActions))] = "AdaptiveLayout has no template: its parts are built in the constructor and arranged in code at once; AdaptiveLayoutTests configures every one before the window is shown.",
+            [(typeof(AdaptiveLayout), nameof(AdaptiveLayout.OpenDetail))] = "AdaptiveLayout has no template: its parts are built in the constructor and arranged in code at once; AdaptiveLayoutTests configures every one before the window is shown.",
+            [(typeof(AdaptiveLayout), nameof(AdaptiveLayout.CloseDetail))] = "AdaptiveLayout has no template: its parts are built in the constructor and arranged in code at once; AdaptiveLayoutTests configures every one before the window is shown.",
+            [(typeof(AdaptiveLayout), nameof(AdaptiveLayout.HostOf))] = "AdaptiveLayout has no template: its parts are built in the constructor and arranged in code at once; AdaptiveLayoutTests configures every one before the window is shown.",
+            [(typeof(AdaptiveLayout), nameof(AdaptiveLayout.FocusRole))] = "AdaptiveLayout has no template: its parts are built in the constructor and arranged in code at once; AdaptiveLayoutTests configures every one before the window is shown.",
+            [(typeof(AdaptiveLayout), nameof(AdaptiveLayout.MoveFocus))] = "AdaptiveLayout has no template: its parts are built in the constructor and arranged in code at once; AdaptiveLayoutTests configures every one before the window is shown.",
+            [(typeof(AdaptiveLayout), nameof(AdaptiveLayout.Press))] = "AdaptiveLayout has no template: its parts are built in the constructor and arranged in code at once; AdaptiveLayoutTests configures every one before the window is shown.",
+            [(typeof(ManagerLayout<>), "Column")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
+            [(typeof(ManagerLayout<>), "SetRows")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
+            [(typeof(ManagerLayout<>), "MarkOf")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
+            [(typeof(ManagerLayout<>), "SetMark")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
+            [(typeof(ManagerLayout<>), "CycleMark")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
+            [(typeof(ManagerLayout<>), "ClearMarks")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
+            [(typeof(ManagerLayout<>), "OpenPlan")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
+            [(typeof(ManagerLayout<>), "Confirm")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
+            [(typeof(ManagerLayout<>), "CancelPlan")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
+            [(typeof(ManagerLayout<>), "SetProgress")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
+            [(typeof(ManagerLayout<>), "Finish")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
+            [(typeof(ManagerLayout<>), "SetSpace")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
+            [(typeof(ManagerLayout<>), "SetToolActions")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
             [(typeof(ConsolePane), nameof(ConsolePane.ResetHistoryRecall))] =
                 "sets one private field the template never sees; history recall is keyboard state, not display.",
             // As LunaTable's navigation three below: each asks about a row that exists only once the list is shown.

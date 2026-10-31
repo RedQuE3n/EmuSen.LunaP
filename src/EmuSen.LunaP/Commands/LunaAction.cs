@@ -1,6 +1,7 @@
 using System;
 using System.Windows.Input;
 using Avalonia.Input;
+using EmuSen.LunaP.Controls;
 
 namespace EmuSen.LunaP.Commands
 {
@@ -37,6 +38,8 @@ namespace EmuSen.LunaP.Commands
         private bool _isEnabled = true;
         private bool _isChecked;
         private bool _isCheckable;
+        private PadGlyphButton? _padButton;
+        private bool _isMain;
 
         private readonly Action<LunaAction>? _triggered;
 
@@ -77,7 +80,7 @@ namespace EmuSen.LunaP.Commands
         // Every surface built from this action re-reads it and updates itself. Raised for Text,
         // HelpText, Shortcut, IsEnabled, IsCheckable and IsChecked alike - a menu item cares about
         // all six, and one event with six subscribers beats six events with one each.
-        /// <summary>Raised whenever anything a surface displays changes: Text, HelpText, Shortcut, IsEnabled, IsCheckable or IsChecked. Every control built from this action follows it.</summary>
+        /// <summary>Raised whenever anything a surface displays changes: Text, HelpText, Shortcut, IsEnabled, IsCheckable, IsChecked, PadButton or IsMain. Every control built from this action follows it.</summary>
         public event Action<LunaAction>? Changed;
 
         // ICommand's own, which is what a stock Avalonia Button listens to. Raised alongside
@@ -164,6 +167,21 @@ namespace EmuSen.LunaP.Commands
                 Group?.Notify(this);
                 Changed?.Invoke(this);
             }
+        }
+
+        // The pad's button for it on a big screen, and whether it is the window's main action - see docs/LunaP.md §202.3.
+        /// <summary>The gamepad button that invokes this action in a big-screen form, shown in the help bar generated from it; null for an action the pad reaches only by focus.</summary>
+        public PadGlyphButton? PadButton
+        {
+            get => _padButton;
+            set => Set(ref _padButton, value);
+        }
+
+        /// <summary>Whether this is the window's main action: first among the big screen's buttons and its help-bar entries.</summary>
+        public bool IsMain
+        {
+            get => _isMain;
+            set => Set(ref _isMain, value);
         }
 
         // A rule rather than a command: a separator is an ACTION with nothing to do, not a second

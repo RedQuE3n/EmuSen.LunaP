@@ -123,6 +123,7 @@ namespace EmuSen.LunaP.Tests
             "LunaList<T>" => new LunaList<string> { ItemsSource = new[] { "alpha", "beta" } },
             "GroupedList<T>" => BuildGrouped(),
             "LunaTable<T>" => BuildTable(),
+            "ManagerLayout<T>" => ManagerLayoutTests.Cores(),
             "TileGrid<T>" => BuildTiles(),
             "TileStrip<T>" => BuildStrip(),
             nameof(SliderList) => BuildSliders(),

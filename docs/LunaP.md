@@ -13822,3 +13822,136 @@ and `PART_Clear` are the names to select by.
 `PathPickerTypingTests.A_clearable_row_picks_blank_from_Clear_and_from_a_blank_box` (Clear raises the empty string,
 disables itself and gives up the focus; a path set again enables it; a blank box committed is picked as blank) and
 `A_row_that_is_not_clearable_shows_no_Clear`; the default in `DocumentedDefaultTests`; the API baseline.
+
+## 202. One description, two forms: `AdaptiveLayout`
+
+### 202.1 The gap
+
+A window that had a big-screen form arranged it by hand. `MenuLook` (§196) restyles stock controls and `SheetLayer`
+(§90) presents a window as a sheet, but how the parts rearrange and where a pad's focus goes was written again in each
+window, and a window with both forms kept two arrangements of the same parts. Toolkits that serve phones, tablets and
+desktops settled the question the same way: libadwaita's split views and breakpoints, Material's canonical layouts
+(list-detail, supporting pane) and SwiftUI's `NavigationSplitView` all have a window say what each part *is* and leave
+the arrangement to the toolkit. `AdaptiveLayout` does that for LunaP (decided 2026-10-27 by EmuSen's tester, as stage
+T0 of its library tools, and built 2026-10-31).
+
+### 202.2 Roles
+
+A window gives its parts by role: **navigation** (sections, as `AdaptiveSection` records of a key, a label and an
+optional group), **content** and **detail** (controls), **actions** (`LunaAction`s), **search** (a box the layout
+owns, its text raised as `SearchChanged`) and **status** (a control). Navigation and actions are data rather than
+controls because they are what changes shape between the forms; the content and the detail are the window's own.
+
+| Role | Desktop | Big screen |
+|---|---|---|
+| navigation | a `SourceList` sidebar, grouped, in a `SplitPane` beside the rest | a row of section buttons at the top, changed by the shoulders |
+| content | beside the navigation, above the detail | the middle of the screen |
+| detail | beneath the content in a vertical `SplitPane` | its own page, opened by A on the content and closed by B |
+| actions | a `ToolBar` | a row of buttons, the main action first, and the help bar |
+| search | at the toolbar's right | at the section row's right |
+| status | the bottom line | above the help bar |
+
+The big-screen form turns `MenuLook` on for the whole layout, so stock controls inside it take the menus' type and
+palette without the window doing anything. A section, a detail or a search box that is not given is not shown, and
+takes no room in either form. `HostOf(role)` returns the panel a role is placed in, or null where the form does not
+show it, which is what a host or a test measures.
+
+### 202.3 Actions declared once
+
+`LunaAction` gains two properties: `PadButton`, the button that invokes it on a big screen, and `IsMain`. The layout
+generates the help bar from them, `Hints`, with ES-DE's grammar first: A (*Open* where there is a detail to open,
+*Select* otherwise), B *Back*, the shoulders *Section* where there are two or more sections, then each action with a
+pad button, the main one first. No window writes a hint by hand, and a hint cannot disagree with the action it names
+because both read the same object. `SetActions(actions, drawnElsewhere)` lets a window draw some actions itself (an
+apply bar's button, §203) while keeping their pad buttons, hints and shortcuts. The actions' key shortcuts are bound
+on the layout through `Menus.BindShortcuts` (§26.5).
+
+### 202.4 Focus from roles
+
+The pad's order follows the roles: navigation, content, detail, actions, skipping a role not shown (the detail on the
+big screen until its page is open). `MoveFocus(±1)` steps it, wrapping, and F6 and Shift+F6 do the same on a
+keyboard, the convention of desktop applications with panes. `Press(PadGlyphButton)` takes a pad's button in ES-DE's
+grammar and returns whether it used it, so a frontend's router can offer it a button first and keep what it declines:
+
+1. the shoulders step the sections, wrapping, raising `SectionChosen`;
+2. A on the content, on the big screen, opens the detail's page and focuses it;
+3. B goes back a level: the detail's page closes; the detail, actions or search give the focus to the content; on
+   the desktop the content gives it to the navigation; at the top B is declined, which is the host's signal to close;
+4. an action's own button invokes it, unless it is disabled, in which case the button is declined.
+
+Changing `Form` keeps the chosen section and puts the focus back in the role that held it. The menus' type
+re-templates stock controls, which drops the focus from a control whose template was replaced, so the focus is
+restored once the new templates are in, at `DispatcherPriority.Loaded`, not at the moment of the change.
+
+### 202.5 Tests
+
+`AdaptiveLayoutTests`: every role inside the window and none overlapping another, in both forms at 1280×800,
+1920×1200 and 1280×720 (the Steam Deck's and the Legion Go S's screens are the first two); every drawn action whole on
+the screen in the same six cases; the menus' type on in the big screen only; the help bar generated from the roles
+and pad buttons, the main action first; the pad walk through the roles in both forms and back; F6; the shoulders,
+wrapping, with `SelectSection` raising nothing; A opening the detail's page and B climbing a level at a time; an
+action's pad button, and a disabled one declined; a change of form keeping section and focus; a layout without
+sections or detail; `PadButton` and `IsMain` raising `Changed`. Seeded faults are recorded in §203.5.
+
+## 203. The manager frame: `ManagerLayout<T>`
+
+### 203.1 What it is
+
+The first canonical layout on `AdaptiveLayout`: the frame of Synaptic and Pamac, which EmuSen's Packages, Cores and
+library tools share. Navigation is the filters; content is a sortable table (`LunaTable<T>`) with a mark per row;
+detail is whatever the tool builds for the chosen row; status is an apply bar with the summary of the marked work,
+one progress line, the *Apply…* button and a space meter (`MeterRow`). It knows nothing of what a row is: the tool
+gives rows, columns, the marks each row is offered, how a row is filtered and searched, and the text of the plan.
+
+### 203.2 Columns, rows and the two forms
+
+`Column(column, bigScreen)` adds a column to the desktop's table and, where asked, to the big screen's. The two
+forms hold two tables over the same rows, because `LunaTable<T>`'s columns are fixed once added and a big screen
+shows a list of two or three columns at the menus' size rather than the desktop's eight. A change of form moves the
+selection to the other table. `SetRows` replaces the rows; `RowKey` names a row across refreshes, so that its mark and
+selection survive a refresh that brings a new copy of the same row, and the marks of rows that left are dropped.
+`InSection` and `SearchKey` filter what is shown; the search is a case-insensitive substring of the key.
+
+### 203.3 Marks, the plan and the run
+
+- **Mark, then apply.** `MarksFor(row)` lists the changes a row is offered; `SetMark` refuses any other, and
+  `CycleMark` (the *Mark* action, the X button) steps through them and back to none. A row offered nothing cannot be
+  marked.
+- **Nothing runs on a click.** *Apply…* (the main action, Start) shows the plan sheet, the tool's `Plan` text over
+  the content, with *Apply* and *Cancel*; B cancels and Start confirms. Only confirming raises `Applying` with the
+  marked rows.
+- **One progress line.** While the work runs, marking and *Apply…* wait; the tool reports with `SetProgress`
+  (a fraction, or null for an unknown amount, and a line in its own words) and ends with `Finish`, which clears the
+  marks unless told not to.
+- *Apply…* is drawn in the apply bar, not in the toolbar, through `SetActions`' `drawnElsewhere` (§202.3); its pad
+  button and hint stay.
+
+### 203.4 What it was checked against
+
+`ManagerLayoutTests` builds the frame twice, with EmuSen Packages' columns and filters (`EmuSen_Packages.md` §3) and
+with Cores' (`EmuSen_Cores.md` §2.1), and holds both to fit: every role whole and apart, and the apply bar's button
+and meter whole, in both forms at 1280×800, 1920×1200 and 1280×720. Then: the big screen's list with only its
+columns and the selection kept across the change; sections and search filtering; marks only as offered, cycling back
+to none, the X button marking the chosen row; nothing run until the plan is confirmed, B cancelling it, marks and
+Apply waiting while the work runs, progress shown and `Finish` clearing; marks surviving a refresh of their row and
+dropped with a row that left; the detail following the chosen row; *Apply…* in the apply bar with its Start hint.
+
+### 203.5 Seeded faults
+
+Measured on 2026-10-31, each reverted after its run:
+
+| Fault | Caught by |
+|---|---|
+| the help bar leaves out the actions' pad buttons | `The_help_bar_is_generated_from_the_roles_and_the_actions_pad_buttons`, `Apply_is_drawn_in_the_apply_bar_…` |
+| the focus order skips the detail on the desktop | `The_pad_walks_every_role_in_order_and_back(Desktop)`, `F6_moves_between_roles_on_the_desktop` |
+| the big screen does not turn the menus' type on | `The_big_screen_is_in_the_menus_type_and_the_desktop_is_not` |
+| `SetMark` accepts a mark the row is not offered | `A_row_is_marked_only_for_what_it_is_offered_…` |
+| `Confirm` raises `Applying` with no plan open, and Start skips the plan | `Nothing_runs_until_the_plan_is_confirmed_…` |
+| `SetRows` keeps the marks of rows that left | survived the first run, since `Marked` lists only rows present; the test now brings the row back and requires it unmarked, and `Marks_survive_a_refresh_of_their_rows_…` catches it |
+
+### 203.6 A disabled button in the palette
+
+The palette sweep (§85) found that a disabled stock `Button` painted its words in Fluent's translucent white
+(`#66FFFFFF`), outside LunaPalette: ManagerLayout's *Apply…* is disabled until a row is marked, and no earlier kit
+control had shown a disabled button to the sweep. `FluentBridge.axaml` now maps `ButtonForegroundDisabled` to
+`LunaMuted`, for every disabled button in an application on the theme.

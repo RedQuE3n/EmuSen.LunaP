@@ -146,6 +146,16 @@ namespace EmuSen.LunaP.Tests
         // A claim the sweep finds and this file does not check, with the reason it cannot be.
         private static readonly Dictionary<string, string> Exempt = new()
         {
+            ["P:EmuSen.LunaP.Controls.ManagerLayout`1.RowKey"] =
+                "a delegate, whose default is only observable by its effect: ManagerLayoutTests' marks follow the row "
+                + "itself where RowKey is left alone, as the PaletteReach and Accessibility builds do.",
+            ["P:EmuSen.LunaP.Controls.ManagerLayout`1.Summarize"] =
+                "a delegate left null; the line it stands for is read by value in "
+                + "ManagerLayoutTests.A_row_is_marked_only_for_what_it_is_offered_and_the_mark_cycles_back_to_none.",
+            ["P:EmuSen.LunaP.Controls.ManagerLayout`1.Plan"] =
+                "a delegate left null, falling back to Summarize and then the count per mark, the same function as "
+                + "Summarize's default above.",
+
             ["P:EmuSen.LunaP.Settings.LunaSettings.Diagnostics"] =
                 "a process-global static that the suite itself assigns; reading it back at any point in a "
                 + "run measures whichever test ran last, not the default. Its initial null is a field "

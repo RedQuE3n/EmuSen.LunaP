@@ -26,12 +26,14 @@ public sealed class EmuSen.LunaP.Commands.LunaAction : System.Windows.Input.ICom
     public Avalonia.Input.KeyGesture? Shortcut { get; set; }
     public EmuSen.LunaP.Commands.ActionGroup? Group { get; }
     public EmuSen.LunaP.Commands.LunaMenu? Submenu { get; set; }
+    public EmuSen.LunaP.Controls.PadGlyphButton? PadButton { get; set; }
     public LunaAction(string text, System.Action triggered)
     public LunaAction(string text, System.Action<EmuSen.LunaP.Commands.LunaAction>? triggered = null)
     public bool HasHandler { get; }
     public bool IsCheckable { get; set; }
     public bool IsChecked { get; set; }
     public bool IsEnabled { get; set; }
+    public bool IsMain { get; set; }
     public bool IsSeparator { get; }
     public event System.Action<EmuSen.LunaP.Commands.LunaAction> Changed
     public event System.Action<EmuSen.LunaP.Commands.LunaAction> Invoked
@@ -78,6 +80,68 @@ public class EmuSen.LunaP.Controls.ActionToggle : Avalonia.Controls.Primitives.T
     public ActionToggle(EmuSen.LunaP.Commands.LunaAction action)
     public EmuSen.LunaP.Commands.LunaAction Action { get; }
     public const string StyleClass = "luna-action-toggle"
+
+public enum EmuSen.LunaP.Controls.AdaptiveForm
+    public const EmuSen.LunaP.Controls.AdaptiveForm BigScreen = 1
+    public const EmuSen.LunaP.Controls.AdaptiveForm Desktop = 0
+    public int value__
+
+public class EmuSen.LunaP.Controls.AdaptiveLayout : Avalonia.Controls.Border
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public AdaptiveLayout()
+    public Avalonia.Controls.Control? Content { get; set; }
+    public Avalonia.Controls.Control? Detail { get; set; }
+    public Avalonia.Controls.Control? HostOf(EmuSen.LunaP.Controls.AdaptiveRole role)
+    public Avalonia.Controls.Control? Status { get; set; }
+    public EmuSen.LunaP.Controls.AdaptiveForm Form { get; set; }
+    public EmuSen.LunaP.Controls.AdaptiveRole? FocusedRole { get; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Commands.LunaAction> Actions { get; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.AdaptiveSection> Sections { get; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry> Hints { get; }
+    public bool CloseDetail()
+    public bool FocusRole(EmuSen.LunaP.Controls.AdaptiveRole role)
+    public bool HasSearch { get; set; }
+    public bool IsDetailOpen { get; }
+    public bool MoveFocus(int by)
+    public bool OpenDetail()
+    public bool SelectSection(string key)
+    public bool StepSection(int by)
+    public const string MainClass = "adaptive-main"
+    public event System.Action<string> SearchChanged
+    public event System.Action<string> SectionChosen
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.AdaptiveForm> FormProperty = Desktop
+    public string SearchText { get; set; }
+    public string Title { get; set; }
+    public string? SearchHint { get; set; }
+    public string? SelectedSection { get; }
+    public virtual bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
+    public void SetActions(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> actions)
+    public void SetActions(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> actions, System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> drawnElsewhere)
+    public void SetSections(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.AdaptiveSection> sections, string? selected = null)
+
+public enum EmuSen.LunaP.Controls.AdaptiveRole
+    public const EmuSen.LunaP.Controls.AdaptiveRole Actions = 3
+    public const EmuSen.LunaP.Controls.AdaptiveRole Content = 1
+    public const EmuSen.LunaP.Controls.AdaptiveRole Detail = 2
+    public const EmuSen.LunaP.Controls.AdaptiveRole Navigation = 0
+    public const EmuSen.LunaP.Controls.AdaptiveRole Search = 4
+    public const EmuSen.LunaP.Controls.AdaptiveRole Status = 5
+    public int value__
+
+public sealed class EmuSen.LunaP.Controls.AdaptiveSection : System.IEquatable<EmuSen.LunaP.Controls.AdaptiveSection>
+    public AdaptiveSection(string Key, string Label, string? Group = null)
+    public bool Equals(EmuSen.LunaP.Controls.AdaptiveSection? other)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.AdaptiveSection? left, EmuSen.LunaP.Controls.AdaptiveSection? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.AdaptiveSection? left, EmuSen.LunaP.Controls.AdaptiveSection? right)
+    public string Key { get; init; }
+    public string Label { get; init; }
+    public string? Group { get; init; }
+    public void Deconstruct(out string Key, out string Label, out string? Group)
 
 public sealed class EmuSen.LunaP.Controls.BadgeEntry : System.IEquatable<EmuSen.LunaP.Controls.BadgeEntry>
     public BadgeEntry(EmuSen.LunaP.Controls.BadgeKind Kind)
@@ -217,17 +281,23 @@ public class EmuSen.LunaP.Controls.ConsolePane : Avalonia.Controls.Primitives.Te
     protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
     public ConsolePane()
     public System.Func<System.Collections.Generic.IReadOnlyList<string>>? HistorySource { get; set; }
+    public bool OutputFocusable { get; set; }
     public event System.Action<string> Submitted
     public int MaxLines { get; set; }
     public static bool Follows(double offsetY, double extentHeight, double viewportHeight)
     public static readonly Avalonia.StyledProperty<int> MaxLinesProperty = 5000
     public static readonly Avalonia.StyledProperty<string> PromptProperty = ""
+    public string InputText { get; }
     public string OutputText { get; }
     public string Prompt { get; set; }
     public void AppendLine(string text)
     public void Clear()
     public void FocusInput()
+    public void HistoryBack()
+    public void HistoryForward()
+    public void Insert(string text)
     public void ResetHistoryRecall()
+    public void SetInput(string text)
 
 public class EmuSen.LunaP.Controls.ControllerDiagram : Avalonia.Controls.Control, Avalonia.Rendering.ICustomHitTest
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
@@ -1175,6 +1245,70 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public void Select(T? item)
     public void SelectCell(T item, int column)
     public void SortBy(int column, bool descending = false)
+
+public class EmuSen.LunaP.Controls.ManagerLayout<T> : EmuSen.LunaP.Controls.AdaptiveLayout where T : class
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public EmuSen.LunaP.Commands.LunaAction Apply { get; }
+    public EmuSen.LunaP.Commands.LunaAction Mark { get; }
+    public EmuSen.LunaP.Controls.LunaTable<T> BigScreenTable { get; }
+    public EmuSen.LunaP.Controls.LunaTable<T> Table { get; }
+    public EmuSen.LunaP.Controls.ManagerLayout<T> Column(EmuSen.LunaP.Controls.LunaColumn<T> column, bool bigScreen = false)
+    public EmuSen.LunaP.Controls.ManagerMark? CycleMark(T row)
+    public EmuSen.LunaP.Controls.ManagerMark? MarkOf(T row)
+    public ManagerLayout<T>()
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.ManagerMarked<T>> Marked { get; }
+    public System.Collections.Generic.IReadOnlyList<T> Rows { get; }
+    public System.Collections.Generic.IReadOnlyList<T> Shown { get; }
+    public System.Func<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.ManagerMarked<T>>, string>? Plan { get; set; }
+    public System.Func<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.ManagerMarked<T>>, string>? Summarize { get; set; }
+    public System.Func<T, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.ManagerMark>>? MarksFor { get; set; }
+    public System.Func<T, object> RowKey { get; set; }
+    public System.Func<T, string, bool>? InSection { get; set; }
+    public System.Func<T, string>? SearchKey { get; set; }
+    public System.Func<T?, Avalonia.Controls.Control?>? DetailFor { get; set; }
+    public T? Selected { get; }
+    public bool CancelPlan()
+    public bool Confirm()
+    public bool IsPlanOpen { get; }
+    public bool IsRunning { get; }
+    public bool OpenPlan()
+    public bool SetMark(T row, string? key)
+    public const string PlanClass = "manager-plan"
+    public event System.Action MarksChanged
+    public event System.Action<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.ManagerMarked<T>>> Applying
+    public override bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
+    public string PlanText { get; }
+    public string SummaryText { get; }
+    public void ClearMarks()
+    public void Finish(bool clearMarks = true)
+    public void SetProgress(double? fraction, string line)
+    public void SetRows(System.Collections.Generic.IEnumerable<T> rows)
+    public void SetSpace(string text, double fraction)
+    public void SetToolActions(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> actions)
+
+public sealed class EmuSen.LunaP.Controls.ManagerMark : System.IEquatable<EmuSen.LunaP.Controls.ManagerMark>
+    public ManagerMark(string Key, string Label)
+    public bool Equals(EmuSen.LunaP.Controls.ManagerMark? other)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.ManagerMark? left, EmuSen.LunaP.Controls.ManagerMark? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.ManagerMark? left, EmuSen.LunaP.Controls.ManagerMark? right)
+    public string Key { get; init; }
+    public string Label { get; init; }
+    public void Deconstruct(out string Key, out string Label)
+
+public struct EmuSen.LunaP.Controls.ManagerMarked<T> : System.ValueType, System.IEquatable<EmuSen.LunaP.Controls.ManagerMarked<T>>
+    public EmuSen.LunaP.Controls.ManagerMark Mark { get; init; }
+    public ManagerMarked<T>(T? Row, EmuSen.LunaP.Controls.ManagerMark Mark)
+    public T? Row { get; init; }
+    public bool Equals(EmuSen.LunaP.Controls.ManagerMarked<T> other)
+    public override bool Equals(object obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.ManagerMarked<T> left, EmuSen.LunaP.Controls.ManagerMarked<T> right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.ManagerMarked<T> left, EmuSen.LunaP.Controls.ManagerMarked<T> right)
+    public void Deconstruct(out T? Row, out EmuSen.LunaP.Controls.ManagerMark Mark)
 
 public class EmuSen.LunaP.Controls.MenuBar : Avalonia.Controls.Menu
     protected override System.Type StyleKeyOverride { get; }

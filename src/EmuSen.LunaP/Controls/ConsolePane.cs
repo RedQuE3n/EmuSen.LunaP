@@ -216,9 +216,11 @@ namespace EmuSen.LunaP.Controls
         public string InputText => _input?.Text ?? "";
 
         /// <summary>Replaces the input box text and puts the caret at its end.</summary>
+        /// <param name="text">The whole line to put in the input box.</param>
         public void SetInput(string text) => SetInputText(text);
 
         /// <summary>Inserts text at the caret in the input box.</summary>
+        /// <param name="text">What to insert where the caret stands.</param>
         public void Insert(string text)
         {
             if (_input is null) return;

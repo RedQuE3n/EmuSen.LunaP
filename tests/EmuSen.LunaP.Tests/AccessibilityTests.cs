@@ -88,6 +88,10 @@ namespace EmuSen.LunaP.Tests
             { nameof(MenuPanel), AutomationControlType.Menu },
             { nameof(MenuRow), AutomationControlType.ListItem },
             { nameof(MenuFieldRow), AutomationControlType.ListItem },
+
+            // §202, §203. A layout of roles is a pane of the window, named by its title.
+            { nameof(AdaptiveLayout), AutomationControlType.Pane },
+            { "ManagerLayout<T>", AutomationControlType.Pane },
         };
 
         [Theory]
@@ -475,6 +479,8 @@ namespace EmuSen.LunaP.Tests
         {
             nameof(MeterRow) => new MeterRow { Label = "CPU", Percent = 62, ValueText = "62.0%" },
             nameof(MeterList) => new MeterList(),
+            nameof(AdaptiveLayout) => new AdaptiveLayout { Title = "Cores", Content = new ListBox() },
+            "ManagerLayout<T>" => ManagerLayoutTests.Cores(),
             nameof(EmptyState) => new EmptyState { Message = "Nothing loaded", Detail = "Open a ROM to begin." },
             nameof(FieldRow) => new FieldRow { Label = "Save folder", Hint = "Where states are written", Content = new TextBox() },
             nameof(PathPickerRow) => new PathPickerRow { BrowseTitle = "Choose a save folder" },
