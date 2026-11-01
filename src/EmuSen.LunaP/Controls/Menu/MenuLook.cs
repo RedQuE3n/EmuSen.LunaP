@@ -145,6 +145,10 @@ namespace EmuSen.LunaP.Controls
         {
             var palette = (ResourceDictionary)AvaloniaXamlLoader.Load(new Uri("avares://EmuSen.LunaP/Theme/MenuPalette.axaml"));
             if (light) palette.MergedDictionaries[0] = (ResourceDictionary)AvaloniaXamlLoader.Load(new Uri("avares://EmuSen.LunaP/Theme/Tokens/Light.axaml"));
+            // Fluent reads these two as colours, which a resource cannot alias, so they are copied from the column (§206.1).
+            var tokens = (ResourceDictionary)palette.MergedDictionaries[0];
+            palette["ScrollBarThumbBackgroundColor"] = tokens["LunaBorderColor"];
+            palette["SystemChromeLowColor"] = tokens["LunaSurfaceRaisedColor"];
             return palette;
         }
 

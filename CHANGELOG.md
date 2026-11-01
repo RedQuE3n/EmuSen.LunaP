@@ -22,7 +22,7 @@ answer.
   `LunaSounds` (nine synthesised cues). `MenuLook.IsLight`, `CreatePalette(bool)` and `CreateStyles(bool)` for a light
   big screen. **Behaviour changes:** the dark desktop's Surface, InputSurface, Accent, OnAccent, Muted, Border, Success
   and Error move to the design's values (§206.1); every window's words are Barlow at 13 rather than Inter at 14; the
-  look draws in Barlow and Barlow Condensed and no longer reads `MenuLook.FontFamilyKey`; the look's and `MenuRow`'s
+  look keeps its words in Barlow Condensed at 24 and no longer reads `MenuLook.FontFamilyKey`; the look's and `MenuRow`'s
   focused row is the raised surface with an accent bar at its left rather than near black; `MenuRow` and `MenuPanel`
   take their colours from the palette in reach.
 

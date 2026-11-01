@@ -14103,6 +14103,11 @@ property of a ten-foot and a desktop interface, and the values are the design's,
   palettes. A brush re-resolves its colour from the element that uses it, so a menu inside a `MenuPanel` reads the
   panel's flat dark (or light) colours while a desktop window reads the application's variant.
   `InterfaceTokenTests.The_big_screen_stays_dark_on_a_light_desktop_and_takes_light_when_asked` holds this.
+- **Fluent's colour keys.** Two keys Fluent reads as colours rather than brushes, `ScrollBarThumbBackgroundColor` and
+  `SystemChromeLowColor`, cannot alias a token, because a colour resource cannot refer to another. `CreatePalette`
+  copies them from the column it chose (Border and SurfaceRaised). The first build of the tokens left them out, and a
+  framed sheet then painted Fluent's dark defaults, `#FFFFFF33` on a scroll bar and `#171717` under a cheat list,
+  which the consumer's fit audit reported as colours outside the palette (measured 2026-11-01).
 - **New tokens:** `SurfaceRaised` (cards, tiles, a focused row's bar), `Scrim` (black at 55%, over a frame or a theme
   under a card), `TextStrong` (titles, the focused row), `Attention` (a status needing the player; `Info` is kept as
   its older name with the same value), `OnArt` with `OnArtScrimColor` and the `LunaOnArtScrim` gradient (words over a
@@ -14155,8 +14160,12 @@ licence section carries the notice.
 
 `LunaBodyFontFamily` is Barlow and `LunaTitleFontFamily` and `LunaDisplayFontFamily` are Barlow Condensed in both
 forms, Display at medium weight. FluentTheme's `ContentControlThemeFontFamily` is Barlow, so every window's words are
-Barlow unless they choose otherwise. The look (§196) draws its words in Barlow and its headings and tabs in Barlow
-Condensed; `MenuLook.FontFamilyKey` is no longer read. Barlow is narrower than Inter at the same size: two of this
+Barlow unless they choose otherwise. The look (§196) keeps its words in Barlow Condensed at 24, as before §206, with
+its headings and tabs; `MenuLook.FontFamilyKey` is no longer read. Its words were first moved to Barlow at the big
+screen's Body, 22, and the consumer's fit audit of its framed sheets then failed in 23 of their states at both sizes:
+Barlow is wider than Barlow Condensed, so buttons ran past their bars and labels ended in an ellipsis, and a
+controller drawing, whose labels follow the size of the text around them, set them at 16.3 design px, whose capitals
+are under the floor of §204.2 (measured 2026-11-01). The sheets move to Barlow when the Card form rebuilds them. Barlow is narrower than Inter at the same size: two of this
 suite's tests had clicked or measured at coordinates that held only for Inter's widths and were rewritten to derive
 them from the control (`TableFrozenTests`, `MenuFollowupTests`).
 

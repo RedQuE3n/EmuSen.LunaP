@@ -9,7 +9,7 @@
 
          Every colour is a token of the palette, and the focus is the interface's
          row bar: the raised surface, an accent bar at the left and the strong text
-         (§206.4). Words are Barlow, titles Barlow Condensed (§206.3).
+         (§206.4). Words stay in Barlow Condensed at 24 until the Card form (§206.3).
 
          Sizes are design pixels for a screen 800 high: a host that scales its
          menus (MenuPanel.Scale) lays this content out under the same scale. -->
@@ -18,8 +18,8 @@
 
     <!-- The element itself: the typeface, its size and colour, inherited by all text under it. -->
     <Style Selector=":is(Control).menu-look">
-        <Setter Property="TextElement.FontFamily" Value="{DynamicResource LunaBodyFontFamily}" />
-        <Setter Property="TextElement.FontSize" Value="{DynamicResource LunaBodyFontSize}" />
+        <Setter Property="TextElement.FontFamily" Value="{DynamicResource LunaTitleFontFamily}" />
+        <Setter Property="TextElement.FontSize" Value="24" />
         <Setter Property="TextElement.Foreground" Value="{DynamicResource LunaText}" />
     </Style>
 

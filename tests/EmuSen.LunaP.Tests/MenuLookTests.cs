@@ -55,7 +55,7 @@ namespace EmuSen.LunaP.Tests
             Assert.False(MenuLook.Covers(plainButton));
             Assert.Equal("APPLY", Shown(lookButton));
             Assert.Equal("Apply", Shown(plainButton));
-            Assert.Same(LunaFonts.Body, lookList.GetVisualDescendants().OfType<TextBlock>().First().FontFamily);
+            Assert.Same(LunaFonts.Condensed, lookList.GetVisualDescendants().OfType<TextBlock>().First().FontFamily);
             Assert.NotSame(family, plainList.GetVisualDescendants().OfType<TextBlock>().First().FontFamily);
 
             // Since §206 the desktop and the big screen share the input surface, so both sides paint it.

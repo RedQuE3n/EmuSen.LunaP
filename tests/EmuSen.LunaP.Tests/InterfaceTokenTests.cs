@@ -53,6 +53,22 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(Color.Parse(light), bl);
         });
 
+        // Fluent reads these as colours, so the big screen's palette copies them from its column; missing, a sheet painted Fluent's dark defaults (§206.1).
+        [Theory]
+        [InlineData("ScrollBarThumbBackgroundColor", "LunaBorderColor")]
+        [InlineData("SystemChromeLowColor", "LunaSurfaceRaisedColor")]
+        public Task The_big_screen_gives_Fluents_colour_keys_its_columns_tokens(string key, string token) => UiTest.Run(() =>
+        {
+            foreach (bool light in new[] { false, true })
+            {
+                ResourceDictionary palette = MenuLook.CreatePalette(light);
+                Assert.True(palette.TryGetResource(key, null, out object? got), key);
+                Assert.True(palette.TryGetResource(token, null, out object? want), token);
+                Assert.IsType<Color>(got);
+                Assert.Equal(want, got);
+            }
+        });
+
         // Foreground, background and the floor: 4.5 for words (WCAG 1.4.3), 3 for a control's edge or fill (1.4.11).
         public static readonly TheoryData<string, string, string, double> Pairs = PairsInBothVariants();
 
