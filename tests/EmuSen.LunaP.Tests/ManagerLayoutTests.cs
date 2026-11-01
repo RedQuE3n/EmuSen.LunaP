@@ -109,7 +109,7 @@ namespace EmuSen.LunaP.Tests
         {
             var data = new TheoryData<string, AdaptiveForm, int, int>();
             foreach (string tool in new[] { "Cores", "Packages" })
-                foreach (AdaptiveForm form in Enum.GetValues<AdaptiveForm>())
+                foreach (AdaptiveForm form in new[] { AdaptiveForm.Desktop, AdaptiveForm.BigScreen })
                     foreach ((int w, int h) in new[] { (1280, 800), (1920, 1200), (1280, 720) })
                         data.Add(tool, form, w, h);
             return data;

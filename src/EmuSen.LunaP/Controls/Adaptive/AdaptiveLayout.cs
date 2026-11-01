@@ -8,9 +8,13 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia.Media.Immutable;
+using Avalonia.Styling;
 using Avalonia.VisualTree;
 using EmuSen.LunaP.Automation;
 using EmuSen.LunaP.Commands;
+using EmuSen.LunaP.Theme;
 
 namespace EmuSen.LunaP.Controls
 {
@@ -21,6 +25,8 @@ namespace EmuSen.LunaP.Controls
         Desktop,
         /// <summary>The big screen's: sections in a row changed by the shoulders, the content in the menus' type, the detail its own page, the actions as buttons and a help bar, for a pad.</summary>
         BigScreen,
+        /// <summary>A card over what it pauses or covers: the content in a panel at the left over a scrim, the detail in the room beside it, the header as the panel's title row, no navigation, and the actions in the help bar alone.</summary>
+        Card,
     }
 
     /// <summary>What a part of a window is, which decides where AdaptiveLayout puts it and where the pad's focus goes.</summary>
@@ -38,7 +44,16 @@ namespace EmuSen.LunaP.Controls
         Search,
         /// <summary>A line of state beneath everything else.</summary>
         Status,
+        /// <summary>The title row: a small picture, a title on one line, a subtitle and facts.</summary>
+        Header,
     }
+
+    /// <summary>What a window's header shows: a title on one line, never wrapped, with an optional picture before it, a subtitle and a line of facts.</summary>
+    /// <param name="Title">The window's or the thing's name.</param>
+    /// <param name="Subtitle">Smaller words under the title, such as where the page is; null for none.</param>
+    /// <param name="Picture">A small picture before the title, such as a game's cover; null for none.</param>
+    /// <param name="Facts">A line of facts or a status; null for none.</param>
+    public sealed record AdaptiveHeader(string Title, string? Subtitle = null, IImage? Picture = null, string? Facts = null);
 
     /// <summary>Where the big screen's form puts the detail role; the desktop always puts it beneath the content.</summary>
     public enum AdaptiveDetailPlacement
@@ -71,6 +86,10 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<double> ContentShareProperty =
             AvaloniaProperty.Register<AdaptiveLayout, double>(nameof(ContentShare), 0.4);
 
+        /// <summary>Defines the SwapsAcceptAndBack property.</summary>
+        public static readonly StyledProperty<bool> SwapsAcceptAndBackProperty =
+            AvaloniaProperty.Register<AdaptiveLayout, bool>(nameof(SwapsAcceptAndBack));
+
         /// <summary>The style class on the big screen's button for the main action, which stands first in its row.</summary>
         public const string MainClass = "adaptive-main";
 
@@ -89,6 +108,17 @@ namespace EmuSen.LunaP.Controls
         private readonly Border _actionsHost = new() { Name = "AdaptiveActions" };
         private readonly Border _searchHost = new() { Name = "AdaptiveSearch" };
         private readonly Border _statusHost = new() { Name = "AdaptiveStatus" };
+        private readonly Border _headerHost = new() { Name = "AdaptiveHeader" };
+
+        // The Card form's parts: the panel the roles are placed into, the rows' and the pane's hosts in the body type, and the scrim under them (§207).
+        private readonly MenuPanel _cardPanel = new() { Name = "AdaptiveCard", Anchor = MenuAnchor.Left, WidthFraction = CardShare, MaxWidthToHeight = 4, TitleSize = 32, TitleMinScale = 0.55, TitleMaxLines = 1, PanelCornerRadius = 8 };
+        private readonly Border _cardRows = new() { Name = "AdaptiveCardRows" };
+        private readonly Border _cardPane = new() { Name = "AdaptiveCardPane" };
+        private readonly Panel _cardScrim = new() { Name = "AdaptiveCardScrim" };
+        private static readonly IBrush DefaultScrim = new ImmutableSolidColorBrush(Color.FromArgb(0x8C, 0, 0, 0));
+
+        /// <summary>The panel's share of the width in the Card form, 40 per cent.</summary>
+        public const double CardShare = 0.4;
 
         private readonly List<SplitPane> _splits = new();
         private SplitPane? _sectionSplit;
@@ -99,6 +129,7 @@ namespace EmuSen.LunaP.Controls
         private Control? _content;
         private Control? _detail;
         private Control? _status;
+        private AdaptiveHeader? _header;
         private string? _selectedSection;
         private bool _hasSearch;
         private bool _detailOpen;
@@ -117,6 +148,7 @@ namespace EmuSen.LunaP.Controls
             AutomationProperties.SetName(_search, "Search");
             AutomationProperties.SetName(_sidebar, "Sections");
             AutomationProperties.SetName(_toolBar, "Actions");
+            SetUpCard();
             Arrange();
         }
 
@@ -141,8 +173,25 @@ namespace EmuSen.LunaP.Controls
             set => SetValue(ContentShareProperty, value);
         }
 
-        // The detail stands beside the content on the big screen, so it has no page to open.
-        private bool DetailBeside => Form == AdaptiveForm.BigScreen && DetailPlacement == AdaptiveDetailPlacement.Beside;
+        /// <summary>Whether the help bar and the pad take East as Select and South as Back, as a player's swap of the two asks; false by default.</summary>
+        public bool SwapsAcceptAndBack
+        {
+            get => GetValue(SwapsAcceptAndBackProperty);
+            set => SetValue(SwapsAcceptAndBackProperty, value);
+        }
+
+        // The detail stands beside the content on the big screen or in a card, so it has no page to open.
+        private bool DetailBeside => Form == AdaptiveForm.Card || (Form == AdaptiveForm.BigScreen && DetailPlacement == AdaptiveDetailPlacement.Beside);
+
+        /// <summary>The header role: drawn as a title row above everything on the desktop and the big screen, and as the card's title row in the Card form, so no window draws its own; null shows none.</summary>
+        public AdaptiveHeader? Header
+        {
+            get => _header;
+            set { _header = value; ShowHeader(); }
+        }
+
+        /// <summary>The panel the Card form places the content, the detail, the header and the help bar into, for a host that animates it or a test that measures it; it is shown only in that form.</summary>
+        public MenuPanel CardPanel => _cardPanel;
 
         /// <summary>The window's name, which a reader hears for the layout as a whole.</summary>
         /// <exception cref="System.ArgumentNullException">The value is null.</exception>
@@ -162,7 +211,7 @@ namespace EmuSen.LunaP.Controls
         public Control? Content
         {
             get => _content;
-            set { _content = value; _contentHost.Child = value; }
+            set { _content = value; _contentHost.Child = value; if (Form == AdaptiveForm.Card) _cardPanel.Hints = Hints; }
         }
 
         /// <summary>The detail role; on the big screen it is a page of its own, opened with OpenDetail.</summary>
@@ -218,9 +267,10 @@ namespace EmuSen.LunaP.Controls
             get
             {
                 var hints = new List<HintEntry>();
-                if (_content is not null) hints.Add(new HintEntry(IsDetailOpen || _detail is null || DetailBeside ? "Select" : "Open") { Button = PadGlyphButton.South });
-                hints.Add(new HintEntry("Back") { Button = PadGlyphButton.East });
-                if (_sections.Count > 1) hints.Add(new HintEntry("Section") { Button = PadGlyphButton.Shoulders });
+                PadGlyphButton accept = SwapsAcceptAndBack ? PadGlyphButton.East : PadGlyphButton.South, back = SwapsAcceptAndBack ? PadGlyphButton.South : PadGlyphButton.East;
+                if (_content is not null) hints.Add(new HintEntry(IsDetailOpen || _detail is null || DetailBeside ? "Select" : "Open") { Button = accept });
+                hints.Add(new HintEntry("Back") { Button = back });
+                if (_sections.Count > 1 && Form != AdaptiveForm.Card) hints.Add(new HintEntry("Section") { Button = PadGlyphButton.Shoulders });
                 foreach (LunaAction action in Padded().OrderByDescending(a => a.IsMain))
                     hints.Add(new HintEntry(action.Text) { Button = action.PadButton });
                 return hints;
@@ -314,6 +364,7 @@ namespace EmuSen.LunaP.Controls
                 AdaptiveRole.Detail => _detailHost,
                 AdaptiveRole.Actions => _actionsHost,
                 AdaptiveRole.Search => _searchHost,
+                AdaptiveRole.Header => _headerHost,
                 _ => _statusHost,
             };
             return host.IsEffectivelyVisible && host.GetVisualAncestors().Contains(this) ? host : null;
@@ -365,10 +416,11 @@ namespace EmuSen.LunaP.Controls
         /// <returns>Whether the layout used it; a button it declines is the host's, such as B at the top level closing the window.</returns>
         public virtual bool Press(PadGlyphButton button)
         {
+            if (SwapsAcceptAndBack) button = button switch { PadGlyphButton.South => PadGlyphButton.East, PadGlyphButton.East => PadGlyphButton.South, _ => button };
             switch (button)
             {
-                case PadGlyphButton.LeftShoulder: return StepSection(-1);
-                case PadGlyphButton.RightShoulder: return StepSection(1);
+                case PadGlyphButton.LeftShoulder when Form != AdaptiveForm.Card: return StepSection(-1);
+                case PadGlyphButton.RightShoulder when Form != AdaptiveForm.Card: return StepSection(1);
                 case PadGlyphButton.South when Form == AdaptiveForm.BigScreen && !IsDetailOpen && FocusedRole == AdaptiveRole.Content:
                     return OpenDetail();
                 case PadGlyphButton.East:
@@ -387,7 +439,7 @@ namespace EmuSen.LunaP.Controls
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);
-            if (change.Property == FormProperty || change.Property == DetailPlacementProperty || change.Property == ContentShareProperty)
+            if (change.Property == FormProperty || change.Property == DetailPlacementProperty || change.Property == ContentShareProperty || change.Property == SwapsAcceptAndBackProperty)
             {
                 AdaptiveRole? focused = FocusedRole;
                 if (Form == AdaptiveForm.Desktop || DetailBeside) _detailOpen = false;
@@ -475,6 +527,10 @@ namespace EmuSen.LunaP.Controls
         {
             _navigationHost.Child = null;
             _actionsHost.Child = null;
+            _cardPanel.Child = null;
+            _cardPanel.Pane = null;
+            _cardRows.Child = null;
+            _cardPane.Child = null;
             foreach (SplitPane split in _splits)
             {
                 split.First = null;
@@ -484,7 +540,7 @@ namespace EmuSen.LunaP.Controls
             _sectionSplit = null;
             FillNavigation();
             FillActions();
-            bool big = Form == AdaptiveForm.BigScreen;
+            bool big = Form != AdaptiveForm.Desktop;
             MenuLook.SetIsOn(this, big);
 
             _searchHost.Child ??= _search;
@@ -493,7 +549,84 @@ namespace EmuSen.LunaP.Controls
             _actionsHost.IsVisible = _actions.Any(a => !a.IsSeparator);
             _statusHost.IsVisible = _status is not null;
 
-            Child = big ? ArrangeBigScreen() : ArrangeDesktop();
+            ShowHeader();
+            Child = Form switch { AdaptiveForm.Card => ArrangeCard(), AdaptiveForm.BigScreen => ArrangeBigScreen(), _ => ArrangeDesktop() };
+        }
+
+        // The card's fixed parts: the panel over the scrim, the rows in Barlow at the big screen's Row size and in the words' own case, the pane in Barlow (§207.2).
+        private void SetUpCard()
+        {
+            _cardScrim.Children.Add(_cardPanel);
+            _cardScrim.Bind(Panel.BackgroundProperty, _cardScrim.GetResourceObservable("LunaScrim", r => r as IBrush ?? DefaultScrim));
+            MenuPanel.SetFontPath(_cardPanel, Media.LunaFonts.CondensedFile);
+            MenuPanel.SetFontPath(_cardRows, Media.LunaFonts.BodyFile);
+            MenuPanel.SetFontPath(_cardPane, Media.LunaFonts.BodyFile);
+            _cardRows.Styles.Add(new Style(x => x.OfType<MenuRow>())
+            {
+                Setters = { new Setter(MenuRow.TextSizeProperty, LunaTokens.BigScreenType.Row), new Setter(MenuRow.LetterCaseProperty, Media.LetterCase.None) },
+            });
+        }
+
+        private Control ArrangeCard()
+        {
+            Detach(_hintBar);
+            _contentHost.IsVisible = true;
+            _detailHost.IsVisible = _detail is not null;
+            _detailHost.Margin = default;
+            _cardRows.Child = Detach(_contentHost);
+            _cardPanel.Child = _cardRows;
+            if (_detail is not null)
+            {
+                _cardPane.Child = Detach(_detailHost);
+                _cardPanel.Pane = _cardPane;
+            }
+            _cardPanel.Hints = Hints;
+            Detach(_headerHost);
+            Detach(_cardScrim);
+            return _cardScrim;
+        }
+
+        // The header as a title row of its own on the desktop and the big screen, or as the card panel's title, subtitle, picture and footer.
+        private void ShowHeader()
+        {
+            AdaptiveHeader? h = _header;
+            _cardPanel.Title = h?.Title;
+            _cardPanel.Subtitle = h?.Subtitle;
+            _cardPanel.TitleIcon = h?.Picture;
+            _cardPanel.Footer = h?.Facts;
+            _headerHost.IsVisible = h is not null && Form != AdaptiveForm.Card;
+            if (h is null || Form == AdaptiveForm.Card)
+            {
+                _headerHost.Child = null;
+                return;
+            }
+            bool big = Form == AdaptiveForm.BigScreen;
+            LunaTypeScale type = LunaTokens.Type(big ? LunaForm.BigScreen : LunaForm.Desktop);
+            var row = new DockPanel { LastChildFill = true, Margin = big ? new Thickness(16, 12, 16, 0) : new Thickness(8, 6, 8, 2) };
+            if (h.Picture is { } picture)
+            {
+                var image = new Image { Source = picture, Height = big ? 64 : 32, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, big ? 16 : 8, 0), VerticalAlignment = VerticalAlignment.Center };
+                DockPanel.SetDock(image, Dock.Left);
+                row.Children.Add(image);
+            }
+            if (h.Facts is { Length: > 0 } facts)
+            {
+                var line = new TextBlock { Text = facts, FontSize = type.Caption, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(12, 0, 0, 0), Classes = { "muted" } };
+                line.Bind(TextBlock.ForegroundProperty, line.GetResourceObservable("LunaMuted"));
+                DockPanel.SetDock(line, Dock.Right);
+                row.Children.Add(line);
+            }
+            var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            words.Children.Add(new TextBlock { Text = h.Title, FontFamily = Media.LunaFonts.Condensed, FontSize = type.Title, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis });
+            if (h.Subtitle is { Length: > 0 } sub)
+            {
+                var subtitle = new TextBlock { Text = sub, FontSize = type.Caption, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis };
+                subtitle.Bind(TextBlock.ForegroundProperty, subtitle.GetResourceObservable("LunaMuted"));
+                words.Children.Add(subtitle);
+            }
+            row.Children.Add(words);
+            AutomationProperties.SetName(_headerHost, h.Title);
+            _headerHost.Child = row;
         }
 
         private Control ArrangeDesktop()
@@ -519,11 +652,13 @@ namespace EmuSen.LunaP.Controls
                 : _sectionSplit = Split(new SplitPane { First = Detach(_navigationHost), Second = main, Fixed = SplitSide.First, FixedSize = 180, MinFirst = 120, MinSecond = 320, DividerLabel = "Resize the sections" });
             FitSidebar();
 
-            var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto") };
-            Grid.SetRow(top, 0);
-            Grid.SetRow(body, 1);
-            Grid.SetRow(Detach(_statusHost), 2);
+            var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto") };
+            Grid.SetRow(Detach(_headerHost), 0);
+            Grid.SetRow(top, 1);
+            Grid.SetRow(body, 2);
+            Grid.SetRow(Detach(_statusHost), 3);
             Detach(_hintBar);
+            grid.Children.Add(_headerHost);
             grid.Children.Add(top);
             grid.Children.Add(body);
             grid.Children.Add(_statusHost);
@@ -559,8 +694,8 @@ namespace EmuSen.LunaP.Controls
             }
             else _detailHost.Margin = default;
 
-            var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto,Auto,Auto") };
-            Control[] rows = { top, middle, Detach(_actionsHost), Detach(_statusHost), _hintBar };
+            var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto,Auto,Auto") };
+            Control[] rows = { Detach(_headerHost), top, middle, Detach(_actionsHost), Detach(_statusHost), _hintBar };
             _actionsHost.Margin = new Thickness(16, 8);
             _hintBar.Margin = new Thickness(16, 8);
             for (int i = 0; i < rows.Length; i++)

@@ -82,7 +82,7 @@ namespace EmuSen.LunaP.Tests
         public static TheoryData<AdaptiveForm, int, int, string> Cases()
         {
             var data = new TheoryData<AdaptiveForm, int, int, string>();
-            foreach (AdaptiveForm form in Enum.GetValues<AdaptiveForm>())
+            foreach (AdaptiveForm form in new[] { AdaptiveForm.Desktop, AdaptiveForm.BigScreen })
                 foreach ((int w, int h) in new[] { (1280, 800), (1920, 1200), (1280, 720) })
                     foreach (string state in new[] { "listing", "detail", "plan", "running", "notice", "last section" })
                         data.Add(form, w, h, state);

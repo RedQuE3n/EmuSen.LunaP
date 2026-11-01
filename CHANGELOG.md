@@ -14,6 +14,13 @@ answer.
 
 ## Unreleased
 
+- **The Card form and the header role (`§207`).** `AdaptiveForm.Card`, appended: the content in `AdaptiveLayout.CardPanel`,
+  a `MenuPanel` anchored left at `CardShare` (0.4) over `LunaScrim`, the detail beside it, the actions in the help bar,
+  no navigation; its rows in Barlow at 26 in their own case. `AdaptiveRole.Header`, appended, with `AdaptiveHeader`
+  (title, subtitle, picture, facts) and `AdaptiveLayout.Header`, drawn as a title row on the desktop and the big screen
+  and as the card's title row. `AdaptiveLayout.SwapsAcceptAndBack`. **Behaviour change:** none for a layout without a
+  header in the earlier forms.
+
 - **The interface's tokens (`§206`).** One palette for the desktop and the big screen: `Theme/Tokens/Dark.axaml` and
   `Light.axaml` hold every colour once, read by `Palette.axaml` and `MenuPalette.axaml`; new tokens `LunaSurfaceRaised`,
   `LunaScrim`, `LunaTextStrong`, `LunaAttention`, `LunaOnArt` (with `LunaOnArtScrim`), `LunaRule`, and

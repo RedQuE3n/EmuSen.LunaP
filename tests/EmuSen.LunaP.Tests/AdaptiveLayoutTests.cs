@@ -21,7 +21,7 @@ namespace EmuSen.LunaP.Tests
         public static TheoryData<AdaptiveForm, int, int> FormsAndScreens()
         {
             var data = new TheoryData<AdaptiveForm, int, int>();
-            foreach (AdaptiveForm form in Enum.GetValues<AdaptiveForm>())
+            foreach (AdaptiveForm form in new[] { AdaptiveForm.Desktop, AdaptiveForm.BigScreen })
             {
                 data.Add(form, 1280, 800);
                 data.Add(form, 1920, 1200);

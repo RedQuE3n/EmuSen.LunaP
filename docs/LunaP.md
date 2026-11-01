@@ -14278,3 +14278,74 @@ in the Cores menu": a downloaded core's page held its Approve… button, and no 
 priority, after the layout that makes its controls, and to the content if the page still holds none; closing the page
 does the same for the content. EmuSen's `CoresWindowRuntimeTests` drives the case with the pad: South on PCEE2's row,
 then South on the Approve… button that has the focus, and the approval is recorded.
+
+## 207. The Card form and the header role
+
+### 207.1 The gap
+
+The consumer's unified interface (its `EmuSen_Interface.md` §3.2, decided 2026-11-01) describes every screen as one
+frame of roles, with a third rendering beside the desktop's and the big screen's: a **card**, a panel at the left of the
+screen over a scrim, holding a short list of rows, with what the chosen row is about in the room beside it. Its first
+instance is the consumer's in-game menu, and the same card is to serve a hub over a theme and a list chooser. §205 gave
+`MenuPanel` the parts such a card is drawn with (`Anchor`, `Pane`, `TitleIcon`) but left each consumer to wire them by
+hand, so each card would have been a second implementation. The frame also names a **header** (a small picture, a
+title on one line, a subtitle, facts) that `AdaptiveLayout` had no role for, so each window drew its own title row, and
+`MenuPanel`'s title, subtitle and footer were set by every host directly.
+
+### 207.2 `AdaptiveForm.Card`
+
+`Card` is appended after `BigScreen`, so no existing value moved. In it `AdaptiveLayout` places its roles as follows:
+
+| Role | Placed |
+|---|---|
+| content | `CardPanel`'s rows, through a host whose rows are drawn in Barlow (`LunaFonts.BodyFile`) at the big screen's Row size, 26, in the words' own case |
+| detail | `CardPanel.Pane`, the room to the panel's right above the help bar, in Barlow; always shown, never a page |
+| header | `CardPanel`'s title row: `Title`, `Subtitle`, `TitleIcon` from `Picture`, `Footer` from `Facts` |
+| actions | the help bar alone: their pad buttons and words follow Select and Back, generated as in §202.4; no buttons |
+| navigation, search, status | not shown; the shoulders do not step sections |
+
+`CardPanel` is a `MenuPanel` anchored left at `CardShare` (0.4) of the width, with `MaxWidthToHeight` lifted so the
+share holds on a 16:10 screen, a title of 32 design pixels in Barlow Condensed (the frame's Title size) shrinking to
+0.55 of it on one line and never wrapping, and a corner radius of 8, the design's card radius. It stands on a panel
+filled with `LunaScrim` (black at 55 per cent where the palette is absent), so what is under the card is dimmed and
+never blurred. A host that animates the card's opening or a test that measures it reads `CardPanel`; it is part of the
+visual tree only in this form.
+
+Changing the form rearranges the same parts: content and detail move out of the card and its type with them, so a
+card turned into the big-screen form shows the rows at the look's own size again (`CardFormTests`). `OpenDetail` does
+nothing in the card, since the detail is already beside the content.
+
+**The type.** The look keeps its rows in Barlow Condensed at 24 since §206.3. The card's rows are set in Barlow at 26
+because the card is the form that rebuilds them; the consumer's departure from Barlow everywhere ends here for what is
+drawn in a card, and stays for the centred sheets until they are rebuilt.
+
+### 207.3 The header role
+
+`AdaptiveRole.Header` is appended after `Status`, and `AdaptiveHeader(Title, Subtitle, Picture, Facts)` is the role's
+value, set with `AdaptiveLayout.Header`. On the desktop and the big screen it is a row above everything else: the
+picture at 32 or 64 pixels, the title in Barlow Condensed at the form's Title size on one line, cut with an ellipsis
+rather than wrapped, the subtitle under it and the facts at the right, both muted. In the card it is the panel's title
+row, as the table above says. Null shows none and takes no space.
+
+`MenuPanel`'s `Title`, `Subtitle`, `TitleIcon` and `Footer` stay its drawing properties, since `SheetLayer`'s centred
+sheet (§181) binds a window's title and footer to them and is not built on `AdaptiveLayout`. What moves is who sets
+them: a window built on `AdaptiveLayout` declares its header once and never draws or sets a title row of its own. The
+centred sheets and `ManagerLayout`'s tools take the role when they are rebuilt on the frame; `ManagerLayout` is shown
+in the desktop and big-screen forms only.
+
+### 207.4 The swap
+
+`SwapsAcceptAndBack`, false by default, makes the generated help bar name East as Select and South as Back, and makes
+`Press` read them so, for a consumer whose player swapped the two face buttons. Without it a card's help bar would
+contradict the buttons for such a player.
+
+### 207.5 Audits
+
+`CardFormTests` holds the form at 1280 × 800, 1920 × 1200 and 1280 × 720: eight rows whole inside the panel with no
+scroll indicator, the panel at the left margin at 40 per cent, the detail inside the room beside it, the fit audit
+clean; the header as one line after its picture, shrunk for a long name, and replaced whole when the header changes;
+navigation, search and action buttons absent and the actions in the help bar; the shoulders refused, B left to the
+host, an action's pad button invoking it; the swap; the rows' typeface, size and case; the round trip through the
+big-screen form; and the header row above everything on the desktop and the big screen, gone when null.
+`AdaptiveLayoutTests`, `ManagerLayoutTests` and `ManagerFitAuditTests` enumerate the desktop and big-screen forms
+explicitly, since the card has its own class.
