@@ -88,6 +88,7 @@ public enum EmuSen.LunaP.Controls.AdaptiveForm
 
 public class EmuSen.LunaP.Controls.AdaptiveLayout : Avalonia.Controls.Border
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     public AdaptiveLayout()
@@ -1189,6 +1190,7 @@ public abstract class EmuSen.LunaP.Controls.LunaTable : Avalonia.Controls.Primit
     protected abstract void OnPartsAttached()
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
+    public bool FitsWidth { get; set; }
 
 public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTable where T : class
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()

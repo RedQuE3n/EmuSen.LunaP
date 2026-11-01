@@ -13893,6 +13893,22 @@ wrapping, with `SelectSection` raising nothing; A opening the detail's page and 
 action's pad button, and a disabled one declined; a change of form keeping section and focus; a layout without
 sections or detail; `PadButton` and `IsMain` raising `Changed`. Seeded faults are recorded in §203.5.
 
+### 202.6 The sections, whole in both forms
+
+**On the big screen** the sections were a row of toggle buttons in a sideways scroller until 2026-10-31, when EmuSen
+Packages' framed fit audit found eight sections drawing 887 pixels in a 553-pixel view at 1280×800, the last one cut
+at the right with no fade. The row is now `WholeRow`, an internal panel that draws only whole buttons: the widest run
+that fits and holds the chosen section, grown one step right and one step left at a time; the others are laid out at
+no size and take neither focus nor a press. The shoulders step every section as before, and the chosen one is always
+drawn whole, so every section is reachable and none is ever cut. A scroller with faded sides was the other form
+weighed; it still slices the button at its edge, which the audit counts as a cut whether or not the edge fades, and
+every tool's audit would then need an allowance for it, where this form needs none. `Twelve_sections_on_the_big_screen_…`
+steps twelve sections at 1280×800 and 1280×720, the chosen one whole each time and the row clean under the audit.
+
+**On the desktop** the sidebar starts as wide as its longest section's name, between 180 and 320 pixels, measured
+once the list is in the window, so that "Nintendo Entertainment System" is not cut to "Nintendo Entertainmen…" at the
+earlier fixed 180; the divider still moves it.
+
 ## 203. The manager frame: `ManagerLayout<T>`
 
 ### 203.1 What it is
@@ -13928,6 +13944,16 @@ selection survive a refresh that brings a new copy of the same row, and the mark
 - **A notice in the summary's place.** `SetNotice(words)` shows the tool's words where the summary goes while no row
   is marked, and `null` clears them, so that a refusal about no row ("no library folder is set", "no buildbot listing
   is known for this platform") has a place; a marked row's summary takes the place back until its mark is cleared.
+- **The plan hides the table.** While the plan sheet is open both tables are hidden, so no row lies under its words
+  or buttons and the pad cannot reach a row behind it (found by Packages' framed audit on 2026-10-31: "overlap:
+  ListBoxItem … and TextBlock 'Make 1 package, linked…'"). Confirming or cancelling shows the table again.
+- **The apply bar's two forms.** On the desktop one line: the words (the summary, or while work runs the progress bar
+  and its line in the summary's place) sharing what Apply and the meter leave. On the big screen two lines, the words
+  above and Apply and the meter right-aligned below, since its type is too large for one (the same audit:
+  "overlap: Button 'Apply…' and TextBlock '2 marked: …'").
+- **The table fits its width.** Both tables set `LunaTable.FitsWidth`, so star columns share the table's width rather
+  than scrolling sideways, which the pad cannot do; a cell cut to its share is whole in the detail while its row is
+  chosen, which is the frame's contract with a tool's `DetailFor`.
 - **The space meter** is a bar of fixed width with `SetSpace`'s words beside it at their own width, the bar named
   *Space* with the words as its item status. It was a `MeterRow` until 2026-10-31, whose template gives its reading a
   fixed 55-pixel column built for "62%": Packages' desktop fit audit found "263 KB in packages · 100 GB free", 214
@@ -13935,6 +13961,12 @@ selection survive a refresh that brings a new copy of the same row, and the mark
   words are a sentence, so the meter no longer borrows the dashboard's row.
 
 ### 203.4 What it was checked against
+
+`ManagerFitAuditTests` holds the frame to the framed fit audit (§204) in both forms at 1280×800, 1920×1200 and
+1280×720 through six states (the listing, the detail, the plan, a run, a notice, and the last of twelve sections chosen),
+with eight columns, twelve sections and real-length words: a 77-character game name, a licence sentence, "263 KB in
+packages · 100 GB free", a progress line of 75 characters. Its one allowance is a table cell cut to its column's share,
+whole in the detail.
 
 `ManagerLayoutTests` builds the frame twice, with EmuSen Packages' columns and filters (`EmuSen_Packages.md` §3) and
 with Cores' (`EmuSen_Cores.md` §2.1), and holds both to fit: every role whole and apart, and the apply bar's button
@@ -13960,6 +13992,12 @@ Measured on 2026-10-31, each reverted after its run:
 | the space meter's words in a fixed 47-pixel box, as the `MeterRow` drew them (2026-10-31) | `Both_tools_fit_…` in all twelve cases, `The_space_meters_words_are_shown_whole_beside_its_bar` |
 | `SetNotice`'s words never shown | `A_notice_stands_in_the_summarys_place_only_while_nothing_is_marked` |
 | the notice shown over a marked row's summary | `A_notice_stands_in_the_summarys_place_…` |
+| the big screen's section row drawing every button, past its row (2026-10-31) | `ManagerFitAuditTests` in all 18 big-screen cases, `Twelve_sections_on_the_big_screen_…` |
+| the plan sheet over a visible table | `ManagerFitAuditTests`' plan cases in both forms, 6 |
+| the big screen's apply bar on one line | `ManagerFitAuditTests`' notice, plan and running cases on the big screen |
+| the summary shown beside the progress line while work runs | `ManagerFitAuditTests`' running cases in both forms |
+| the tables scrolling sideways (`FitsWidth` off) | `ManagerFitAuditTests`, 12 cases |
+| the sidebar left at 180 pixels | `ManagerFitAuditTests`, all 18 desktop cases |
 | `SetRows` keeps the marks of rows that left | survived the first run, since `Marked` lists only rows present; the test now brings the row back and requires it unmarked, and `Marks_survive_a_refresh_of_their_rows_…` catches it |
 
 ### 203.6 A disabled button in the palette
@@ -13968,3 +14006,30 @@ The palette sweep (§85) found that a disabled stock `Button` painted its words 
 (`#66FFFFFF`), outside LunaPalette: ManagerLayout's *Apply…* is disabled until a row is marked, and no earlier kit
 control had shown a disabled button to the sweep. `FluentBridge.axaml` now maps `ButtonForegroundDisabled` to
 `LunaMuted`, for every disabled button in an application on the theme.
+
+## 204. The framed fit audit in the harness: `FitAudit`
+
+### 204.1 Why it is here
+
+`ManagerLayoutTests` passed five faults on 2026-10-31 that EmuSen Packages' framed fit audit found in the frame at
+once: the space meter's words past their box, the big screen's sections cut sideways, the plan drawn over the table,
+the big screen's apply bar overlapping itself, and a run's words overlapping the summary. The kit's own tests checked
+that each role's box was inside the window and apart from the others; the audit checks what is drawn inside them. So
+the audit now lives in `EmuSen.LunaP.Testing` as `FitAudit`, beside `UiTest`, and the kit's layouts are held to it in
+the kit's own suite rather than first in a consumer's.
+
+### 204.2 What it checks
+
+`FitAudit.Check(root, allow, smallest)` returns one line per fault: anything past its panel or its nearest clipping
+or scrolling ancestor (a scroller excuses only what it can scroll into view up and down, since the pad never scrolls
+sideways); words past the button, tab or list item that holds them; any two drawn things overlapping; a scroller too
+short to show two rows; anything sliced by a scrolling edge that does not fade; words cut with an ellipsis, run past
+their box or cut at the foot; and, unless `smallest` is 0 as for a desktop window, capitals smaller than the desktop
+face's at 16 design pixels. Each `Allowance` names the other way the player reaches what it excuses. It is EmuSen
+WiseMan's `FitAudit` (`EmuSen_Settings_Reference.md` §4.83) as it stood on 2026-10-31, moved rather than rewritten;
+WiseMan's copy can now be replaced by this one, so that the audit has one owner.
+
+### 204.3 `LunaTable.FitsWidth`
+
+Off by default, so a table scrolls sideways as §59 made it. On, the rows' horizontal scroll bar is disabled, so star
+columns share the table's own width and trim, as a frame does whose detail shows the chosen row whole.

@@ -60,13 +60,12 @@ namespace EmuSen.LunaP.Controls
         private static readonly AdaptiveRole[] FocusOrder = { AdaptiveRole.Navigation, AdaptiveRole.Content, AdaptiveRole.Detail, AdaptiveRole.Actions };
 
         private readonly SourceList _sidebar = new();
-        private readonly StackPanel _sectionRow = new() { Orientation = Orientation.Horizontal, Spacing = 8 };
+        private readonly WholeRow _sectionRow = new() { Spacing = 8 };
         private readonly ToolBar _toolBar = new();
         private readonly StackPanel _actionRow = new() { Orientation = Orientation.Horizontal, Spacing = 12 };
         private readonly TextBox _search = new() { MinWidth = 180 };
         private readonly HintBar _hintBar = new() { FontSize = 18 };
         private readonly ScrollViewer _sidebarScroll = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
-        private readonly ScrollViewer _sectionScroll = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled };
         private readonly ScrollViewer _actionScroll = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled };
         private readonly Border _navigationHost = new() { Name = "AdaptiveNavigation" };
         private readonly Border _contentHost = new() { Name = "AdaptiveContent" };
@@ -76,6 +75,7 @@ namespace EmuSen.LunaP.Controls
         private readonly Border _statusHost = new() { Name = "AdaptiveStatus" };
 
         private readonly List<SplitPane> _splits = new();
+        private SplitPane? _sectionSplit;
         private IReadOnlyList<AdaptiveSection> _sections = Array.Empty<AdaptiveSection>();
         private IReadOnlyList<LunaAction> _actions = Array.Empty<LunaAction>();
         private HashSet<LunaAction> _undrawn = new();
@@ -93,7 +93,6 @@ namespace EmuSen.LunaP.Controls
         {
             Focusable = false;
             _sidebarScroll.Content = _sidebar;
-            _sectionScroll.Content = _sectionRow;
             _actionScroll.Content = _actionRow;
             _sidebar.Chose += key => SelectSection(key, raise: true);
             _search.PropertyChanged += (_, e) =>
@@ -409,6 +408,22 @@ namespace EmuSen.LunaP.Controls
                 button.Click += (_, _) => SelectSection(key, raise: true);
                 _sectionRow.Children.Add(button);
             }
+            _sectionRow.Chosen = Math.Max(0, _sections.ToList().FindIndex(s => s.Key == _selectedSection));
+        }
+
+        // The sidebar as wide as its longest section's name, within reason, so a console's name is not cut on the desktop.
+        private void FitSidebar()
+        {
+            if (_sectionSplit is null) return;
+            _sidebar.Measure(Size.Infinity);
+            if (_sidebar.DesiredSize.Width > 0) _sectionSplit.FixedSize = Math.Clamp(Math.Ceiling(_sidebar.DesiredSize.Width) + 16, 180, 320);
+        }
+
+        /// <inheritdoc/>
+        protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            base.OnAttachedToVisualTree(e);
+            Avalonia.Threading.Dispatcher.UIThread.Post(FitSidebar, Avalonia.Threading.DispatcherPriority.Loaded);
         }
 
         private void FillActions()
@@ -433,6 +448,7 @@ namespace EmuSen.LunaP.Controls
                 split.Second = null;
             }
             _splits.Clear();
+            _sectionSplit = null;
             FillNavigation();
             FillActions();
             bool big = Form == AdaptiveForm.BigScreen;
@@ -466,7 +482,8 @@ namespace EmuSen.LunaP.Controls
                 : Split(new SplitPane { Orientation = Orientation.Vertical, First = Detach(_contentHost), Second = Detach(_detailHost), Fixed = SplitSide.Second, FixedSize = 180, MinFirst = 120, MinSecond = 80, DividerLabel = "Resize the detail" });
             Control body = _sections.Count == 0
                 ? main
-                : Split(new SplitPane { First = Detach(_navigationHost), Second = main, Fixed = SplitSide.First, FixedSize = 180, MinFirst = 120, MinSecond = 320, DividerLabel = "Resize the sections" });
+                : _sectionSplit = Split(new SplitPane { First = Detach(_navigationHost), Second = main, Fixed = SplitSide.First, FixedSize = 180, MinFirst = 120, MinSecond = 320, DividerLabel = "Resize the sections" });
+            FitSidebar();
 
             var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto") };
             Grid.SetRow(top, 0);
@@ -481,7 +498,7 @@ namespace EmuSen.LunaP.Controls
 
         private Control ArrangeBigScreen()
         {
-            _navigationHost.Child = _sectionScroll;
+            _navigationHost.Child = _sectionRow;
             _actionsHost.Child = _actionScroll;
             _hintBar.Entries = Hints;
             AutomationProperties.SetName(_hintBar, string.Join(", ", Hints.Select(h => h.Label)));

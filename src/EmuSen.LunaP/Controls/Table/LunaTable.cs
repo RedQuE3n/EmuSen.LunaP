@@ -56,7 +56,27 @@ namespace EmuSen.LunaP.Controls
             HeaderGrid = e.NameScope.Find<Grid>("PART_Header");
             Rows = e.NameScope.Find<ListBox>("PART_Rows");
             Message = e.NameScope.Find<ErrorText>("PART_Error");
+            ApplyFitsWidth();
             OnPartsAttached();
+        }
+
+        private bool _fitsWidth;
+
+        // A frame whose detail shows a row whole shares the table's width among its columns rather than scrolling sideways - see docs/LunaP.md §204.
+        /// <summary>Whether the columns share the table's own width, star columns trimming to their share, instead of the table scrolling sideways. Off by default.</summary>
+        public bool FitsWidth
+        {
+            get => _fitsWidth;
+            set
+            {
+                _fitsWidth = value;
+                ApplyFitsWidth();
+            }
+        }
+
+        private void ApplyFitsWidth()
+        {
+            if (Rows is not null) ScrollViewer.SetHorizontalScrollBarVisibility(Rows, _fitsWidth ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto);
         }
 
         /// <summary>Called once the template has been applied and HeaderGrid and Rows are available, which is where a subclass replays anything configured before that.</summary>

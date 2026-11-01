@@ -42,6 +42,9 @@ namespace EmuSen.LunaP.Controls
         private readonly Border _planSheet = new() { IsVisible = false, Padding = new Thickness(16), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, MaxWidth = 720 };
         private readonly TextBlock _planText = new() { TextWrapping = TextWrapping.Wrap };
         private readonly Grid _contentGrid = new();
+        private readonly Grid _bar = new() { Margin = new Thickness(4) };
+        private readonly Grid _words = new() { ColumnDefinitions = new ColumnDefinitions("Auto,*"), ColumnSpacing = 8 };
+        private readonly StackPanel _barRight = new() { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
         private List<T> _rows = new();
         private string? _notice;
         private bool _running;
@@ -60,6 +63,7 @@ namespace EmuSen.LunaP.Controls
             foreach (LunaTable<T> table in new[] { _desktopTable, _bigTable })
             {
                 table.Key = row => KeyOf(row);
+                table.FitsWidth = true;
                 table.Column(new LunaColumn<T>("Mark", row => MarkCell(row), row => MarkOf(row)?.Label ?? "not marked") { Width = "Auto" });
                 table.AddHandler(Avalonia.Controls.Primitives.SelectingItemsControl.SelectionChangedEvent, (_, _) => ShowDetail());
             }
@@ -244,6 +248,7 @@ namespace EmuSen.LunaP.Controls
             CloseDetail();
             _planText.Text = (Plan ?? Summarize ?? DefaultSummary)(marked);
             _planSheet.IsVisible = true;
+            ShowTables();
             FocusFirstIn(_planSheet);
             return true;
         }
@@ -254,6 +259,7 @@ namespace EmuSen.LunaP.Controls
         {
             if (!IsPlanOpen) return false;
             _planSheet.IsVisible = false;
+            ShowTables();
             IReadOnlyList<ManagerMarked<T>> marked = Marked;
             _running = true;
             SetProgress(0, "Starting…");
@@ -268,6 +274,7 @@ namespace EmuSen.LunaP.Controls
         {
             if (!IsPlanOpen) return false;
             _planSheet.IsVisible = false;
+            ShowTables();
             FocusRole(AdaptiveRole.Content);
             return true;
         }
@@ -282,6 +289,7 @@ namespace EmuSen.LunaP.Controls
             _progress.Value = Math.Clamp(fraction ?? 0, 0, 1);
             _progressLine.IsVisible = true;
             _progressLine.Text = line;
+            _summary.IsVisible = false;
         }
 
         /// <summary>Ends the running work: the progress line gives way to the summary, and the marks are cleared or kept.</summary>
@@ -291,6 +299,7 @@ namespace EmuSen.LunaP.Controls
             _running = false;
             _progress.IsVisible = false;
             _progressLine.IsVisible = false;
+            _summary.IsVisible = true;
             if (clearMarks) _marks.Clear();
             Changed();
         }
@@ -347,6 +356,8 @@ namespace EmuSen.LunaP.Controls
                 _contentGrid.Children.Remove(_desktopTable);
                 _contentGrid.Children.Remove(_bigTable);
                 _contentGrid.Children.Insert(0, CurrentTable);
+                ShowTables();
+                ArrangeBar();
                 Show();
                 CurrentTable.Select(selected);
             }
@@ -400,20 +411,39 @@ namespace EmuSen.LunaP.Controls
         private static string DefaultSummary(IReadOnlyList<ManagerMarked<T>> marked) =>
             $"{marked.Count} marked: " + string.Join(", ", marked.GroupBy(m => m.Mark.Label).Select(g => $"{g.Key} {g.Count()}"));
 
+        // While the plan is open the table is hidden, so no row lies under the plan and the pad cannot reach one.
+        private void ShowTables()
+        {
+            _desktopTable.IsVisible = !IsPlanOpen;
+            _bigTable.IsVisible = !IsPlanOpen;
+        }
+
         private Control ApplyBar()
         {
-            var bar = new DockPanel { LastChildFill = true, Margin = new Thickness(4) };
-            var right = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-            right.Children.Add(_applyButton);
-            right.Children.Add(_space);
-            DockPanel.SetDock(right, Dock.Right);
-            var left = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-            left.Children.Add(_progress);
-            left.Children.Add(_progressLine);
-            left.Children.Add(_summary);
-            bar.Children.Add(right);
-            bar.Children.Add(left);
-            return bar;
+            _barRight.Children.Add(_applyButton);
+            _barRight.Children.Add(_space);
+            Grid.SetColumn(_progressLine, 1);
+            Grid.SetColumn(_summary, 1);
+            _words.Children.Add(_progress);
+            _words.Children.Add(_progressLine);
+            _words.Children.Add(_summary);
+            _bar.Children.Add(_words);
+            _bar.Children.Add(_barRight);
+            ArrangeBar();
+            return _bar;
+        }
+
+        // One line on the desktop, the words then Apply and the meter; two on the big screen, whose type is too large to share one.
+        private void ArrangeBar()
+        {
+            bool big = Form == AdaptiveForm.BigScreen;
+            _bar.ColumnDefinitions = big ? new ColumnDefinitions("*") : new ColumnDefinitions("*,Auto");
+            _bar.RowDefinitions = big ? new RowDefinitions("Auto,Auto") : new RowDefinitions("Auto");
+            _bar.RowSpacing = big ? 8 : 0;
+            _bar.ColumnSpacing = big ? 0 : 12;
+            Grid.SetColumn(_barRight, big ? 0 : 1);
+            Grid.SetRow(_barRight, big ? 1 : 0);
+            _barRight.HorizontalAlignment = big ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
         }
 
         private static void FocusFirstIn(Control root)

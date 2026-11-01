@@ -176,6 +176,28 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        [Theory]
+        [InlineData(1280, 800)]
+        [InlineData(1280, 720)]
+        public Task Twelve_sections_on_the_big_screen_show_the_chosen_one_whole_and_cut_none(int width, int height) => UiTest.Run(() =>
+        {
+            var (window, layout, _, _) = Build(AdaptiveForm.BigScreen, width, height);
+            string[] names = { "All games", "Nintendo Entertainment System", "Super Nintendo", "Nintendo 64", "Game Boy Advance", "Mega Drive", "Mega-CD", "32X", "Master System", "PlayStation", "PlayStation 2", "PC Engine" };
+            layout.SetSections(names.Select((n, i) => new AdaptiveSection("s" + i, n, "Consoles")));
+            UiTest.Settle(layout);
+            for (int i = 0; i < names.Length; i++)
+            {
+                if (i > 0) Assert.True(layout.Press(PadGlyphButton.RightShoulder));
+                UiTest.Settle(layout);
+                Control nav = layout.HostOf(AdaptiveRole.Navigation)!;
+                ToggleButton on = nav.GetVisualDescendants().OfType<ToggleButton>().Single(t => t.IsChecked == true);
+                Assert.Equal(names[i], on.Content);
+                Assert.True(on.Bounds.Width > 0 && new Rect(nav.Bounds.Size).Contains(new Rect(on.TranslatePoint(default, nav)!.Value, on.Bounds.Size)), $"{names[i]} is not drawn whole");
+                Assert.Empty(FitAudit.Check(nav, null, smallest: 0));
+            }
+            window.Close();
+        });
+
         [Fact]
         public Task The_shoulders_step_the_sections_and_raise_the_choice_wrapping_at_the_ends() => UiTest.Run(() =>
         {
