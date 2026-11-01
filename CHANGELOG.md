@@ -14,6 +14,9 @@ answer.
 
 ## Unreleased
 
+- **The Saturn's pad and the Dreamcast's controller in `ControllerDiagram` (`§198.15`).** `ControllerLayout.Saturn` and
+  `ControllerLayout.Dreamcast`, appended after `Sg1000`, so no existing value moved. No other API change.
+
 - **The Master System's pad and the SG-1000's joystick in `ControllerDiagram` (`§198.14`).** `ControllerLayout.MasterSystem`
   and `ControllerLayout.Sg1000`, appended after `DualShock`, so no existing value moved. A console's own buttons, Pause and
   Reset, are drawn apart above the pad. **Behaviour change** for a switched stick only: the SG-1000's knob leans toward

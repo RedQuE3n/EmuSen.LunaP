@@ -13708,6 +13708,32 @@ restored byte for byte:
 | L3 | a switched stick that does not lean | `A_switched_stick_leans_toward_its_pressed_directions` |
 | L4 | the console strip drawn down onto the pad | `The_console_s_buttons_stand_apart_above_the_pad` |
 
+
+### 198.15 The Saturn's pad and the Dreamcast's controller (2026-11-01)
+
+*Decided 2026-11-01:* the consumer hosts cores for the Saturn and the Dreamcast, consoles it had not drawn. `ControllerLayout`
+gains `Saturn` and `Dreamcast`, appended after `Sg1000`, so no value moved and thirteen layouts are drawn. They are drawn as
+§198.1's are, from plain geometry in a design space 1000 wide (600 high for the pad, 760 for the controller), from the
+shape the products are described as having, with no photograph or vendor drawing traced or measured.
+
+**The Saturn's control pad** is an oval of two round ends. On the left a cross sits on a round plate in a well, as the
+Genesis's does (§198.12); Start is a pill high in the middle; on the right, A, B and C are a row of larger buttons under a
+row of smaller X, Y and Z, both rows arched, in one rounded well. L and R are on the pad's top edge, which a front view
+hides, so they are drawn above it as the PlayStation's shoulders are (§198.13). Ids: `Up`, `Down`, `Left`, `Right`, `A`,
+`B`, `C`, `X`, `Y`, `Z`, `L`, `R`, `Start`. Start stands high, by the cord, because its line from a low place ran over more
+of the drawing than a straight way out (the line theory caught it).
+
+**The Dreamcast's controller** is a light pad with two grips. Upper left, the analog stick is drawn as the Nintendo 64's
+is: four bands of a ring with arrows (`StickUp`, `StickDown`, `StickLeft`, `StickRight`) and a knob; under it a smaller
+cross. On the right, A, B, X and Y stand in a diamond in the console's colours (A red, B blue, X yellow, Y green), the one
+place a colour here is a fact about the product. In the middle the memory unit is seen in its slot, with its screen, as
+shell and no region, since nothing is bound to it; Start is low in the middle. The analog triggers are drawn above the
+pad as triggers (`LT`, `RT`, named "L Trigger" and "R Trigger"), so a pulled value fills them as the Gamepad's do. Their ids
+are not `L` and `R` because a consumer's own controls may carry those names for other buttons.
+
+`Describe` names them "Saturn control pad" and "Dreamcast controller". The theories over every layout take both; the label
+theory carries three sizes of each and the line theory two; a theory of their own checks the ids and that the shoulders
+and triggers stand above the pad.
 ## 199. A row of choices: `SliderRow.Choices` and `SliderItem.Choices`
 
 *2026-10-07.* EmuSen's CRT filter has settings that are one of a few named choices (a signal, a screen, a

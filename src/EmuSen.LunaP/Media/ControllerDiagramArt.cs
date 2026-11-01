@@ -84,6 +84,8 @@ namespace EmuSen.LunaP.Media
                 ControllerLayout.DualShock => PlayStation(analog: true),
                 ControllerLayout.MasterSystem => MasterSystem(),
                 ControllerLayout.Sg1000 => Sg1000(),
+                ControllerLayout.Saturn => Saturn(),
+                ControllerLayout.Dreamcast => Dreamcast(),
                 _ => Gamepad(),
             };
             art.Route();
@@ -651,6 +653,75 @@ namespace EmuSen.LunaP.Media
             }
             art.Words.Add(new ArtText("1", new Point(150, 280), 30, words));
             art.Words.Add(new ArtText("2", new Point(850, 280), 30, words));
+            return art;
+        }
+
+        // --- Saturn: an oval pad of two round ends, a cross on a round plate, Start between, A, B and C in a row under the smaller X, Y and Z; L and R are on its top edge, so a front view draws them above it (§198.15) ---
+
+        private static DiagramArt Saturn()
+        {
+            var art = new DiagramArt { Design = new Size(1000, 600) };
+            Color shell = Hex("#3A3A41"), edge = Hex("#6A6A74"), well = Hex("#2A2A30"), plate = Hex("#45454E"), dark = Hex("#18181B"), words = Hex("#B8B8C2");
+            const string button = "#5A5A64";
+
+            art.Body.Add(new ArtPart(Path("M 500,150 C 500,110 506,60 520,4"), null, edge, 9));
+            art.Regions.Add(new RegionArt { Id = "L", Name = "L", Shape = Box(150, 52, 220, 46, 18), Fill = Hex("#5E5E68"), Stroke = edge, StrokeWidth = 3, Caption = "L", CaptionSize = 24, CaptionColour = Hex("#E4E4EA") });
+            art.Regions.Add(new RegionArt { Id = "R", Name = "R", Shape = Box(630, 52, 220, 46, 18), Fill = Hex("#5E5E68"), Stroke = edge, StrokeWidth = 3, Caption = "R", CaptionSize = 24, CaptionColour = Hex("#E4E4EA") });
+
+            art.Body.Add(new ArtPart(Union(Circle(270, 350, 200), Circle(730, 350, 200), Box(270, 150, 460, 400)), shell, edge, 5));
+            art.Body.Add(new ArtPart(Circle(270, 340, 128), well));
+            art.Body.Add(new ArtPart(Circle(270, 340, 110), plate));
+            DirectionPad(art, 270, 340, 64, 96, dark, Hex("#6A6A74"), Cross, 10, Hex("#5A5A64"));
+
+            art.Body.Add(new ArtPart(Pill(500, 250, 96, 40, 0), well));
+            art.Regions.Add(new RegionArt { Id = "Start", Name = "Start", Shape = Pill(500, 250, 78, 24, 0), Fill = Hex(button) });
+            art.Words.Add(new ArtText("START", new Point(500, 292), 17, words));
+
+            art.Body.Add(new ArtPart(Box(588, 196, 316, 230, 70), well));
+            Round(art, "X", 652, 262, 28, button, "X", 24);
+            Round(art, "Y", 746, 244, 28, button, "Y", 24);
+            Round(art, "Z", 840, 262, 28, button, "Z", 24);
+            Round(art, "A", 644, 362, 40, button, "A", 32);
+            Round(art, "B", 746, 344, 40, button, "B", 32);
+            Round(art, "C", 848, 362, 40, button, "C", 32);
+            return art;
+        }
+
+        // --- Dreamcast: a light pad with two grips, the analog stick above the cross, A, B, X and Y, Start low in the middle, the memory unit seen in its slot with its screen, and the analog triggers drawn above it (§198.15) ---
+
+        private static DiagramArt Dreamcast()
+        {
+            var art = new DiagramArt { Design = new Size(1000, 760) };
+            Color shell = Hex("#D6D6DA"), edge = Hex("#5A5A62"), well = Hex("#BDBDC3"), dark = Hex("#4A4A52"), words = Hex("#4A4A55"), trigger = Hex("#A8A8B0");
+
+            art.Body.Add(new ArtPart(Path("M 500,170 C 500,120 506,60 520,4"), null, edge, 9));
+            art.Regions.Add(new RegionArt { Id = "LT", Name = "L Trigger", Shape = Box(150, 40, 210, 72, 26), Fill = trigger, Stroke = edge, StrokeWidth = 3, IsTrigger = true, Caption = "L", CaptionSize = 26, CaptionColour = Hex("#3A3A42") });
+            art.Regions.Add(new RegionArt { Id = "RT", Name = "R Trigger", Shape = Box(640, 40, 210, 72, 26), Fill = trigger, Stroke = edge, StrokeWidth = 3, IsTrigger = true, Caption = "R", CaptionSize = 26, CaptionColour = Hex("#3A3A42") });
+
+            art.Body.Add(new ArtPart(Path(
+                "M 210,160 C 380,142 620,142 790,160 C 890,172 945,232 958,330 C 975,470 962,600 902,690 C 862,742 792,734 762,664 " +
+                "C 732,602 692,562 622,558 L 378,558 C 308,562 268,602 238,664 C 208,734 138,742 98,690 C 38,600 25,470 42,330 C 55,232 110,172 210,160 Z"), shell, edge, 5));
+
+            art.Body.Add(new ArtPart(Box(392, 186, 216, 270, 18), dark));
+            art.Body.Add(new ArtPart(Box(410, 202, 180, 236, 16), Hex("#ECECEF"), edge, 2));
+            art.Body.Add(new ArtPart(Box(440, 226, 120, 86, 6), Hex("#8FA07A"), edge, 2));
+            art.Words.Add(new ArtText("VMU", new Point(500, 360), 18, words));
+
+            Stick(art, "Stick", 240, 300, 58, 36, 20, octagonal: false,
+                new[] { ("StickUp", "Stick Up"), ("StickDown", "Stick Down"), ("StickLeft", "Stick Left"), ("StickRight", "Stick Right") },
+                well, Hex("#9A9AA2"), edge, Hex("#A6A6AE"), Hex("#4A4A52"));
+
+            art.Body.Add(new ArtPart(Circle(270, 486, 82), well));
+            DirectionPad(art, 270, 486, 48, 70, dark, Hex("#8A8A92"), Cross, 8);
+
+            art.Body.Add(new ArtPart(Circle(760, 330, 118), well));
+            Round(art, "Y", 760, 254, 32, "#2E9A57", "Y", 26);
+            Round(art, "X", 684, 330, 32, "#E0B030", "X", 26, "#3A3A42");
+            Round(art, "B", 836, 330, 32, "#3456C8", "B", 26);
+            Round(art, "A", 760, 406, 32, "#C8363A", "A", 26);
+
+            art.Regions.Add(new RegionArt { Id = "Start", Name = "Start", Shape = Pill(500, 506, 70, 30, 0), Fill = dark });
+            art.Words.Add(new ArtText("START", new Point(500, 540), 15, words));
             return art;
         }
 
