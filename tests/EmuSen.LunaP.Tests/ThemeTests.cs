@@ -100,7 +100,7 @@ namespace EmuSen.LunaP.Tests
 
             var window = new ToolWindow { Width = 200, Height = 150 };
             window.Show();
-            Assert.Equal(Color.Parse("#1E1E1E"), ((ISolidColorBrush)window.Background!).Color);
+            Assert.Equal(Color.Parse("#1B1B1E"), ((ISolidColorBrush)window.Background!).Color);
 
             Assert.True(LunaTheme.Apply("Pale"));
             Assert.Equal(Color.Parse("#FFFFFF"), ((ISolidColorBrush)window.Background!).Color);
@@ -119,7 +119,7 @@ namespace EmuSen.LunaP.Tests
             window.Show();
 
             Assert.True(LunaTheme.Apply("Sparse"));
-            Assert.Equal(Color.Parse("#808080"), Brush(hint));
+            Assert.Equal(Color.Parse("#8D8D91"), Brush(hint));
 
             window.Close();
         });

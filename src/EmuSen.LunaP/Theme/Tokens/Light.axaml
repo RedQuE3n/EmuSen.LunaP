@@ -1,0 +1,39 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- The light column of the interface's colour tokens: a re-derivation of the dark column against the light surface,
+         not an inversion. The void, the scrims and the heads-up plate stay as dark, since they sit over a picture.
+         docs/LunaP.md §206.1 and §23.2. -->
+
+    <Color x:Key="LunaSurfaceColor">#F3F3F3</Color>
+    <Color x:Key="LunaSurfaceRaisedColor">#FFFFFF</Color>
+    <Color x:Key="LunaInputSurfaceColor">#FFFFFF</Color>
+    <Color x:Key="LunaVoidColor">#000000</Color>
+    <Color x:Key="LunaScrimColor">#8C000000</Color>
+    <Color x:Key="LunaCaptionSurfaceColor">#AA000000</Color>
+    <Color x:Key="LunaHudSurfaceColor">#E61C1C1C</Color>
+
+    <Color x:Key="LunaBorderColor">#8C8C8C</Color>
+    <Color x:Key="LunaRuleColor">#D6D6D6</Color>
+
+    <Color x:Key="LunaTextColor">#1F1F1F</Color>
+    <Color x:Key="LunaTextStrongColor">#000000</Color>
+    <Color x:Key="LunaMeterTextColor">#2A2A2A</Color>
+    <Color x:Key="LunaMutedColor">#5F5F5F</Color>
+    <Color x:Key="LunaSectionHeaderColor">#0A5A96</Color>
+    <Color x:Key="LunaWarningColor">#A34B1E</Color>
+
+    <Color x:Key="LunaAccentColor">#005FB8</Color>
+    <Color x:Key="LunaOnAccentColor">#FFFFFF</Color>
+    <Color x:Key="LunaOnArtColor">#FFFFFF</Color>
+    <Color x:Key="LunaOnArtScrimColor">#B8000000</Color>
+
+    <Color x:Key="LunaErrorColor">#B3261E</Color>
+    <Color x:Key="LunaSuccessColor">#1B6E3C</Color>
+    <Color x:Key="LunaAttentionColor">#7A5B00</Color>
+    <Color x:Key="LunaInfoColor">#7A5B00</Color>
+
+    <Color x:Key="LunaNominalColor">#1B7A1B</Color>
+    <Color x:Key="LunaBusyColor">#8A6300</Color>
+    <Color x:Key="LunaHotColor">#B32D12</Color>
+</ResourceDictionary>

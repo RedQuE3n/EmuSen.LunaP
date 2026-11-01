@@ -119,6 +119,8 @@
 
     <!-- Popups drawn inside their window under an element that asks for it, as a sheet does. §92.5. -->
     <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/EmbeddedPopups.axaml" />
+    <!-- A drawn menu's colours from the tokens. §206.4. -->
+    <StyleInclude Source="avares://EmuSen.LunaP/Theme/Controls/Menu.axaml" />
 
     <Styles.Resources>
         <ResourceDictionary>

@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using EmuSen.LunaP.Automation;
 using EmuSen.LunaP.Media;
+using EmuSen.LunaP.Theme;
 
 namespace EmuSen.LunaP.Controls
 {
@@ -46,9 +47,9 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<string?> FontPathProperty = MenuPanel.FontPathProperty.AddOwner<MenuRow>();
         public static readonly StyledProperty<double> RowHeightProperty = AvaloniaProperty.Register<MenuRow, double>(nameof(RowHeight), 54);
         public static readonly StyledProperty<double> TextSizeProperty = AvaloniaProperty.Register<MenuRow, double>(nameof(TextSize), 36);
-        public static readonly StyledProperty<Color> TextColorProperty = AvaloniaProperty.Register<MenuRow, Color>(nameof(TextColor), Color.FromRgb(0x9C, 0x9C, 0xA0));
+        public static readonly StyledProperty<Color> TextColorProperty = AvaloniaProperty.Register<MenuRow, Color>(nameof(TextColor), Color.FromRgb(0xD4, 0xD4, 0xD4));
         public static readonly StyledProperty<Color> HighlightTextColorProperty = AvaloniaProperty.Register<MenuRow, Color>(nameof(HighlightTextColor), Color.FromRgb(0xEE, 0xEE, 0xF0));
-        public static readonly StyledProperty<Color> BarColorProperty = AvaloniaProperty.Register<MenuRow, Color>(nameof(BarColor), Color.FromRgb(0x05, 0x05, 0x07));
+        public static readonly StyledProperty<Color> BarColorProperty = AvaloniaProperty.Register<MenuRow, Color>(nameof(BarColor), Color.FromRgb(0x26, 0x26, 0x2B));
         public static readonly StyledProperty<Color> RuleColorProperty = AvaloniaProperty.Register<MenuRow, Color>(nameof(RuleColor), Color.FromRgb(0x33, 0x33, 0x37));
         public static readonly StyledProperty<Color> AccentColorProperty = AvaloniaProperty.Register<MenuRow, Color>(nameof(AccentColor), Color.FromRgb(0x4C, 0x9A, 0xE8));
         public static readonly StyledProperty<LetterCase> LetterCaseProperty = AvaloniaProperty.Register<MenuRow, LetterCase>(nameof(LetterCase), LetterCase.Upper);
@@ -96,19 +97,19 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The label's em size in design pixels before Scale. 36 by default.</summary>
         public double TextSize { get => GetValue(TextSizeProperty); set => SetValue(TextSizeProperty, value); }
 
-        /// <summary>The colour of the text and the drawn marks. #FF9C9CA0, a light grey, by default.</summary>
+        /// <summary>The colour of the text and the drawn marks. #FFD4D4D4, the dark palette's text, by default; the theme sets LunaTextColor.</summary>
         public Color TextColor { get => GetValue(TextColorProperty); set => SetValue(TextColorProperty, value); }
 
-        /// <summary>The colour of the text and the marks on the highlighted row. #FFEEEEF0, near white, by default.</summary>
+        /// <summary>The colour of the text and the marks on the highlighted row. #FFEEEEF0, near white, by default; the theme sets LunaTextStrongColor.</summary>
         public Color HighlightTextColor { get => GetValue(HighlightTextColorProperty); set => SetValue(HighlightTextColorProperty, value); }
 
-        /// <summary>The highlight bar's colour. #FF050507, near black, by default.</summary>
+        /// <summary>The highlight bar's colour. #FF26262B, the raised surface, by default; the theme sets LunaSurfaceRaisedColor.</summary>
         public Color BarColor { get => GetValue(BarColorProperty); set => SetValue(BarColorProperty, value); }
 
-        /// <summary>The rule's colour. #FF333337, a dark grey, by default.</summary>
+        /// <summary>The rule's colour. #FF333337, a dark grey, by default; the theme sets LunaRuleColor.</summary>
         public Color RuleColor { get => GetValue(RuleColorProperty); set => SetValue(RuleColorProperty, value); }
 
-        /// <summary>The fill of a switch that is on. #FF4C9AE8, a mid blue, by default.</summary>
+        /// <summary>The fill of a switch that is on and the focus bar at a highlighted row's left. #FF4C9AE8, a mid blue, by default; the theme sets LunaAccentColor.</summary>
         public Color AccentColor { get => GetValue(AccentColorProperty); set => SetValue(AccentColorProperty, value); }
 
         /// <summary>The casing of the label and the value. Upper by default.</summary>
@@ -198,7 +199,11 @@ namespace EmuSen.LunaP.Controls
         {
             MenuRowLayout at = Layout(Bounds.Size);
             double u = Unit;
-            if (IsHighlighted) context.FillRectangle(new ImmutableSolidColorBrush(BarColor), at.Bar);
+            if (IsHighlighted)
+            {
+                context.FillRectangle(new ImmutableSolidColorBrush(BarColor), at.Bar);
+                context.FillRectangle(new ImmutableSolidColorBrush(AccentColor), new Rect(at.Bar.X, at.Bar.Y, LunaTokens.FocusMarks.BarWidth * u, at.Bar.Height));
+            }
             context.FillRectangle(new ImmutableSolidColorBrush(RuleColor), at.Rule);
 
             Color ink = IsHighlighted ? HighlightTextColor : TextColor;

@@ -14056,3 +14056,104 @@ WiseMan's copy can now be replaced by this one, so that the audit has one owner.
 
 Off by default, so a table scrolls sideways as §59 made it. On, the rows' horizontal scroll bar is disabled, so star
 columns share the table's own width and trim, as a frame does whose detail shows the chosen row whole.
+
+## 206. The interface's tokens: one palette for the desktop and the big screen, type, spacing, focus, motion and sound
+
+*2026-11-01.* The consumer's unified interface (its `EmuSen_Interface.md`, decided 2026-11-01) asks that every window
+change together: one set of colours, one type scale, one spacing grid, one focus mark, one set of motion durations and
+one set of sounds, read by every control so that a change is one edit. Until now the toolkit held two palettes: the
+desktop's (`Palette.axaml`, §2, §23) and the big screen's (`MenuPalette.axaml`, §200.3), whose values had been copied
+from the menus and differed from the desktop's in nine of eighteen colours. This section records how they became one,
+and the non-colour tokens added beside them. Nothing in it is specific to the consumer: each token is a general
+property of a ten-foot and a desktop interface, and the values are the design's, cited there.
+
+### 206.1 Colour: two columns written once
+
+- **`Theme/Tokens/Dark.axaml` and `Theme/Tokens/Light.axaml`** hold every colour token's value, one file per column.
+  `Palette.axaml` includes them as its `Dark` and `Light` theme dictionaries; `MenuPalette.axaml` merges the dark file
+  flat, and `MenuLook.CreatePalette(light: true)` swaps in the light file. No colour value is written anywhere else in
+  XAML; `LunaPalette.cs` keeps the dark column for code with no resource host, pinned by `LunaPaletteTests` as before.
+- **`Theme/Tokens/Brushes.axaml`** declares one brush per token with `{DynamicResource ...Color}`, merged by both
+  palettes. A brush re-resolves its colour from the element that uses it, so a menu inside a `MenuPanel` reads the
+  panel's flat dark (or light) colours while a desktop window reads the application's variant.
+  `InterfaceTokenTests.The_big_screen_stays_dark_on_a_light_desktop_and_takes_light_when_asked` holds this.
+- **New tokens:** `SurfaceRaised` (cards, tiles, a focused row's bar), `Scrim` (black at 55%, over a frame or a theme
+  under a card), `TextStrong` (titles, the focused row), `Attention` (a status needing the player; `Info` is kept as
+  its older name with the same value), `OnArt` with `OnArtScrimColor` and the `LunaOnArtScrim` gradient (words over a
+  picture), `Rule` (the line under a menu row, `#333337` dark) and `CaptionSurface`, moved from the menu palette.
+- **Changed dark values:** Surface `#1E1E1E` to `#1B1B1E`, InputSurface `#252526` to `#0E0E10`, Accent `#007ACC` to
+  `#4C9AE8`, OnAccent `#FFFFFF` to `#0E0E10`, the design's values. Four were then corrected against the raised surface,
+  which the design's table did not measure: Muted `#86868A` (4.15:1 on SurfaceRaised) to `#8D8D91` (4.55:1), Border
+  `#6E6E6E` (2.95:1) to `#707070` (3.04:1), Success `#2E8B57` (3.55:1) to `#35A064` (4.56:1) and Error `#CD5C5C`
+  (3.79:1) to `#D37070` (4.53:1), each the least change in lightness that clears its floor. The light column is the
+  design's and was already the toolkit's, apart from the new tokens.
+- **The menu palette's FluentTheme keys** now point at tokens rather than literals: the near-black focused fill
+  `#050507` became SurfaceRaised, the row text `#9C9CA0` became Text, a focused field's border became Accent.
+- **One FluentTheme literal surfaced.** Fluent paints a notification card's information fill `#007ACC`, which had
+  passed `PaletteReachTests` only because it equalled the old accent; `FluentBridge.axaml` now maps
+  `NotificationCardInformationBackgroundBrush` to the accent.
+
+**Contrast.** `InterfaceTokenTests.Every_pair_of_tokens_clears_its_contrast_floor` measures, in both variants, Text,
+TextStrong, Muted, Attention, Success and Error at 4.5:1 (WCAG 1.4.3) and Accent and Border at 3:1 (WCAG 1.4.11)
+against Surface, SurfaceRaised and InputSurface, and OnAccent on Accent at 4.5:1: 50 pairs. OnArt over a white picture
+under the scrim measures 9.3:1.
+
+**A measurement corrected.** `TableCellKindTests.A_disabled_checkbox_is_still_legible` read a brush's colour for the
+light variant while the application was dark; the brush answers in the application's variant, so the light case had
+been measuring the dark fill on the light surface, and passed at 3.7:1 only while the dark Muted was `#808080`. The test
+now sets the variant it measures.
+
+### 206.2 Type
+
+`LunaMetrics`, a `ResourceDictionary` filled from `LunaTokens`, gives each form its scale: the big screen in design
+units (Display 44, Title 32, Row 26, Body 22, Caption 20, a pad glyph 22) and the desktop in pixels (Display 24,
+Title 16, Strong 14, Body 13, Caption 11), as `Luna<Role>FontSize`. `Palette.axaml` merges the desktop's,
+`MenuPalette.axaml` the big screen's. `LunaHintFontSize` is Caption in both; `LunaHeaderFontSize` keeps 14 and 28
+until the header role replaces the section heading. FluentTheme's `ControlContentThemeFontSize` is the form's Body, so
+a stock control on the desktop is set at 13 rather than 14.
+
+### 206.3 Typefaces
+
+Barlow and Barlow Condensed (Copyright 2017 The Barlow Project Authors, SIL Open Font License 1.1, fetched from
+https://github.com/jpt/barlow on 2026-11-01), Regular and Medium, are bundled as resources and copied beside the
+application under `LunaP/Fonts/` with the licence's text, for text drawn from a file (`LunaFonts.BodyFile` and the
+rest). Each family has its own resource folder: with both in one folder, Avalonia 12.1's embedded collection answered
+`#Barlow Condensed` with Barlow Regular, at every weight (measured 2026-11-01 by the advance of `M`, 699 units in
+both), so the condensed faces were unreachable.
+
+`LunaBodyFontFamily` is Barlow and `LunaTitleFontFamily` and `LunaDisplayFontFamily` are Barlow Condensed in both
+forms, Display at medium weight. FluentTheme's `ContentControlThemeFontFamily` is Barlow, so every window's words are
+Barlow unless they choose otherwise. The look (§196) draws its words in Barlow and its headings and tabs in Barlow
+Condensed; `MenuLook.FontFamilyKey` is no longer read. Barlow is narrower than Inter at the same size: two of this
+suite's tests had clicked or measured at coordinates that held only for Inter's widths and were rewritten to derive
+them from the control (`TableFrozenTests`, `MenuFollowupTests`).
+
+### 206.4 Spacing and focus
+
+Big screen, in units: base 4, row 54, control 44, gutter 24 inside a pane and 32 between panes, safe area 64 at the
+sides and 40 top and bottom (5% of 1280 × 800; `LunaTokens.SafeAreaOf` gives 5% of any size), card 512, title row 100,
+help bar 58, cover tile 180 × 240 with 24 between, radius 4 on rows and 8 on tiles. Desktop, in pixels: row 24,
+control 28, gutter 24, gap 16, tile 100 × 133 with 16 between, radius 4 and 6. The focus: a ring of 3 drawn 4 outside
+the item (`LunaFocusRingThickness`, `LunaFocusRingOffset`, `LunaFocusRingRadius`), a focused tile scaled 1.06, and on
+a row the bar: SurfaceRaised, a 4-unit Accent bar at its left and TextStrong. `MenuRow` draws the bar, and the look's
+list rows, buttons and switches take it; a drawn menu's colours (`MenuRow`, `MenuPanel`) are set from the tokens by
+`Theme/Controls/Menu.axaml`, so their code defaults are only the fallback outside any palette.
+
+### 206.5 Motion
+
+`LunaMotion` gives each token its duration and easing: Instant 0, Quick 120 ms quadratic out, Enter 200 ms quadratic
+out, Exit 160 ms quadratic in, Pan 320 ms cubic out, Reel 400 ms quadratic out, Fade 150 ms linear. With
+`LunaMotion.Reduced` set (by the system's preference or the player's switch, which the host reads), every movement
+takes no time, a fade takes 120 ms, and the idle ring stops breathing (WCAG 2.3.3). The idle breath is 2 s before, a
+1.6 s period, down to 70%.
+
+### 206.6 Sound
+
+`LunaSounds` synthesises nine cues (Move, Section, Choose, Back, Favourite, Launch, Saved, Loaded, Refused) as 48 kHz
+stereo 32-bit float: each tone a sine with a quarter of its octave, a 3 ms rise and an exponential fall. The first six
+are the consumer's own tones, moved here unchanged so its existing sounds are byte for byte the same; Saved is 880 then
+1320 Hz, 60 ms each, Loaded the reverse, Refused 220 Hz for 120 ms. No recorded sound is copied. The default volume is
+60%, on by default; only Saved and Loaded may play over gameplay, 12 dB under it. Playback is the host's.
+
+**What it costs.** Every surface of a consumer moves: the desktop's Surface, InputSurface and accent, the big screen's
+row text and focused fill, and every text's face and width. `InterfaceTokenTests` holds the tokens.

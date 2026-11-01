@@ -269,6 +269,8 @@
     <SolidColorBrush x:Key="ToolTipBorderBrush" Color="{DynamicResource LunaBorderColor}" />
     <SolidColorBrush x:Key="NotificationCardBackgroundBrush" Color="{DynamicResource LunaSurfaceColor}" />
     <SolidColorBrush x:Key="NotificationCardForegroundBrush" Color="{DynamicResource LunaTextColor}" />
+    <!-- Fluent writes the information card's fill as #007ACC, which matched the old accent by coincidence until §206 moved it. -->
+    <SolidColorBrush x:Key="NotificationCardInformationBackgroundBrush" Color="{DynamicResource LunaAccentColor}" />
 
     <!-- ==================================================================
          STRUCTURE AND BUTTONS - §85.9.

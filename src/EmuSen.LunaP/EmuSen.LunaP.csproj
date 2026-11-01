@@ -159,6 +159,13 @@
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
+  <!-- Barlow and Barlow Condensed under the SIL Open Font License 1.1, with its text: a resource for the typefaces, and
+       copied beside the application for text drawn from a file (docs/LunaP.md §206.3). -->
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\Fonts\**\*.ttf" />
+    <None Include="Assets\Fonts\**\*.ttf;Assets\Fonts\OFL.txt" Link="LunaP\Fonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- Desktop, Fonts.Inter and X11 are here for LunaApp.Configure, which owns
          the UsePlatformDetect/WithInterFont/LogToTrace/UseX11 sequence an

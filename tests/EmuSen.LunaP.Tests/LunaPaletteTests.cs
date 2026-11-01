@@ -15,24 +15,31 @@ namespace EmuSen.LunaP.Tests
             HeadlessUnitTestSession.GetOrStartForAssembly(typeof(LunaPaletteTests).GetTypeInfo().Assembly);
 
         [Theory]
-        [InlineData("LunaSurface", "#1E1E1E")]
-        [InlineData("LunaInputSurface", "#252526")]
+        [InlineData("LunaSurface", "#1B1B1E")]
+        [InlineData("LunaInputSurface", "#0E0E10")]
         [InlineData("LunaVoid", "#000000")]
         [InlineData("LunaHudSurface", "#E61C1C1C")]
-        [InlineData("LunaBorder", "#6E6E6E")]
+        [InlineData("LunaBorder", "#707070")]
         [InlineData("LunaText", "#D4D4D4")]
         [InlineData("LunaMeterText", "#DCDCDC")]
-        [InlineData("LunaMuted", "#808080")]
+        [InlineData("LunaMuted", "#8D8D91")]
         [InlineData("LunaSectionHeader", "#9CDCFE")]
         [InlineData("LunaWarning", "#D08770")]
-        [InlineData("LunaError", "#CD5C5C")]
-        [InlineData("LunaSuccess", "#2E8B57")]
+        [InlineData("LunaError", "#D37070")]
+        [InlineData("LunaSuccess", "#35A064")]
         [InlineData("LunaInfo", "#DAA520")]
-        [InlineData("LunaAccent", "#007ACC")]
-        [InlineData("LunaOnAccent", "#FFFFFF")]
+        [InlineData("LunaAccent", "#4C9AE8")]
+        [InlineData("LunaOnAccent", "#0E0E10")]
         [InlineData("LunaNominal", "#32CD32")]
         [InlineData("LunaBusy", "#FFD700")]
         [InlineData("LunaHot", "#FF4500")]
+        [InlineData("LunaSurfaceRaised", "#26262B")]
+        [InlineData("LunaScrim", "#8C000000")]
+        [InlineData("LunaCaptionSurface", "#AA000000")]
+        [InlineData("LunaRule", "#333337")]
+        [InlineData("LunaTextStrong", "#EEEEF0")]
+        [InlineData("LunaOnArt", "#FFFFFF")]
+        [InlineData("LunaAttention", "#DAA520")]
         public Task Every_brush_resolves_to_the_literal_it_replaced(string key, string expected) => Session.Dispatch(() =>
         {
             Assert.True(Application.Current!.TryGetResource(key, ThemeVariant.Dark, out object? found),
@@ -61,6 +68,13 @@ namespace EmuSen.LunaP.Tests
         [InlineData("LunaNominal", nameof(LunaPalette.Nominal))]
         [InlineData("LunaBusy", nameof(LunaPalette.Busy))]
         [InlineData("LunaHot", nameof(LunaPalette.Hot))]
+        [InlineData("LunaSurfaceRaised", nameof(LunaPalette.SurfaceRaised))]
+        [InlineData("LunaScrim", nameof(LunaPalette.Scrim))]
+        [InlineData("LunaCaptionSurface", nameof(LunaPalette.CaptionSurface))]
+        [InlineData("LunaRule", nameof(LunaPalette.Rule))]
+        [InlineData("LunaTextStrong", nameof(LunaPalette.TextStrong))]
+        [InlineData("LunaOnArt", nameof(LunaPalette.OnArt))]
+        [InlineData("LunaAttention", nameof(LunaPalette.Attention))]
         public Task The_XAML_and_CSharp_halves_agree(string key, string field) => Session.Dispatch(() =>
         {
             Application.Current!.TryGetResource(key, ThemeVariant.Dark, out object? found);

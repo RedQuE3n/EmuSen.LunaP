@@ -1,133 +1,112 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
-                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:theme="clr-namespace:EmuSen.LunaP.Theme">
 
-    <!-- A big-screen menu's palette: the look's colours, for the look (MenuLook.axaml
-     merges it) and for a menu that draws itself, which MenuPanel gives it to - see
-     docs/LunaP.md §196 and §200.3. -->
+    <!-- The big screen's palette: the interface's colour tokens (dark here; MenuLook.CreatePalette swaps in the light
+         column), their brushes, the big screen's metrics, and FluentTheme's keys painted from the tokens, for the look
+         (MenuLook.axaml) and for a menu that draws itself (MenuPanel). No colour is written here: the values are
+         Tokens/Dark.axaml's and Tokens/Light.axaml's, the desktop's too - docs/LunaP.md §196, §200.3 and §206.1. -->
 
-    <!-- LunaP's own palette, for every Luna control under the element. -->
-    <Color x:Key="LunaSurfaceColor">#1B1B1E</Color>
-    <Color x:Key="LunaInputSurfaceColor">#0E0E10</Color>
-    <Color x:Key="LunaHudSurfaceColor">#F0161618</Color>
-    <Color x:Key="LunaBorderColor">#55555A</Color>
-    <Color x:Key="LunaTextColor">#9C9CA0</Color>
-    <Color x:Key="LunaMeterTextColor">#B4B4B8</Color>
-    <Color x:Key="LunaMutedColor">#86868A</Color>
-    <Color x:Key="LunaSectionHeaderColor">#B4B4B8</Color>
-    <Color x:Key="LunaAccentColor">#4C9AE8</Color>
-    <Color x:Key="LunaOnAccentColor">#FFFFFF</Color>
-    <SolidColorBrush x:Key="LunaSurface" Color="#1B1B1E" />
-    <SolidColorBrush x:Key="LunaInputSurface" Color="#0E0E10" />
-    <SolidColorBrush x:Key="LunaHudSurface" Color="#F0161618" />
-    <SolidColorBrush x:Key="LunaBorder" Color="#55555A" />
-    <SolidColorBrush x:Key="LunaText" Color="#9C9CA0" />
-    <SolidColorBrush x:Key="LunaMeterText" Color="#B4B4B8" />
-    <SolidColorBrush x:Key="LunaMuted" Color="#86868A" />
-    <SolidColorBrush x:Key="LunaSectionHeader" Color="#B4B4B8" />
-    <SolidColorBrush x:Key="LunaAccent" Color="#4C9AE8" />
-    <SolidColorBrush x:Key="LunaOnAccent" Color="#FFFFFF" />
-    <!-- A caption's box over a picture, such as a screensaver's game and system: black at two thirds, as ES-DE draws it (§200.3). -->
-    <Color x:Key="LunaCaptionSurfaceColor">#AA000000</Color>
-    <SolidColorBrush x:Key="LunaCaptionSurface" Color="#AA000000" />
-    <x:Double x:Key="LunaHintFontSize">20</x:Double>
-    <x:Double x:Key="LunaHeaderFontSize">28</x:Double>
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://EmuSen.LunaP/Theme/Tokens/Dark.axaml" />
+        <ResourceInclude Source="avares://EmuSen.LunaP/Theme/Tokens/Brushes.axaml" />
+        <theme:LunaMetrics Form="BigScreen" />
+    </ResourceDictionary.MergedDictionaries>
 
     <!-- Fluent's keys, which its templates look up where they draw, so the parts no style reaches follow too. -->
-    <SolidColorBrush x:Key="TextControlBackground" Color="#0E0E10" />
-    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#0E0E10" />
-    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#050507" />
-    <SolidColorBrush x:Key="TextControlForeground" Color="#D2D2D6" />
-    <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#D2D2D6" />
-    <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#EEEEF0" />
-    <SolidColorBrush x:Key="TextControlBorderBrush" Color="#55555A" />
-    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#86868A" />
-    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#EEEEF0" />
-    <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#86868A" />
-    <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#86868A" />
-    <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#86868A" />
-    <SolidColorBrush x:Key="TextControlButtonForeground" Color="#9C9CA0" />
-    <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="#4C9AE8" />
+    <SolidColorBrush x:Key="TextControlBackground" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="{DynamicResource LunaSurfaceRaisedColor}" />
+    <SolidColorBrush x:Key="TextControlForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="TextControlForegroundFocused" Color="{DynamicResource LunaTextStrongColor}" />
+    <SolidColorBrush x:Key="TextControlBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{DynamicResource LunaAccentColor}" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="TextControlButtonForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="{DynamicResource LunaAccentColor}" />
 
-    <SolidColorBrush x:Key="ComboBoxBackground" Color="#0E0E10" />
-    <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#0E0E10" />
-    <SolidColorBrush x:Key="ComboBoxBackgroundUnfocused" Color="#0E0E10" />
-    <SolidColorBrush x:Key="ComboBoxBackgroundFocused" Color="#050507" />
-    <SolidColorBrush x:Key="ComboBoxForeground" Color="#9C9CA0" />
-    <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#55555A" />
-    <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#86868A" />
-    <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushUnfocused" Color="#55555A" />
-    <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#1B1B1E" />
-    <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#333337" />
-    <SolidColorBrush x:Key="ComboBoxDropDownGlyphForeground" Color="#9C9CA0" />
+    <SolidColorBrush x:Key="ComboBoxBackground" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="ComboBoxBackgroundUnfocused" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="ComboBoxBackgroundFocused" Color="{DynamicResource LunaSurfaceRaisedColor}" />
+    <SolidColorBrush x:Key="ComboBoxForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushUnfocused" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="{DynamicResource LunaSurfaceColor}" />
+    <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="{DynamicResource LunaRuleColor}" />
+    <SolidColorBrush x:Key="ComboBoxDropDownGlyphForeground" Color="{DynamicResource LunaTextColor}" />
     <!-- Focused, the stock template draws the words and the arrow in white at 80%, a colour no key here declared (§200.3). -->
-    <SolidColorBrush x:Key="ComboBoxForegroundFocused" Color="#EEEEF0" />
-    <SolidColorBrush x:Key="ComboBoxForegroundFocusedPressed" Color="#EEEEF0" />
-    <SolidColorBrush x:Key="ComboBoxDropDownGlyphForegroundFocused" Color="#EEEEF0" />
-    <SolidColorBrush x:Key="ComboBoxDropDownGlyphForegroundFocusedPressed" Color="#EEEEF0" />
-    <SolidColorBrush x:Key="ComboBoxItemForeground" Color="#9C9CA0" />
-    <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="#EEEEF0" />
-    <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="#050507" />
-    <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="#141416" />
+    <SolidColorBrush x:Key="ComboBoxForegroundFocused" Color="{DynamicResource LunaTextStrongColor}" />
+    <SolidColorBrush x:Key="ComboBoxForegroundFocusedPressed" Color="{DynamicResource LunaTextStrongColor}" />
+    <SolidColorBrush x:Key="ComboBoxDropDownGlyphForegroundFocused" Color="{DynamicResource LunaTextStrongColor}" />
+    <SolidColorBrush x:Key="ComboBoxDropDownGlyphForegroundFocusedPressed" Color="{DynamicResource LunaTextStrongColor}" />
+    <SolidColorBrush x:Key="ComboBoxItemForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="{DynamicResource LunaTextStrongColor}" />
+    <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="{DynamicResource LunaSurfaceRaisedColor}" />
+    <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="{DynamicResource LunaSurfaceRaisedColor}" />
 
     <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
-    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#141416" />
-    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#050507" />
+    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="{DynamicResource LunaSurfaceRaisedColor}" />
+    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="{DynamicResource LunaSurfaceRaisedColor}" />
     <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
-    <SolidColorBrush x:Key="ButtonForeground" Color="#9C9CA0" />
-    <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#B4B4B8" />
-    <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#EEEEF0" />
-    <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="#55555A" />
-    <SolidColorBrush x:Key="ButtonBorderBrush" Color="#55555A" />
-    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#86868A" />
-    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#86868A" />
-    <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="#333337" />
+    <SolidColorBrush x:Key="ButtonForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="ButtonForegroundPressed" Color="{DynamicResource LunaTextStrongColor}" />
+    <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="ButtonBorderBrush" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="{DynamicResource LunaRuleColor}" />
     <SolidColorBrush x:Key="RepeatButtonBackground" Color="Transparent" />
-    <SolidColorBrush x:Key="RepeatButtonForeground" Color="#9C9CA0" />
+    <SolidColorBrush x:Key="RepeatButtonForeground" Color="{DynamicResource LunaTextColor}" />
     <SolidColorBrush x:Key="ToggleButtonBackground" Color="Transparent" />
-    <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="#050507" />
-    <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="#EEEEF0" />
+    <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="{DynamicResource LunaSurfaceRaisedColor}" />
+    <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="{DynamicResource LunaTextStrongColor}" />
 
-    <SolidColorBrush x:Key="CheckBoxForegroundUnchecked" Color="#9C9CA0" />
-    <SolidColorBrush x:Key="CheckBoxForegroundChecked" Color="#9C9CA0" />
-    <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUnchecked" Color="#86868A" />
+    <SolidColorBrush x:Key="CheckBoxForegroundUnchecked" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="CheckBoxForegroundChecked" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUnchecked" Color="{DynamicResource LunaMutedColor}" />
     <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUnchecked" Color="Transparent" />
-    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="#4C9AE8" />
-    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="#4C9AE8" />
-    <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="{DynamicResource LunaAccentColor}" />
+    <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="{DynamicResource LunaAccentColor}" />
+    <SolidColorBrush x:Key="CheckBoxCheckGlyphForegroundChecked" Color="{DynamicResource LunaOnAccentColor}" />
 
-    <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#4C9AE8" />
-    <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#4C9AE8" />
+    <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="{DynamicResource LunaAccentColor}" />
+    <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="{DynamicResource LunaAccentColor}" />
     <SolidColorBrush x:Key="ToggleSwitchFillOff" Color="Transparent" />
-    <SolidColorBrush x:Key="ToggleSwitchStrokeOff" Color="#86868A" />
-    <SolidColorBrush x:Key="ToggleSwitchKnobFillOff" Color="#86868A" />
-    <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="ToggleSwitchContentForeground" Color="#9C9CA0" />
+    <SolidColorBrush x:Key="ToggleSwitchStrokeOff" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="ToggleSwitchKnobFillOff" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="ToggleSwitchKnobFillOn" Color="{DynamicResource LunaOnAccentColor}" />
+    <SolidColorBrush x:Key="ToggleSwitchContentForeground" Color="{DynamicResource LunaTextColor}" />
 
-    <SolidColorBrush x:Key="SliderTrackFill" Color="#333337" />
-    <SolidColorBrush x:Key="SliderTrackFillPointerOver" Color="#333337" />
-    <SolidColorBrush x:Key="SliderTrackValueFill" Color="#4C9AE8" />
-    <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="#4C9AE8" />
-    <SolidColorBrush x:Key="SliderThumbBackground" Color="#EEEEF0" />
-    <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="#EEEEF0" />
-    <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="#EEEEF0" />
+    <SolidColorBrush x:Key="SliderTrackFill" Color="{DynamicResource LunaRuleColor}" />
+    <SolidColorBrush x:Key="SliderTrackFillPointerOver" Color="{DynamicResource LunaRuleColor}" />
+    <SolidColorBrush x:Key="SliderTrackValueFill" Color="{DynamicResource LunaAccentColor}" />
+    <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="{DynamicResource LunaAccentColor}" />
+    <SolidColorBrush x:Key="SliderThumbBackground" Color="{DynamicResource LunaTextStrongColor}" />
+    <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="{DynamicResource LunaTextStrongColor}" />
+    <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="{DynamicResource LunaTextStrongColor}" />
 
-    <SolidColorBrush x:Key="ScrollBarPanningThumbBackground" Color="#55555A" />
-    <Color x:Key="ScrollBarThumbBackgroundColor">#55555A</Color>
-    <SolidColorBrush x:Key="ScrollBarThumbFillPointerOver" Color="#86868A" />
-    <SolidColorBrush x:Key="ScrollBarThumbFillPressed" Color="#86868A" />
+    <SolidColorBrush x:Key="ScrollBarPanningThumbBackground" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="ScrollBarThumbFillPointerOver" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="ScrollBarThumbFillPressed" Color="{DynamicResource LunaMutedColor}" />
     <SolidColorBrush x:Key="ScrollBarTrackFill" Color="Transparent" />
-    <SolidColorBrush x:Key="ScrollBarTrackFillPointerOver" Color="#141416" />
+    <SolidColorBrush x:Key="ScrollBarTrackFillPointerOver" Color="{DynamicResource LunaSurfaceRaisedColor}" />
 
-    <SolidColorBrush x:Key="TabItemHeaderForegroundUnselected" Color="#86868A" />
-    <SolidColorBrush x:Key="TabItemHeaderForegroundUnselectedPointerOver" Color="#B4B4B8" />
-    <SolidColorBrush x:Key="TabItemHeaderForegroundSelected" Color="#EEEEF0" />
-    <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPointerOver" Color="#EEEEF0" />
-    <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="#EEEEF0" />
+    <SolidColorBrush x:Key="TabItemHeaderForegroundUnselected" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="TabItemHeaderForegroundUnselectedPointerOver" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="TabItemHeaderForegroundSelected" Color="{DynamicResource LunaTextStrongColor}" />
+    <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPointerOver" Color="{DynamicResource LunaTextStrongColor}" />
+    <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="{DynamicResource LunaTextStrongColor}" />
 
-    <SolidColorBrush x:Key="ToolTipBackground" Color="#161618" />
-    <SolidColorBrush x:Key="ToolTipForeground" Color="#D2D2D6" />
-    <SolidColorBrush x:Key="ToolTipBorderBrush" Color="#333337" />
-    <Color x:Key="SystemChromeLowColor">#141416</Color>
-    <SolidColorBrush x:Key="SystemControlFocusVisualPrimaryBrush" Color="#EEEEF0" />
-    <SolidColorBrush x:Key="SystemControlFocusVisualSecondaryBrush" Color="#050507" />
+    <SolidColorBrush x:Key="ToolTipBackground" Color="{DynamicResource LunaSurfaceRaisedColor}" />
+    <SolidColorBrush x:Key="ToolTipForeground" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="ToolTipBorderBrush" Color="{DynamicResource LunaRuleColor}" />
+    <SolidColorBrush x:Key="SystemControlFocusVisualPrimaryBrush" Color="{DynamicResource LunaTextStrongColor}" />
+    <SolidColorBrush x:Key="SystemControlFocusVisualSecondaryBrush" Color="{DynamicResource LunaSurfaceRaisedColor}" />
 </ResourceDictionary>

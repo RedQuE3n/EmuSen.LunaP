@@ -1275,6 +1275,7 @@ public class EmuSen.LunaP.Controls.ManagerLayout<T> : EmuSen.LunaP.Controls.Adap
     public bool IsRunning { get; }
     public bool OpenPlan()
     public bool SetMark(T row, string? key)
+    public const double PlanFloor = 240
     public const string PlanClass = "manager-plan"
     public event System.Action MarksChanged
     public event System.Action<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.ManagerMarked<T>>> Applying
@@ -1339,13 +1340,16 @@ public static class EmuSen.LunaP.Controls.MenuLook
     public const string ClassName = "menu-look"
     public const string FontFamilyKey = "LunaMenuFontFamily"
     public static Avalonia.Controls.ResourceDictionary CreatePalette()
+    public static Avalonia.Controls.ResourceDictionary CreatePalette(bool light)
     public static Avalonia.Styling.Styles CreateStyles()
+    public static Avalonia.Styling.Styles CreateStyles(bool light)
     public static System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? GetHints(Avalonia.Controls.Window window)
     public static bool Covers(Avalonia.Controls.Control element)
     public static bool GetFadesBottom(Avalonia.Controls.ScrollViewer viewer)
     public static bool GetFadesLeft(Avalonia.Controls.ScrollViewer viewer)
     public static bool GetFadesRight(Avalonia.Controls.ScrollViewer viewer)
     public static bool GetFadesTop(Avalonia.Controls.ScrollViewer viewer)
+    public static bool GetIsLight(Avalonia.Controls.Control element)
     public static bool GetIsOn(Avalonia.Controls.Control element)
     public static double GetWidthFraction(Avalonia.Controls.Window window)
     public static int GetFooterLines(Avalonia.Controls.Window window)
@@ -1354,6 +1358,7 @@ public static class EmuSen.LunaP.Controls.MenuLook
     public static readonly Avalonia.AttachedProperty<bool> FadesLeftProperty = false
     public static readonly Avalonia.AttachedProperty<bool> FadesRightProperty = false
     public static readonly Avalonia.AttachedProperty<bool> FadesTopProperty = false
+    public static readonly Avalonia.AttachedProperty<bool> IsLightProperty = false
     public static readonly Avalonia.AttachedProperty<bool> IsOnProperty = false
     public static readonly Avalonia.AttachedProperty<double> WidthFractionProperty = NaN
     public static readonly Avalonia.AttachedProperty<int> FooterLinesProperty = 3
@@ -1364,6 +1369,7 @@ public static class EmuSen.LunaP.Controls.MenuLook
     public static void SetFooter(Avalonia.Controls.Window window, string? value)
     public static void SetFooterLines(Avalonia.Controls.Window window, int value)
     public static void SetHints(Avalonia.Controls.Window window, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? value)
+    public static void SetIsLight(Avalonia.Controls.Control element, bool value)
     public static void SetIsOn(Avalonia.Controls.Control element, bool value)
     public static void SetWidthFraction(Avalonia.Controls.Window window, double value)
     public static void WhenApplied(Avalonia.Controls.Control element, System.Action action)
@@ -1416,13 +1422,13 @@ public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     public static readonly Avalonia.AttachedProperty<double> ScaleProperty = 1
     public static readonly Avalonia.AttachedProperty<string?> FontPathProperty = null
     public static readonly Avalonia.StyledProperty<Avalonia.Controls.Control?> ButtonsProperty = null
-    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> FooterColorProperty = #ff86868a
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> FooterColorProperty = #ff8d8d91
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> HintBackgroundProperty = #f0161618
-    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> HintColorProperty = #ffd2d2d6
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> HintColorProperty = #ffd4d4d4
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> PanelColorProperty = #ff1b1b1e
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> RuleColorProperty = #ff333337
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> ScrollIndicatorColorProperty = #ff747478
-    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TitleColorProperty = #ffb4b4b8
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TitleColorProperty = #ffeeeef0
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadFamily> HintFamilyProperty = Generic
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadGlyphStyle> HintGlyphStyleProperty = Filled
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = Upper
@@ -1473,10 +1479,10 @@ public class EmuSen.LunaP.Controls.MenuRow : Avalonia.Controls.Control
     public double TextSize { get; set; }
     public override void Render(Avalonia.Media.DrawingContext context)
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> AccentColorProperty = #ff4c9ae8
-    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> BarColorProperty = #ff050507
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> BarColorProperty = #ff26262b
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> HighlightTextColorProperty = #ffeeeef0
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> RuleColorProperty = #ff333337
-    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TextColorProperty = #ff9c9ca0
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TextColorProperty = #ffd4d4d4
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color?> ValueColorProperty = null
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.MenuRowKind> KindProperty = Action
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = Upper
@@ -2057,10 +2063,10 @@ public class EmuSen.LunaP.Controls.TextRowList : Avalonia.Controls.Control
     public int VisibleRows { get; }
     public override void Render(Avalonia.Media.DrawingContext context)
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> PrimaryColorProperty = #ffd4d4d4
-    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> SecondaryColorProperty = Gray
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> SecondaryColorProperty = #ff8d8d91
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> SelectedBackgroundColorProperty = Transparent
-    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> SelectedColorProperty = White
-    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> SelectorColorProperty = #ff007acc
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> SelectedColorProperty = #ff0e0e10
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> SelectorColorProperty = #ff4c9ae8
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color?> SelectedSecondaryColorProperty = null
     public static readonly Avalonia.StyledProperty<Avalonia.Media.TextAlignment> TextAlignmentProperty = Left
     public static readonly Avalonia.StyledProperty<Avalonia.Thickness> SelectedBackgroundMarginsProperty = 0,0,0,0
@@ -2217,6 +2223,53 @@ public enum EmuSen.LunaP.Media.LetterCase
     public const EmuSen.LunaP.Media.LetterCase Upper = 1
     public int value__
 
+public static class EmuSen.LunaP.Media.LunaFonts
+    public const string Folder = "LunaP/Fonts"
+    public static readonly Avalonia.Media.FontFamily Body
+    public static readonly Avalonia.Media.FontFamily Condensed
+    public static string BodyFile { get; }
+    public static string BodyMediumFile { get; }
+    public static string CondensedFile { get; }
+    public static string CondensedMediumFile { get; }
+    public static string LicenceFile { get; }
+
+public enum EmuSen.LunaP.Media.LunaSoundCue
+    public const EmuSen.LunaP.Media.LunaSoundCue Back = 3
+    public const EmuSen.LunaP.Media.LunaSoundCue Choose = 2
+    public const EmuSen.LunaP.Media.LunaSoundCue Favourite = 4
+    public const EmuSen.LunaP.Media.LunaSoundCue Launch = 5
+    public const EmuSen.LunaP.Media.LunaSoundCue Loaded = 7
+    public const EmuSen.LunaP.Media.LunaSoundCue Move = 0
+    public const EmuSen.LunaP.Media.LunaSoundCue Refused = 8
+    public const EmuSen.LunaP.Media.LunaSoundCue Saved = 6
+    public const EmuSen.LunaP.Media.LunaSoundCue Section = 1
+    public int value__
+
+public static class EmuSen.LunaP.Media.LunaSounds
+    public const bool OnByDefault = true
+    public const double DefaultVolume = 0.6
+    public const double UnderGameplayDecibels = -12
+    public const int Rate = 48000
+    public static System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.LunaSoundCue> Cues { get; }
+    public static System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.LunaTone> TonesOf(EmuSen.LunaP.Media.LunaSoundCue cue)
+    public static bool PlaysOverGameplay(EmuSen.LunaP.Media.LunaSoundCue cue)
+    public static byte[] Render(System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.LunaTone> tones)
+    public static byte[] Samples(EmuSen.LunaP.Media.LunaSoundCue cue)
+
+public struct EmuSen.LunaP.Media.LunaTone : System.ValueType, System.IEquatable<EmuSen.LunaP.Media.LunaTone>
+    public LunaTone(double From, double To, double Start, double Length)
+    public bool Equals(EmuSen.LunaP.Media.LunaTone other)
+    public double From { get; init; }
+    public double Length { get; init; }
+    public double Start { get; init; }
+    public double To { get; init; }
+    public override bool Equals(object obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Media.LunaTone left, EmuSen.LunaP.Media.LunaTone right)
+    public static bool op_Inequality(EmuSen.LunaP.Media.LunaTone left, EmuSen.LunaP.Media.LunaTone right)
+    public void Deconstruct(out double From, out double To, out double Start, out double Length)
+
 public sealed class EmuSen.LunaP.Media.SvgDocument
     public Avalonia.Matrix ViewportTransform(Avalonia.Rect viewport)
     public Avalonia.Rect ViewBox { get; }
@@ -2334,6 +2387,52 @@ public enum EmuSen.LunaP.Theme.LoadLevel
     public const EmuSen.LunaP.Theme.LoadLevel Nominal = 0
     public int value__
 
+public sealed class EmuSen.LunaP.Theme.LunaFocus : System.IEquatable<EmuSen.LunaP.Theme.LunaFocus>
+    public LunaFocus(double RingThickness, double RingOffset, double BarWidth, double TileScale, double HoverBorder)
+    public bool Equals(EmuSen.LunaP.Theme.LunaFocus? other)
+    public double BarWidth { get; init; }
+    public double HoverBorder { get; init; }
+    public double RingOffset { get; init; }
+    public double RingThickness { get; init; }
+    public double TileScale { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Theme.LunaFocus? left, EmuSen.LunaP.Theme.LunaFocus? right)
+    public static bool op_Inequality(EmuSen.LunaP.Theme.LunaFocus? left, EmuSen.LunaP.Theme.LunaFocus? right)
+    public void Deconstruct(out double RingThickness, out double RingOffset, out double BarWidth, out double TileScale, out double HoverBorder)
+
+public enum EmuSen.LunaP.Theme.LunaForm
+    public const EmuSen.LunaP.Theme.LunaForm BigScreen = 1
+    public const EmuSen.LunaP.Theme.LunaForm Desktop = 0
+    public int value__
+
+public sealed class EmuSen.LunaP.Theme.LunaMetrics : Avalonia.Controls.ResourceDictionary
+    public EmuSen.LunaP.Theme.LunaForm Form { get; set; }
+    public LunaMetrics()
+
+public static class EmuSen.LunaP.Theme.LunaMotion
+    public const double BreathLow = 0.7
+    public static Avalonia.Animation.Easings.Easing Easing(EmuSen.LunaP.Theme.LunaMotionToken token)
+    public static System.TimeSpan Duration(EmuSen.LunaP.Theme.LunaMotionToken token)
+    public static System.TimeSpan FadeDuration(EmuSen.LunaP.Theme.LunaMotionToken token)
+    public static System.TimeSpan Nominal(EmuSen.LunaP.Theme.LunaMotionToken token)
+    public static bool Breathes { get; }
+    public static bool Reduced { get; set; }
+    public static readonly System.TimeSpan BreathDelay
+    public static readonly System.TimeSpan BreathPeriod
+    public static readonly System.TimeSpan ReducedFade
+
+public enum EmuSen.LunaP.Theme.LunaMotionToken
+    public const EmuSen.LunaP.Theme.LunaMotionToken Enter = 2
+    public const EmuSen.LunaP.Theme.LunaMotionToken Exit = 3
+    public const EmuSen.LunaP.Theme.LunaMotionToken Fade = 6
+    public const EmuSen.LunaP.Theme.LunaMotionToken Instant = 0
+    public const EmuSen.LunaP.Theme.LunaMotionToken Pan = 4
+    public const EmuSen.LunaP.Theme.LunaMotionToken Quick = 1
+    public const EmuSen.LunaP.Theme.LunaMotionToken Reel = 5
+    public int value__
+
 public static class EmuSen.LunaP.Theme.LunaPalette
     public const double BusyPercent = 60
     public const double HeaderFontSize = 14
@@ -2343,8 +2442,10 @@ public static class EmuSen.LunaP.Theme.LunaPalette
     public static EmuSen.LunaP.Theme.LoadLevel LevelFor(double percent)
     public static readonly Avalonia.Media.FontFamily MonoFont
     public static readonly Avalonia.Media.ISolidColorBrush Accent
+    public static readonly Avalonia.Media.ISolidColorBrush Attention
     public static readonly Avalonia.Media.ISolidColorBrush Border
     public static readonly Avalonia.Media.ISolidColorBrush Busy
+    public static readonly Avalonia.Media.ISolidColorBrush CaptionSurface
     public static readonly Avalonia.Media.ISolidColorBrush Error
     public static readonly Avalonia.Media.ISolidColorBrush Hot
     public static readonly Avalonia.Media.ISolidColorBrush HudSurface
@@ -2354,12 +2455,41 @@ public static class EmuSen.LunaP.Theme.LunaPalette
     public static readonly Avalonia.Media.ISolidColorBrush Muted
     public static readonly Avalonia.Media.ISolidColorBrush Nominal
     public static readonly Avalonia.Media.ISolidColorBrush OnAccent
+    public static readonly Avalonia.Media.ISolidColorBrush OnArt
+    public static readonly Avalonia.Media.ISolidColorBrush Rule
+    public static readonly Avalonia.Media.ISolidColorBrush Scrim
     public static readonly Avalonia.Media.ISolidColorBrush SectionHeader
     public static readonly Avalonia.Media.ISolidColorBrush Success
     public static readonly Avalonia.Media.ISolidColorBrush Surface
+    public static readonly Avalonia.Media.ISolidColorBrush SurfaceRaised
     public static readonly Avalonia.Media.ISolidColorBrush Text
+    public static readonly Avalonia.Media.ISolidColorBrush TextStrong
     public static readonly Avalonia.Media.ISolidColorBrush Void
     public static readonly Avalonia.Media.ISolidColorBrush Warning
+
+public sealed class EmuSen.LunaP.Theme.LunaSpacing : System.IEquatable<EmuSen.LunaP.Theme.LunaSpacing>
+    public Avalonia.Thickness SafeArea { get; init; }
+    public LunaSpacing(double Base, double RowHeight, double ControlHeight, double PaneGutter, double PaneGap, Avalonia.Thickness SafeArea, double CardWidth, double TitleRow, double HelpBar, double TileWidth, double TileHeight, double TileGap, double RowRadius, double TileRadius)
+    public bool Equals(EmuSen.LunaP.Theme.LunaSpacing? other)
+    public double Base { get; init; }
+    public double CardWidth { get; init; }
+    public double ControlHeight { get; init; }
+    public double HelpBar { get; init; }
+    public double PaneGap { get; init; }
+    public double PaneGutter { get; init; }
+    public double RowHeight { get; init; }
+    public double RowRadius { get; init; }
+    public double TileGap { get; init; }
+    public double TileHeight { get; init; }
+    public double TileRadius { get; init; }
+    public double TileWidth { get; init; }
+    public double TitleRow { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Theme.LunaSpacing? left, EmuSen.LunaP.Theme.LunaSpacing? right)
+    public static bool op_Inequality(EmuSen.LunaP.Theme.LunaSpacing? left, EmuSen.LunaP.Theme.LunaSpacing? right)
+    public void Deconstruct(out double Base, out double RowHeight, out double ControlHeight, out double PaneGutter, out double PaneGap, out Avalonia.Thickness SafeArea, out double CardWidth, out double TitleRow, out double HelpBar, out double TileWidth, out double TileHeight, out double TileGap, out double RowRadius, out double TileRadius)
 
 public static class EmuSen.LunaP.Theme.LunaTheme
     public const string BuiltIn = "Built-in"
@@ -2379,6 +2509,36 @@ public static class EmuSen.LunaP.Theme.LunaTheme
     public static void ApplySaved()
     public static void ApplyVariant(Avalonia.Application? app = null)
     public static void Restyle(Avalonia.Controls.ContentControl root)
+
+public static class EmuSen.LunaP.Theme.LunaTokens
+    public const double SafeAreaFraction = 0.05
+    public static Avalonia.Thickness SafeAreaOf(Avalonia.Size size)
+    public static EmuSen.LunaP.Theme.LunaFocus Focus(EmuSen.LunaP.Theme.LunaForm form)
+    public static EmuSen.LunaP.Theme.LunaSpacing Spacing(EmuSen.LunaP.Theme.LunaForm form)
+    public static EmuSen.LunaP.Theme.LunaTypeScale Type(EmuSen.LunaP.Theme.LunaForm form)
+    public static double HeaderSize(EmuSen.LunaP.Theme.LunaForm form)
+    public static readonly EmuSen.LunaP.Theme.LunaFocus FocusMarks
+    public static readonly EmuSen.LunaP.Theme.LunaSpacing BigScreenSpacing
+    public static readonly EmuSen.LunaP.Theme.LunaSpacing DesktopSpacing
+    public static readonly EmuSen.LunaP.Theme.LunaTypeScale BigScreenType
+    public static readonly EmuSen.LunaP.Theme.LunaTypeScale DesktopType
+
+public sealed class EmuSen.LunaP.Theme.LunaTypeScale : System.IEquatable<EmuSen.LunaP.Theme.LunaTypeScale>
+    public LunaTypeScale(double Display, double Title, double Strong, double Row, double Body, double Caption, double Glyph)
+    public bool Equals(EmuSen.LunaP.Theme.LunaTypeScale? other)
+    public double Body { get; init; }
+    public double Caption { get; init; }
+    public double Display { get; init; }
+    public double Glyph { get; init; }
+    public double Row { get; init; }
+    public double Strong { get; init; }
+    public double Title { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Theme.LunaTypeScale? left, EmuSen.LunaP.Theme.LunaTypeScale? right)
+    public static bool op_Inequality(EmuSen.LunaP.Theme.LunaTypeScale? left, EmuSen.LunaP.Theme.LunaTypeScale? right)
+    public void Deconstruct(out double Display, out double Title, out double Strong, out double Row, out double Body, out double Caption, out double Glyph)
 
 public sealed class EmuSen.LunaP.Theme.ThemeChoice
     public ThemeChoice()

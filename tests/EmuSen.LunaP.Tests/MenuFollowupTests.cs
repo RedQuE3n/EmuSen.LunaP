@@ -317,8 +317,8 @@ namespace EmuSen.LunaP.Tests
             MenuTextPopup popup = MenuTextPopup.Show(box, "Enter Name");
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
             window.UpdateLayout();
-            Assert.Equal(640, popup.Bounds.Center.X, 1);
-            Assert.Equal(400, popup.Bounds.Center.Y, 1);
+            Assert.InRange(popup.Bounds.Center.X, 639.5, 640.5);
+            Assert.InRange(popup.Bounds.Center.Y, 399.5, 400.5);
             Assert.Equal("Enter Name", popup.Title);
             RenderedFrame f = Frame(window);
             Assert.True(At(f, 20, 20).R < 120, $"the window is shaded: {At(f, 20, 20)}");

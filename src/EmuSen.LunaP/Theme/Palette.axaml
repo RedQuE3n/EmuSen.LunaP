@@ -1,179 +1,24 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:theme="clr-namespace:EmuSen.LunaP.Theme">
 
-    <!-- Every dark value here is the literal that was already in use, not a new
-         choice - see docs/LunaP.md §2 for the audit and for why LunaText and
-         LunaMeterText are still two greys.
-
-         KEYED BY THEME VARIANT, and that is not decoration. This file used to
-         hold one flat set of dark values while LunaTheme.axaml included a bare
-         <FluentTheme />, which follows the SYSTEM variant. On a light desktop
-         the two disagreed: the window stayed #1E1E1E and Fluent drew its own
-         controls for a light background, so a stock button's overlay went from
-         #33FFFFFF to #33000000 - dark on dark. Measured, and invisible to the
-         suite, which pinned Dark. §23.1 has the numbers.
-
-         The light column is new and the dark column is untouched, so nothing
-         already on a screen has moved. -->
+    <!-- The desktop's palette: the interface's colour tokens keyed by theme variant, their brushes and the desktop's
+         metrics. Keyed by variant because FluentTheme follows the variant, and a flat dark set under a light Fluent drew
+         dark on dark (§23.1). The values were the literals already in use until §206, which adopted the unified
+         interface's tokens for both the desktop and the big screen; §206.1 has the table and what moved. -->
 
     <ResourceDictionary.ThemeDictionaries>
-
-        <ResourceDictionary x:Key="Dark">
-            <!-- Surfaces -->
-            <Color x:Key="LunaSurfaceColor">#1E1E1E</Color>
-            <Color x:Key="LunaInputSurfaceColor">#252526</Color>
-            <Color x:Key="LunaVoidColor">#000000</Color>
-
-            <!-- The translucent plate a heads-up bar or a notice sits on, OVER
-                 a picture rather than beside one: #1C1C1C at 90% (E6), the
-                 look the request gives for OpenEmu's in-game bar. Not a surface
-                 of the window, so it does not lighten with the theme - like
-                 LunaVoid, what is under it is a game frame whatever the
-                 desktop's variant, and a light plate over a dark game would
-                 read as a hole. §88.4. -->
-            <Color x:Key="LunaHudSurfaceColor">#E61C1C1C</Color>
-
-            <!-- Where one surface stops and the next begins: a card's edge, the
-                 rule under a panel header, the divider a splitter is dragged by.
-                 The first token in this palette that is neither a surface nor
-                 something written on one, and the shell in §26 needed it four
-                 times over - see §26.9 for why it is one token and not four.
-
-                 CHOSEN AGAINST 3:1, NOT BY EYE. #3C3C3C is the value a dark
-                 theme reaches for and it measures 1.51:1 here, which is fine
-                 for decoration and not fine for a splitter: WCAG 1.4.11 asks
-                 3:1 of anything you have to see in order to use it, and a
-                 divider you drag is exactly that. This measures 3.27:1 on the
-                 surface and 3.00:1 on the input surface. §26.9 has both
-                 columns and the test that holds them. -->
-            <Color x:Key="LunaBorderColor">#6E6E6E</Color>
-
-            <!-- Text -->
-            <Color x:Key="LunaTextColor">#D4D4D4</Color>
-            <Color x:Key="LunaMeterTextColor">#DCDCDC</Color>
-            <Color x:Key="LunaMutedColor">#808080</Color>
-            <Color x:Key="LunaSectionHeaderColor">#9CDCFE</Color>
-            <Color x:Key="LunaWarningColor">#D08770</Color>
-
-            <!-- THE FIRST TOKEN ADDED FOR SOMETHING THIS TOOLKIT DOES NOT DRAW
-                 ITSELF, and §48 explains why it had to exist. Every stock
-                 Avalonia control - a checked CheckBox, a Slider's filled track,
-                 a focused TextBox's border - paints its interactive state in
-                 FluentTheme's accent, #0078D7, and this palette had no colour
-                 that meant "the accent of a control you are using". The nearest
-                 was LunaSectionHeader, which is a heading colour and would have
-                 been borrowed for a second job it does not mean.
-
-                 #007ACC is VS Code's own accent, which is where #1E1E1E,
-                 #D4D4D4 and #9CDCFE all came from - so this is the same
-                 derivation the palette already had rather than a new taste.
-
-                 3.70:1 on the dark surface. That is WCAG 1.4.11's floor for a
-                 user interface component rather than 1.4.3's 4.5:1 for text,
-                 and it is the right bar: this is a fill you must be able to SEE
-                 in order to use the control, not a colour anybody reads words
-                 in. PaletteVariantTests holds both columns to it. -->
-            <Color x:Key="LunaAccentColor">#007ACC</Color>
-
-            <!-- What goes ON the accent: a checkmark inside a checked box, the
-                 knob of a switch that is on. The same value in both columns,
-                 which is not an oversight - the accent is dark in BOTH, because
-                 a light-mode accent still has to carry a white glyph. A token
-                 whose two columns agree is worth having anyway: it says the
-                 pairing was considered rather than left to whatever the theme
-                 happened to inherit. 4.51:1 on the dark accent, 6.31:1 on the
-                 light one, and PaletteVariantTests holds both - the numbers
-                 first written here were 4.50 and 6.98, and the second was not a
-                 rounding slip but a figure nothing had measured. §48.3. -->
-            <Color x:Key="LunaOnAccentColor">#FFFFFF</Color>
-
-            <!-- Outcome, which is not the load ramp - see §22.9. -->
-            <Color x:Key="LunaErrorColor">#CD5C5C</Color>
-            <Color x:Key="LunaSuccessColor">#2E8B57</Color>
-            <Color x:Key="LunaInfoColor">#DAA520</Color>
-
-            <!-- The load ramp: what "getting busy" looks like, so a graphical
-                 dashboard and the terminal tool it mirrors never disagree about
-                 what counts as hot - §2.2. -->
-            <Color x:Key="LunaNominalColor">#32CD32</Color>
-            <Color x:Key="LunaBusyColor">#FFD700</Color>
-            <Color x:Key="LunaHotColor">#FF4500</Color>
-        </ResourceDictionary>
-
-        <!-- A re-derivation, not an inversion. A hue that carries on #1E1E1E is
-             usually far too pale to carry on #F3F3F3, so each one is darkened
-             until it reads against the light surface rather than being flipped
-             about the mid-point. §23.2 records the contrast floor they were
-             chosen against and the test that holds them to it. -->
-        <ResourceDictionary x:Key="Light">
-            <Color x:Key="LunaSurfaceColor">#F3F3F3</Color>
-            <Color x:Key="LunaInputSurfaceColor">#FFFFFF</Color>
-            <!-- Still black, and deliberately not a light equivalent. This is
-                 the letterbox behind a game frame - the absence of a picture
-                 rather than a surface, and it is black on any desktop for the
-                 same reason a cinema's masking is. -->
-            <Color x:Key="LunaVoidColor">#000000</Color>
-            <!-- The same plate as the dark column, for LunaVoid's reason. -->
-            <Color x:Key="LunaHudSurfaceColor">#E61C1C1C</Color>
-
-            <!-- 3.03:1 on the light surface, 3.36:1 on white. Darkened rather
-                 than inverted, the same way every other colour in this column
-                 was derived. -->
-            <Color x:Key="LunaBorderColor">#8C8C8C</Color>
-
-            <Color x:Key="LunaTextColor">#1F1F1F</Color>
-            <Color x:Key="LunaMeterTextColor">#2A2A2A</Color>
-            <Color x:Key="LunaMutedColor">#5F5F5F</Color>
-            <Color x:Key="LunaSectionHeaderColor">#0A5A96</Color>
-            <Color x:Key="LunaWarningColor">#A34B1E</Color>
-
-            <!-- 5.68:1 on the light surface. Darkened rather than inverted, the
-                 same derivation as every other colour in this column. -->
-            <Color x:Key="LunaAccentColor">#005FB8</Color>
-            <Color x:Key="LunaOnAccentColor">#FFFFFF</Color>
-
-            <Color x:Key="LunaErrorColor">#B3261E</Color>
-            <Color x:Key="LunaSuccessColor">#1B6E3C</Color>
-            <Color x:Key="LunaInfoColor">#7A5B00</Color>
-
-            <Color x:Key="LunaNominalColor">#1B7A1B</Color>
-            <Color x:Key="LunaBusyColor">#8A6300</Color>
-            <Color x:Key="LunaHotColor">#B32D12</Color>
-        </ResourceDictionary>
-
+        <!-- Each column is one file, read here and by the big screen's palette, so a colour is written once (§206.1). -->
+        <ResourceInclude x:Key="Dark" Source="avares://EmuSen.LunaP/Theme/Tokens/Dark.axaml" />
+        <ResourceInclude x:Key="Light" Source="avares://EmuSen.LunaP/Theme/Tokens/Light.axaml" />
     </ResourceDictionary.ThemeDictionaries>
 
-    <!-- The brushes sit OUTSIDE the theme dictionaries on purpose: a
-         DynamicResource re-resolves its Color key through whichever variant is
-         active, so one brush declaration serves both columns and there is no
-         second place for them to drift apart. Declaring the brushes twice would
-         double the surface §2.1 already calls "spelled twice on purpose". -->
-    <SolidColorBrush x:Key="LunaSurface" Color="{DynamicResource LunaSurfaceColor}" />
-    <SolidColorBrush x:Key="LunaInputSurface" Color="{DynamicResource LunaInputSurfaceColor}" />
-    <SolidColorBrush x:Key="LunaVoid" Color="{DynamicResource LunaVoidColor}" />
-    <SolidColorBrush x:Key="LunaHudSurface" Color="{DynamicResource LunaHudSurfaceColor}" />
-    <SolidColorBrush x:Key="LunaBorder" Color="{DynamicResource LunaBorderColor}" />
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://EmuSen.LunaP/Theme/Tokens/Brushes.axaml" />
+        <theme:LunaMetrics Form="Desktop" />
+    </ResourceDictionary.MergedDictionaries>
 
-    <SolidColorBrush x:Key="LunaText" Color="{DynamicResource LunaTextColor}" />
-    <SolidColorBrush x:Key="LunaMeterText" Color="{DynamicResource LunaMeterTextColor}" />
-    <SolidColorBrush x:Key="LunaMuted" Color="{DynamicResource LunaMutedColor}" />
-    <SolidColorBrush x:Key="LunaSectionHeader" Color="{DynamicResource LunaSectionHeaderColor}" />
-    <SolidColorBrush x:Key="LunaWarning" Color="{DynamicResource LunaWarningColor}" />
-
-    <SolidColorBrush x:Key="LunaError" Color="{DynamicResource LunaErrorColor}" />
-    <SolidColorBrush x:Key="LunaSuccess" Color="{DynamicResource LunaSuccessColor}" />
-    <SolidColorBrush x:Key="LunaInfo" Color="{DynamicResource LunaInfoColor}" />
-    <SolidColorBrush x:Key="LunaAccent" Color="{DynamicResource LunaAccentColor}" />
-    <SolidColorBrush x:Key="LunaOnAccent" Color="{DynamicResource LunaOnAccentColor}" />
-
-    <SolidColorBrush x:Key="LunaNominal" Color="{DynamicResource LunaNominalColor}" />
-    <SolidColorBrush x:Key="LunaBusy" Color="{DynamicResource LunaBusyColor}" />
-    <SolidColorBrush x:Key="LunaHot" Color="{DynamicResource LunaHotColor}" />
-
-    <!-- Type. Not variant-keyed: a font stack and two sizes do not change with
-         the lighting. -->
+    <!-- Type and metrics are LunaMetrics' (Tokens/LunaMetrics.cs), the desktop's here; the mono stack is the desktop's alone. -->
     <FontFamily x:Key="LunaMonoFont">Consolas,Menlo,monospace</FontFamily>
-    <x:Double x:Key="LunaHintFontSize">11</x:Double>
-    <x:Double x:Key="LunaHeaderFontSize">14</x:Double>
 
 </ResourceDictionary>

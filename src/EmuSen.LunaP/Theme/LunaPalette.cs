@@ -30,9 +30,23 @@ namespace EmuSen.LunaP.Theme
     public static class LunaPalette
     {
         /// <summary>The window background everything else sits on.</summary>
-        public static readonly ISolidColorBrush Surface = Brush("#1E1E1E");
+        public static readonly ISolidColorBrush Surface = Brush("#1B1B1E");
         /// <summary>The background of a field, a console or a card - a surface something is entered or read in.</summary>
-        public static readonly ISolidColorBrush InputSurface = Brush("#252526");
+        public static readonly ISolidColorBrush InputSurface = Brush("#0E0E10");
+        /// <summary>A card, a tile and a focused row's bar: the surface one level up.</summary>
+        public static readonly ISolidColorBrush SurfaceRaised = Brush("#26262B");
+        /// <summary>What dims a frame or a theme under a card: black at 55%, never a blur.</summary>
+        public static readonly ISolidColorBrush Scrim = Brush("#8C000000");
+        /// <summary>A caption's box over a picture: black at two thirds.</summary>
+        public static readonly ISolidColorBrush CaptionSurface = Brush("#AA000000");
+        /// <summary>The thin rule under a menu's row.</summary>
+        public static readonly ISolidColorBrush Rule = Brush("#333337");
+        /// <summary>Titles and the focused row's words.</summary>
+        public static readonly ISolidColorBrush TextStrong = Brush("#EEEEF0");
+        /// <summary>Words over a picture, on the OnArt scrim.</summary>
+        public static readonly ISolidColorBrush OnArt = Brush("#FFFFFF");
+        /// <summary>A status that needs the player, always beside a word; the same colour as Info, its older name.</summary>
+        public static readonly ISolidColorBrush Attention = Brush("#DAA520");
         /// <summary>True black, for an image view letterboxing an area with no pixels in it.</summary>
         public static readonly ISolidColorBrush Void = Brush("#000000");
 
@@ -46,14 +60,14 @@ namespace EmuSen.LunaP.Theme
         // mouse is a control and not decoration - 3.27:1 on the dark surface, and docs/LunaP.md
         // §26.9 has the light column and the test.
         /// <summary>Card edges, the rule under a panel header, and the divider a splitter is dragged by.</summary>
-        public static readonly ISolidColorBrush Border = Brush("#6E6E6E");
+        public static readonly ISolidColorBrush Border = Brush("#707070");
 
         /// <summary>Body text, and the default foreground for anything that does not choose otherwise.</summary>
         public static readonly ISolidColorBrush Text = Brush("#D4D4D4");
         /// <summary>The label and value on a meter row, a shade brighter than body text so it reads against a filled bar.</summary>
         public static readonly ISolidColorBrush MeterText = Brush("#DCDCDC");
         /// <summary>Hint text, an empty state, and anything else that should recede.</summary>
-        public static readonly ISolidColorBrush Muted = Brush("#808080");
+        public static readonly ISolidColorBrush Muted = Brush("#8D8D91");
         /// <summary>A section heading, and a card header.</summary>
         public static readonly ISolidColorBrush SectionHeader = Brush("#9CDCFE");
         /// <summary>Text that warns without being an error - a setting that will not take effect until restart.</summary>
@@ -66,9 +80,9 @@ namespace EmuSen.LunaP.Theme
         // The values are the ones six sites across two applications had already hard-coded:
         // IndianRed, SeaGreen and Goldenrod.
         /// <summary>An outcome that failed. Not the load ramp: outcome and load are unrelated (see the note above).</summary>
-        public static readonly ISolidColorBrush Error = Brush("#CD5C5C");
+        public static readonly ISolidColorBrush Error = Brush("#D37070");
         /// <summary>An outcome that succeeded.</summary>
-        public static readonly ISolidColorBrush Success = Brush("#2E8B57");
+        public static readonly ISolidColorBrush Success = Brush("#35A064");
         /// <summary>An outcome worth reading that is neither success nor failure.</summary>
         public static readonly ISolidColorBrush Info = Brush("#DAA520");
 
@@ -81,14 +95,14 @@ namespace EmuSen.LunaP.Theme
         // SectionHeader. It is held to 3:1 rather than 4.5:1, because it is a fill you have to see
         // to use a control rather than a colour anyone reads words in - WCAG 1.4.11, not 1.4.3.
         /// <summary>The accent an interactive control paints its active state in: a checked box, a filled track, a focused border.</summary>
-        public static readonly ISolidColorBrush Accent = Brush("#007ACC");
+        public static readonly ISolidColorBrush Accent = Brush("#4C9AE8");
 
         // The same value in both theme columns, because the accent is dark in both - a light-mode
         // accent still carries a white glyph. Held to 4.5:1 against the accent it sits on, not the
         // accent's own 3:1: a tick or a knob is a shape you read, which is WCAG 1.4.3's bar rather
         // than 1.4.11's. 4.51:1 dark, 6.31:1 light, both pinned by PaletteVariantTests (§48.3).
         /// <summary>What is drawn on top of the accent: the tick in a checked box, the knob of a switch that is on.</summary>
-        public static readonly ISolidColorBrush OnAccent = Brush("#FFFFFF");
+        public static readonly ISolidColorBrush OnAccent = Brush("#0E0E10");
 
         /// <summary>A meter working normally, at the bottom of the load ramp.</summary>
         public static readonly ISolidColorBrush Nominal = Brush("#32CD32");

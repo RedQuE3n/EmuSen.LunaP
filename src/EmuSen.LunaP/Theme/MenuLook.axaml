@@ -3,43 +3,35 @@
         xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
 
     <!-- A big-screen menu's look for the stock controls under one element - see
-         docs/LunaP.md §196. MenuLook adds a fresh copy of this file to that
-         element's own Styles, so nothing outside it changes and taking the look
-         away is removing one entry.
+         docs/LunaP.md §196. MenuLook adds a fresh copy of this file, with a fresh
+         palette (MenuPalette.axaml, dark or light), to that element's own Styles,
+         so nothing outside it changes and taking the look away is removing one entry.
 
-         The colours are MenuPanel's and MenuRow's defaults (§181): the panel
-         #1B1B1E, the title #B4B4B8, a row's text #9C9CA0, the chosen row's bar
-         #050507 and its text #EEEEF0, the rule #333337, a push button's outline
-         #55555A, the footer #86868A and the switch's accent #4C9AE8, in
-         MenuPalette.axaml (§200.3). They are written out rather than bound, because a resource defined here must not
-         depend on one defined further up.
+         Every colour is a token of the palette, and the focus is the interface's
+         row bar: the raised surface, an accent bar at the left and the strong text
+         (§206.4). Words are Barlow, titles Barlow Condensed (§206.3).
 
          Sizes are design pixels for a screen 800 high: a host that scales its
          menus (MenuPanel.Scale) lays this content out under the same scale. -->
 
-    <Styles.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceInclude Source="avares://EmuSen.LunaP/Theme/MenuPalette.axaml" />
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
-    </Styles.Resources>
+    <!-- The palette is added by MenuLook.CreateStyles, dark or light. -->
 
     <!-- The element itself: the typeface, its size and colour, inherited by all text under it. -->
     <Style Selector=":is(Control).menu-look">
-        <Setter Property="TextElement.FontFamily" Value="{DynamicResource LunaMenuFontFamily}" />
-        <Setter Property="TextElement.FontSize" Value="24" />
-        <Setter Property="TextElement.Foreground" Value="#9C9CA0" />
+        <Setter Property="TextElement.FontFamily" Value="{DynamicResource LunaBodyFontFamily}" />
+        <Setter Property="TextElement.FontSize" Value="{DynamicResource LunaBodyFontSize}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource LunaText}" />
     </Style>
 
     <Style Selector="luna|SectionHeader">
+        <Setter Property="FontFamily" Value="{DynamicResource LunaTitleFontFamily}" />
         <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="FontSize" Value="28" />
-        <Setter Property="Foreground" Value="#B4B4B8" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
         <Setter Property="LetterCase" Value="Upper" />
     </Style>
     <Style Selector="luna|HintText">
-        <Setter Property="Foreground" Value="#86868A" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaMuted}" />
         <Setter Property="FontSize" Value="20" />
     </Style>
     <!-- A controller drawing's labels set close, so their words stay near the text around them on a short sheet (§196.10). -->
@@ -47,7 +39,7 @@
         <Setter Property="CompactLabels" Value="True" />
     </Style>
 
-    <!-- A push button: an outlined box in upper case, filled near black with light words while it has the focus, as MenuRows draws one under a menu's rows. -->
+    <!-- A push button: an outlined box in upper case, raised with strong words and an accent edge while it has the focus, as MenuRows draws one under a menu's rows. -->
     <!-- Not RepeatButton: a scroll bar's arrows are RepeatButtons, and a push button's height would stretch them over its track. -->
     <Style Selector="Button, ToggleButton">
         <Setter Property="FontSize" Value="26" />
@@ -60,9 +52,9 @@
         <Setter Property="FocusAdorner" Value="{x:Null}" />
     </Style>
     <Style Selector="Button:focus /template/ ContentPresenter#PART_ContentPresenter, ToggleButton:focus /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#050507" />
-        <Setter Property="Foreground" Value="#EEEEF0" />
-        <Setter Property="BorderBrush" Value="#86868A" />
+        <Setter Property="Background" Value="{DynamicResource LunaSurfaceRaised}" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaTextStrong}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource LunaAccent}" />
     </Style>
 
     <!-- Words in a button wrap rather than run past it or end in an ellipsis, such as a long name on a result a button stands for (§196.9). -->
@@ -79,23 +71,26 @@
         <Setter Property="MinHeight" Value="42" />
         <Setter Property="Padding" Value="10,4" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="BorderBrush" Value="#333337" />
+        <Setter Property="BorderBrush" Value="{DynamicResource LunaRule}" />
         <Setter Property="BorderThickness" Value="0,0,0,1" />
-        <Setter Property="Foreground" Value="#9C9CA0" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
         <Setter Property="FocusAdorner" Value="{x:Null}" />
     </Style>
     <!-- A row's words wrap rather than run past the list's edge; a window that would rather cut them says so, and says where they are whole (§196.9). -->
     <Style Selector="ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="BorderThickness" Value="4,0,0,0" />
+        <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
     <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#141416" />
-        <Setter Property="Foreground" Value="#B4B4B8" />
+        <Setter Property="Background" Value="{DynamicResource LunaSurfaceRaised}" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
     </Style>
     <!-- The bar follows the focus as well as the selection, for a table whose rows take the focus without being selected. -->
     <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter, ListBoxItem:focus-within /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#050507" />
-        <Setter Property="Foreground" Value="#EEEEF0" />
+        <Setter Property="Background" Value="{DynamicResource LunaSurfaceRaised}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource LunaAccent}" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaTextStrong}" />
     </Style>
 
     <!-- A slider row's Reset is a small button, and its slider keeps below the row of words rather than under it. -->
@@ -114,7 +109,7 @@
         <Setter Property="Padding" Value="10,6" />
         <Setter Property="CornerRadius" Value="3" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="CaretBrush" Value="#EEEEF0" />
+        <Setter Property="CaretBrush" Value="{DynamicResource LunaTextStrong}" />
     </Style>
 
     <Style Selector="ComboBox">
@@ -127,19 +122,19 @@
         <Setter Property="MinHeight" Value="42" />
     </Style>
     <Style Selector="ComboBox:dropdownopen ComboBoxItem:focus /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#050507" />
-        <Setter Property="Foreground" Value="#EEEEF0" />
+        <Setter Property="Background" Value="{DynamicResource LunaSurfaceRaised}" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaTextStrong}" />
     </Style>
     <Style Selector="ComboBox:dropdownopen ComboBoxItem:selected:not(:focus) /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#26262A" />
-        <Setter Property="Foreground" Value="#B4B4B8" />
+        <Setter Property="Background" Value="{DynamicResource LunaSurfaceRaised}" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
     </Style>
 
     <Style Selector="CheckBox, ToggleSwitch">
         <Setter Property="FontSize" Value="24" />
-        <Setter Property="Foreground" Value="#9C9CA0" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaText}" />
     </Style>
-    <!-- A switch or a box has the focus as a row has it, the near-black bar behind it; the stock outline crossed the menu typeface's descenders (§196.10). -->
+    <!-- A switch or a box has the focus as a row has it, the raised bar behind it; the stock outline crossed the menu typeface's descenders (§196.10). -->
     <Style Selector="CheckBox, ToggleSwitch">
         <Setter Property="FocusAdorner" Value="{x:Null}" />
         <Setter Property="Background" Value="Transparent" />
@@ -147,19 +142,20 @@
         <Setter Property="CornerRadius" Value="3" />
     </Style>
     <Style Selector="CheckBox:focus, ToggleSwitch:focus">
-        <Setter Property="Background" Value="#050507" />
-        <Setter Property="Foreground" Value="#EEEEF0" />
+        <Setter Property="Background" Value="{DynamicResource LunaSurfaceRaised}" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaTextStrong}" />
     </Style>
 
     <Style Selector="TabItem">
+        <Setter Property="FontFamily" Value="{DynamicResource LunaTitleFontFamily}" />
         <Setter Property="FontSize" Value="30" />
         <Setter Property="MinHeight" Value="48" />
         <Setter Property="HeaderTemplate" Value="{x:Static luna:MenuLook.UpperCaseText}" />
     </Style>
 
     <Style Selector="ProgressBar">
-        <Setter Property="Foreground" Value="#4C9AE8" />
-        <Setter Property="Background" Value="#333337" />
+        <Setter Property="Foreground" Value="{DynamicResource LunaAccent}" />
+        <Setter Property="Background" Value="{DynamicResource LunaRule}" />
         <Setter Property="MinHeight" Value="8" />
         <Setter Property="CornerRadius" Value="4" />
     </Style>

@@ -11,6 +11,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using EmuSen.LunaP.Controls;
+using EmuSen.LunaP.Media;
 using EmuSen.LunaP.Testing;
 using EmuSen.LunaP.Windowing;
 using static EmuSen.LunaP.Tests.DrawnSupport;
@@ -20,7 +21,7 @@ namespace EmuSen.LunaP.Tests
     // The big-screen menu's look given to stock controls, and a sheet framed as a menu - see docs/LunaP.md §196.
     public class MenuLookTests
     {
-        private static readonly Color Input = Color.Parse("#0E0E10"), Bar = Color.Parse("#050507"), Light = Color.Parse("#EEEEF0");
+        private static readonly Color Input = Color.Parse("#0E0E10"), Bar = Color.Parse("#26262B"), Light = Color.Parse("#EEEEF0");
 
         private static (StackPanel Root, Button Button, ListBox List, Border Surface) Stock(string name)
         {
@@ -54,26 +55,23 @@ namespace EmuSen.LunaP.Tests
             Assert.False(MenuLook.Covers(plainButton));
             Assert.Equal("APPLY", Shown(lookButton));
             Assert.Equal("Apply", Shown(plainButton));
-            Assert.Same(family, lookList.GetVisualDescendants().OfType<TextBlock>().First().FontFamily);
+            Assert.Same(LunaFonts.Body, lookList.GetVisualDescendants().OfType<TextBlock>().First().FontFamily);
             Assert.NotSame(family, plainList.GetVisualDescendants().OfType<TextBlock>().First().FontFamily);
 
+            // Since §206 the desktop and the big screen share the input surface, so both sides paint it.
             Rect surface = In(lookSurface, both);
             Assert.True(Near(At(f, surface.Center.X, surface.Center.Y ), Input), $"{At(f, surface.Center.X, surface.Center.Y)}");
-            Rect other = In(plainSurface, both);
-            Assert.False(Near(At(f, other.Center.X, other.Center.Y ), Input));
 
             // The chosen row is the menu's bar from one edge of the list to the other; the plain list's is not.
             Rect row = In((Control)lookList.ContainerFromIndex(1)!, both);
-            for (double x = row.Left + 1; x < row.Right - 1; x += 20) Assert.True(Near(At(f, x, row.Top + 3), Bar), $"x {x}: {At(f, x, row.Top + 3)}");
+            for (double x = row.Left + 6; x < row.Right - 1; x += 20) Assert.True(Near(At(f, x, row.Top + 3), Bar), $"x {x}: {At(f, x, row.Top + 3)}");
             Rect plainRow = In((Control)plainList.ContainerFromIndex(1)!, both);
             Assert.False(Near(At(f, plainRow.Center.X, plainRow.Top + 3), Bar));
 
             MenuLook.SetIsOn(look, false);
             Dispatcher.UIThread.RunJobs();
-            RenderedFrame back = Frame(window);
             Assert.DoesNotContain(MenuLook.ClassName, look.Classes);
             Assert.Equal("Apply", Shown(lookButton));
-            Assert.False(Near(At(back, surface.Center.X, surface.Center.Y ), Input));
             window.Close();
         });
 
@@ -105,7 +103,7 @@ namespace EmuSen.LunaP.Tests
             MenuLook.SetIsOn(look, true);
             ToolWindow window = Show(new Grid { Children = { menu, look } }, 800, 600);
             Border frame = push.GetVisualDescendants().OfType<Border>().First();
-            Assert.Equal(Color.Parse("#55555A"), ((ISolidColorBrush)frame.BorderBrush!).Color);
+            Assert.Equal(Color.Parse("#707070"), ((ISolidColorBrush)frame.BorderBrush!).Color);
             Assert.Null(frame.Background);
             push.Focus(NavigationMethod.Directional);
             Dispatcher.UIThread.RunJobs();

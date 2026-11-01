@@ -14,6 +14,18 @@ answer.
 
 ## Unreleased
 
+- **The interface's tokens (`§206`).** One palette for the desktop and the big screen: `Theme/Tokens/Dark.axaml` and
+  `Light.axaml` hold every colour once, read by `Palette.axaml` and `MenuPalette.axaml`; new tokens `LunaSurfaceRaised`,
+  `LunaScrim`, `LunaTextStrong`, `LunaAttention`, `LunaOnArt` (with `LunaOnArtScrim`), `LunaRule`, and
+  `LunaCaptionSurface` in the desktop palette. `LunaMetrics` and `LunaTokens` (type scale, spacing, focus, per
+  `LunaForm`), `LunaFonts` (Barlow and Barlow Condensed, bundled under the SIL Open Font License), `LunaMotion` and
+  `LunaSounds` (nine synthesised cues). `MenuLook.IsLight`, `CreatePalette(bool)` and `CreateStyles(bool)` for a light
+  big screen. **Behaviour changes:** the dark desktop's Surface, InputSurface, Accent, OnAccent, Muted, Border, Success
+  and Error move to the design's values (§206.1); every window's words are Barlow at 13 rather than Inter at 14; the
+  look draws in Barlow and Barlow Condensed and no longer reads `MenuLook.FontFamilyKey`; the look's and `MenuRow`'s
+  focused row is the raised surface with an accent bar at its left rather than near black; `MenuRow` and `MenuPanel`
+  take their colours from the palette in reach.
+
 - **The Master System's pad and the SG-1000's joystick in `ControllerDiagram` (`§198.14`).** `ControllerLayout.MasterSystem`
   and `ControllerLayout.Sg1000`, appended after `DualShock`, so no existing value moved. A console's own buttons, Pause and
   Reset, are drawn apart above the pad. **Behaviour change** for a switched stick only: the SG-1000's knob leans toward

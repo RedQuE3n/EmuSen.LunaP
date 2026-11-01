@@ -406,10 +406,10 @@ namespace EmuSen.LunaP.Tests
 
             ScrollTo(table, 300);
 
-            // x=60 is inside the band, and also inside column 1's laid-out rectangle - which spans
-            // -88..112 at this offset and is therefore the cell that would be hit if clipping did
-            // not count.
-            var inBand = new Point(60, 40);
+            // Inside the band and on the frozen cell's words, and also inside column 1's laid-out rectangle,
+            // which spans -88..112 at this offset and would be hit if clipping did not count (§206.3).
+            Rect band = BandOf(table, window);
+            var inBand = new Point(band.Left + 20, band.Center.Y);
             for (int i = 0; i < 2; i++)
             {
                 window.MouseDown(inBand, MouseButton.Left, RawInputModifiers.None);
@@ -418,7 +418,7 @@ namespace EmuSen.LunaP.Tests
 
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
-            Assert.True(table.IsEditing, "a double-click inside the frozen band opened nothing at all.");
+            Assert.True(table.IsEditing, $"a double-click inside the frozen band at {inBand} opened nothing at all.");
             Assert.Equal(
                 "row00-0",
                 table.GetVisualDescendants().OfType<TextBox>().Single().Text);

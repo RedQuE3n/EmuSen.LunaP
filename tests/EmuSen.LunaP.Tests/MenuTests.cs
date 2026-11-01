@@ -65,7 +65,8 @@ namespace EmuSen.LunaP.Tests
             row.BarColor = Colors.Red;
             ToolWindow window = Show(new StackPanel { Children = { row } }, 300, 60);
             RenderedFrame f = Frame(window);
-            for (int x = 0; x < 300; x += 10) Assert.True(Near(At(f, x, 2), Colors.Red), $"x {x} is {At(f, x, 2)}");
+            for (int x = 10; x < 300; x += 10) Assert.True(Near(At(f, x, 2), Colors.Red), $"x {x} is {At(f, x, 2)}");
+            Assert.True(Near(At(f, 1, 2), row.AccentColor), $"the focus bar at the left is {At(f, 1, 2)}");
             row.IsHighlighted = false;
             RenderedFrame plain = Frame(window);
             Assert.False(Near(At(plain, 150, 2), Colors.Red));

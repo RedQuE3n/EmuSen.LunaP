@@ -749,18 +749,23 @@ lists them, `LunaTheme.Apply(name)` applies one, `LunaTheme.Current` and
 `LunaTheme.Saved` read the state back, and the built-in palette is the fallback
 under everything.
 
-**Eighteen colour tokens**, each spelled as a brush and a colour
-(`LunaSurface` / `LunaSurfaceColor`, and so on):
+**Twenty-five colour tokens**, each spelled as a brush and a colour
+(`LunaSurface` / `LunaSurfaceColor`, and so on), with a dark and a light column
+written once in `Theme/Tokens/` and read by the desktop and the big screen alike
+(`docs/LunaP.md` §206):
 
 | | |
 |---|---|
-| Surfaces | `LunaSurface`, `LunaInputSurface`, `LunaVoid`, `LunaHudSurface`, `LunaBorder` |
-| Text | `LunaText`, `LunaMuted`, `LunaSectionHeader`, `LunaMeterText` |
-| Status | `LunaError`, `LunaWarning`, `LunaSuccess`, `LunaInfo` |
+| Surfaces | `LunaSurface`, `LunaSurfaceRaised`, `LunaInputSurface`, `LunaVoid`, `LunaScrim`, `LunaCaptionSurface`, `LunaHudSurface`, `LunaBorder`, `LunaRule` |
+| Text | `LunaText`, `LunaTextStrong`, `LunaMuted`, `LunaSectionHeader`, `LunaMeterText`, `LunaOnArt` |
+| Status | `LunaError`, `LunaWarning`, `LunaSuccess`, `LunaAttention`, `LunaInfo` |
 | Accent | `LunaAccent`, `LunaOnAccent` |
 | Load ramp | `LunaNominal`, `LunaBusy`, `LunaHot` |
 
-Plus `LunaMonoFont`, `LunaHeaderFontSize` and `LunaHintFontSize`. The load ramp
+Plus `LunaMonoFont`, `LunaHeaderFontSize` and `LunaHintFontSize`, and the
+interface's type scale, typefaces (Barlow and Barlow Condensed, bundled under the
+SIL Open Font License), spacing and focus metrics from `LunaMetrics`, for the
+desktop and the big screen. Motion tokens are `LunaMotion`, sound cues `LunaSounds`. The load ramp
 has a C# side too: `LunaPalette.ForLoad(percent)` and `LevelFor(percent)`, over
 thresholds of 60% and 85%.
 
@@ -782,7 +787,7 @@ The whole vocabulary is enumerable rather than something to guess at:
 `CssTheme.ElementNames` gives the **22** element names a rule may target,
 `PartsOf` and `StatesOf` their parts and states, `PropertyNames` the six property
 names (`color`, `background`, `background-color`, `font-family`, `font-size`,
-`font-weight`), and `CssTheme.TokenNames` the **21** `--luna-` tokens a `:root`
+`font-weight`), and `CssTheme.TokenNames` the **28** `--luna-` tokens a `:root`
 block may set. Anything outside it — an unknown element, an unknown property, or
 a misspelled token — is reported through `CssThemeResult.Warnings` rather than
 silently ignored. **Token names were not checked before 0.10.0**, so
@@ -936,7 +941,7 @@ not. First place to look if an image comes out sheared (§53.2).
     dotnet build
     dotnet test
 
-**1710 tests, all headless** — no window is ever put on a screen, including for
+**1800 tests, all headless** — no window is ever put on a screen, including for
 the render tests, which drive a real Avalonia control tree through a real Skia
 pass. That figure is checked by the suite itself, because a hand-written count
 of a thing the runner knows is a number that rots: this one said 207 for four
@@ -1010,6 +1015,13 @@ disagree, the code is the truth and the document is the history.
 MIT, as of 0.6.0. Link it into anything, including a closed application. Every
 dependency of the toolkit is MIT too, so nothing here hands you a term the
 licence on the tin does not mention.
+
+**Fonts.** The toolkit bundles Barlow and Barlow Condensed, Copyright 2017 The
+Barlow Project Authors (https://github.com/jpt/barlow), under the SIL Open Font
+License 1.1. The licence's text is `src/EmuSen.LunaP/Assets/Fonts/OFL.txt`, and
+it is copied beside an application with the fonts (`LunaP/Fonts/OFL.txt`). The
+fonts may be used, embedded and redistributed with any software; they may not be
+sold by themselves, and a modified version may not use the name Barlow.
 
 Versions 0.2.0 through 0.5.0 were published GPL-3.0-or-later, and remain so —
 a package already on nuget.org cannot have its metadata changed, and a grant

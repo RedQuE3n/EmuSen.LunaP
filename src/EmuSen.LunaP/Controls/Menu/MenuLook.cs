@@ -18,8 +18,22 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The style class the look puts on the element it is applied to.</summary>
         public const string ClassName = "menu-look";
 
-        /// <summary>The resource key of the typeface the look draws its text in; a host puts a FontFamily under it, and without one the application's default typeface is used.</summary>
+        /// <summary>The resource key a host once named the look's typeface under; since docs/LunaP.md §206 the look draws in the palette's Barlow and Barlow Condensed and does not read it.</summary>
         public const string FontFamilyKey = "LunaMenuFontFamily";
+
+        /// <summary>Whether the look and the menus under an element draw in the light column of the palette rather than the dark. False by default; inherited.</summary>
+        public static readonly AttachedProperty<bool> IsLightProperty =
+            AvaloniaProperty.RegisterAttached<Control, bool>("IsLight", typeof(MenuLook), inherits: true);
+
+        /// <summary>Reads whether the look draws light under an element.</summary>
+        /// <param name="element">The element.</param>
+        /// <returns>True for the light column.</returns>
+        public static bool GetIsLight(Control element) => element.GetValue(IsLightProperty);
+
+        /// <summary>Draws the look and the menus under an element in the light column, or the dark. Set it before the look is applied or a menu made.</summary>
+        /// <param name="element">The element, such as a window.</param>
+        /// <param name="value">True for light.</param>
+        public static void SetIsLight(Control element, bool value) => element.SetValue(IsLightProperty, value);
 
         /// <summary>Whether an element and everything under it is drawn in the look. False by default.</summary>
         public static readonly AttachedProperty<bool> IsOnProperty =
@@ -106,13 +120,33 @@ namespace EmuSen.LunaP.Controls
         /// <param name="value">A fraction of the screen's width.</param>
         public static void SetWidthFraction(Window window, double value) => window.SetValue(WidthFractionProperty, value);
 
-        /// <summary>A fresh copy of the look's styles and palette, for an element's Styles.</summary>
+        /// <summary>A fresh copy of the look's styles and its dark palette, for an element's Styles.</summary>
         /// <returns>The styles; a Styles has one owner, so each element takes its own copy.</returns>
-        public static Styles CreateStyles() => (Styles)AvaloniaXamlLoader.Load(new Uri("avares://EmuSen.LunaP/Theme/MenuLook.axaml"));
+        public static Styles CreateStyles() => CreateStyles(light: false);
 
-        /// <summary>A fresh copy of the look's palette alone, for an element that draws in the look's colours without restyling the stock controls under it, such as a menu that draws itself.</summary>
+        /// <summary>A fresh copy of the look's styles and palette, for an element's Styles.</summary>
+        /// <param name="light">True for the palette's light column.</param>
+        /// <returns>The styles; a Styles has one owner, so each element takes its own copy.</returns>
+        public static Styles CreateStyles(bool light)
+        {
+            var styles = (Styles)AvaloniaXamlLoader.Load(new Uri("avares://EmuSen.LunaP/Theme/MenuLook.axaml"));
+            styles.Resources.MergedDictionaries.Add(CreatePalette(light));
+            return styles;
+        }
+
+        /// <summary>A fresh copy of the look's dark palette alone, for an element that draws in the look's colours without restyling the stock controls under it, such as a menu that draws itself.</summary>
         /// <returns>The palette; a dictionary has one owner, so each element takes its own copy.</returns>
-        public static ResourceDictionary CreatePalette() => (ResourceDictionary)AvaloniaXamlLoader.Load(new Uri("avares://EmuSen.LunaP/Theme/MenuPalette.axaml"));
+        public static ResourceDictionary CreatePalette() => CreatePalette(light: false);
+
+        /// <summary>A fresh copy of the look's palette alone, in either column of the tokens.</summary>
+        /// <param name="light">True for the light column.</param>
+        /// <returns>The palette; a dictionary has one owner, so each element takes its own copy.</returns>
+        public static ResourceDictionary CreatePalette(bool light)
+        {
+            var palette = (ResourceDictionary)AvaloniaXamlLoader.Load(new Uri("avares://EmuSen.LunaP/Theme/MenuPalette.axaml"));
+            if (light) palette.MergedDictionaries[0] = (ResourceDictionary)AvaloniaXamlLoader.Load(new Uri("avares://EmuSen.LunaP/Theme/Tokens/Light.axaml"));
+            return palette;
+        }
 
         /// <summary>Whether an element is drawn in the look: the look is on for it or for an element above it.</summary>
         /// <param name="element">The element.</param>
@@ -147,7 +181,7 @@ namespace EmuSen.LunaP.Controls
             }
             element.Classes.Set(ClassName, on);
             if (!on) return;
-            Styles styles = CreateStyles();
+            Styles styles = CreateStyles(GetIsLight(element));
             element.Styles.Add(styles);
             element.SetValue(AppliedProperty, styles);
         }

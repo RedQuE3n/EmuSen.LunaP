@@ -37,17 +37,17 @@ namespace EmuSen.LunaP.Tests
         // control actually PAINTS is asserted further down, live, which is the only way to see the
         // brush do its job.
         [Theory]
-        [InlineData("LunaSurfaceColor", "#1E1E1E", "#F3F3F3")]
-        [InlineData("LunaInputSurfaceColor", "#252526", "#FFFFFF")]
+        [InlineData("LunaSurfaceColor", "#1B1B1E", "#F3F3F3")]
+        [InlineData("LunaInputSurfaceColor", "#0E0E10", "#FFFFFF")]
         [InlineData("LunaHudSurfaceColor", "#E61C1C1C", "#E61C1C1C")]
-        [InlineData("LunaBorderColor", "#6E6E6E", "#8C8C8C")]
+        [InlineData("LunaBorderColor", "#707070", "#8C8C8C")]
         [InlineData("LunaTextColor", "#D4D4D4", "#1F1F1F")]
         [InlineData("LunaMeterTextColor", "#DCDCDC", "#2A2A2A")]
-        [InlineData("LunaMutedColor", "#808080", "#5F5F5F")]
+        [InlineData("LunaMutedColor", "#8D8D91", "#5F5F5F")]
         [InlineData("LunaSectionHeaderColor", "#9CDCFE", "#0A5A96")]
         [InlineData("LunaWarningColor", "#D08770", "#A34B1E")]
-        [InlineData("LunaErrorColor", "#CD5C5C", "#B3261E")]
-        [InlineData("LunaSuccessColor", "#2E8B57", "#1B6E3C")]
+        [InlineData("LunaErrorColor", "#D37070", "#B3261E")]
+        [InlineData("LunaSuccessColor", "#35A064", "#1B6E3C")]
         [InlineData("LunaInfoColor", "#DAA520", "#7A5B00")]
         [InlineData("LunaNominalColor", "#32CD32", "#1B7A1B")]
         [InlineData("LunaBusyColor", "#FFD700", "#8A6300")]
@@ -90,7 +90,7 @@ namespace EmuSen.LunaP.Tests
             dark.Close();
 
             Assert.Equal(Color.Parse("#F3F3F3"), lightBackground);
-            Assert.Equal(Color.Parse("#1E1E1E"), darkBackground);
+            Assert.Equal(Color.Parse("#1B1B1E"), darkBackground);
         }, default);
 
         // Dark by default, and this is the assertion that stops it quietly becoming "follow the

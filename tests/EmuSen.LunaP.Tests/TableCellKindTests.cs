@@ -676,10 +676,18 @@ namespace EmuSen.LunaP.Tests
         {
             ThemeVariant variant = variantName == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light;
 
-            Color surface = Resolve("LunaSurfaceColor", variant);
-            Color fill = Over(Resolve("CheckBoxCheckBackgroundFillCheckedDisabled", variant), surface);
-            Color glyph = Over(Resolve("CheckBoxCheckGlyphForegroundCheckedDisabled", variant), fill);
-            Color stroke = Over(Resolve("CheckBoxCheckBackgroundStrokeUncheckedDisabled", variant), surface);
+            // A brush re-resolves its colour in the application's variant, so the variant is the one measured (§206.1).
+            ThemeVariant? before = Application.Current!.RequestedThemeVariant;
+            Application.Current.RequestedThemeVariant = variant;
+            Color surface, fill, glyph, stroke;
+            try
+            {
+                surface = Resolve("LunaSurfaceColor", variant);
+                fill = Over(Resolve("CheckBoxCheckBackgroundFillCheckedDisabled", variant), surface);
+                glyph = Over(Resolve("CheckBoxCheckGlyphForegroundCheckedDisabled", variant), fill);
+                stroke = Over(Resolve("CheckBoxCheckBackgroundStrokeUncheckedDisabled", variant), surface);
+            }
+            finally { Application.Current.RequestedThemeVariant = before; }
 
             double ticked = Contrast(glyph, fill);
             double box = Contrast(fill, surface);

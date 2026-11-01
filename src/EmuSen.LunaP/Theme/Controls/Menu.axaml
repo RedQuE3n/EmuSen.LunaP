@@ -1,0 +1,21 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:luna="clr-namespace:EmuSen.LunaP.Controls">
+
+    <!-- A drawn menu's colours from the palette's tokens, so a menu panel, its rows and a sheet in the look follow the
+         palette in reach - the big screen's inside a MenuPanel or the look, the desktop's elsewhere (§206.1, §206.4). -->
+    <Style Selector="luna|MenuRow">
+        <Setter Property="TextColor" Value="{DynamicResource LunaTextColor}" />
+        <Setter Property="HighlightTextColor" Value="{DynamicResource LunaTextStrongColor}" />
+        <Setter Property="BarColor" Value="{DynamicResource LunaSurfaceRaisedColor}" />
+        <Setter Property="RuleColor" Value="{DynamicResource LunaRuleColor}" />
+        <Setter Property="AccentColor" Value="{DynamicResource LunaAccentColor}" />
+    </Style>
+    <Style Selector="luna|MenuPanel">
+        <Setter Property="PanelColor" Value="{DynamicResource LunaSurfaceColor}" />
+        <Setter Property="TitleColor" Value="{DynamicResource LunaTextStrongColor}" />
+        <Setter Property="FooterColor" Value="{DynamicResource LunaMutedColor}" />
+        <Setter Property="RuleColor" Value="{DynamicResource LunaRuleColor}" />
+        <Setter Property="HintColor" Value="{DynamicResource LunaTextColor}" />
+    </Style>
+</Styles>

@@ -1,0 +1,40 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- A brush for every colour token, each re-resolving its Color key wherever it is used, so one declaration serves
+         both variants and the big screen. docs/LunaP.md §206.1. -->
+    <SolidColorBrush x:Key="LunaSurface" Color="{DynamicResource LunaSurfaceColor}" />
+    <SolidColorBrush x:Key="LunaSurfaceRaised" Color="{DynamicResource LunaSurfaceRaisedColor}" />
+    <SolidColorBrush x:Key="LunaInputSurface" Color="{DynamicResource LunaInputSurfaceColor}" />
+    <SolidColorBrush x:Key="LunaVoid" Color="{DynamicResource LunaVoidColor}" />
+    <SolidColorBrush x:Key="LunaScrim" Color="{DynamicResource LunaScrimColor}" />
+    <SolidColorBrush x:Key="LunaCaptionSurface" Color="{DynamicResource LunaCaptionSurfaceColor}" />
+    <SolidColorBrush x:Key="LunaHudSurface" Color="{DynamicResource LunaHudSurfaceColor}" />
+    <SolidColorBrush x:Key="LunaBorder" Color="{DynamicResource LunaBorderColor}" />
+    <SolidColorBrush x:Key="LunaRule" Color="{DynamicResource LunaRuleColor}" />
+
+    <SolidColorBrush x:Key="LunaText" Color="{DynamicResource LunaTextColor}" />
+    <SolidColorBrush x:Key="LunaTextStrong" Color="{DynamicResource LunaTextStrongColor}" />
+    <SolidColorBrush x:Key="LunaMeterText" Color="{DynamicResource LunaMeterTextColor}" />
+    <SolidColorBrush x:Key="LunaMuted" Color="{DynamicResource LunaMutedColor}" />
+    <SolidColorBrush x:Key="LunaSectionHeader" Color="{DynamicResource LunaSectionHeaderColor}" />
+    <SolidColorBrush x:Key="LunaWarning" Color="{DynamicResource LunaWarningColor}" />
+
+    <SolidColorBrush x:Key="LunaError" Color="{DynamicResource LunaErrorColor}" />
+    <SolidColorBrush x:Key="LunaSuccess" Color="{DynamicResource LunaSuccessColor}" />
+    <SolidColorBrush x:Key="LunaAttention" Color="{DynamicResource LunaAttentionColor}" />
+    <SolidColorBrush x:Key="LunaInfo" Color="{DynamicResource LunaInfoColor}" />
+    <SolidColorBrush x:Key="LunaAccent" Color="{DynamicResource LunaAccentColor}" />
+    <SolidColorBrush x:Key="LunaOnAccent" Color="{DynamicResource LunaOnAccentColor}" />
+    <SolidColorBrush x:Key="LunaOnArt" Color="{DynamicResource LunaOnArtColor}" />
+
+    <!-- Words over a picture: the picture darkened from clear at the top to the OnArt scrim at the bottom. -->
+    <LinearGradientBrush x:Key="LunaOnArtScrim" StartPoint="0%,0%" EndPoint="0%,100%">
+        <GradientStop Offset="0" Color="#00000000" />
+        <GradientStop Offset="1" Color="{DynamicResource LunaOnArtScrimColor}" />
+    </LinearGradientBrush>
+
+    <SolidColorBrush x:Key="LunaNominal" Color="{DynamicResource LunaNominalColor}" />
+    <SolidColorBrush x:Key="LunaBusy" Color="{DynamicResource LunaBusyColor}" />
+    <SolidColorBrush x:Key="LunaHot" Color="{DynamicResource LunaHotColor}" />
+</ResourceDictionary>

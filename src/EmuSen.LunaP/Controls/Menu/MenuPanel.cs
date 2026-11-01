@@ -43,13 +43,13 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<double> MaxWidthToHeightProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(MaxWidthToHeight), 1.05);
         public static readonly StyledProperty<double> PanelCornerRadiusProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(PanelCornerRadius), 16);
         public static readonly StyledProperty<Color> PanelColorProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(PanelColor), Color.FromRgb(0x1B, 0x1B, 0x1E));
-        public static readonly StyledProperty<Color> TitleColorProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(TitleColor), Color.FromRgb(0xB4, 0xB4, 0xB8));
-        public static readonly StyledProperty<Color> FooterColorProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(FooterColor), Color.FromRgb(0x86, 0x86, 0x8A));
+        public static readonly StyledProperty<Color> TitleColorProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(TitleColor), Color.FromRgb(0xEE, 0xEE, 0xF0));
+        public static readonly StyledProperty<Color> FooterColorProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(FooterColor), Color.FromRgb(0x8D, 0x8D, 0x91));
         public static readonly StyledProperty<Color> RuleColorProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(RuleColor), Color.FromRgb(0x33, 0x33, 0x37));
         public static readonly StyledProperty<LetterCase> LetterCaseProperty = AvaloniaProperty.Register<MenuPanel, LetterCase>(nameof(LetterCase), LetterCase.Upper);
         public static readonly StyledProperty<IReadOnlyList<HintEntry>?> HintsProperty = AvaloniaProperty.Register<MenuPanel, IReadOnlyList<HintEntry>?>(nameof(Hints));
         public static readonly StyledProperty<PadFamily> HintFamilyProperty = AvaloniaProperty.Register<MenuPanel, PadFamily>(nameof(HintFamily));
-        public static readonly StyledProperty<Color> HintColorProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(HintColor), Color.FromRgb(0xD2, 0xD2, 0xD6));
+        public static readonly StyledProperty<Color> HintColorProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(HintColor), Color.FromRgb(0xD4, 0xD4, 0xD4));
         public static readonly StyledProperty<double> RowPitchProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(RowPitch), 54);
         public static readonly StyledProperty<double> OpeningScaleProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(OpeningScale), 1.0);
         public static readonly StyledProperty<LetterCase?> FooterLetterCaseProperty = AvaloniaProperty.Register<MenuPanel, LetterCase?>(nameof(FooterLetterCase));
@@ -86,11 +86,24 @@ namespace EmuSen.LunaP.Controls
                 FooterColorProperty, RuleColorProperty, LetterCaseProperty, FooterLetterCaseProperty, SubtitleSizeProperty, SubtitleLetterCaseProperty, ShowsScrollIndicatorProperty, ScrollIndicatorColorProperty);
         }
 
+        private ResourceDictionary _palette;
+
+        // The palette in the column MenuLook.IsLight asks for, replacing the one the panel holds (§206.1).
+        private void SwapPalette(bool light)
+        {
+            ResourceDictionary next = MenuLook.CreatePalette(light);
+            int at = Resources.MergedDictionaries.IndexOf(_palette);
+            if (at >= 0) Resources.MergedDictionaries[at] = next;
+            else Resources.MergedDictionaries.Add(next);
+            _palette = next;
+        }
+
         /// <summary>An empty panel, its help bar hidden until Hints are given.</summary>
         public MenuPanel()
         {
             // The look's palette, so what the menu holds is painted from tokens a theme can reach - see docs/LunaP.md §200.3.
-            Resources.MergedDictionaries.Add(MenuLook.CreatePalette());
+            _palette = MenuLook.CreatePalette();
+            Resources.MergedDictionaries.Add(_palette);
             _hints.IsVisible = false;
             VisualChildren.Add(_hints);
             LogicalChildren.Add(_hints);
@@ -194,16 +207,16 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The panel's corner radius in design pixels before Scale. 16 by default.</summary>
         public double PanelCornerRadius { get => GetValue(PanelCornerRadiusProperty); set => SetValue(PanelCornerRadiusProperty, value); }
 
-        /// <summary>The panel's fill. #FF1B1B1E, a near black grey, by default.</summary>
+        /// <summary>The panel's fill. #FF1B1B1E, the dark surface, by default; the theme sets LunaSurfaceColor.</summary>
         public Color PanelColor { get => GetValue(PanelColorProperty); set => SetValue(PanelColorProperty, value); }
 
-        /// <summary>The title's colour. #FFB4B4B8, a light grey, by default.</summary>
+        /// <summary>The title's colour. #FFEEEEF0, the strong text, by default; the theme sets LunaTextStrongColor.</summary>
         public Color TitleColor { get => GetValue(TitleColorProperty); set => SetValue(TitleColorProperty, value); }
 
-        /// <summary>The footer's colour. #FF86868A, a mid grey, by default.</summary>
+        /// <summary>The footer's colour. #FF8D8D91, the muted grey, by default; the theme sets LunaMutedColor.</summary>
         public Color FooterColor { get => GetValue(FooterColorProperty); set => SetValue(FooterColorProperty, value); }
 
-        /// <summary>The colour of the rule under the title. #FF333337, the rows' dark grey, by default.</summary>
+        /// <summary>The colour of the rule under the title. #FF333337, the rows' dark grey, by default; the theme sets LunaRuleColor.</summary>
         public Color RuleColor { get => GetValue(RuleColorProperty); set => SetValue(RuleColorProperty, value); }
 
         /// <summary>The casing of the title and the footer. Upper by default.</summary>
@@ -215,7 +228,7 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The pad family the help bar draws its buttons in. Generic by default.</summary>
         public PadFamily HintFamily { get => GetValue(HintFamilyProperty); set => SetValue(HintFamilyProperty, value); }
 
-        /// <summary>The help bar's text and icon colour. #FFD2D2D6, a light grey, by default.</summary>
+        /// <summary>The help bar's text and icon colour. #FFD4D4D4, the text, by default; the theme sets LunaTextColor.</summary>
         public Color HintColor { get => GetValue(HintColorProperty); set => SetValue(HintColorProperty, value); }
 
         /// <summary>The help bar's fill. #F0161618, a near black grey almost opaque, by default.</summary>
@@ -313,6 +326,7 @@ namespace EmuSen.LunaP.Controls
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);
+            if (change.Property == MenuLook.IsLightProperty) SwapPalette(change.GetNewValue<bool>());
             if (change.Property == ChildProperty) Watch(Scroller(change.NewValue as Control));
             if (change.Property == ButtonsProperty)
             {
