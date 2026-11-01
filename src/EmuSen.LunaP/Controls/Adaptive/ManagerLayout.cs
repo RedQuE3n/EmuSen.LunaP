@@ -522,7 +522,7 @@ namespace EmuSen.LunaP.Controls
         public void SetToolActions(IEnumerable<LunaAction> actions, IEnumerable<LunaAction>? bigScreenButtons)
         {
             if (actions is null) throw new ArgumentNullException(nameof(actions));
-            SetActions(actions.Concat(new[] { LunaAction.Separator(), Mark, More, Apply }), new[] { Apply, More }, bigScreenButtons?.Concat(new[] { Mark }));
+            SetActions(actions.Concat(new[] { LunaAction.Separator(), Mark, More, Apply }), new[] { Apply, More }, bigScreenButtons);
         }
 
         /// <inheritdoc/>
