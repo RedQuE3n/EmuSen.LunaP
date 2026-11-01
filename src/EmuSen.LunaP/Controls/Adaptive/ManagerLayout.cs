@@ -87,7 +87,7 @@ namespace EmuSen.LunaP.Controls
                 LastChildFill = true,
                 Children = { heading, buttons, new ScrollViewer { Content = _planText, MaxHeight = 360, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled } },
             };
-            _contentGrid.SizeChanged += (_, e) => _planSheet.MaxHeight = Math.Max(0, e.NewSize.Height);
+            _contentGrid.SizeChanged += (_, e) => _planSheet.MaxHeight = Math.Max(PlanFloor, e.NewSize.Height);
             _planSheet[!Border.BackgroundProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaSurface");
             _planSheet[!Border.BorderBrushProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaBorder");
             _planSheet.BorderThickness = new Thickness(1);
@@ -103,6 +103,9 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>The style class on the Apply summary sheet.</summary>
         public const string PlanClass = "manager-plan";
+
+        /// <summary>The least height the plan sheet is allowed, so that a host sized to its content grows to show the question, a few lines and the buttons (§203.7).</summary>
+        public const double PlanFloor = 240;
 
         /// <summary>The action that cycles the chosen row through its marks: the X button on a pad.</summary>
         public LunaAction Mark { get; }

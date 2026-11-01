@@ -134,5 +134,27 @@ namespace EmuSen.LunaP.Tests
             window.Close();
             Assert.Empty(faults);
         });
+
+        // A host sized to its content, as a framed sheet is, with two rows: the plan sheet keeps its floor rather than the table's height (§203.7).
+        [Theory]
+        [InlineData(AdaptiveForm.BigScreen)]
+        [InlineData(AdaptiveForm.Desktop)]
+        public Task A_host_sized_to_its_content_gives_the_plan_room_with_few_rows(AdaptiveForm form) => UiTest.Run(() =>
+        {
+            ManagerLayout<Row> m = Build(form);
+            m.SetRows(Rows().Take(2));
+            var window = new Window { Width = 1280, SizeToContent = SizeToContent.Height, MaxHeight = 800, Content = m };
+            window.Show();
+            UiTest.Settle(m);
+            foreach (Row r in m.Rows) m.SetMark(r, "make");
+            m.OpenPlan();
+            for (int i = 0; i < 4; i++) UiTest.Settle(m);
+            List<string> faults = form == AdaptiveForm.BigScreen
+                ? FitAudit.Check(m, new[] { FitAudit.TextBoxesScroll, CellsWholeInTheDetail })
+                : FitAudit.Check(m, new[] { FitAudit.TextBoxesScroll, CellsWholeInTheDetail }, smallest: 0).Where(f => !f.StartsWith("cut at a scrolling edge", StringComparison.Ordinal)).ToList();
+            foreach (string f in faults) _out.WriteLine($"{form} sized to content: {f}");
+            window.Close();
+            Assert.Empty(faults);
+        });
     }
 }

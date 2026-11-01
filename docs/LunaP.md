@@ -14018,6 +14018,18 @@ The palette sweep (§85) found that a disabled stock `Button` painted its words 
 control had shown a disabled button to the sweep. `FluentBridge.axaml` now maps `ButtonForegroundDisabled` to
 `LunaMuted`, for every disabled button in an application on the theme.
 
+### 203.7 The plan's floor in a host sized to its content
+
+The plan sheet's height was capped at the content area's (§203.3), so that its words scroll in a fixed host. In a host
+sized to its content, as EmuSen's framed sheets are, the content area is as tall as the table asked, and once the plan
+opened the cap held it there: EmuSen Scraper's framed audit found the plan's words in a scroller 38 units high at 1280 by
+800 with three games listed (2026-11-01, "scrolls in too little room"), and the same frame with two rows on the desktop
+gave it 9. The cap is now never below `PlanFloor`, 240 units, enough for the question, a few lines of the plan and the
+buttons; such a host grows to it, and a fixed host taller than the floor is as before.
+`A_host_sized_to_its_content_gives_the_plan_room_with_few_rows` holds both forms to the audit in a window sized to its
+content with two rows; with the floor at 0 the desktop case fails ("ScrollViewer 9 high"). `ManagerFitAuditTests`'
+earlier 72 cases are unchanged.
+
 ## 204. The framed fit audit in the harness: `FitAudit`
 
 ### 204.1 Why it is here
