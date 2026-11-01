@@ -366,6 +366,7 @@ public class EmuSen.LunaP.Controls.ControllerGlyph : Avalonia.Controls.Control
     public static string Describe(EmuSen.LunaP.Controls.ControllerShape shape)
 
 public enum EmuSen.LunaP.Controls.ControllerLayout
+    public const EmuSen.LunaP.Controls.ControllerLayout Dreamcast = 12
     public const EmuSen.LunaP.Controls.ControllerLayout DualShock = 8
     public const EmuSen.LunaP.Controls.ControllerLayout GameBoy = 4
     public const EmuSen.LunaP.Controls.ControllerLayout Gamepad = 0
@@ -375,6 +376,7 @@ public enum EmuSen.LunaP.Controls.ControllerLayout
     public const EmuSen.LunaP.Controls.ControllerLayout Nes = 1
     public const EmuSen.LunaP.Controls.ControllerLayout Nintendo64 = 3
     public const EmuSen.LunaP.Controls.ControllerLayout PlayStation = 7
+    public const EmuSen.LunaP.Controls.ControllerLayout Saturn = 11
     public const EmuSen.LunaP.Controls.ControllerLayout Sg1000 = 10
     public const EmuSen.LunaP.Controls.ControllerLayout Snes = 2
     public int value__
