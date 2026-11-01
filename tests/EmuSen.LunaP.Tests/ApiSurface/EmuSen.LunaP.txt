@@ -81,6 +81,11 @@ public class EmuSen.LunaP.Controls.ActionToggle : Avalonia.Controls.Primitives.T
     public EmuSen.LunaP.Commands.LunaAction Action { get; }
     public const string StyleClass = "luna-action-toggle"
 
+public enum EmuSen.LunaP.Controls.AdaptiveDetailPlacement
+    public const EmuSen.LunaP.Controls.AdaptiveDetailPlacement Beside = 1
+    public const EmuSen.LunaP.Controls.AdaptiveDetailPlacement Page = 0
+    public int value__
+
 public enum EmuSen.LunaP.Controls.AdaptiveForm
     public const EmuSen.LunaP.Controls.AdaptiveForm BigScreen = 1
     public const EmuSen.LunaP.Controls.AdaptiveForm Desktop = 0
@@ -96,6 +101,7 @@ public class EmuSen.LunaP.Controls.AdaptiveLayout : Avalonia.Controls.Border
     public Avalonia.Controls.Control? Detail { get; set; }
     public Avalonia.Controls.Control? HostOf(EmuSen.LunaP.Controls.AdaptiveRole role)
     public Avalonia.Controls.Control? Status { get; set; }
+    public EmuSen.LunaP.Controls.AdaptiveDetailPlacement DetailPlacement { get; set; }
     public EmuSen.LunaP.Controls.AdaptiveForm Form { get; set; }
     public EmuSen.LunaP.Controls.AdaptiveRole? FocusedRole { get; }
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Commands.LunaAction> Actions { get; }
@@ -110,9 +116,12 @@ public class EmuSen.LunaP.Controls.AdaptiveLayout : Avalonia.Controls.Border
     public bool SelectSection(string key)
     public bool StepSection(int by)
     public const string MainClass = "adaptive-main"
+    public double ContentShare { get; set; }
     public event System.Action<string> SearchChanged
     public event System.Action<string> SectionChosen
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.AdaptiveDetailPlacement> DetailPlacementProperty = Page
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.AdaptiveForm> FormProperty = Desktop
+    public static readonly Avalonia.StyledProperty<double> ContentShareProperty = 0.4
     public string SearchText { get; set; }
     public string Title { get; set; }
     public string? SearchHint { get; set; }
@@ -229,11 +238,13 @@ public class EmuSen.LunaP.Controls.BlurBackdrop : Avalonia.Controls.Control
     public Avalonia.Media.Color Shade { get; set; }
     public Avalonia.Visual? Target { get; set; }
     public BlurBackdrop()
+    public bool Blurs { get; set; }
     public bool IsBlurring { get; }
     public double Radius { get; set; }
     public override void Render(Avalonia.Media.DrawingContext context)
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> ShadeProperty = #70000000
     public static readonly Avalonia.StyledProperty<Avalonia.Visual?> TargetProperty = null
+    public static readonly Avalonia.StyledProperty<bool> BlursProperty = true
     public static readonly Avalonia.StyledProperty<double> RadiusProperty = 16
 
 public class EmuSen.LunaP.Controls.ButtonBar : Avalonia.Controls.ItemsControl
@@ -1317,6 +1328,11 @@ public struct EmuSen.LunaP.Controls.ManagerMarked<T> : System.ValueType, System.
     public static bool op_Inequality(EmuSen.LunaP.Controls.ManagerMarked<T> left, EmuSen.LunaP.Controls.ManagerMarked<T> right)
     public void Deconstruct(out T? Row, out EmuSen.LunaP.Controls.ManagerMark Mark)
 
+public enum EmuSen.LunaP.Controls.MenuAnchor
+    public const EmuSen.LunaP.Controls.MenuAnchor Centre = 0
+    public const EmuSen.LunaP.Controls.MenuAnchor Left = 1
+    public int value__
+
 public class EmuSen.LunaP.Controls.MenuBar : Avalonia.Controls.Menu
     protected override System.Type StyleKeyOverride { get; }
     public MenuBar()
@@ -1382,6 +1398,7 @@ public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     protected override Avalonia.Size MeasureOverride(Avalonia.Size availableSize)
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     public Avalonia.Controls.Control? Buttons { get; set; }
+    public Avalonia.Controls.Control? Pane { get; set; }
     public Avalonia.Media.Color FooterColor { get; set; }
     public Avalonia.Media.Color HintBackground { get; set; }
     public Avalonia.Media.Color HintColor { get; set; }
@@ -1389,10 +1406,14 @@ public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     public Avalonia.Media.Color RuleColor { get; set; }
     public Avalonia.Media.Color ScrollIndicatorColor { get; set; }
     public Avalonia.Media.Color TitleColor { get; set; }
+    public Avalonia.Media.IImage? TitleIcon { get; set; }
     public Avalonia.Rect ButtonsBounds { get; }
+    public Avalonia.Rect PaneBounds { get; }
     public Avalonia.Rect PanelBounds { get; }
     public Avalonia.Rect TitleBounds { get; }
+    public Avalonia.Rect TitleIconBounds { get; }
     public EmuSen.LunaP.Controls.HintBar HelpBar { get; }
+    public EmuSen.LunaP.Controls.MenuAnchor Anchor { get; set; }
     public EmuSen.LunaP.Controls.MenuScrollIndicator ScrollIndicator { get; }
     public EmuSen.LunaP.Controls.PadFamily HintFamily { get; set; }
     public EmuSen.LunaP.Controls.PadGlyphStyle HintGlyphStyle { get; set; }
@@ -1424,6 +1445,7 @@ public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     public static readonly Avalonia.AttachedProperty<double> ScaleProperty = 1
     public static readonly Avalonia.AttachedProperty<string?> FontPathProperty = null
     public static readonly Avalonia.StyledProperty<Avalonia.Controls.Control?> ButtonsProperty = null
+    public static readonly Avalonia.StyledProperty<Avalonia.Controls.Control?> PaneProperty = null
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> FooterColorProperty = #ff8d8d91
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> HintBackgroundProperty = #f0161618
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> HintColorProperty = #ffd4d4d4
@@ -1431,6 +1453,8 @@ public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> RuleColorProperty = #ff333337
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> ScrollIndicatorColorProperty = #ff747478
     public static readonly Avalonia.StyledProperty<Avalonia.Media.Color> TitleColorProperty = #ffeeeef0
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.IImage?> TitleIconProperty = null
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.MenuAnchor> AnchorProperty = Centre
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadFamily> HintFamilyProperty = Generic
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadGlyphStyle> HintGlyphStyleProperty = Filled
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = Upper

@@ -25,6 +25,15 @@ namespace EmuSen.LunaP.Controls
         Both,
     }
 
+    /// <summary>Where a menu's panel stands in its area.</summary>
+    public enum MenuAnchor
+    {
+        /// <summary>Centred, as ES-DE's menus are.</summary>
+        Centre,
+        /// <summary>At the area's left edge, leaving the room on its right to the pane, as a card over a paused game.</summary>
+        Left,
+    }
+
     // A big-screen menu's panel: wide, centred, rounded, a large upper-case title, the rows, a footer line, and the help bar at the foot of the screen - see docs/LunaP.md §181.2.
     /// <summary>A big-screen menu: a wide rounded panel centred in its area, with a large title, the rows as its child, a footer line, and a help bar at the bottom of the area.</summary>
     public class MenuPanel : Decorator
@@ -65,12 +74,18 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<PadGlyphStyle> HintGlyphStyleProperty = AvaloniaProperty.Register<MenuPanel, PadGlyphStyle>(nameof(HintGlyphStyle), PadGlyphStyle.Filled);
         public static readonly StyledProperty<bool> ShowsScrollIndicatorProperty = AvaloniaProperty.Register<MenuPanel, bool>(nameof(ShowsScrollIndicator), true);
         public static readonly StyledProperty<Color> ScrollIndicatorColorProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(ScrollIndicatorColor), Color.FromRgb(0x74, 0x74, 0x78));
+        public static readonly StyledProperty<MenuAnchor> AnchorProperty = AvaloniaProperty.Register<MenuPanel, MenuAnchor>(nameof(Anchor));
+        public static readonly StyledProperty<Control?> PaneProperty = AvaloniaProperty.Register<MenuPanel, Control?>(nameof(Pane));
+        public static readonly StyledProperty<IImage?> TitleIconProperty = AvaloniaProperty.Register<MenuPanel, IImage?>(nameof(TitleIcon));
 
         // Design sizes before Scale: the title's band, the footer's band (or the padding under the rows without one), the margins, and the help bar's text.
         private const double TitleBand = 100, FooterBand = 78, BareFooter = 20, Edge = 24, HintText = 26, HintGap = 10;
 
         // With a subtitle: the title's centre, the first subtitle line's centre, the lines' pitch, and the space under the last; the buttons' band's padding.
         private const double SubtitledTitleCentre = 49, FirstSubtitleCentre = 107, SubtitlePitch = 32, UnderSubtitle = 32, ButtonsPad = 12, FooterPad = 14;
+
+        // The title icon's height and its gap to the title, and the narrowest and widest it is drawn as a multiple of its height (§205.3).
+        private const double IconHeight = 64, IconGap = 16, IconNarrowest = 0.5, IconWidest = 1.5;
 
         // The scroll indicator's design sizes: each chevron pair's square, the gap between the two pairs, and the inset from the panel's right edge (§195.2).
         private const double IndicatorSide = 25, IndicatorGap = 7, IndicatorInset = 11;
@@ -81,8 +96,9 @@ namespace EmuSen.LunaP.Controls
         static MenuPanel()
         {
             AffectsMeasure<MenuPanel>(ScaleProperty, TitleProperty, FooterProperty, WidthFractionProperty, MaxWidthToHeightProperty, HintsProperty, RowPitchProperty,
-                SubtitleProperty, ButtonsProperty, FooterMaxLinesProperty, FooterSizeProperty, ShowsTitleBandProperty, TitleMaxLinesProperty, TitleMinScaleProperty, TitleSizeProperty, FontPathProperty, LetterCaseProperty);
-            AffectsRender<MenuPanel>(FontPathProperty, TitleSizeProperty, TitleMinScaleProperty, FooterSizeProperty, PanelCornerRadiusProperty, PanelColorProperty, TitleColorProperty,
+                SubtitleProperty, ButtonsProperty, FooterMaxLinesProperty, FooterSizeProperty, ShowsTitleBandProperty, TitleMaxLinesProperty, TitleMinScaleProperty, TitleSizeProperty, FontPathProperty, LetterCaseProperty,
+                AnchorProperty, PaneProperty, TitleIconProperty);
+            AffectsRender<MenuPanel>(TitleIconProperty, FontPathProperty, TitleSizeProperty, TitleMinScaleProperty, FooterSizeProperty, PanelCornerRadiusProperty, PanelColorProperty, TitleColorProperty,
                 FooterColorProperty, RuleColorProperty, LetterCaseProperty, FooterLetterCaseProperty, SubtitleSizeProperty, SubtitleLetterCaseProperty, ShowsScrollIndicatorProperty, ScrollIndicatorColorProperty);
         }
 
@@ -174,7 +190,7 @@ namespace EmuSen.LunaP.Controls
         private (double Size, FontLayout? Lines, bool Cut) TitleLayout(string title, double panelWidth)
         {
             double u = Unit, full = TitleSize * u;
-            double room = panelWidth - 48 * u;
+            double room = panelWidth - 48 * u - IconSpace();
             if (room <= 0) return (full, null, false);
             GlyphTypeface typeface = GetValue(FontPathProperty) is { Length: > 0 } p && FontFiles.Load(p) is { } t ? t : FontFiles.Default;
             string cased = FontLayout.Cased(title, LetterCase);
@@ -292,6 +308,37 @@ namespace EmuSen.LunaP.Controls
         /// <summary>A control, typically a row of push buttons, shown in a band of its own under the rows and always in view, however the rows scroll. Null shows none.</summary>
         public Control? Buttons { get => GetValue(ButtonsProperty); set => SetValue(ButtonsProperty, value); }
 
+        /// <summary>Where the panel stands: centred (the default) or at the area's left edge - see docs/LunaP.md §205.2.</summary>
+        public MenuAnchor Anchor { get => GetValue(AnchorProperty); set => SetValue(AnchorProperty, value); }
+
+        /// <summary>A control shown in the room to the right of the panel, above the help bar, such as what the chosen row is about; it is arranged in PaneBounds by its own alignment. Null shows none.</summary>
+        public Control? Pane { get => GetValue(PaneProperty); set => SetValue(PaneProperty, value); }
+
+        /// <summary>The room to the right of the panel, between the margins and above the help bar, in this control's coordinates, as last arranged; empty where there is none.</summary>
+        public Rect PaneBounds { get; private set; }
+
+        /// <summary>A small picture at the left of the title's band, such as a game's cover, with the title left-aligned after it on one line. Null shows none and centres the title.</summary>
+        public IImage? TitleIcon { get => GetValue(TitleIconProperty); set => SetValue(TitleIconProperty, value); }
+
+        /// <summary>The rectangle the title icon is drawn in, in this control's coordinates, as last arranged; empty without one.</summary>
+        public Rect TitleIconBounds
+        {
+            get
+            {
+                if (IconSpace() is not > 0 || TitleBounds.Height <= 0) return default;
+                double u = Unit, h = IconHeight * u;
+                return new Rect(TitleBounds.X + 24 * u, TitleCentre() - h / 2, IconSpace() - IconGap * u, h);
+            }
+        }
+
+        // The width the icon and its gap take from the title's band, 0 without one.
+        private double IconSpace()
+        {
+            if (TitleIcon is not { } icon || icon.Size.Height <= 0) return 0;
+            double u = Unit, h = IconHeight * u;
+            return h * Math.Clamp(icon.Size.Width / icon.Size.Height, IconNarrowest, IconWidest) + IconGap * u;
+        }
+
         /// <summary>The buttons' band's rectangle in this control's coordinates, as last arranged; empty without Buttons.</summary>
         public Rect ButtonsBounds { get; private set; }
 
@@ -328,7 +375,7 @@ namespace EmuSen.LunaP.Controls
             base.OnPropertyChanged(change);
             if (change.Property == MenuLook.IsLightProperty) SwapPalette(change.GetNewValue<bool>());
             if (change.Property == ChildProperty) Watch(Scroller(change.NewValue as Control));
-            if (change.Property == ButtonsProperty)
+            if (change.Property == ButtonsProperty || change.Property == PaneProperty)
             {
                 if (change.OldValue is Control old)
                 {
@@ -432,6 +479,7 @@ namespace EmuSen.LunaP.Controls
             Buttons?.Measure(new Size(double.IsFinite(area.Width) ? area.Width : double.PositiveInfinity, double.PositiveInfinity));
             (double width, double rowsMax) = Frame(area, hintHeight);
             Child?.Measure(new Size(width, rowsMax));
+            Pane?.Measure(PaneRoom(area, width, hintHeight).Size);
             return area;
         }
 
@@ -444,8 +492,10 @@ namespace EmuSen.LunaP.Controls
             double buttons = ButtonsBand, band = TopBandAt(width);
             double height = band + rows + buttons + BottomBand;
             double top = Math.Clamp((finalSize.Height - height) / 2, Edge * u, Math.Max(Edge * u, finalSize.Height - hintHeight - Edge * u - height));
-            double left = (finalSize.Width - width) / 2;
+            double left = PanelLeft(finalSize.Width, width);
             PanelBounds = new Rect(left, top, width, height);
+            PaneBounds = PaneRoom(finalSize, width, hintHeight);
+            Pane?.Arrange(PaneBounds);
             TitleBounds = new Rect(left, top, width, band);
             Child?.Arrange(new Rect(left, top + band, width, rows));
             if (Scroller(Child) is var scroller && !ReferenceEquals(scroller, _watched)) Watch(scroller);
@@ -462,6 +512,16 @@ namespace EmuSen.LunaP.Controls
                 _hints.Arrange(new Rect((finalSize.Width - hs.Width) / 2, finalSize.Height - hs.Height - HintGap * u, hs.Width, hs.Height));
             }
             return finalSize;
+        }
+
+        // The panel's left edge: the margin when anchored left, else centred.
+        private double PanelLeft(double areaWidth, double width) => Anchor == MenuAnchor.Left ? Math.Min(Edge * Unit, Math.Max(0, areaWidth - width)) : (areaWidth - width) / 2;
+
+        // The room right of the panel for the pane: inside the margins, above the help bar.
+        private Rect PaneRoom(Size area, double width, double hintHeight)
+        {
+            double u = Unit, x = PanelLeft(area.Width, width) + width + Edge * u;
+            return new Rect(x, Edge * u, Math.Max(0, area.Width - Edge * u - x), Math.Max(0, area.Height - hintHeight - 2 * Edge * u));
         }
 
         // The rows and the buttons scaled about the panel's centre, as the panel is drawn; a scale of 1 takes the transform off again.
@@ -513,12 +573,23 @@ namespace EmuSen.LunaP.Controls
                 if (scroll is MenuScrollIndicator.Up or MenuScrollIndicator.Both) DrawChevrons(context, upBox, down: false, pen);
                 if (scroll is MenuScrollIndicator.Down or MenuScrollIndicator.Both) DrawChevrons(context, downBox, down: true, pen);
             }
+            if (TitleIcon is { } icon && TitleIconBounds is { Width: > 0 } iconBox)
+            {
+                double fit = Math.Min(iconBox.Width / icon.Size.Width, iconBox.Height / icon.Size.Height);
+                context.DrawImage(icon, new Rect(icon.Size), iconBox.CenterRect(new Rect(0, 0, icon.Size.Width * fit, icon.Size.Height * fit)));
+            }
             if (Title is { Length: > 0 } title)
             {
                 (double size, FontLayout? wrappedTitle, _) = TitleLayout(title, TitleBounds.Width);
                 Rect band = TitleBounds.Deflate(new Thickness(24 * u, 0));
-                if (wrappedTitle is { Lines.Count: > 1 }) wrappedTitle.Draw(context, new ImmutableSolidColorBrush(TitleColor), band, TextAlignment.Center, 0.5);
-                else MenuRow.DrawLine(context, typeface, size, FontLayout.Cased(title, LetterCase), band, TitleCentre() + MenuRow.CapHeight(typeface, size) / 2, TextAlignment.Center, new ImmutableSolidColorBrush(TitleColor));
+                TextAlignment align = TextAlignment.Center;
+                if (IconSpace() is > 0 and var iconSpace)
+                {
+                    band = new Rect(band.X + iconSpace, band.Y, Math.Max(0, band.Width - iconSpace), band.Height);
+                    align = TextAlignment.Left;
+                }
+                if (wrappedTitle is { Lines.Count: > 1 }) wrappedTitle.Draw(context, new ImmutableSolidColorBrush(TitleColor), band, align, 0.5);
+                else MenuRow.DrawLine(context, typeface, size, FontLayout.Cased(title, LetterCase), band, TitleCentre() + MenuRow.CapHeight(typeface, size) / 2, align, new ImmutableSolidColorBrush(TitleColor));
             }
             for (int i = 0; i < lines.Length; i++)
             {

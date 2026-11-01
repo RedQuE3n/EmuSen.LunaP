@@ -29,6 +29,12 @@ answer.
 - **The Saturn's pad and the Dreamcast's controller in `ControllerDiagram` (`§198.15`).** `ControllerLayout.Saturn` and
   `ControllerLayout.Dreamcast`, appended after `Sg1000`, so no existing value moved. No other API change.
 
+- **A card beside a paused game (`§205`).** `MenuPanel.Anchor` (`Centre`, the default, or `Left`), `MenuPanel.Pane` and
+  `PaneBounds`, the room right of the panel above the help bar; `MenuPanel.TitleIcon` and `TitleIconBounds`, a picture
+  before a left-aligned title; `BlurBackdrop.Blurs`, true by default, false to shade without blurring; and
+  `AdaptiveLayout.DetailPlacement` (`Page`, the default, or `Beside`) with `ContentShare`, the big screen's detail
+  beside the content. Every default is the earlier behaviour; no behaviour change.
+
 - **The Master System's pad and the SG-1000's joystick in `ControllerDiagram` (`§198.14`).** `ControllerLayout.MasterSystem`
   and `ControllerLayout.Sg1000`, appended after `DualShock`, so no existing value moved. A console's own buttons, Pause and
   Reset, are drawn apart above the pad. **Behaviour change** for a switched stick only: the SG-1000's knob leans toward

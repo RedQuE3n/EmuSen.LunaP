@@ -40,6 +40,15 @@ namespace EmuSen.LunaP.Controls
         Status,
     }
 
+    /// <summary>Where the big screen's form puts the detail role; the desktop always puts it beneath the content.</summary>
+    public enum AdaptiveDetailPlacement
+    {
+        /// <summary>A page of its own, opened by A on the content and closed by B.</summary>
+        Page,
+        /// <summary>Beside the content, always shown, as a supporting pane: the content on the left at ContentShare of the width, the detail on the right.</summary>
+        Beside,
+    }
+
     /// <summary>One section of a window's navigation: a key the window switches on, the words shown, and an optional group heading.</summary>
     /// <param name="Key">What the window switches on, never shown.</param>
     /// <param name="Label">The words the section is shown with.</param>
@@ -53,6 +62,14 @@ namespace EmuSen.LunaP.Controls
         /// <summary>Defines the Form property.</summary>
         public static readonly StyledProperty<AdaptiveForm> FormProperty =
             AvaloniaProperty.Register<AdaptiveLayout, AdaptiveForm>(nameof(Form));
+
+        /// <summary>Defines the DetailPlacement property.</summary>
+        public static readonly StyledProperty<AdaptiveDetailPlacement> DetailPlacementProperty =
+            AvaloniaProperty.Register<AdaptiveLayout, AdaptiveDetailPlacement>(nameof(DetailPlacement));
+
+        /// <summary>Defines the ContentShare property.</summary>
+        public static readonly StyledProperty<double> ContentShareProperty =
+            AvaloniaProperty.Register<AdaptiveLayout, double>(nameof(ContentShare), 0.4);
 
         /// <summary>The style class on the big screen's button for the main action, which stands first in its row.</summary>
         public const string MainClass = "adaptive-main";
@@ -109,6 +126,23 @@ namespace EmuSen.LunaP.Controls
             get => GetValue(FormProperty);
             set => SetValue(FormProperty, value);
         }
+
+        /// <summary>Where the big screen puts the detail: its own page (the default) or beside the content; the desktop is unchanged by it - see docs/LunaP.md §205.</summary>
+        public AdaptiveDetailPlacement DetailPlacement
+        {
+            get => GetValue(DetailPlacementProperty);
+            set => SetValue(DetailPlacementProperty, value);
+        }
+
+        /// <summary>The content's share of the width when the detail is beside it on the big screen, between 0.2 and 0.8. 0.4 by default.</summary>
+        public double ContentShare
+        {
+            get => GetValue(ContentShareProperty);
+            set => SetValue(ContentShareProperty, value);
+        }
+
+        // The detail stands beside the content on the big screen, so it has no page to open.
+        private bool DetailBeside => Form == AdaptiveForm.BigScreen && DetailPlacement == AdaptiveDetailPlacement.Beside;
 
         /// <summary>The window's name, which a reader hears for the layout as a whole.</summary>
         /// <exception cref="System.ArgumentNullException">The value is null.</exception>
@@ -184,7 +218,7 @@ namespace EmuSen.LunaP.Controls
             get
             {
                 var hints = new List<HintEntry>();
-                if (_content is not null) hints.Add(new HintEntry(IsDetailOpen ? "Select" : _detail is null ? "Select" : "Open") { Button = PadGlyphButton.South });
+                if (_content is not null) hints.Add(new HintEntry(IsDetailOpen || _detail is null || DetailBeside ? "Select" : "Open") { Button = PadGlyphButton.South });
                 hints.Add(new HintEntry("Back") { Button = PadGlyphButton.East });
                 if (_sections.Count > 1) hints.Add(new HintEntry("Section") { Button = PadGlyphButton.Shoulders });
                 foreach (LunaAction action in Padded().OrderByDescending(a => a.IsMain))
@@ -245,11 +279,11 @@ namespace EmuSen.LunaP.Controls
             Arrange();
         }
 
-        /// <summary>Opens the detail's page on the big screen and puts the focus in it; does nothing on the desktop.</summary>
+        /// <summary>Opens the detail's page on the big screen and puts the focus in it; does nothing on the desktop or where the detail is beside the content.</summary>
         /// <returns>Whether a page was opened.</returns>
         public bool OpenDetail()
         {
-            if (Form != AdaptiveForm.BigScreen || _detail is null || _detailOpen) return false;
+            if (Form != AdaptiveForm.BigScreen || DetailBeside || _detail is null || _detailOpen) return false;
             _detailOpen = true;
             Arrange();
             // A page whose controls come from a template has none until it is laid out, so the focus waits for that (docs/LunaP.md §200).
@@ -353,10 +387,10 @@ namespace EmuSen.LunaP.Controls
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);
-            if (change.Property == FormProperty)
+            if (change.Property == FormProperty || change.Property == DetailPlacementProperty || change.Property == ContentShareProperty)
             {
                 AdaptiveRole? focused = FocusedRole;
-                if (Form == AdaptiveForm.Desktop) _detailOpen = false;
+                if (Form == AdaptiveForm.Desktop || DetailBeside) _detailOpen = false;
                 Arrange();
                 if (focused is { } role) Avalonia.Threading.Dispatcher.UIThread.Post(() => Refocus(role), Avalonia.Threading.DispatcherPriority.Loaded);
             }
@@ -468,6 +502,7 @@ namespace EmuSen.LunaP.Controls
             _actionsHost.Child = _toolBar;
             _detailHost.IsVisible = _detail is not null;
             _contentHost.IsVisible = true;
+            _detailHost.Margin = default;
 
             var top = new DockPanel { LastChildFill = true, Margin = new Thickness(4) };
             DockPanel.SetDock(_searchHost, Dock.Right);
@@ -501,9 +536,10 @@ namespace EmuSen.LunaP.Controls
             _actionsHost.Child = _actionRow;
             _hintBar.Entries = Hints;
             AutomationProperties.SetName(_hintBar, string.Join(", ", Hints.Select(h => h.Label)));
-            bool page = _detailOpen && _detail is not null;
+            bool beside = DetailBeside && _detail is not null;
+            bool page = !beside && _detailOpen && _detail is not null;
             _contentHost.IsVisible = !page;
-            _detailHost.IsVisible = page;
+            _detailHost.IsVisible = page || beside;
 
             var top = new DockPanel { LastChildFill = true, Margin = new Thickness(16, 12) };
             DockPanel.SetDock(_searchHost, Dock.Right);
@@ -513,6 +549,15 @@ namespace EmuSen.LunaP.Controls
             var middle = new Grid { Margin = new Thickness(16, 0) };
             middle.Children.Add(Detach(_contentHost));
             middle.Children.Add(Detach(_detailHost));
+            Grid.SetColumn(_contentHost, 0);
+            Grid.SetColumn(_detailHost, beside ? 1 : 0);
+            if (beside)
+            {
+                double share = Math.Clamp(double.IsFinite(ContentShare) ? ContentShare : 0.4, 0.2, 0.8);
+                middle.ColumnDefinitions = new ColumnDefinitions { new(share, GridUnitType.Star), new(1 - share, GridUnitType.Star) };
+                _detailHost.Margin = new Thickness(16, 0, 0, 0);
+            }
+            else _detailHost.Margin = default;
 
             var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto,Auto,Auto") };
             Control[] rows = { top, middle, Detach(_actionsHost), Detach(_statusHost), _hintBar };
