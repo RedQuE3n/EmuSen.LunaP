@@ -89,6 +89,14 @@ namespace EmuSen.LunaP.Tests
             return m;
         }
 
+        // The width a line of text takes unbounded, in the same face and size, to compare with the box it was given.
+        private static double NaturalWidth(TextBlock text)
+        {
+            var probe = new TextBlock { Text = text.Text, FontFamily = text.FontFamily, FontSize = text.FontSize, FontWeight = text.FontWeight, FontStyle = text.FontStyle, FontStretch = text.FontStretch };
+            probe.Measure(Size.Infinity);
+            return probe.DesiredSize.Width;
+        }
+
         private static Window Host(Control layout, int width = 1280, int height = 800)
         {
             var window = new Window { Width = width, Height = height, Content = layout };
@@ -126,11 +134,13 @@ namespace EmuSen.LunaP.Tests
                 for (int j = i + 1; j < boxes.Count; j++)
                     Assert.False(boxes[i].Item2.Intersects(boxes[j].Item2), $"{tool} {form}: {boxes[i].Item1} overlaps {boxes[j].Item1}");
             Control status = m.HostOf(AdaptiveRole.Status)!;
-            foreach (Control part in status.GetVisualDescendants().OfType<Control>().Where(c => c is Button or MeterRow && c.IsEffectivelyVisible))
+            foreach (Control part in status.GetVisualDescendants().OfType<Control>().Where(c => c is Button or ProgressBar or TextBlock && c.IsEffectivelyVisible))
             {
                 var box = new Rect(part.TranslatePoint(default, window)!.Value, part.Bounds.Size);
                 Assert.True(screen.Contains(box) && box.Width > 0, $"{tool} {form} {width}x{height}: {part.GetType().Name} at {box} is cut off");
             }
+            foreach (TextBlock text in status.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible && t.TextTrimming == Avalonia.Media.TextTrimming.None && t.TextWrapping == Avalonia.Media.TextWrapping.NoWrap))
+                Assert.True(NaturalWidth(text) <= text.Bounds.Width + 0.5, $"{tool} {form} {width}x{height}: '{text.Text}' runs past its box, {NaturalWidth(text):0} wide in {text.Bounds.Width:0}");
             window.Close();
         });
 
@@ -240,6 +250,37 @@ namespace EmuSen.LunaP.Tests
             m.SetRows(CoreRows);
             Assert.Null(m.MarkOf(CoreRows[3]));
             Assert.Equal("1 marked: install 1", m.SummaryText);
+            window.Close();
+        });
+
+        [Fact]
+        public Task A_notice_stands_in_the_summarys_place_only_while_nothing_is_marked() => UiTest.Run(() =>
+        {
+            ManagerLayout<Row> m = Cores();
+            Window window = Host(m);
+            Assert.Equal("Nothing marked", m.SummaryText);
+            m.SetNotice("No buildbot listing is known for this platform.");
+            Assert.Equal("No buildbot listing is known for this platform.", m.SummaryText);
+            m.SetMark(CoreRows[1], "install");
+            Assert.Equal("1 marked: install 1", m.SummaryText);
+            m.SetMark(CoreRows[1], null);
+            Assert.Equal("No buildbot listing is known for this platform.", m.SummaryText);
+            m.SetNotice(null);
+            Assert.Equal("Nothing marked", m.SummaryText);
+            window.Close();
+        });
+
+        [Fact]
+        public Task The_space_meters_words_are_shown_whole_beside_its_bar() => UiTest.Run(() =>
+        {
+            ManagerLayout<Row> m = Packages();
+            m.SetSpace("263 KB in packages · 100 GB free", 0.25);
+            Window window = Host(m);
+            TextBlock words = m.HostOf(AdaptiveRole.Status)!.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == m.SpaceText);
+            Assert.True(NaturalWidth(words) <= words.Bounds.Width + 0.5, $"{NaturalWidth(words)} in {words.Bounds.Width}");
+            ProgressBar bar = m.GetVisualDescendants().OfType<ProgressBar>().Single(p => Avalonia.Automation.AutomationProperties.GetName(p) == "Space");
+            Assert.Equal(0.25, bar.Value);
+            Assert.Equal("263 KB in packages · 100 GB free", Avalonia.Automation.AutomationProperties.GetItemStatus(bar));
             window.Close();
         });
 

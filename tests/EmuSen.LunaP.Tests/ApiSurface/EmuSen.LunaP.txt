@@ -1278,9 +1278,11 @@ public class EmuSen.LunaP.Controls.ManagerLayout<T> : EmuSen.LunaP.Controls.Adap
     public event System.Action<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.ManagerMarked<T>>> Applying
     public override bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
     public string PlanText { get; }
+    public string SpaceText { get; }
     public string SummaryText { get; }
     public void ClearMarks()
     public void Finish(bool clearMarks = true)
+    public void SetNotice(string? words)
     public void SetProgress(double? fraction, string line)
     public void SetRows(System.Collections.Generic.IEnumerable<T> rows)
     public void SetSpace(string text, double fraction)

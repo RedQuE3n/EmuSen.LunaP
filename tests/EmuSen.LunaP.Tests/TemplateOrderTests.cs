@@ -535,6 +535,7 @@ namespace EmuSen.LunaP.Tests
             [(typeof(ManagerLayout<>), "SetProgress")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
             [(typeof(ManagerLayout<>), "Finish")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
             [(typeof(ManagerLayout<>), "SetSpace")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
+            [(typeof(ManagerLayout<>), "SetNotice")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
             [(typeof(ManagerLayout<>), "SetToolActions")] = "as AdaptiveLayout's: ManagerLayout holds its rows, marks and plan on itself and builds both tables in its constructor; ManagerLayoutTests configures it before the window is shown.",
             [(typeof(ConsolePane), nameof(ConsolePane.ResetHistoryRecall))] =
                 "sets one private field the template never sees; history recall is keyboard state, not display.",

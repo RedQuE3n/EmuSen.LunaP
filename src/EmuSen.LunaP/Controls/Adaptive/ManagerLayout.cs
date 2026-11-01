@@ -35,12 +35,15 @@ namespace EmuSen.LunaP.Controls
         private readonly TextBlock _summary = new() { VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
         private readonly ProgressBar _progress = new() { Minimum = 0, Maximum = 1, MinWidth = 120, IsVisible = false, VerticalAlignment = VerticalAlignment.Center };
         private readonly TextBlock _progressLine = new() { VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, IsVisible = false };
-        private readonly MeterRow _space = new() { MinWidth = 200, IsVisible = false };
+        private readonly ProgressBar _spaceBar = new() { Minimum = 0, Maximum = 1, Width = 120, Height = 14, VerticalAlignment = VerticalAlignment.Center };
+        private readonly TextBlock _spaceText = new() { VerticalAlignment = VerticalAlignment.Center };
+        private readonly StackPanel _space = new() { Orientation = Orientation.Horizontal, Spacing = 8, IsVisible = false };
         private readonly Button _applyButton = new() { Content = "Apply…" };
         private readonly Border _planSheet = new() { IsVisible = false, Padding = new Thickness(16), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, MaxWidth = 720 };
         private readonly TextBlock _planText = new() { TextWrapping = TextWrapping.Wrap };
         private readonly Grid _contentGrid = new();
         private List<T> _rows = new();
+        private string? _notice;
         private bool _running;
 
         /// <summary>A manager with no rows, columns or marks; the tool adds its columns with Column and its rows with SetRows.</summary>
@@ -50,7 +53,9 @@ namespace EmuSen.LunaP.Controls
             Apply = new LunaAction("Apply…", () => OpenPlan()) { PadButton = PadGlyphButton.Start, IsMain = true, IsEnabled = false, HelpText = "Shows what the marked changes will do, then does them." };
             _applyButton.Command = Apply;
             AutomationProperties.SetName(_applyButton, "Apply the marked changes");
-            AutomationProperties.SetName(_space, "Space");
+            AutomationProperties.SetName(_spaceBar, "Space");
+            _space.Children.Add(_spaceBar);
+            _space.Children.Add(_spaceText);
             AutomationProperties.SetName(_progress, "Progress");
             foreach (LunaTable<T> table in new[] { _desktopTable, _bigTable })
             {
@@ -290,15 +295,26 @@ namespace EmuSen.LunaP.Controls
             Changed();
         }
 
-        /// <summary>The space meter: the words, such as "312 MB · 410 GB free", and how full the disk is.</summary>
+        /// <summary>The space meter: a bar for how full the disk is, and the words beside it at their own width, such as "8.2 GB · 1.1 TB free".</summary>
         /// <param name="text">What the meter says.</param>
         /// <param name="fraction">How full, 0 to 1.</param>
         public void SetSpace(string text, double fraction)
         {
             _space.IsVisible = true;
-            _space.Label = "Space";
-            _space.ValueText = text;
-            _space.Percent = Math.Clamp(fraction, 0, 1) * 100;
+            _spaceText.Text = text;
+            _spaceBar.Value = Math.Clamp(fraction, 0, 1);
+            AutomationProperties.SetItemStatus(_spaceBar, text);
+        }
+
+        /// <summary>The space meter's words as shown.</summary>
+        public string SpaceText => _spaceText.Text ?? string.Empty;
+
+        /// <summary>Words the apply bar shows in the summary's place while no row is marked, such as a refusal that is about no row; null clears them.</summary>
+        /// <param name="words">The tool's words, or null.</param>
+        public void SetNotice(string? words)
+        {
+            _notice = string.IsNullOrWhiteSpace(words) ? null : words;
+            ShowSummary(Marked);
         }
 
         /// <summary>Gives the frame the tool's own actions; Mark and Apply are added after them.</summary>
@@ -370,13 +386,16 @@ namespace EmuSen.LunaP.Controls
         private void Changed()
         {
             IReadOnlyList<ManagerMarked<T>> marked = Marked;
-            _summary.Text = marked.Count == 0 ? "Nothing marked" : (Summarize ?? DefaultSummary)(marked);
+            ShowSummary(marked);
             Apply.IsEnabled = marked.Count > 0 && !_running;
             Mark.IsEnabled = !_running;
             _desktopTable.Refresh(_desktopTable.Models.ToList());
             _bigTable.Refresh(_bigTable.Models.ToList());
             MarksChanged?.Invoke();
         }
+
+        private void ShowSummary(IReadOnlyList<ManagerMarked<T>> marked) =>
+            _summary.Text = marked.Count == 0 ? _notice ?? "Nothing marked" : (Summarize ?? DefaultSummary)(marked);
 
         private static string DefaultSummary(IReadOnlyList<ManagerMarked<T>> marked) =>
             $"{marked.Count} marked: " + string.Join(", ", marked.GroupBy(m => m.Mark.Label).Select(g => $"{g.Key} {g.Count()}"));

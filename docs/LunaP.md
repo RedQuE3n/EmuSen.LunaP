@@ -13900,7 +13900,7 @@ sections or detail; `PadButton` and `IsMain` raising `Changed`. Seeded faults ar
 The first canonical layout on `AdaptiveLayout`: the frame of Synaptic and Pamac, which EmuSen's Packages, Cores and
 library tools share. Navigation is the filters; content is a sortable table (`LunaTable<T>`) with a mark per row;
 detail is whatever the tool builds for the chosen row; status is an apply bar with the summary of the marked work,
-one progress line, the *Apply…* button and a space meter (`MeterRow`). It knows nothing of what a row is: the tool
+one progress line, the *Apply…* button and a space meter. It knows nothing of what a row is: the tool
 gives rows, columns, the marks each row is offered, how a row is filtered and searched, and the text of the plan.
 
 ### 203.2 Columns, rows and the two forms
@@ -13925,12 +13925,22 @@ selection survive a refresh that brings a new copy of the same row, and the mark
   marks unless told not to.
 - *Apply…* is drawn in the apply bar, not in the toolbar, through `SetActions`' `drawnElsewhere` (§202.3); its pad
   button and hint stay.
+- **A notice in the summary's place.** `SetNotice(words)` shows the tool's words where the summary goes while no row
+  is marked, and `null` clears them, so that a refusal about no row ("no library folder is set", "no buildbot listing
+  is known for this platform") has a place; a marked row's summary takes the place back until its mark is cleared.
+- **The space meter** is a bar of fixed width with `SetSpace`'s words beside it at their own width, the bar named
+  *Space* with the words as its item status. It was a `MeterRow` until 2026-10-31, whose template gives its reading a
+  fixed 55-pixel column built for "62%": Packages' desktop fit audit found "263 KB in packages · 100 GB free", 214
+  pixels wide, drawn in 47 at 1280×800 and 1920×1200. A dashboard row's reading is a short number; an apply bar's
+  words are a sentence, so the meter no longer borrows the dashboard's row.
 
 ### 203.4 What it was checked against
 
 `ManagerLayoutTests` builds the frame twice, with EmuSen Packages' columns and filters (`EmuSen_Packages.md` §3) and
 with Cores' (`EmuSen_Cores.md` §2.1), and holds both to fit: every role whole and apart, and the apply bar's button
-and meter whole, in both forms at 1280×800, 1920×1200 and 1280×720. Then: the big screen's list with only its
+and meter whole, and every untrimmed line of text in the apply bar no wider unbounded than the box it was given, in
+both forms at 1280×800, 1920×1200 and 1280×720 (the box alone was checked before 2026-10-31, which let the meter's
+words run past theirs). Then: the big screen's list with only its
 columns and the selection kept across the change; sections and search filtering; marks only as offered, cycling back
 to none, the X button marking the chosen row; nothing run until the plan is confirmed, B cancelling it, marks and
 Apply waiting while the work runs, progress shown and `Finish` clearing; marks surviving a refresh of their row and
@@ -13947,6 +13957,9 @@ Measured on 2026-10-31, each reverted after its run:
 | the big screen does not turn the menus' type on | `The_big_screen_is_in_the_menus_type_and_the_desktop_is_not` |
 | `SetMark` accepts a mark the row is not offered | `A_row_is_marked_only_for_what_it_is_offered_…` |
 | `Confirm` raises `Applying` with no plan open, and Start skips the plan | `Nothing_runs_until_the_plan_is_confirmed_…` |
+| the space meter's words in a fixed 47-pixel box, as the `MeterRow` drew them (2026-10-31) | `Both_tools_fit_…` in all twelve cases, `The_space_meters_words_are_shown_whole_beside_its_bar` |
+| `SetNotice`'s words never shown | `A_notice_stands_in_the_summarys_place_only_while_nothing_is_marked` |
+| the notice shown over a marked row's summary | `A_notice_stands_in_the_summarys_place_…` |
 | `SetRows` keeps the marks of rows that left | survived the first run, since `Marked` lists only rows present; the test now brings the row back and requires it unmarked, and `Marks_survive_a_refresh_of_their_rows_…` catches it |
 
 ### 203.6 A disabled button in the palette
