@@ -14121,6 +14121,12 @@ rest). Each family has its own resource folder: with both in one folder, Avaloni
 `#Barlow Condensed` with Barlow Regular, at every weight (measured 2026-11-01 by the advance of `M`, 699 units in
 both), so the condensed faces were unreachable.
 
+**Against §181.2.** The consumer had kept Barlow Condensed in its own frontend, reasoning that the toolkit keeps every
+dependency MIT. A font is not a code dependency: the OFL governs the font files alone, lets them be bundled and
+redistributed with software under any licence, and asks only that they are not sold by themselves and that a modified
+version is not called Barlow. Bundling them puts no term on a consumer's code, so §181.2's rule holds. The README's
+licence section carries the notice.
+
 `LunaBodyFontFamily` is Barlow and `LunaTitleFontFamily` and `LunaDisplayFontFamily` are Barlow Condensed in both
 forms, Display at medium weight. FluentTheme's `ContentControlThemeFontFamily` is Barlow, so every window's words are
 Barlow unless they choose otherwise. The look (§196) draws its words in Barlow and its headings and tabs in Barlow
