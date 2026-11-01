@@ -127,6 +127,32 @@ namespace EmuSen.LunaP.Tests
             host.Close();
         }, default);
 
+        // A question asked from a sheet gives the focus back to the control that asked it, so a pad's next press lands where it was - §90.8.
+        [Fact]
+        public Task Closing_a_sheet_gives_the_focus_back_to_the_control_that_opened_it() => Session.Dispatch(() =>
+        {
+            var (host, layer, _) = Host();
+            ToolWindow settings = Child("Settings", out Button settingsFirst, out Button settingsSecond);
+            SheetLayer.Show(settings, host);
+            settingsSecond.Focus();
+            Task<bool> asked = Dialogs.ConfirmAsync(settings, "Approve a Core", "Trust it?", "Approve", "Not Now");
+            Assert.NotSame(settings, layer.Current);
+            ((Window)layer.Current!).Close();
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(asked.IsCompletedSuccessfully);
+            Assert.Same(settingsSecond, host.FocusManager!.GetFocusedElement());
+
+            // The opener gone by the time the question closes: the sheet's first control, as before.
+            Task<bool> again = Dialogs.ConfirmAsync(settings, "Approve a Core", "Trust it?", "Approve", "Not Now");
+            ((Panel)settingsSecond.Parent!).Children.Remove(settingsSecond);
+            ((Window)layer.Current!).Close();
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(again.IsCompletedSuccessfully);
+            Assert.Same(settingsFirst, host.FocusManager!.GetFocusedElement());
+            settings.Close();
+            host.Close();
+        }, default);
+
         [Fact]
         public Task A_window_owned_by_a_presented_window_goes_on_top_and_the_one_beneath_comes_back_after() => Session.Dispatch(() =>
         {
