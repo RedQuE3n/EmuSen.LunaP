@@ -687,7 +687,7 @@ namespace EmuSen.LunaP.Media
             return art;
         }
 
-        // --- Dreamcast: a light pad with two grips, the analog stick above the cross, A, B, X and Y, Start low in the middle, the memory unit seen in its slot with its screen, and the analog triggers drawn above it (§198.15) ---
+        // --- Dreamcast: a light pad with two grips, the analog stick (showing where it is, as the DualShock's do) above the cross, A, B, X and Y, Start low in the middle, the memory unit seen in its slot with its screen, and the analog triggers drawn above it (§198.15) ---
 
         private static DiagramArt Dreamcast()
         {
@@ -707,9 +707,7 @@ namespace EmuSen.LunaP.Media
             art.Body.Add(new ArtPart(Box(440, 226, 120, 86, 6), Hex("#8FA07A"), edge, 2));
             art.Words.Add(new ArtText("VMU", new Point(500, 360), 18, words));
 
-            Stick(art, "Stick", 240, 300, 58, 36, 20, octagonal: false,
-                new[] { ("StickUp", "Stick Up"), ("StickDown", "Stick Down"), ("StickLeft", "Stick Left"), ("StickRight", "Stick Right") },
-                well, Hex("#9A9AA2"), edge, Hex("#A6A6AE"), Hex("#4A4A52"));
+            Stick(art, "Stick", 240, 300, 58, 36, 20, octagonal: false, null, Hex("#4A4A52"), Hex("#9A9AA2"), edge, Hex("#A6A6AE"), Hex("#4A4A52"));
 
             art.Body.Add(new ArtPart(Circle(270, 486, 82), well));
             DirectionPad(art, 270, 486, 48, 70, dark, Hex("#8A8A92"), Cross, 8);

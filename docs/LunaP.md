@@ -13723,9 +13723,9 @@ hides, so they are drawn above it as the PlayStation's shoulders are (§198.13).
 `B`, `C`, `X`, `Y`, `Z`, `L`, `R`, `Start`. Start stands high, by the cord, because its line from a low place ran over more
 of the drawing than a straight way out (the line theory caught it).
 
-**The Dreamcast's controller** is a light pad with two grips. Upper left, the analog stick is drawn as the Nintendo 64's
-is: four bands of a ring with arrows (`StickUp`, `StickDown`, `StickLeft`, `StickRight`) and a knob; under it a smaller
-cross. On the right, A, B, X and Y stand in a diamond in the console's colours (A red, B blue, X yellow, Y green), the one
+**The Dreamcast's controller** is a light pad with two grips. Upper left, the analog stick is drawn as the DualShock's are
+(§198.13): a gate and a knob that shows where the stick is, with no direction regions, since four more labels shrank every
+label below the consumer's least readable size; under it a smaller cross. On the right, A, B, X and Y stand in a diamond in the console's colours (A red, B blue, X yellow, Y green), the one
 place a colour here is a fact about the product. In the middle the memory unit is seen in its slot, with its screen, as
 shell and no region, since nothing is bound to it; Start is low in the middle. The analog triggers are drawn above the
 pad as triggers (`LT`, `RT`, named "L Trigger" and "R Trigger"), so a pulled value fills them as the Gamepad's do. Their ids

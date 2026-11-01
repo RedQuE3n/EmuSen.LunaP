@@ -145,7 +145,7 @@ namespace EmuSen.LunaP.Tests
         // The Saturn's pad and the Dreamcast's controller have their buttons by the console's names, the Dreamcast's memory unit drawn and no region of its own (§198.15).
         [Theory]
         [InlineData(ControllerLayout.Saturn, new[] { "Up", "Down", "Left", "Right", "A", "B", "C", "X", "Y", "Z", "L", "R", "Start" })]
-        [InlineData(ControllerLayout.Dreamcast, new[] { "Up", "Down", "Left", "Right", "A", "B", "X", "Y", "LT", "RT", "Start", "StickUp", "StickDown", "StickLeft", "StickRight" })]
+        [InlineData(ControllerLayout.Dreamcast, new[] { "Up", "Down", "Left", "Right", "A", "B", "X", "Y", "LT", "RT", "Start" })]
         public Task The_saturn_and_dreamcast_controls_are_the_console_s_own(ControllerLayout layout, string[] ids) => UiTest.Run(() =>
         {
             (ToolWindow window, ControllerDiagram diagram) = Shown(layout);
