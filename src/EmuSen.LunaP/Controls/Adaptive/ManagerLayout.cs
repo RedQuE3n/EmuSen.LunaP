@@ -77,16 +77,17 @@ namespace EmuSen.LunaP.Controls
             AutomationProperties.SetName(confirm, "Apply");
             AutomationProperties.SetName(cancel, "Cancel");
             _planSheet.Classes.Add(PlanClass);
-            _planSheet.Child = new StackPanel
+            // The question and the buttons always whole, the plan's words scrolling between them in what the content area leaves.
+            var heading = new TextBlock { Text = "Apply these changes?", FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 0, 12) };
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0), Children = { cancel, confirm } };
+            DockPanel.SetDock(heading, Dock.Top);
+            DockPanel.SetDock(buttons, Dock.Bottom);
+            _planSheet.Child = new DockPanel
             {
-                Spacing = 12,
-                Children =
-                {
-                    new TextBlock { Text = "Apply these changes?", FontWeight = FontWeight.SemiBold },
-                    new ScrollViewer { Content = _planText, MaxHeight = 360 },
-                    new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { cancel, confirm } },
-                },
+                LastChildFill = true,
+                Children = { heading, buttons, new ScrollViewer { Content = _planText, MaxHeight = 360, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled } },
             };
+            _contentGrid.SizeChanged += (_, e) => _planSheet.MaxHeight = Math.Max(0, e.NewSize.Height);
             _planSheet[!Border.BackgroundProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaSurface");
             _planSheet[!Border.BorderBrushProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaBorder");
             _planSheet.BorderThickness = new Thickness(1);

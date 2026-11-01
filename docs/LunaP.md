@@ -13905,6 +13905,11 @@ weighed; it still slices the button at its edge, which the audit counts as a cut
 every tool's audit would then need an allowance for it, where this form needs none. `Twelve_sections_on_the_big_screen_…`
 steps twelve sections at 1280×800 and 1280×720, the chosen one whole each time and the row clean under the audit.
 
+**The actions, on the big screen,** wrap onto a second line rather than scroll sideways: EmuSen Cores' eight actions
+ran past a sideways row at 1280×800 and 1920×1200 on 2026-10-31 ("past its ScrollContentPresenter: ActionButton
+'Options…'"), and the pad walks the actions by focus, which a row cut sideways would have hidden. Every action is
+drawn whole and reached by the walk.
+
 **On the desktop** the sidebar starts as wide as its longest section's name, between 180 and 320 pixels, measured
 once the list is in the window, so that "Nintendo Entertainment System" is not cut to "Nintendo Entertainmen…" at the
 earlier fixed 180; the divider still moves it.
@@ -13947,6 +13952,10 @@ selection survive a refresh that brings a new copy of the same row, and the mark
 - **The plan hides the table.** While the plan sheet is open both tables are hidden, so no row lies under its words
   or buttons and the pad cannot reach a row behind it (found by Packages' framed audit on 2026-10-31: "overlap:
   ListBoxItem … and TextBlock 'Make 1 package, linked…'"). Confirming or cancelling shows the table again.
+- **The plan sheet fits the content area.** The question stays at the top and *Apply* and *Cancel* at the foot, and the
+  plan's words scroll between them in what the content area leaves: Cores' plan in the big screen's type ran past the
+  content area into the action buttons below it on 2026-10-31 ("overlap: Button 'Apply' and ActionButton 'Make
+  Default'"), the sheet being a stack that could not shrink.
 - **The apply bar's two forms.** On the desktop one line: the words (the summary, or while work runs the progress bar
   and its line in the summary's place) sharing what Apply and the meter leave. On the big screen two lines, the words
   above and Apply and the meter right-aligned below, since its type is too large for one (the same audit:
@@ -13965,7 +13974,7 @@ selection survive a refresh that brings a new copy of the same row, and the mark
 `ManagerFitAuditTests` holds the frame to the framed fit audit (§204) in both forms at 1280×800, 1920×1200 and
 1280×720 through six states (the listing, the detail, the plan, a run, a notice, and the last of twelve sections chosen),
 with eight columns, twelve sections and real-length words: a 77-character game name, a licence sentence, "263 KB in
-packages · 100 GB free", a progress line of 75 characters. Its one allowance is a table cell cut to its column's share,
+packages · 100 GB free", a progress line of 75 characters. Since the same day it also carries eleven actions and a plan of fifteen marked rows, Cores' counts. Its one allowance is a table cell cut to its column's share,
 whole in the detail.
 
 `ManagerLayoutTests` builds the frame twice, with EmuSen Packages' columns and filters (`EmuSen_Packages.md` §3) and
@@ -13998,6 +14007,8 @@ Measured on 2026-10-31, each reverted after its run:
 | the summary shown beside the progress line while work runs | `ManagerFitAuditTests`' running cases in both forms |
 | the tables scrolling sideways (`FitsWidth` off) | `ManagerFitAuditTests`, 12 cases |
 | the sidebar left at 180 pixels | `ManagerFitAuditTests`, all 18 desktop cases |
+| the big screen's actions in one sideways row (2026-10-31) | `ManagerFitAuditTests`, all 12 big-screen cases at 1280 pixels and 1920 |
+| the plan sheet a stack that cannot shrink | `ManagerFitAuditTests`' big-screen plan at 1280×720 |
 | `SetRows` keeps the marks of rows that left | survived the first run, since `Marked` lists only rows present; the test now brings the row back and requires it unmarked, and `Marks_survive_a_refresh_of_their_rows_…` catches it |
 
 ### 203.6 A disabled button in the palette

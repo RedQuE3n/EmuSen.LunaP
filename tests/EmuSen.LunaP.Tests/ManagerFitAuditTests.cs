@@ -63,6 +63,10 @@ namespace EmuSen.LunaP.Tests
                 new LunaAction("Check", () => { }),
                 new LunaAction("Zip", () => { }),
                 new LunaAction("Convert to CHD", () => { }) { PadButton = PadGlyphButton.Select },
+                new LunaAction("Approve…", () => { }),
+                new LunaAction("Make Default", () => { }),
+                new LunaAction("Options…", () => { }),
+                new LunaAction("Verify", () => { }),
                 new LunaAction("Check for Updates", () => { }),
             });
             m.SetRows(Rows());
@@ -103,7 +107,7 @@ namespace EmuSen.LunaP.Tests
                     if (form == AdaptiveForm.BigScreen) m.OpenDetail();
                     break;
                 case "plan":
-                    foreach (Row r in m.Rows.Take(3)) m.SetMark(r, "make");
+                    foreach (Row r in m.Rows.Take(15)) m.SetMark(r, "make");
                     m.SetMark(m.Rows[3], "remove");
                     m.OpenPlan();
                     break;

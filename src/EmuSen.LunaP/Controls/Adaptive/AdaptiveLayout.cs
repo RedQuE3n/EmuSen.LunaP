@@ -62,11 +62,10 @@ namespace EmuSen.LunaP.Controls
         private readonly SourceList _sidebar = new();
         private readonly WholeRow _sectionRow = new() { Spacing = 8 };
         private readonly ToolBar _toolBar = new();
-        private readonly StackPanel _actionRow = new() { Orientation = Orientation.Horizontal, Spacing = 12 };
+        private readonly WrapPanel _actionRow = new() { Orientation = Orientation.Horizontal, ItemSpacing = 12, LineSpacing = 8 };
         private readonly TextBox _search = new() { MinWidth = 180 };
         private readonly HintBar _hintBar = new() { FontSize = 18 };
         private readonly ScrollViewer _sidebarScroll = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
-        private readonly ScrollViewer _actionScroll = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled };
         private readonly Border _navigationHost = new() { Name = "AdaptiveNavigation" };
         private readonly Border _contentHost = new() { Name = "AdaptiveContent" };
         private readonly Border _detailHost = new() { Name = "AdaptiveDetail" };
@@ -93,7 +92,6 @@ namespace EmuSen.LunaP.Controls
         {
             Focusable = false;
             _sidebarScroll.Content = _sidebar;
-            _actionScroll.Content = _actionRow;
             _sidebar.Chose += key => SelectSection(key, raise: true);
             _search.PropertyChanged += (_, e) =>
             {
@@ -499,7 +497,7 @@ namespace EmuSen.LunaP.Controls
         private Control ArrangeBigScreen()
         {
             _navigationHost.Child = _sectionRow;
-            _actionsHost.Child = _actionScroll;
+            _actionsHost.Child = _actionRow;
             _hintBar.Entries = Hints;
             AutomationProperties.SetName(_hintBar, string.Join(", ", Hints.Select(h => h.Label)));
             bool page = _detailOpen && _detail is not null;
