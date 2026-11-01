@@ -14082,3 +14082,17 @@ WiseMan's copy can now be replaced by this one, so that the audit has one owner.
 
 Off by default, so a table scrolls sideways as §59 made it. On, the rows' horizontal scroll bar is disabled, so star
 columns share the table's own width and trim, as a frame does whose detail shows the chosen row whole.
+
+## 200. The focus on a big-screen page waits for its controls (2026-11-01)
+
+**Found.** In a manager's big-screen form, South on a row opens the row's page (`OpenDetail`) and moves the focus to
+the page's first control. A page given as a `ScrollViewer`, as Cores' is, has no controls of its own until it is laid
+out, because its content is presented by its template; so `FocusRole(Detail)` found nothing, the row that had the
+focus was taken out by the rearrangement, and the focus was left nowhere. The next South did nothing, and the pad
+could reach the page's buttons only by wandering in from the search box. On the handheld this read as "nothing works
+in the Cores menu": a downloaded core's page held its Approve… button, and no press reached it.
+
+**Fixed.** When the page holds nothing to focus at once, the focus is moved to it at the dispatcher's `Loaded`
+priority, after the layout that makes its controls, and to the content if the page still holds none; closing the page
+does the same for the content. EmuSen's `CoresWindowRuntimeTests` drives the case with the pad: South on PCEE2's row,
+then South on the Approve… button that has the focus, and the approval is recorded.

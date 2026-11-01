@@ -252,7 +252,8 @@ namespace EmuSen.LunaP.Controls
             if (Form != AdaptiveForm.BigScreen || _detail is null || _detailOpen) return false;
             _detailOpen = true;
             Arrange();
-            FocusRole(AdaptiveRole.Detail);
+            // A page whose controls come from a template has none until it is laid out, so the focus waits for that (docs/LunaP.md §200).
+            if (!FocusRole(AdaptiveRole.Detail)) Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (_detailOpen) Refocus(AdaptiveRole.Detail); }, Avalonia.Threading.DispatcherPriority.Loaded);
             return true;
         }
 
@@ -263,7 +264,7 @@ namespace EmuSen.LunaP.Controls
             if (!_detailOpen) return false;
             _detailOpen = false;
             Arrange();
-            FocusRole(AdaptiveRole.Content);
+            if (!FocusRole(AdaptiveRole.Content)) Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (!_detailOpen) Refocus(AdaptiveRole.Content); }, Avalonia.Threading.DispatcherPriority.Loaded);
             return true;
         }
 
