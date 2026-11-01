@@ -43,6 +43,10 @@ namespace EmuSen.LunaP.Controls
         MasterSystem,
         /// <summary>A box seen from above with a stick in its middle and buttons 1 and 2 on its sides, and the console's Pause drawn apart above it: the SG-1000's joystick.</summary>
         Sg1000,
+        /// <summary>An oval pad with a cross on a round plate, Start in the middle, A, B and C in a row under X, Y and Z, and L and R drawn above it: the Saturn's control pad.</summary>
+        Saturn,
+        /// <summary>A pad with two grips, an analog stick over a cross, A, B, X and Y, Start, the memory unit seen in its slot, and the analog L and R triggers drawn above it: the Dreamcast's controller.</summary>
+        Dreamcast,
     }
 
     /// <summary>The side of a ControllerDiagram a region's label stands on.</summary>
@@ -471,6 +475,8 @@ namespace EmuSen.LunaP.Controls
             ControllerLayout.DualShock => "DualShock controller",
             ControllerLayout.MasterSystem => "Master System controller",
             ControllerLayout.Sg1000 => "SG-1000 joystick",
+            ControllerLayout.Saturn => "Saturn control pad",
+            ControllerLayout.Dreamcast => "Dreamcast controller",
             _ => "Gamepad",
         };
 

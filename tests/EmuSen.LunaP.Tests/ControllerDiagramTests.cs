@@ -142,6 +142,21 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // The Saturn's pad and the Dreamcast's controller have their buttons by the console's names, the Dreamcast's memory unit drawn and no region of its own (§198.15).
+        [Theory]
+        [InlineData(ControllerLayout.Saturn, new[] { "Up", "Down", "Left", "Right", "A", "B", "C", "X", "Y", "Z", "L", "R", "Start" })]
+        [InlineData(ControllerLayout.Dreamcast, new[] { "Up", "Down", "Left", "Right", "A", "B", "X", "Y", "LT", "RT", "Start" })]
+        public Task The_saturn_and_dreamcast_controls_are_the_console_s_own(ControllerLayout layout, string[] ids) => UiTest.Run(() =>
+        {
+            (ToolWindow window, ControllerDiagram diagram) = Shown(layout);
+            Assert.Equal(ids.Order(), diagram.Regions.Select(r => r.Id).Order());
+            Rect body = diagram.RegionRect("Up").Union(diagram.RegionRect("A"));
+            foreach (string shoulder in layout == ControllerLayout.Saturn ? new[] { "L", "R" } : new[] { "LT", "RT" })
+                Assert.True(diagram.RegionRect(shoulder).Bottom < body.Top, $"{shoulder} is not drawn above the pad");
+            if (layout == ControllerLayout.Dreamcast) Assert.True(diagram.Regions.Single(r => r.Id == "LT").IsTrigger && diagram.Regions.Single(r => r.Id == "RT").IsTrigger);
+            window.Close();
+        });
+
         // The console's buttons are drawn apart from the pad, above it: Pause and Reset on the Master System, Pause alone on the SG-1000 (§198.14).
         [Theory]
         [InlineData(ControllerLayout.MasterSystem, new[] { "Up", "Down", "Left", "Right", "1", "2", "Pause", "Reset" })]
@@ -231,6 +246,12 @@ namespace EmuSen.LunaP.Tests
         [InlineData(ControllerLayout.Sg1000, 700, 440)]
         [InlineData(ControllerLayout.Sg1000, 1100, 640)]
         [InlineData(ControllerLayout.Sg1000, 1920, 1080)]
+        [InlineData(ControllerLayout.Saturn, 700, 440)]
+        [InlineData(ControllerLayout.Saturn, 1100, 640)]
+        [InlineData(ControllerLayout.Saturn, 1920, 1080)]
+        [InlineData(ControllerLayout.Dreamcast, 700, 440)]
+        [InlineData(ControllerLayout.Dreamcast, 1100, 640)]
+        [InlineData(ControllerLayout.Dreamcast, 1920, 1080)]
         [InlineData(ControllerLayout.Nintendo64, 1000, 420)]
         public Task Every_region_has_a_label_and_no_label_overlaps_another(ControllerLayout layout, double w, double h) => UiTest.Run(() =>
         {
@@ -315,6 +336,10 @@ namespace EmuSen.LunaP.Tests
         [InlineData(ControllerLayout.Sg1000, 1100, 640)]
         [InlineData(ControllerLayout.Sg1000, 1700, 500)]
         [InlineData(ControllerLayout.Sg1000, 700, 900)]
+        [InlineData(ControllerLayout.Saturn, 1100, 640)]
+        [InlineData(ControllerLayout.Saturn, 700, 900)]
+        [InlineData(ControllerLayout.Dreamcast, 1100, 640)]
+        [InlineData(ControllerLayout.Dreamcast, 700, 900)]
         public Task Each_label_s_line_runs_from_the_label_to_its_region(ControllerLayout layout, double w, double h) => UiTest.Run(() =>
         {
             (ToolWindow window, ControllerDiagram diagram) = Shown(layout, w, h);
@@ -331,6 +356,8 @@ namespace EmuSen.LunaP.Tests
                 ControllerLayout.PlayStation or ControllerLayout.DualShock => new[] { "Triangle", "Circle", "Cross", "Square" },
                 ControllerLayout.MasterSystem => new[] { "1", "2" },
                 ControllerLayout.Sg1000 => Array.Empty<string>(),
+                ControllerLayout.Saturn => new[] { "A", "B", "C", "X", "Y", "Z" },
+                ControllerLayout.Dreamcast => new[] { "A", "B", "X", "Y" },
                 _ => new[] { "A", "B" },
             };
             foreach (string lettered in faces)
