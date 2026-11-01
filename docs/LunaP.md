@@ -14434,3 +14434,18 @@ rows, the audit with it open, the shoulders declined, B closing it, the filter n
 desktop's `Show` dropdown; the screen at three sizes with no `SheetMenu`, the header inside the safe area, the audit,
 and a plain window still framed. `AdaptiveLayoutTests`, `ManagerLayoutTests`, `ManagerFitAuditTests`, `CardFormTests` and
 `PauseCardLayoutTests` hold what was there.
+
+### 208.9 Seeded faults
+
+Measured on 2026-11-01, each reverted after its run, against `ToolFrameTests` alone:
+
+| Fault | Caught by |
+|---|---|
+| `Screen` ignored, the window framed as a menu | the screen's case at all three sizes (`SheetMenu` found, the header at 48,28) |
+| the status left in its own row beside the detail | the beside case at all three sizes (the status under the detail's column) |
+| Yes drawn before No | the question's case (the answers' order and the focus) |
+| A's row action ignored in `Press` | the row action's case (nothing invoked) |
+
+`ManagerLayoutTests`' and `ManagerFitAuditTests`' earlier cases held throughout, with one change of theirs: the big
+screen's plan floor is `BigScreenPlanFloor`, 420, since the question's title and its two answer rows are taller than
+the desktop's line of buttons (§203.7 kept its 240 for the desktop).
