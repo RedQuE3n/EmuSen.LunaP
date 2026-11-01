@@ -26,6 +26,7 @@ namespace EmuSen.LunaP.Testing
 
         // A text box scrolls its own text, and the caret and the on-screen keyboard reach all of it.
         /// <summary>A text box scrolls its own text.</summary>
+
         public static readonly Allowance TextBoxesScroll = new("a text box scrolls its own text", c => c.FindAncestorOfType<TextBox>() is not null);
 
         // The smallest words a framed sheet may draw, as a size in the desktop face in design pixels (a screen pixel at 1280 by 800), four fifths of the look's small text; other faces are held to its capitals (docs/LunaP.md §204.2).
@@ -52,6 +53,8 @@ namespace EmuSen.LunaP.Testing
             SlackFor(root);
             Rect frame = FrameOf(root);
             List<(Control C, Rect R, Rect Seen)> shown = Shown(root, frame).ToList();
+            // What a sheet layer marks covered, under a card or a message box, is out of reach and not drawn for the audit's purposes (docs/LunaP.md §208.7).
+            shown.RemoveAll(x => EmuSen.LunaP.Windowing.SheetLayer.GetIsCovered(x.C));
             if (root.GetVisualDescendants().OfType<MenuPanel>().FirstOrDefault(m => m.Name == "SheetMenu") is { IsTitleCut: true } menu)
                 faults.Add($"title cut: '{menu.Title}'");
             if (root.GetVisualDescendants().OfType<MenuPanel>().FirstOrDefault(m => m.Name == "SheetMenu") is { IsFooterCut: true } cut)

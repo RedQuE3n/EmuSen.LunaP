@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using EmuSen.LunaP.Commands;
+using EmuSen.LunaP.Theme;
 
 namespace EmuSen.LunaP.Controls
 {
@@ -49,11 +51,24 @@ namespace EmuSen.LunaP.Controls
         private string? _notice;
         private bool _running;
 
+        // The question's parts, the row's action and page, and the plan's options (docs/LunaP.md §208.3-§208.5).
+        private readonly TextBlock _planHeading = new() { Margin = new Thickness(0, 0, 0, 12), TextWrapping = TextWrapping.Wrap };
+        private readonly Button _confirm = new() { Content = "Apply" };
+        private readonly Button _cancel = new() { Content = "Cancel" };
+        private readonly StackPanel _planButtons = new() { Margin = new Thickness(0, 12, 0, 0) };
+        private readonly StackPanel _planOptions = new() { Spacing = 4, IsVisible = false };
+        private IReadOnlyList<LunaAction> _planOptionList = Array.Empty<LunaAction>();
+        private TaskCompletionSource<bool>? _asking;
+        private string _yes = "Apply", _no = "Cancel";
+        private Func<T, LunaAction?>? _actionFor;
+        private Func<T, IReadOnlyList<LunaAction>>? _pageFor;
+
         /// <summary>A manager with no rows, columns or marks; the tool adds its columns with Column and its rows with SetRows.</summary>
         public ManagerLayout()
         {
             Mark = new LunaAction("Mark", () => CycleSelected()) { PadButton = PadGlyphButton.West, HelpText = "Cycles the chosen row through the changes it is offered." };
             Apply = new LunaAction("Apply…", () => OpenPlan()) { PadButton = PadGlyphButton.Start, IsMain = true, IsEnabled = false, HelpText = "Shows what the marked changes will do, then does them." };
+            More = new LunaAction("More", () => OpenRowPage()) { HelpText = "Opens the chosen row's page of everything it offers." };
             _applyButton.Command = Apply;
             AutomationProperties.SetName(_applyButton, "Apply the marked changes");
             AutomationProperties.SetName(_spaceBar, "Space");
@@ -65,29 +80,26 @@ namespace EmuSen.LunaP.Controls
                 table.Key = row => KeyOf(row);
                 table.FitsWidth = true;
                 table.Column(new LunaColumn<T>("Mark", row => MarkCell(row), row => MarkOf(row)?.Label ?? "not marked") { Width = "Auto" });
-                table.AddHandler(Avalonia.Controls.Primitives.SelectingItemsControl.SelectionChangedEvent, (_, _) => ShowDetail());
+                table.AddHandler(Avalonia.Controls.Primitives.SelectingItemsControl.SelectionChangedEvent, (_, _) => { ShowDetail(); RefreshHints(); });
             }
             AutomationProperties.SetName(_desktopTable, "Rows");
             AutomationProperties.SetName(_bigTable, "Rows");
 
-            var confirm = new Button { Content = "Apply" };
-            confirm.Click += (_, _) => Confirm();
-            var cancel = new Button { Content = "Cancel" };
-            cancel.Click += (_, _) => CancelPlan();
-            AutomationProperties.SetName(confirm, "Apply");
-            AutomationProperties.SetName(cancel, "Cancel");
+            _confirm.Click += (_, _) => Confirm();
+            _cancel.Click += (_, _) => CancelPlan();
             _planSheet.Classes.Add(PlanClass);
-            // The question and the buttons always whole, the plan's words scrolling between them in what the content area leaves.
-            var heading = new TextBlock { Text = "Apply these changes?", FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 0, 12) };
-            var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0), Children = { cancel, confirm } };
-            DockPanel.SetDock(heading, Dock.Top);
-            DockPanel.SetDock(buttons, Dock.Bottom);
+            // The question and the answers always whole, the words scrolling between them in what the content area leaves.
+            _planHeading.Text = "Apply these changes?";
+            DockPanel.SetDock(_planHeading, Dock.Top);
+            DockPanel.SetDock(_planButtons, Dock.Bottom);
+            DockPanel.SetDock(_planOptions, Dock.Bottom);
             _planSheet.Child = new DockPanel
             {
                 LastChildFill = true,
-                Children = { heading, buttons, new ScrollViewer { Content = _planText, MaxHeight = 360, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled } },
+                Children = { _planHeading, _planButtons, _planOptions, new ScrollViewer { Content = _planText, MaxHeight = 360, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled } },
             };
-            _contentGrid.SizeChanged += (_, e) => _planSheet.MaxHeight = Math.Max(PlanFloor, e.NewSize.Height);
+            ArrangeQuestion();
+            _contentGrid.SizeChanged += (_, e) => { _contentHeight = e.NewSize.Height; CapPlan(); };
             _planSheet[!Border.BackgroundProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaSurface");
             _planSheet[!Border.BorderBrushProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaBorder");
             _planSheet.BorderThickness = new Thickness(1);
@@ -104,14 +116,50 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The style class on the Apply summary sheet.</summary>
         public const string PlanClass = "manager-plan";
 
-        /// <summary>The least height the plan sheet is allowed, so that a host sized to its content grows to show the question, a few lines and the buttons (§203.7).</summary>
+        /// <summary>The least height the plan sheet is allowed on the desktop, so that a host sized to its content grows to show the question, a few lines and the buttons (§203.7).</summary>
         public const double PlanFloor = 240;
+
+        /// <summary>The least height on the big screen, where the title is larger and the answers are two rows (§208.6).</summary>
+        public const double BigScreenPlanFloor = 420;
+
+        private double _contentHeight;
+
+        private void CapPlan() => _planSheet.MaxHeight = Math.Max(Form == AdaptiveForm.Desktop ? PlanFloor : BigScreenPlanFloor, _contentHeight);
 
         /// <summary>The action that cycles the chosen row through its marks: the X button on a pad.</summary>
         public LunaAction Mark { get; }
 
         /// <summary>The main action: shows the plan for the marked rows, enabled only while some are marked and nothing runs.</summary>
         public LunaAction Apply { get; }
+
+        /// <summary>The action that opens the chosen row's page: the X button once PageFor is set, and never drawn as a button.</summary>
+        public LunaAction More { get; }
+
+        /// <summary>The chosen row's one action, which A does on the big screen where the detail is beside the content or there is none, and which the help bar names in Select's place; null for a row that has none - see docs/LunaP.md §208.3.</summary>
+        public Func<T, LunaAction?>? ActionFor
+        {
+            get => _actionFor;
+            set { _actionFor = value; RefreshHints(); }
+        }
+
+        /// <summary>The rows of the chosen row's page, which X opens in the content's place on the big screen, each closing the page when invoked; once set, Mark leaves X and is reached through the page - see docs/LunaP.md §208.4.</summary>
+        public Func<T, IReadOnlyList<LunaAction>>? PageFor
+        {
+            get => _pageFor;
+            set
+            {
+                _pageFor = value;
+                Mark.PadButton = value is null ? PadGlyphButton.West : null;
+                More.PadButton = value is null ? null : PadGlyphButton.West;
+                RefreshHints();
+            }
+        }
+
+        /// <summary>The words a row's page is titled with; the row's own text by default.</summary>
+        public Func<T, string>? PageTitle { get; set; }
+
+        /// <summary>Whether a row belongs under a filter (SelectedFilter); null shows every row under every filter.</summary>
+        public Func<T, string, bool>? InFilter { get; set; }
 
         /// <summary>The table the desktop shows, every column the tool added.</summary>
         public LunaTable<T> Table => _desktopTable;
@@ -248,22 +296,73 @@ namespace EmuSen.LunaP.Controls
         public bool OpenPlan()
         {
             IReadOnlyList<ManagerMarked<T>> marked = Marked;
-            if (marked.Count == 0 || _running) return false;
-            CloseDetail();
-            _planText.Text = (Plan ?? Summarize ?? DefaultSummary)(marked);
-            _planSheet.IsVisible = true;
-            ShowTables();
-            FocusFirstIn(_planSheet);
+            if (marked.Count == 0 || _running || IsPlanOpen) return false;
+            _yes = "Apply";
+            _no = "Cancel";
+            OpenSheet("Apply these changes?", (Plan ?? Summarize ?? DefaultSummary)(marked), options: true);
             return true;
         }
 
-        /// <summary>Confirms the plan: the marked rows are handed to Applying and the bar shows progress until Finish.</summary>
-        /// <returns>Whether a plan was open.</returns>
+        /// <summary>Asks the tool's own question in the plan's form, a title, the sentences, then No and Yes (the verbs on the desktop), the tables hidden meanwhile - see docs/LunaP.md §208.5.</summary>
+        /// <param name="title">The question, such as "Approve Snes9x?".</param>
+        /// <param name="sentences">What the player is told before answering.</param>
+        /// <param name="yes">The desktop's word for yes.</param>
+        /// <param name="no">The desktop's word for no.</param>
+        /// <returns>True for yes; false for no, for B, or when a question or a run is already under way.</returns>
+        /// <exception cref="System.ArgumentNullException"><paramref name="title"/> or <paramref name="sentences"/> is null.</exception>
+        public Task<bool> Ask(string title, string sentences, string yes = "Yes", string no = "No")
+        {
+            if (title is null) throw new ArgumentNullException(nameof(title));
+            if (sentences is null) throw new ArgumentNullException(nameof(sentences));
+            if (IsPlanOpen || _running) return Task.FromResult(false);
+            _asking = new TaskCompletionSource<bool>();
+            _yes = yes;
+            _no = no;
+            OpenSheet(title, sentences, options: false);
+            return _asking.Task;
+        }
+
+        /// <summary>Checkable actions the plan's question offers as rows between its words and its answers, such as a scrape's kinds; the tool reads their IsChecked when the plan runs.</summary>
+        /// <param name="options">The actions, those not checkable left out.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="options"/> is null.</exception>
+        public void SetPlanOptions(IEnumerable<LunaAction> options)
+        {
+            if (options is null) throw new ArgumentNullException(nameof(options));
+            _planOptionList = options.ToList();
+            FillPlanOptions();
+        }
+
+        /// <summary>The question's title as last shown.</summary>
+        public string QuestionTitle => _planHeading.Text ?? string.Empty;
+
+        private void OpenSheet(string title, string words, bool options)
+        {
+            CloseDetail();
+            ClosePage();
+            CloseListTools();
+            _planHeading.Text = title;
+            _planText.Text = words;
+            ArrangeQuestion();
+            _planOptions.IsVisible = options && _planOptions.Children.Count > 0;
+            _planSheet.IsVisible = true;
+            ShowTables();
+            FocusFirstIn(_planSheet);
+        }
+
+        /// <summary>Confirms the plan: the marked rows are handed to Applying and the bar shows progress until Finish; a question of Ask's answers yes.</summary>
+        /// <returns>Whether a plan or a question was open.</returns>
         public bool Confirm()
         {
             if (!IsPlanOpen) return false;
             _planSheet.IsVisible = false;
             ShowTables();
+            if (_asking is { } asked)
+            {
+                _asking = null;
+                FocusRole(AdaptiveRole.Content);
+                asked.TrySetResult(true);
+                return true;
+            }
             IReadOnlyList<ManagerMarked<T>> marked = Marked;
             _running = true;
             SetProgress(0, "Starting…");
@@ -280,7 +379,88 @@ namespace EmuSen.LunaP.Controls
             _planSheet.IsVisible = false;
             ShowTables();
             FocusRole(AdaptiveRole.Content);
+            if (_asking is { } asked)
+            {
+                _asking = null;
+                asked.TrySetResult(false);
+            }
             return true;
+        }
+
+        /// <inheritdoc/>
+        protected override void FilterChanged() => Show();
+
+        /// <inheritdoc/>
+        protected override string? AcceptHint => ActsOnRow ? (Selected is { } row && _actionFor!(row) is { IsEnabled: true } action ? action.Text : null) : base.AcceptHint;
+
+        // A does the row's action where it has no page to open: the big screen with the detail beside the content, or none.
+        private bool ActsOnRow => _actionFor is not null && Form == AdaptiveForm.BigScreen && (Detail is null || DetailPlacement == AdaptiveDetailPlacement.Beside);
+
+        // The question's answers: No then Yes as full-width rows on the big screen, the first focused; the verbs on buttons at the right on the desktop.
+        private void ArrangeQuestion()
+        {
+            bool big = Form != AdaptiveForm.Desktop;
+            _planButtons.Children.Clear();
+            _planButtons.Orientation = big ? Orientation.Vertical : Orientation.Horizontal;
+            _planButtons.HorizontalAlignment = big ? HorizontalAlignment.Stretch : HorizontalAlignment.Right;
+            _planButtons.Spacing = big ? 4 : 8;
+            foreach (Button b in new[] { _cancel, _confirm })
+            {
+                b.HorizontalAlignment = big ? HorizontalAlignment.Stretch : HorizontalAlignment.Left;
+                b.HorizontalContentAlignment = big ? HorizontalAlignment.Left : HorizontalAlignment.Center;
+            }
+            _cancel.Content = big ? "No" : _no;
+            _confirm.Content = big ? "Yes" : _yes;
+            AutomationProperties.SetName(_cancel, (string)_cancel.Content);
+            AutomationProperties.SetName(_confirm, (string)_confirm.Content);
+            _planButtons.Children.Add(_cancel);
+            _planButtons.Children.Add(_confirm);
+            LunaTypeScale type = LunaTokens.Type(big ? LunaForm.BigScreen : LunaForm.Desktop);
+            _planHeading.FontFamily = big ? Media.LunaFonts.Condensed : FontFamily.Default;
+            _planHeading.FontWeight = big ? FontWeight.Normal : FontWeight.SemiBold;
+            _planHeading.FontSize = type.Title;
+            CapPlan();
+        }
+
+        private void FillPlanOptions()
+        {
+            _planOptions.Children.Clear();
+            bool big = Form != AdaptiveForm.Desktop;
+            foreach (LunaAction option in _planOptionList.Where(o => o.IsCheckable))
+            {
+                if (big)
+                {
+                    var row = new ToggleSwitch { IsChecked = option.IsChecked, HorizontalAlignment = HorizontalAlignment.Stretch };
+                    MenuRows.SetLabel(row, option.Text);
+                    row.IsCheckedChanged += (_, _) => option.IsChecked = row.IsChecked == true;
+                    _planOptions.Children.Add(row);
+                }
+                else
+                {
+                    var box = new CheckBox { Content = option.Text, IsChecked = option.IsChecked };
+                    AutomationProperties.SetName(box, option.Text);
+                    box.IsCheckedChanged += (_, _) => option.IsChecked = box.IsChecked == true;
+                    _planOptions.Children.Add(box);
+                }
+            }
+            _planOptions.IsVisible = IsPlanOpen && _asking is null && _planOptions.Children.Count > 0;
+        }
+
+        // The row's page: its name in the Title size, then each action as a full-width button that closes the page once done.
+        private void OpenRowPage()
+        {
+            if (Selected is not { } row || _pageFor?.Invoke(row) is not { Count: > 0 } actions) return;
+            var panel = new StackPanel { Spacing = 4 };
+            LunaTypeScale type = LunaTokens.Type(LunaForm.BigScreen);
+            string title = PageTitle?.Invoke(row) ?? row.ToString() ?? string.Empty;
+            panel.Children.Add(new TextBlock { Text = title, FontFamily = Media.LunaFonts.Condensed, FontSize = type.Title, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 0, 0, 12) });
+            foreach (LunaAction action in actions.Where(a => !a.IsSeparator))
+            {
+                var button = new ActionButton(action) { HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left };
+                button.Click += (_, _) => ClosePage();
+                panel.Children.Add(button);
+            }
+            OpenPage(new ScrollViewer { Content = panel, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled });
         }
 
         /// <summary>The apply bar's one progress line.</summary>
@@ -333,20 +513,32 @@ namespace EmuSen.LunaP.Controls
         /// <summary>Gives the frame the tool's own actions; Mark and Apply are added after them.</summary>
         /// <param name="actions">The tool's actions in order.</param>
         /// <exception cref="System.ArgumentNullException"><paramref name="actions"/> is null.</exception>
-        public void SetToolActions(IEnumerable<LunaAction> actions)
+        public void SetToolActions(IEnumerable<LunaAction> actions) => SetToolActions(actions, null);
+
+        /// <summary>Gives the frame the tool's own actions and those the big screen draws as buttons; the rest are the desktop toolbar's there, reached on the big screen through the row's action, its page and the List card (§208.4).</summary>
+        /// <param name="actions">The tool's actions in order.</param>
+        /// <param name="bigScreenButtons">Those the big screen draws as buttons; null draws every action there.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="actions"/> is null.</exception>
+        public void SetToolActions(IEnumerable<LunaAction> actions, IEnumerable<LunaAction>? bigScreenButtons)
         {
             if (actions is null) throw new ArgumentNullException(nameof(actions));
-            SetActions(actions.Concat(new[] { LunaAction.Separator(), Mark, Apply }), new[] { Apply });
+            SetActions(actions.Concat(new[] { LunaAction.Separator(), Mark, More, Apply }), new[] { Apply, More }, bigScreenButtons?.Concat(new[] { Mark }));
         }
 
         /// <inheritdoc/>
         public override bool Press(PadGlyphButton button)
         {
+            PadGlyphButton accept = SwapsAcceptAndBack ? PadGlyphButton.East : PadGlyphButton.South, back = SwapsAcceptAndBack ? PadGlyphButton.South : PadGlyphButton.East;
             if (IsPlanOpen)
             {
-                if (button == PadGlyphButton.East) return CancelPlan();
-                if (button == PadGlyphButton.Start) return Confirm();
+                if (button == back) return CancelPlan();
+                if (button == PadGlyphButton.Start) return _asking is null && Confirm();
                 return false;
+            }
+            if (button == accept && ActsOnRow && !IsPageOpen && !IsListToolsOpen && FocusedRole == AdaptiveRole.Content && Selected is { } row && _actionFor!(row) is { IsEnabled: true } action)
+            {
+                action.Invoke();
+                return true;
             }
             return base.Press(button);
         }
@@ -362,6 +554,8 @@ namespace EmuSen.LunaP.Controls
                 _contentGrid.Children.Insert(0, CurrentTable);
                 ShowTables();
                 ArrangeBar();
+                ArrangeQuestion();
+                FillPlanOptions();
                 Show();
                 CurrentTable.Select(selected);
             }
@@ -389,6 +583,7 @@ namespace EmuSen.LunaP.Controls
             string search = SearchText.Trim();
             IEnumerable<T> shown = _rows;
             if (section is not null && InSection is { } inSection) shown = shown.Where(r => inSection(r, section));
+            if (SelectedFilter is { } filter && InFilter is { } inFilter) shown = shown.Where(r => inFilter(r, filter));
             if (search.Length > 0 && SearchKey is { } searchKey) shown = shown.Where(r => searchKey(r).Contains(search, StringComparison.CurrentCultureIgnoreCase));
             List<T> list = shown.ToList();
             _desktopTable.Refresh(list);

@@ -14,6 +14,17 @@ answer.
 
 ## Unreleased
 
+- **The tool screen, and the frame's row action, row page, question form, filters and List card (`§208`).**
+  `SheetLayer.Screen` (attached): a window presented full screen in the safe area on a menu-look layer, with no frame,
+  title or hint bar of the layer's. `AdaptiveLayout`: `SetFilters`, `Filters`, `SelectedFilter`, `SelectFilter`,
+  `StepFilter`, `FilterChosen`; `SetListActions`, `HasListTools`, `OpenListTools`, `CloseListTools`, `IsListToolsOpen`,
+  `ListCard`; `OpenPage`, `ClosePage`, `IsPageOpen`; the protected `AcceptHint` and `RefreshHints`; Select opens the
+  List card on the big screen, and beside the content the detail spans the status. `ManagerLayout`: `ActionFor`,
+  `PageFor`, `PageTitle`, `More`, `InFilter`, `Ask`, `SetPlanOptions`, `QuestionTitle`; the plan's answers are No then
+  Yes on the big screen. What it costs: a layout with filters gains a `Show` dropdown on the desktop; an action on
+  Select keeps it, and the card then opens only through `OpenListTools`; `SetToolActions` now declares `More` among the actions.
+  `SetActions` and `SetToolActions` take the actions the big screen draws as buttons, the rest being the desktop
+  toolbar's there. `FitAudit` passes over what a sheet layer marks covered.
 - **The Card form and the header role (`§207`).** `AdaptiveForm.Card`, appended: the content in `AdaptiveLayout.CardPanel`,
   a `MenuPanel` anchored left at `CardShare` (0.4) over `LunaScrim`, the detail beside it, the actions in the help bar,
   no navigation; its rows in Barlow at 26 in their own case. `AdaptiveRole.Header`, appended, with `AdaptiveHeader`

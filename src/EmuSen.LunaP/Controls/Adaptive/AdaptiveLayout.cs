@@ -15,6 +15,7 @@ using Avalonia.VisualTree;
 using EmuSen.LunaP.Automation;
 using EmuSen.LunaP.Commands;
 using EmuSen.LunaP.Theme;
+using EmuSen.LunaP.Windowing;
 
 namespace EmuSen.LunaP.Controls
 {
@@ -135,6 +136,20 @@ namespace EmuSen.LunaP.Controls
         private bool _detailOpen;
         private string _title = string.Empty;
 
+        // A page of the window's own over the content, the List card over the big screen, and the filters both forms draw (docs/LunaP.md §208).
+        private readonly Panel _root = new();
+        private readonly Border _pageHost = new() { Name = "AdaptivePage" };
+        private Control? _page;
+        private readonly Panel _listScrim = new() { Name = "AdaptiveListTools", IsVisible = false };
+        private readonly MenuPanel _listCard = new() { Name = "AdaptiveListCard", Anchor = MenuAnchor.Left, WidthFraction = CardShare, MaxWidthToHeight = 4, TitleSize = 32, PanelCornerRadius = 8, Title = "List" };
+        private readonly StackPanel _listRows = new() { Spacing = 8 };
+        private readonly ComboBox _filterBox = new() { MinWidth = 140, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+        private readonly ComboBox _cardFilter = new();
+        private IReadOnlyList<AdaptiveSection> _filters = Array.Empty<AdaptiveSection>();
+        private IReadOnlyList<LunaAction> _listActions = Array.Empty<LunaAction>();
+        private string? _selectedFilter;
+        private bool _settingFilter;
+
         /// <summary>An empty layout in the desktop form; parts are given by role.</summary>
         public AdaptiveLayout()
         {
@@ -149,6 +164,7 @@ namespace EmuSen.LunaP.Controls
             AutomationProperties.SetName(_sidebar, "Sections");
             AutomationProperties.SetName(_toolBar, "Actions");
             SetUpCard();
+            SetUpListTools();
             Arrange();
         }
 
@@ -268,14 +284,147 @@ namespace EmuSen.LunaP.Controls
             {
                 var hints = new List<HintEntry>();
                 PadGlyphButton accept = SwapsAcceptAndBack ? PadGlyphButton.East : PadGlyphButton.South, back = SwapsAcceptAndBack ? PadGlyphButton.South : PadGlyphButton.East;
-                if (_content is not null) hints.Add(new HintEntry(IsDetailOpen || _detail is null || DetailBeside ? "Select" : "Open") { Button = accept });
+                if (_content is not null && AcceptHint is { } accepted) hints.Add(new HintEntry(accepted) { Button = accept });
                 hints.Add(new HintEntry("Back") { Button = back });
                 if (_sections.Count > 1 && Form != AdaptiveForm.Card) hints.Add(new HintEntry("Section") { Button = PadGlyphButton.Shoulders });
+                if (ListToolsOnSelect) hints.Add(new HintEntry("List") { Button = PadGlyphButton.Select });
                 foreach (LunaAction action in Padded().OrderByDescending(a => a.IsMain))
                     hints.Add(new HintEntry(action.Text) { Button = action.PadButton });
                 return hints;
             }
         }
+
+        /// <summary>The word the help bar gives A on the content: Open where A opens the detail's page, Select otherwise; a layout may name the focused row's own action instead, or null to leave A unnamed.</summary>
+        protected virtual string? AcceptHint => IsDetailOpen || _detail is null || DetailBeside ? "Select" : "Open";
+
+        /// <summary>Redraws the help bar from Hints, after what a hint names has changed, such as the focused row.</summary>
+        protected void RefreshHints()
+        {
+            _hintBar.Entries = Hints;
+            AutomationProperties.SetName(_hintBar, string.Join(", ", Hints.Select(h => h.Label)));
+            if (Form == AdaptiveForm.Card) _cardPanel.Hints = Hints;
+        }
+
+        /// <summary>The list's filters, a second kind of section with one chosen at a time: a dropdown beside the search box on the desktop, a row of the List card on the big screen - see docs/LunaP.md §208.6.</summary>
+        public IReadOnlyList<AdaptiveSection> Filters => _filters;
+
+        /// <summary>The chosen filter's key, or null when there are none.</summary>
+        public string? SelectedFilter => _selectedFilter;
+
+        /// <summary>Raised when a person chooses a filter, never by SetFilters or SelectFilter.</summary>
+        public event Action<string>? FilterChosen;
+
+        /// <summary>Gives the list its filters and the chosen one, without raising FilterChosen; none takes the dropdown and the row away.</summary>
+        /// <param name="filters">The filters in order; their keys must be distinct.</param>
+        /// <param name="selected">The chosen filter's key; null or an unknown key chooses the first.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="filters"/> is null.</exception>
+        /// <exception cref="System.ArgumentException">Two filters share a key.</exception>
+        public void SetFilters(IEnumerable<AdaptiveSection> filters, string? selected = null)
+        {
+            if (filters is null) throw new ArgumentNullException(nameof(filters));
+            List<AdaptiveSection> list = filters.ToList();
+            if (list.Select(f => f.Key).Distinct(StringComparer.Ordinal).Count() != list.Count)
+                throw new ArgumentException("Two filters share a key.", nameof(filters));
+            _filters = list;
+            _selectedFilter = list.Any(f => f.Key == selected) ? selected : list.FirstOrDefault()?.Key;
+            FillFilters();
+            Arrange();
+            FilterChanged();
+        }
+
+        /// <summary>Chooses a filter as the application, without raising FilterChosen.</summary>
+        /// <param name="key">The filter's key.</param>
+        /// <returns>Whether a filter has that key.</returns>
+        public bool SelectFilter(string key) => SelectFilter(key, raise: false);
+
+        /// <summary>Steps the chosen filter, wrapping at the ends, and raises FilterChosen.</summary>
+        /// <param name="by">How many filters to move; negative moves back.</param>
+        /// <returns>Whether there was a filter to move to.</returns>
+        public bool StepFilter(int by)
+        {
+            if (_filters.Count < 2) return false;
+            int at = Math.Max(0, _filters.ToList().FindIndex(f => f.Key == _selectedFilter));
+            return SelectFilter(_filters[((at + by) % _filters.Count + _filters.Count) % _filters.Count].Key, raise: true);
+        }
+
+        /// <summary>The list-wide actions the List card offers under Search and Filter, such as a check for updates; each closes the card when invoked.</summary>
+        /// <param name="actions">The actions in order.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="actions"/> is null.</exception>
+        public void SetListActions(IEnumerable<LunaAction> actions)
+        {
+            if (actions is null) throw new ArgumentNullException(nameof(actions));
+            _listActions = actions.ToList();
+            FillListTools();
+        }
+
+        /// <summary>Whether the big screen has a List card to open: a search box, filters or list actions.</summary>
+        public bool HasListTools => _hasSearch || _filters.Count > 0 || _listActions.Count > 0;
+
+        // Select opens the card on the big screen where no action of the window's claims that button, so an action given Select keeps it.
+        private bool ListToolsOnSelect => HasListTools && Form == AdaptiveForm.BigScreen && !Padded().Any(a => a.PadButton == PadGlyphButton.Select);
+
+        /// <summary>Whether the List card is open over the big screen's content.</summary>
+        public bool IsListToolsOpen => _listScrim.IsVisible;
+
+        /// <summary>The panel the List card is drawn in, for a test that measures it; it is in the tree only on the big screen.</summary>
+        public MenuPanel ListCard => _listCard;
+
+        /// <summary>Opens the List card over the big screen's content with the focus on its first row; nothing on the desktop, in a card, or without tools.</summary>
+        /// <returns>Whether the card was opened.</returns>
+        public bool OpenListTools()
+        {
+            if (Form != AdaptiveForm.BigScreen || !HasListTools || IsListToolsOpen) return false;
+            FillListTools();
+            // The card joins the tree only while it is open, and what it covers is marked as a sheet layer marks a covered sheet, out of reach and excused by the audit.
+            if (!_root.Children.Contains(_listScrim)) _root.Children.Add(Detach(_listScrim));
+            foreach (Control beneath in _root.Children.Where(c => !ReferenceEquals(c, _listScrim))) beneath.SetValue(SheetLayer.IsCoveredProperty, true);
+            _listScrim.IsVisible = true;
+            if (!FocusFirstIn(_listRows)) Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (IsListToolsOpen) FocusFirstIn(_listRows); }, Avalonia.Threading.DispatcherPriority.Loaded);
+            return true;
+        }
+
+        /// <summary>Closes the List card and returns the focus to the content.</summary>
+        /// <returns>Whether the card was open.</returns>
+        public bool CloseListTools()
+        {
+            if (!IsListToolsOpen) return false;
+            _listScrim.IsVisible = false;
+            _root.Children.Remove(_listScrim);
+            foreach (Control beneath in _root.Children) beneath.ClearValue(SheetLayer.IsCoveredProperty);
+            if (!FocusRole(AdaptiveRole.Content)) Avalonia.Threading.Dispatcher.UIThread.Post(() => Refocus(AdaptiveRole.Content), Avalonia.Threading.DispatcherPriority.Loaded);
+            return true;
+        }
+
+        /// <summary>Opens a page of the window's own in the content's place on the big screen, such as a row's actions, which B closes; nothing on the desktop or in a card - see docs/LunaP.md §208.4.</summary>
+        /// <param name="page">The page's control.</param>
+        /// <returns>Whether the page was opened.</returns>
+        /// <exception cref="System.ArgumentNullException"><paramref name="page"/> is null.</exception>
+        public bool OpenPage(Control page)
+        {
+            if (page is null) throw new ArgumentNullException(nameof(page));
+            if (Form != AdaptiveForm.BigScreen) return false;
+            CloseListTools();
+            _page = page;
+            _pageHost.Child = page;
+            Arrange();
+            if (!FocusRole(AdaptiveRole.Detail)) Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (_page is not null) Refocus(AdaptiveRole.Detail); }, Avalonia.Threading.DispatcherPriority.Loaded);
+            return true;
+        }
+
+        /// <summary>Closes the page and returns the focus to the content.</summary>
+        /// <returns>Whether a page was open.</returns>
+        public bool ClosePage()
+        {
+            if (_page is null) return false;
+            _page = null;
+            _pageHost.Child = null;
+            Arrange();
+            if (!FocusRole(AdaptiveRole.Content)) Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (_page is null) Refocus(AdaptiveRole.Content); }, Avalonia.Threading.DispatcherPriority.Loaded);
+            return true;
+        }
+
+        /// <summary>Whether a page of the window's own is open in the content's place.</summary>
+        public bool IsPageOpen => _page is not null;
 
         /// <summary>Gives the navigation its sections and the chosen one, without raising SectionChosen.</summary>
         /// <param name="sections">The sections in order; their keys must be distinct.</param>
@@ -318,16 +467,26 @@ namespace EmuSen.LunaP.Controls
         /// <param name="actions">The actions in order, separators included.</param>
         /// <param name="drawnElsewhere">Those among them the layout does not draw.</param>
         /// <exception cref="System.ArgumentNullException"><paramref name="actions"/> or <paramref name="drawnElsewhere"/> is null.</exception>
-        public void SetActions(IEnumerable<LunaAction> actions, IEnumerable<LunaAction> drawnElsewhere)
+        public void SetActions(IEnumerable<LunaAction> actions, IEnumerable<LunaAction> drawnElsewhere) => SetActions(actions, drawnElsewhere, null);
+
+        /// <summary>Declares the window's actions, those it draws itself, and those the big screen draws as buttons: the rest are the desktop toolbar's alone there, reached on the big screen through A, X and Select - see docs/LunaP.md §208.4.</summary>
+        /// <param name="actions">The actions in order, separators included.</param>
+        /// <param name="drawnElsewhere">Those among them the layout does not draw.</param>
+        /// <param name="bigScreenButtons">Those the big screen draws as buttons; null draws every action there, as before.</param>
+        /// <exception cref="System.ArgumentNullException"><paramref name="actions"/> or <paramref name="drawnElsewhere"/> is null.</exception>
+        public void SetActions(IEnumerable<LunaAction> actions, IEnumerable<LunaAction> drawnElsewhere, IEnumerable<LunaAction>? bigScreenButtons)
         {
             if (actions is null) throw new ArgumentNullException(nameof(actions));
             if (drawnElsewhere is null) throw new ArgumentNullException(nameof(drawnElsewhere));
             Menus.Unbind(this, _bindings);
             _undrawn = drawnElsewhere.ToHashSet();
+            _bigScreenButtons = bigScreenButtons?.ToHashSet();
             _actions = actions.ToList();
             _bindings = Menus.BindShortcuts(this, _actions);
             Arrange();
         }
+
+        private HashSet<LunaAction>? _bigScreenButtons;
 
         /// <summary>Opens the detail's page on the big screen and puts the focus in it; does nothing on the desktop or where the detail is beside the content.</summary>
         /// <returns>Whether a page was opened.</returns>
@@ -361,7 +520,7 @@ namespace EmuSen.LunaP.Controls
             {
                 AdaptiveRole.Navigation => _navigationHost,
                 AdaptiveRole.Content => _contentHost,
-                AdaptiveRole.Detail => _detailHost,
+                AdaptiveRole.Detail => _page is not null ? _pageHost : _detailHost,
                 AdaptiveRole.Actions => _actionsHost,
                 AdaptiveRole.Search => _searchHost,
                 AdaptiveRole.Header => _headerHost,
@@ -417,13 +576,17 @@ namespace EmuSen.LunaP.Controls
         public virtual bool Press(PadGlyphButton button)
         {
             if (SwapsAcceptAndBack) button = button switch { PadGlyphButton.South => PadGlyphButton.East, PadGlyphButton.East => PadGlyphButton.South, _ => button };
+            // While the List card is open its rows take A through the focused control; B or Select closes it, and nothing reaches past it.
+            if (IsListToolsOpen) return button is PadGlyphButton.East or PadGlyphButton.Select ? CloseListTools() : false;
             switch (button)
             {
                 case PadGlyphButton.LeftShoulder when Form != AdaptiveForm.Card: return StepSection(-1);
                 case PadGlyphButton.RightShoulder when Form != AdaptiveForm.Card: return StepSection(1);
-                case PadGlyphButton.South when Form == AdaptiveForm.BigScreen && !IsDetailOpen && FocusedRole == AdaptiveRole.Content:
+                case PadGlyphButton.Select when ListToolsOnSelect && !IsPageOpen: return OpenListTools();
+                case PadGlyphButton.South when Form == AdaptiveForm.BigScreen && !IsDetailOpen && !IsPageOpen && FocusedRole == AdaptiveRole.Content:
                     return OpenDetail();
                 case PadGlyphButton.East:
+                    if (ClosePage()) return true;
                     if (CloseDetail()) return true;
                     if (FocusedRole is AdaptiveRole.Detail or AdaptiveRole.Actions or AdaptiveRole.Search) return FocusRole(AdaptiveRole.Content);
                     if (FocusedRole == AdaptiveRole.Content && Form == AdaptiveForm.Desktop) return FocusRole(AdaptiveRole.Navigation);
@@ -515,7 +678,7 @@ namespace EmuSen.LunaP.Controls
         {
             _toolBar.SetActions(_actions.Where(a => !_undrawn.Contains(a)));
             _actionRow.Children.Clear();
-            foreach (LunaAction action in _actions.Where(a => !a.IsSeparator && a.Submenu is null && !_undrawn.Contains(a)).OrderByDescending(a => a.IsMain))
+            foreach (LunaAction action in _actions.Where(a => !a.IsSeparator && a.Submenu is null && !_undrawn.Contains(a) && (_bigScreenButtons is null || _bigScreenButtons.Contains(a))).OrderByDescending(a => a.IsMain))
             {
                 var button = new ActionButton(action);
                 if (action.IsMain) button.Classes.Add(MainClass);
@@ -527,6 +690,7 @@ namespace EmuSen.LunaP.Controls
         {
             _navigationHost.Child = null;
             _actionsHost.Child = null;
+            _pageHost.IsVisible = false;
             _cardPanel.Child = null;
             _cardPanel.Pane = null;
             _cardRows.Child = null;
@@ -546,11 +710,102 @@ namespace EmuSen.LunaP.Controls
             _searchHost.Child ??= _search;
             _searchHost.IsVisible = _hasSearch;
             _navigationHost.IsVisible = _sections.Count > 0;
-            _actionsHost.IsVisible = _actions.Any(a => !a.IsSeparator);
+            _actionsHost.IsVisible = Form == AdaptiveForm.BigScreen
+                ? _actions.Any(a => !a.IsSeparator && !_undrawn.Contains(a) && (_bigScreenButtons is null || _bigScreenButtons.Contains(a)))
+                : _actions.Any(a => !a.IsSeparator);
             _statusHost.IsVisible = _status is not null;
 
             ShowHeader();
-            Child = Form switch { AdaptiveForm.Card => ArrangeCard(), AdaptiveForm.BigScreen => ArrangeBigScreen(), _ => ArrangeDesktop() };
+            Control arranged = Form switch { AdaptiveForm.Card => ArrangeCard(), AdaptiveForm.BigScreen => ArrangeBigScreen(), _ => ArrangeDesktop() };
+            bool cardOpen = Form == AdaptiveForm.BigScreen && IsListToolsOpen;
+            _root.Children.Clear();
+            _root.Children.Add(Detach(arranged));
+            if (cardOpen)
+            {
+                arranged.SetValue(SheetLayer.IsCoveredProperty, true);
+                _root.Children.Add(Detach(_listScrim));
+            }
+            else
+            {
+                arranged.ClearValue(SheetLayer.IsCoveredProperty);
+                _listScrim.IsVisible = false;
+            }
+            Child = _root;
+        }
+
+        // The List card over the layout: a left panel on the scrim whose rows are stock controls in the look, Search, Filter and the list actions.
+        private void SetUpListTools()
+        {
+            _listScrim.Children.Add(_listCard);
+            _listScrim.Bind(Panel.BackgroundProperty, _listScrim.GetResourceObservable("LunaScrim", r => r as IBrush ?? DefaultScrim));
+            MenuPanel.SetFontPath(_listCard, Media.LunaFonts.CondensedFile);
+            _listCard.Child = _listRows;
+            AutomationProperties.SetName(_filterBox, "Show");
+            AutomationProperties.SetName(_cardFilter, "Filter");
+            MenuRows.SetLabel(_cardFilter, "Filter");
+            _filterBox.SelectionChanged += (_, _) => FilterPicked(_filterBox);
+            _cardFilter.SelectionChanged += (_, _) => FilterPicked(_cardFilter);
+            _listScrim.KeyDown += (_, e) => { if (e.Key == Key.Escape && CloseListTools()) e.Handled = true; };
+        }
+
+        private void FillListTools()
+        {
+            _listRows.Children.Clear();
+            if (_hasSearch)
+            {
+                var search = new Button { Content = "Search", HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left };
+                AutomationProperties.SetName(search, "Search");
+                search.Click += (_, _) => { CloseListTools(); _search.Focus(); };
+                _listRows.Children.Add(search);
+            }
+            if (_filters.Count > 0) _listRows.Children.Add(_cardFilter);
+            foreach (LunaAction action in _listActions.Where(a => !a.IsSeparator))
+            {
+                var button = new ActionButton(action) { HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left };
+                button.Click += (_, _) => CloseListTools();
+                _listRows.Children.Add(button);
+            }
+        }
+
+        private bool SelectFilter(string key, bool raise)
+        {
+            if (!_filters.Any(f => f.Key == key)) return false;
+            bool moved = _selectedFilter != key;
+            _selectedFilter = key;
+            FillFilters();
+            if (moved) FilterChanged();
+            if (raise && moved) FilterChosen?.Invoke(key);
+            return true;
+        }
+
+        /// <summary>Called when the chosen filter changes, by the person or the application, before FilterChosen; a layout that narrows its content by the filter does so here.</summary>
+        protected virtual void FilterChanged()
+        {
+        }
+
+        // The dropdown and the card's row show the same filters and choice; a change from either is the person's.
+        private void FillFilters()
+        {
+            _settingFilter = true;
+            foreach (ComboBox box in new[] { _filterBox, _cardFilter })
+            {
+                box.ItemsSource = _filters.Select(f => f.Label).ToList();
+                box.SelectedIndex = _filters.ToList().FindIndex(f => f.Key == _selectedFilter);
+            }
+            _settingFilter = false;
+        }
+
+        private void FilterPicked(ComboBox box)
+        {
+            if (_settingFilter || box.SelectedIndex < 0 || box.SelectedIndex >= _filters.Count) return;
+            SelectFilter(_filters[box.SelectedIndex].Key, raise: true);
+        }
+
+        private static bool FocusFirstIn(Control root)
+        {
+            foreach (InputElement element in root.GetVisualDescendants().OfType<InputElement>())
+                if (element.Focusable && element.IsEffectivelyEnabled && element.IsEffectivelyVisible && element.Focus(NavigationMethod.Directional)) return true;
+            return false;
         }
 
         // The card's fixed parts: the panel over the scrim, the rows in Barlow at the big screen's Row size and in the words' own case, the pane in Barlow (§207.2).
@@ -639,8 +894,11 @@ namespace EmuSen.LunaP.Controls
 
             var top = new DockPanel { LastChildFill = true, Margin = new Thickness(4) };
             DockPanel.SetDock(_searchHost, Dock.Right);
+            DockPanel.SetDock(_filterBox, Dock.Right);
             _searchHost.VerticalAlignment = VerticalAlignment.Center;
+            _filterBox.IsVisible = _filters.Count > 0;
             top.Children.Add(Detach(_searchHost));
+            top.Children.Add(Detach(_filterBox));
             top.Children.Add(Detach(_actionsHost));
             _actionsHost.Margin = default;
 
@@ -672,20 +930,37 @@ namespace EmuSen.LunaP.Controls
             _hintBar.Entries = Hints;
             AutomationProperties.SetName(_hintBar, string.Join(", ", Hints.Select(h => h.Label)));
             bool beside = DetailBeside && _detail is not null;
-            bool page = !beside && _detailOpen && _detail is not null;
+            bool ownPage = _page is not null;
+            bool page = ownPage || (!beside && _detailOpen && _detail is not null);
             _contentHost.IsVisible = !page;
-            _detailHost.IsVisible = page || beside;
+            _detailHost.IsVisible = (page && !ownPage) || (beside && !ownPage);
+            _pageHost.IsVisible = ownPage;
 
             var top = new DockPanel { LastChildFill = true, Margin = new Thickness(16, 12) };
             DockPanel.SetDock(_searchHost, Dock.Right);
             top.Children.Add(Detach(_searchHost));
             top.Children.Add(Detach(_navigationHost));
 
+            // Beside the content the detail stands next to the status too, since the apply bar belongs to the list (§208.2).
+            bool statusInColumn = beside && _status is not null;
             var middle = new Grid { Margin = new Thickness(16, 0) };
-            middle.Children.Add(Detach(_contentHost));
+            Control contentPart = Detach(_contentHost);
+            if (statusInColumn)
+            {
+                var column = new Grid { RowDefinitions = new RowDefinitions("*,Auto") };
+                Grid.SetRow(_contentHost, 0);
+                Grid.SetRow(Detach(_statusHost), 1);
+                column.Children.Add(_contentHost);
+                column.Children.Add(_statusHost);
+                contentPart = column;
+            }
+            middle.Children.Add(contentPart);
             middle.Children.Add(Detach(_detailHost));
-            Grid.SetColumn(_contentHost, 0);
+            middle.Children.Add(Detach(_pageHost));
+            Grid.SetColumn(contentPart, 0);
             Grid.SetColumn(_detailHost, beside ? 1 : 0);
+            Grid.SetColumn(_pageHost, 0);
+            Grid.SetColumnSpan(_pageHost, beside ? 2 : 1);
             if (beside)
             {
                 double share = Math.Clamp(double.IsFinite(ContentShare) ? ContentShare : 0.4, 0.2, 0.8);
@@ -695,7 +970,7 @@ namespace EmuSen.LunaP.Controls
             else _detailHost.Margin = default;
 
             var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto,Auto,Auto") };
-            Control[] rows = { Detach(_headerHost), top, middle, Detach(_actionsHost), Detach(_statusHost), _hintBar };
+            Control[] rows = { Detach(_headerHost), top, middle, Detach(_actionsHost), statusInColumn ? new Border() : Detach(_statusHost), _hintBar };
             _actionsHost.Margin = new Thickness(16, 8);
             _hintBar.Margin = new Thickness(16, 8);
             for (int i = 0; i < rows.Length; i++)

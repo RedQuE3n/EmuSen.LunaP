@@ -247,6 +247,20 @@ namespace EmuSen.LunaP.Windowing
         // Which layer presents a window, so a presented window's own children land on the same layer.
         private static readonly Dictionary<Window, SheetLayer> Presenters = new(ReferenceEqualityComparer.Instance);
 
+        /// <summary>Whether a window presented on a menu-look layer is a screen: full screen in the safe area, in the menus' type, with no sheet frame, title or hint bar of the layer's, since its own layout draws its header and help bar; false, the default, frames it as a menu - see docs/LunaP.md §208.1.</summary>
+        public static readonly AttachedProperty<bool> ScreenProperty =
+            AvaloniaProperty.RegisterAttached<SheetLayer, Window, bool>("Screen");
+
+        /// <summary>Reads whether a window is presented as a screen.</summary>
+        /// <param name="window">The window asked about.</param>
+        /// <returns>Whether it is presented as a screen on a menu-look layer.</returns>
+        public static bool GetScreen(Window window) => window.GetValue(ScreenProperty);
+
+        /// <summary>Sets whether a window is presented as a screen, before it is presented.</summary>
+        /// <param name="window">The window.</param>
+        /// <param name="value">True for a screen.</param>
+        public static void SetScreen(Window window, bool value) => window.SetValue(ScreenProperty, value);
+
         /// <summary>The layer presenting a window, or null when it is not presented anywhere.</summary>
         /// <param name="window">The window to look up.</param>
         /// <returns>The presenting layer, or null for a window that is shown as a window or not at all.</returns>
@@ -317,7 +331,8 @@ namespace EmuSen.LunaP.Windowing
             public Border Root { get; }
             public bool Chromeless { get; }
             public bool MenuFramed { get; }
-            public bool OwnChrome => Chromeless || MenuFramed;
+            public bool Screen { get; }
+            public bool OwnChrome => Chromeless || MenuFramed || Screen;
             public TaskCompletionSource Done { get; } = new();
 
             public Sheet(SheetLayer layer, Window window)
@@ -335,6 +350,16 @@ namespace EmuSen.LunaP.Windowing
                     Root = new Border { Child = _host, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch };
                     _host.HorizontalContentAlignment = HorizontalAlignment.Stretch;
                     _host.VerticalContentAlignment = VerticalAlignment.Stretch;
+                    KeyboardNavigation.SetTabNavigation(Root, KeyboardNavigationMode.Cycle);
+                    EmbeddedPopups.SetIsEnabled(Root, true);
+                    Root.KeyDown += OnKeyDown;
+                    return;
+                }
+
+                if (layer.MenuLook && GetScreen(window))
+                {
+                    Screen = true;
+                    Root = ScreenFrame();
                     KeyboardNavigation.SetTabNavigation(Root, KeyboardNavigationMode.Cycle);
                     EmbeddedPopups.SetIsEnabled(Root, true);
                     Root.KeyDown += OnKeyDown;
@@ -431,6 +456,24 @@ namespace EmuSen.LunaP.Windowing
             }
 
             private MenuPanel? _menu;
+
+            // The window's content as a screen: the safe area's margins in design pixels, scaled as the menus are, on the surface, with no frame, title or hint bar of the layer's - see docs/LunaP.md §208.1.
+            private Border ScreenFrame()
+            {
+                _host.Padding = new Thickness(ScreenSidePadding, ScreenTopPadding, ScreenSidePadding, ScreenBottomPadding);
+                _host.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+                _host.VerticalContentAlignment = VerticalAlignment.Stretch;
+                _host.ClipToBounds = false;
+                Controls.MenuLook.SetIsOn(_host, true);
+                var scaled = new LayoutTransformControl { Child = _host };
+                scaled.Bind(LayoutTransformControl.LayoutTransformProperty, scaled.GetObservable(MenuPanel.ScaleProperty, u => (ITransform)new ScaleTransform(u, u)));
+                var root = new Border { Child = scaled, HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch };
+                root[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaSurface");
+                return root;
+            }
+
+            // A screen's inset in design pixels before the menus' scale: with the layout's own margins of 16 and 12 it is the safe area, 64 at the sides and 40 above.
+            private const double ScreenSidePadding = 48, ScreenTopPadding = 28, ScreenBottomPadding = 8;
 
             // The window's own help bar, else the layer's for it, read once the sheet is on the layer so the layer's can look at its content.
             public void RefreshHints()

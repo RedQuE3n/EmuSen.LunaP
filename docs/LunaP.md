@@ -14349,3 +14349,88 @@ host, an action's pad button invoking it; the swap; the rows' typeface, size and
 big-screen form; and the header row above everything on the desktop and the big screen, gone when null.
 `AdaptiveLayoutTests`, `ManagerLayoutTests` and `ManagerFitAuditTests` enumerate the desktop and big-screen forms
 explicitly, since the card has its own class.
+
+## 208. The tool screen, and the frame's row action, row page, question form, filters and List card
+
+### 208.1 The gap
+
+EmuSen's Cores window as built (its `EmuSen_Interface.md` §14.1, measured 2026-11-01) showed what the frame of §202 and
+§203 lacked once a tool is a destination on a big screen. The tool was drawn inside the sheet layer's centred menu
+frame, 812 × 668 of 1280 × 800, with the layer's title and hint bar beside the layout's own header and help bar; its
+state filters were sections, so a strip of twenty-three; every action was a button, so a wall of nine; the detail was
+a page of its own; and A on a row only opened that page, so the common action, approving a downloaded core, lay two
+levels down. The consumer's unified interface gives the frame a screen of its own, one action per row on A, the row's
+other actions on X, the list's tools on Select, and one question form. The six pieces below are the toolkit's, each a
+property or a method whose default leaves every consumer as it was, and each general: a package manager's rows, a
+scraper's and a library checker's take them next.
+
+### 208.2 The tool screen: `SheetLayer.Screen`
+
+An attached property on the window. Set, a window presented on a layer with `MenuLook` is a screen rather than a framed
+sheet: its content fills the layer on `LunaSurface`, in the menus' look and at their scale (`MenuPanel.Scale`, as the
+frame scales), inset 48 and 28 design pixels so that with `AdaptiveLayout`'s own margins of 16 and 12 its header sits at
+the safe area, 64 at the sides and 40 above; there is no `SheetMenu` panel, no title and no hint bar of the layer's,
+since the layout draws its header role and its help bar. `DrawsMenu` answers true for it, so a host that adapts its
+pane's form on that answer keeps working, and `OwnChrome` covers it in `ShowOnly`. A window without the property is
+framed as before; the centred sheet stays for questions asked over a screen and for windows not yet rebuilt.
+
+### 208.3 The detail beside the status
+
+In the Beside placement (§205.5) the detail column stands beside the content and the status both: the status host is
+put under the content in the content's column rather than in a row of its own, since an apply bar belongs to the list
+it sums up. A layout without a status is unchanged.
+
+### 208.4 A row's action: `ManagerLayout.ActionFor`
+
+`ActionFor(row)` gives the `LunaAction` that A does for the chosen row on the big screen when the detail is beside the
+content or there is none, so that A has no page to open; the help bar names it in Select's place. `AcceptHint`, a
+protected virtual of `AdaptiveLayout`, is the word the bar gives A, which a layout overrides; `RefreshHints` redraws the
+bar when what a hint names changes, as the chosen row does. A row whose action is null or disabled leaves A unnamed and
+declined. The desktop is unchanged.
+
+### 208.5 A row's page: `PageFor`, `More`, `OpenPage`
+
+`AdaptiveLayout.OpenPage(control)` shows a control in the content's place on the big screen, as the detail's page is
+shown, spanning the detail's column where the detail is beside; B closes it (`ClosePage`), the focus goes into it and
+back, and `HostOf(Detail)` answers the page's host while it is open. `ManagerLayout.PageFor(row)` gives the rows of the
+chosen row's page: its title (`PageTitle`, the row's text by default) in the Title size, then each action as a
+full-width `ActionButton` that closes the page once done. Once `PageFor` is set, `More` takes X and `Mark` leaves it, so
+a tool whose rows act on A offers marking as a row of the page instead; `More` is declared through `SetToolActions` as
+drawn elsewhere, so it has a hint and no button.
+
+### 208.6 The question form: No then Yes, and `Ask`
+
+The plan sheet is the question form: a title (`QuestionTitle`) in the Title size, the words, then the answers. On the
+big screen the answers are `No` then `Yes`, full-width buttons in the look, which take the focus bar, No focused first,
+so that B and the first row agree; on the desktop the verbs stay on buttons at the right, `Cancel` and `Apply` for the
+plan. `Ask(title, sentences, yes, no)` asks a tool's own question in the same form and answers a `Task<bool>`: `Confirm`
+or Yes is true; `CancelPlan`, B or No is false; Start confirms the plan only, never a question of Ask's.
+`SetPlanOptions(actions)` draws the checkable actions among them as rows of the plan's question, switches in the look on
+the big screen and check boxes on the desktop, each writing `IsChecked` back, so that a scrape's kinds are chosen where
+the run is confirmed rather than on a toolbar; a question of Ask's shows none.
+
+### 208.7 Filters and the List card
+
+`AdaptiveLayout.SetFilters(filters, selected)` gives a list a second kind of section, one chosen at a time, with
+`SelectedFilter`, `SelectFilter`, `StepFilter` and `FilterChosen` as the sections have; `ManagerLayout.InFilter` narrows
+the shown rows by it, after the section and before the search. On the desktop the filters are a dropdown named `Show`
+beside the search box. On the big screen they are a row of the **List card**: Select opens it (`OpenListTools`), a
+`MenuPanel` anchored left at the card's share over `LunaScrim`, titled `List`, whose rows are `Search`, which closes the
+card and focuses the search box, `Filter`, a dropdown in the look's option row, and the list-wide actions given by
+`SetListActions`, each closing the card when invoked. B, Select or Escape closes it; while it is open the shoulders and
+the actions are declined, and A reaches the focused row through the host's own Enter. The card joins the tree only while
+it is open, and what it covers is marked `SheetLayer.IsCovered`, as a layer marks a sheet left drawn under a message box,
+and the fit audit passes over what a layer marks covered, as a thing not drawn. The help bar names Select `List`
+wherever the card has anything to show (`HasListTools`) and no action of the window's claims Select: an action given
+Select as its pad button keeps it, as before, and such a window opens the card only through `OpenListTools`.
+
+### 208.8 Tests
+
+`ToolFrameTests`: the detail beside the status at 1280 × 800, 1920 × 1200 and 1280 × 720 under the fit audit; A doing
+the row's action and the help bar naming it, a row with none leaving A unnamed, the desktop unchanged; X opening the
+page, its buttons, the audit, an action closing it, B closing it; the question's No then Yes with No focused, Ask's true
+and false, Start declined on it, the desktop's verbs; the plan options read back and absent from Ask; the List card's
+rows, the audit with it open, the shoulders declined, B closing it, the filter narrowing the rows on both forms and the
+desktop's `Show` dropdown; the screen at three sizes with no `SheetMenu`, the header inside the safe area, the audit,
+and a plain window still framed. `AdaptiveLayoutTests`, `ManagerLayoutTests`, `ManagerFitAuditTests`, `CardFormTests` and
+`PauseCardLayoutTests` hold what was there.

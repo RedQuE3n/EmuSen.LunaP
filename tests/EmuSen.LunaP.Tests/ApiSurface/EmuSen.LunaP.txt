@@ -111,6 +111,9 @@ public class EmuSen.LunaP.Controls.AdaptiveLayout : Avalonia.Controls.Border
     protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    protected virtual string? AcceptHint { get; }
+    protected virtual void FilterChanged()
+    protected void RefreshHints()
     public AdaptiveLayout()
     public Avalonia.Controls.Control? Content { get; set; }
     public Avalonia.Controls.Control? Detail { get; set; }
@@ -121,21 +124,33 @@ public class EmuSen.LunaP.Controls.AdaptiveLayout : Avalonia.Controls.Border
     public EmuSen.LunaP.Controls.AdaptiveHeader? Header { get; set; }
     public EmuSen.LunaP.Controls.AdaptiveRole? FocusedRole { get; }
     public EmuSen.LunaP.Controls.MenuPanel CardPanel { get; }
+    public EmuSen.LunaP.Controls.MenuPanel ListCard { get; }
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Commands.LunaAction> Actions { get; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.AdaptiveSection> Filters { get; }
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.AdaptiveSection> Sections { get; }
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry> Hints { get; }
     public bool CloseDetail()
+    public bool CloseListTools()
+    public bool ClosePage()
     public bool FocusRole(EmuSen.LunaP.Controls.AdaptiveRole role)
+    public bool HasListTools { get; }
     public bool HasSearch { get; set; }
     public bool IsDetailOpen { get; }
+    public bool IsListToolsOpen { get; }
+    public bool IsPageOpen { get; }
     public bool MoveFocus(int by)
     public bool OpenDetail()
+    public bool OpenListTools()
+    public bool OpenPage(Avalonia.Controls.Control page)
+    public bool SelectFilter(string key)
     public bool SelectSection(string key)
+    public bool StepFilter(int by)
     public bool StepSection(int by)
     public bool SwapsAcceptAndBack { get; set; }
     public const double CardShare = 0.4
     public const string MainClass = "adaptive-main"
     public double ContentShare { get; set; }
+    public event System.Action<string> FilterChosen
     public event System.Action<string> SearchChanged
     public event System.Action<string> SectionChosen
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.AdaptiveDetailPlacement> DetailPlacementProperty = Page
@@ -145,10 +160,14 @@ public class EmuSen.LunaP.Controls.AdaptiveLayout : Avalonia.Controls.Border
     public string SearchText { get; set; }
     public string Title { get; set; }
     public string? SearchHint { get; set; }
+    public string? SelectedFilter { get; }
     public string? SelectedSection { get; }
     public virtual bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
     public void SetActions(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> actions)
     public void SetActions(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> actions, System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> drawnElsewhere)
+    public void SetActions(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> actions, System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> drawnElsewhere, System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction>? bigScreenButtons)
+    public void SetFilters(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.AdaptiveSection> filters, string? selected = null)
+    public void SetListActions(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> actions)
     public void SetSections(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.AdaptiveSection> sections, string? selected = null)
 
 public enum EmuSen.LunaP.Controls.AdaptiveRole
@@ -1283,9 +1302,12 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public void SortBy(int column, bool descending = false)
 
 public class EmuSen.LunaP.Controls.ManagerLayout<T> : EmuSen.LunaP.Controls.AdaptiveLayout where T : class
+    protected override string? AcceptHint { get; }
+    protected override void FilterChanged()
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     public EmuSen.LunaP.Commands.LunaAction Apply { get; }
     public EmuSen.LunaP.Commands.LunaAction Mark { get; }
+    public EmuSen.LunaP.Commands.LunaAction More { get; }
     public EmuSen.LunaP.Controls.LunaTable<T> BigScreenTable { get; }
     public EmuSen.LunaP.Controls.LunaTable<T> Table { get; }
     public EmuSen.LunaP.Controls.ManagerLayout<T> Column(EmuSen.LunaP.Controls.LunaColumn<T> column, bool bigScreen = false)
@@ -1297,11 +1319,16 @@ public class EmuSen.LunaP.Controls.ManagerLayout<T> : EmuSen.LunaP.Controls.Adap
     public System.Collections.Generic.IReadOnlyList<T> Shown { get; }
     public System.Func<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.ManagerMarked<T>>, string>? Plan { get; set; }
     public System.Func<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.ManagerMarked<T>>, string>? Summarize { get; set; }
+    public System.Func<T, EmuSen.LunaP.Commands.LunaAction?>? ActionFor { get; set; }
+    public System.Func<T, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Commands.LunaAction>>? PageFor { get; set; }
     public System.Func<T, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.ManagerMark>>? MarksFor { get; set; }
     public System.Func<T, object> RowKey { get; set; }
+    public System.Func<T, string, bool>? InFilter { get; set; }
     public System.Func<T, string, bool>? InSection { get; set; }
+    public System.Func<T, string>? PageTitle { get; set; }
     public System.Func<T, string>? SearchKey { get; set; }
     public System.Func<T?, Avalonia.Controls.Control?>? DetailFor { get; set; }
+    public System.Threading.Tasks.Task<bool> Ask(string title, string sentences, string yes = "Yes", string no = "No")
     public T? Selected { get; }
     public bool CancelPlan()
     public bool Confirm()
@@ -1309,21 +1336,25 @@ public class EmuSen.LunaP.Controls.ManagerLayout<T> : EmuSen.LunaP.Controls.Adap
     public bool IsRunning { get; }
     public bool OpenPlan()
     public bool SetMark(T row, string? key)
+    public const double BigScreenPlanFloor = 420
     public const double PlanFloor = 240
     public const string PlanClass = "manager-plan"
     public event System.Action MarksChanged
     public event System.Action<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.ManagerMarked<T>>> Applying
     public override bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
     public string PlanText { get; }
+    public string QuestionTitle { get; }
     public string SpaceText { get; }
     public string SummaryText { get; }
     public void ClearMarks()
     public void Finish(bool clearMarks = true)
     public void SetNotice(string? words)
+    public void SetPlanOptions(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> options)
     public void SetProgress(double? fraction, string line)
     public void SetRows(System.Collections.Generic.IEnumerable<T> rows)
     public void SetSpace(string text, double fraction)
     public void SetToolActions(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> actions)
+    public void SetToolActions(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> actions, System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction>? bigScreenButtons)
 
 public sealed class EmuSen.LunaP.Controls.ManagerMark : System.IEquatable<EmuSen.LunaP.Controls.ManagerMark>
     public ManagerMark(string Key, string Label)
@@ -2722,9 +2753,11 @@ public class EmuSen.LunaP.Windowing.SheetLayer : Avalonia.Controls.Panel
     public static bool GetChromeless(Avalonia.Controls.Window window)
     public static bool GetIsCovered(Avalonia.Controls.Control element)
     public static bool GetKeepsBeneathDrawn(Avalonia.Controls.Window window)
+    public static bool GetScreen(Avalonia.Controls.Window window)
     public static readonly Avalonia.AttachedProperty<bool> ChromelessProperty = false
     public static readonly Avalonia.AttachedProperty<bool> IsCoveredProperty = false
     public static readonly Avalonia.AttachedProperty<bool> KeepsBeneathDrawnProperty = false
+    public static readonly Avalonia.AttachedProperty<bool> ScreenProperty = false
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadFamily> HintFamilyProperty = Generic
     public static readonly Avalonia.StyledProperty<bool> MenuLookProperty = false
     public static readonly Avalonia.StyledProperty<bool> PresentsWindowsProperty = false
@@ -2733,6 +2766,7 @@ public class EmuSen.LunaP.Windowing.SheetLayer : Avalonia.Controls.Panel
     public static void Activate(Avalonia.Controls.Window window)
     public static void SetChromeless(Avalonia.Controls.Window window, bool value)
     public static void SetKeepsBeneathDrawn(Avalonia.Controls.Window window, bool value)
+    public static void SetScreen(Avalonia.Controls.Window window, bool value)
     public string? Hint { get; set; }
     public void BringToFront(Avalonia.Controls.Window window)
 
