@@ -14056,3 +14056,69 @@ WiseMan's copy can now be replaced by this one, so that the audit has one owner.
 
 Off by default, so a table scrolls sideways as §59 made it. On, the rows' horizontal scroll bar is disabled, so star
 columns share the table's own width and trim, as a frame does whose detail shows the chosen row whole.
+
+## 205. A card beside a paused game: `MenuPanel.Anchor`, `Pane` and `TitleIcon`, `BlurBackdrop.Blurs`, and the detail beside the content
+
+### 205.1 The gap
+
+EmuSen's tester approved a redesign of Mistress's in-game menu on 2026-11-01, the *Pause Card*: a panel at the left of the screen, about 40 per cent of its width, with the paused frame dimmed rather than
+blurred on the right and a pane there about the chosen row (the rewind reel, the save slots, the frame itself). The kit
+drew a big-screen menu one way only: `MenuPanel` centred, with nothing beside it, and `BlurBackdrop` always blurring.
+Material's *supporting pane* and libadwaita's split view put what a list's chosen item is about beside the list on a
+wide screen, where `AdaptiveLayout` (§202) gave the detail a page of its own. Each of the four additions below is an
+optional property whose default leaves every existing consumer as it was, so the kit's surface grows by a minor
+version and nothing that compiled against 0.11.0 changes behaviour.
+
+### 205.2 `MenuPanel.Anchor` and `Pane`
+
+`Anchor` is `Centre` (the default, ES-DE's menu) or `Left`, which puts the panel at the area's left margin; its width is
+still `WidthFraction` of the area capped by `MaxWidthToHeight` of its height, so a host asks for 0.4. Vertically
+nothing changes. `Pane` is a control arranged, by its own alignment, in `PaneBounds`: the room right of the panel,
+inside the 24-design-pixel margins and above the help bar. It is laid out in either anchor, so the centred library
+menu can show a paused frame beside it as the left card shows the save slots. The pane is not scaled by
+`OpeningScale`: the opening grows the menu into place and the pane is what lies behind and beside it.
+
+### 205.3 `TitleIcon`
+
+A small picture at the left of the title's band, such as a game's cover, 64 design pixels high and as wide as its
+aspect gives, held between half and one and a half times its height, then a 16-pixel gap. With an icon the title is
+left-aligned after it, and the room the title shrinks into (§196.9) is the band less the icon, so a host that keeps
+`TitleMaxLines` at 1 and sets a `TitleMinScale` has the name shrunk on one line and never wrapped. `TitleIconBounds`
+is where it was drawn, for a test.
+
+### 205.4 `BlurBackdrop.Blurs`
+
+True by default, as before. False shades the target without blurring it, so a host keeps one backdrop and sets the flag
+for the look it wants: EmuSen's library menu blurs the library behind it, the Pause Card leaves the paused frame sharp
+and dimmed, since the frame is what the player returns to and what a save would capture.
+
+### 205.5 `AdaptiveLayout.DetailPlacement`
+
+`Page` is the default and is §202's: on the big screen the detail is its own page, opened by A on the content.
+`Beside` puts it right of the content on the big screen, always shown, the content taking `ContentShare` of the width
+(0.4 by default, held between 0.2 and 0.8) and the detail the rest after a 16-pixel gap. There is then no page:
+`OpenDetail` returns false and so A on the content is declined, to be the host's *Select*, and the help bar says
+*Select* rather than *Open*. The detail is in the pad's walk between the content and the actions, and B from it returns
+to the content, as on the desktop. The desktop's form ignores the placement and keeps the detail beneath the content.
+
+### 205.6 Tests and seeded faults
+
+`PauseCardLayoutTests`, 12 cases: a left card of eight rows with a cover, a 94-character name and a pane, at
+1280×800, 1920×1200 and 1280×720, at the margin, as wide as asked, every row whole, the pane inside its room and above
+the help bar, and the whole clean under the framed fit audit (§204); the title on one line after the cover, shrunk to
+no less than its floor, and a name that fits shrunk drawn smaller with the cover than without; the centred panel
+unchanged with its pane right of it; a backdrop that does not blur only shading, and blurring once the flag is set;
+the detail beside the content on the big screen at its share, clean under the fit audit at the three sizes; and A
+declined, *Select* in the help bar, the walk reaching the detail and B leaving it, the page placement still the
+default and the desktop unchanged.
+
+Measured on 2026-11-01, each reverted after its run:
+
+| Fault | Caught by |
+|---|---|
+| `Anchor` ignored, the panel centred | the left card's case at all three sizes |
+| the pane's room running under the help bar | the left card's case at all three sizes |
+| the cover not taken from the title's room | the title's case at all three sizes (added after the fault first survived: the 94-character name sits at its floor either way) |
+| `Blurs` ignored | the backdrop's case |
+| the detail placed over the content | the beside case at all three sizes |
+| A on the content still opening a page beside it | **survived**: `Press`' own guard was inert, since `OpenDetail` already refuses beside the content; the guard was removed |

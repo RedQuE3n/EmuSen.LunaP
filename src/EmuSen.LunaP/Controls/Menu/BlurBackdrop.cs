@@ -11,6 +11,7 @@ namespace EmuSen.LunaP.Controls
     {
         public static readonly StyledProperty<Visual?> TargetProperty = AvaloniaProperty.Register<BlurBackdrop, Visual?>(nameof(Target));
         public static readonly StyledProperty<double> RadiusProperty = AvaloniaProperty.Register<BlurBackdrop, double>(nameof(Radius), 16);
+        public static readonly StyledProperty<bool> BlursProperty = AvaloniaProperty.Register<BlurBackdrop, bool>(nameof(Blurs), true);
         public static readonly StyledProperty<Color> ShadeProperty = AvaloniaProperty.Register<BlurBackdrop, Color>(nameof(Shade), Color.FromArgb(0x70, 0, 0, 0));
 
         // The effect this backdrop put on its target, so only that one is ever taken off.
@@ -28,6 +29,9 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>The blur's radius in pixels; 0 or less blurs nothing. 16 by default.</summary>
         public double Radius { get => GetValue(RadiusProperty); set => SetValue(RadiusProperty, value); }
+
+        /// <summary>Whether the target is blurred while shown; false only shades it, as a menu over a paused game leaves the picture sharp and dimmed - see docs/LunaP.md §205.4. True by default.</summary>
+        public bool Blurs { get => GetValue(BlursProperty); set => SetValue(BlursProperty, value); }
 
         /// <summary>A fill drawn over the backdrop's area to darken what is behind it. #70000000, a translucent black, by default.</summary>
         public Color Shade { get => GetValue(ShadeProperty); set => SetValue(ShadeProperty, value); }
@@ -50,13 +54,13 @@ namespace EmuSen.LunaP.Controls
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);
-            if (change.Property == IsVisibleProperty || change.Property == TargetProperty || change.Property == RadiusProperty) Update();
+            if (change.Property == IsVisibleProperty || change.Property == TargetProperty || change.Property == RadiusProperty || change.Property == BlursProperty) Update();
         }
 
         private void Update()
         {
             Lift();
-            if (!IsVisible || TopLevel.GetTopLevel(this) is null || Target is not { } target || Radius <= 0) return;
+            if (!IsVisible || !Blurs || TopLevel.GetTopLevel(this) is null || Target is not { } target || Radius <= 0) return;
             if (target.Effect is not null) return;
             _applied = new BlurEffect { Radius = Radius };
             _blurred = target;
