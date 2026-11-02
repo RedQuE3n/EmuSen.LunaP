@@ -14522,3 +14522,5 @@ cover's scrim at 72 per cent (`CoverScrim`), so the card alone is read; the focu
 surface, since the card is itself raised and a raised fill vanished on it; and `AdaptiveLayout.PaneTitleClass`
 (`pane-title`), the class a tool puts on its pane's title, drawn on the big screen in Barlow Condensed at the Title
 size and strong, so a pane's title is one owner's rather than each tool's bold.
+`ManagerLayout.PlanTitle` gives the plan's question its own words for the marked rows (`Install Snes9x?`), the default
+staying `Apply these changes?`.

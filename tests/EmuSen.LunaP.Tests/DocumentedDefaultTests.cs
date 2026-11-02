@@ -55,6 +55,12 @@ namespace EmuSen.LunaP.Tests
             ("P:EmuSen.LunaP.Windowing.ToolWindow.ClosesOnEscape",
                 "False by default", () => new ToolWindow().ClosesOnEscape),
 
+            ("P:EmuSen.LunaP.Controls.AdaptiveLayout.PadFamily",
+                "lettered rings by default (Xbox's A, B, X and Y)", () => new AdaptiveLayout().PadFamily),
+
+            ("P:EmuSen.LunaP.Controls.AdaptiveLayout.SectionWord",
+                "\"Section\" by default", () => new AdaptiveLayout().SectionWord),
+
             ("P:EmuSen.LunaP.Controls.RgbaImageView.Stretch",
                 "Defaults to Stretch.None", () => new RgbaImageView().Stretch),
             ("P:EmuSen.LunaP.Controls.RgbaImageView.IntegerScale",
@@ -111,6 +117,8 @@ namespace EmuSen.LunaP.Tests
         private static readonly Dictionary<string, object?> CoreValues = new()
         {
             ["P:EmuSen.LunaP.Windowing.ToolWindow.ClosesOnEscape"] = false,
+            ["P:EmuSen.LunaP.Controls.AdaptiveLayout.PadFamily"] = PadFamily.Xbox,
+            ["P:EmuSen.LunaP.Controls.AdaptiveLayout.SectionWord"] = "Section",
             ["P:EmuSen.LunaP.Controls.RgbaImageView.Stretch"] = Stretch.None,
             ["P:EmuSen.LunaP.Controls.RgbaImageView.IntegerScale"] = false,
             ["P:EmuSen.LunaP.Controls.LunaTable`1.SelectionUnit"] = LunaSelectionUnit.Row,
@@ -149,6 +157,12 @@ namespace EmuSen.LunaP.Tests
         // A claim the sweep finds and this file does not check, with the reason it cannot be.
         private static readonly Dictionary<string, string> Exempt = new()
         {
+            ["P:EmuSen.LunaP.Controls.ManagerLayout`1.PlanTitle"] =
+                "a delegate, null by default, whose effect is the plan's question Apply these changes?: ToolFrameTests reads it "
+                + "on the plan's question.",
+            ["P:EmuSen.LunaP.Controls.ManagerLayout`1.PageTitle"] =
+                "a delegate, null by default, whose effect is the row's own text as the page's title: ToolFrameTests sets it and "
+                + "reads the page's title.",
             ["P:EmuSen.LunaP.Controls.ManagerLayout`1.RowKey"] =
                 "a delegate, whose default is only observable by its effect: ManagerLayoutTests' marks follow the row "
                 + "itself where RowKey is left alone, as the PaletteReach and Accessibility builds do.",

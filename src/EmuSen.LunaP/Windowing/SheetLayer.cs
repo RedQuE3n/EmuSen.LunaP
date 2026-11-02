@@ -261,7 +261,7 @@ namespace EmuSen.LunaP.Windowing
         public static bool GetScreen(Window window) => window.GetValue(ScreenProperty);
 
         /// <summary>Sets whether a window is presented as a screen, before it is presented.</summary>
-        /// <param name="window">The window.</param>
+        /// <param name="window">The window to be presented on the layer.</param>
         /// <param name="value">True for a screen.</param>
         public static void SetScreen(Window window, bool value) => window.SetValue(ScreenProperty, value);
 

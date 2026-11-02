@@ -28,7 +28,8 @@ answer.
   `LunaTable.ShowsHeader`, `LunaColumn.Tone`, `AdaptiveLayout.PadFamily` and `SectionWord`, `SheetLayer.IsScreenShown`;
   the frame's big-screen table, strip, pane, help bar and apply bar drawn as the design (`§208.10`).
   `AdaptiveLayout.OpenCover`, `CloseCover`, `IsCoverOpen` and `CoverHints`; `ManagerLayout.StopAction`; the question as a
-  card over the big screen with row answers; one mark on the chosen row; the help band (`§208.11`). `AdaptiveLayout.PaneTitleClass`.
+  card over the big screen with row answers; one mark on the chosen row; the help band (`§208.11`). `AdaptiveLayout.PaneTitleClass`,
+  `ManagerLayout.PlanTitle`.
 - **The focus goes back to the control that opened a sheet (`§90.8`).** When a sheet presented over another closes, the
   sheet beneath gives the focus back to the control that had it, such as the button that asked a question, where it is
   still there; otherwise its first control, as before. No API change.

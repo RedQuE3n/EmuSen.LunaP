@@ -1331,6 +1331,7 @@ public class EmuSen.LunaP.Controls.ManagerLayout<T> : EmuSen.LunaP.Controls.Adap
     public System.Collections.Generic.IReadOnlyList<T> Rows { get; }
     public System.Collections.Generic.IReadOnlyList<T> Shown { get; }
     public System.Func<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.ManagerMarked<T>>, string>? Plan { get; set; }
+    public System.Func<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.ManagerMarked<T>>, string>? PlanTitle { get; set; }
     public System.Func<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.ManagerMarked<T>>, string>? Summarize { get; set; }
     public System.Func<T, EmuSen.LunaP.Commands.LunaAction?>? ActionFor { get; set; }
     public System.Func<T, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Commands.LunaAction>>? PageFor { get; set; }

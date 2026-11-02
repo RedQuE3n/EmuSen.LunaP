@@ -212,6 +212,9 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The Apply summary's text, what will happen, shown before anything runs; by default the summary line.</summary>
         public Func<IReadOnlyList<ManagerMarked<T>>, string>? Plan { get; set; }
 
+        /// <summary>The plan's question, such as "Install Snes9x?" for one marked row; by default "Apply these changes?" (§208.11).</summary>
+        public Func<IReadOnlyList<ManagerMarked<T>>, string>? PlanTitle { get; set; }
+
         /// <summary>Raised when the plan is confirmed, with the marked rows; the tool runs them and reports through SetProgress and Finish.</summary>
         public event Action<IReadOnlyList<ManagerMarked<T>>>? Applying;
 
@@ -323,7 +326,7 @@ namespace EmuSen.LunaP.Controls
             if (marked.Count == 0 || _running || IsPlanOpen) return false;
             _yes = "Apply";
             _no = "Cancel";
-            OpenSheet("Apply these changes?", (Plan ?? Summarize ?? DefaultSummary)(marked), options: true);
+            OpenSheet(PlanTitle?.Invoke(marked) ?? "Apply these changes?", (Plan ?? Summarize ?? DefaultSummary)(marked), options: true);
             return true;
         }
 
