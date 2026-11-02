@@ -14586,7 +14586,7 @@ it unless the hints give B a key.
 
 The hero's picture fills its box, cut at its edges and never stretched, under the hero's scrim, drawn from two colour tokens:
 clear at the top, the OnArt scrim (black at 72 per cent) by 35 per cent of the height, and
-`LunaHeroFootColor` (black at 94 per cent, the same in both variants, as OnArt is) at the foot. The title band lies in
+Void (black, the same in both variants, as OnArt is) at the foot, so no colour is added to the palette. The title band lies in
 the lower half, so the title and the facts sit on 80 per cent black or more whatever the art: over white art, measured
 2026-11-02, the title reads at 12:1 or better and the facts at 70 per cent at 7:1 or better on both forms, where the
 OnArt gradient alone left them at 2.7 to 3.5:1 (`The_title_band_sits_on_the_hero_scrim_whatever_art_is_behind_it`,

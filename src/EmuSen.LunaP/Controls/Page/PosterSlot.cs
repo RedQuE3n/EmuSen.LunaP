@@ -42,10 +42,10 @@ namespace EmuSen.LunaP.Controls
         /// <summary>Where down the hero the scrim reaches the OnArt scrim's darkness, as a share of its height; below it the scrim deepens to the hero's foot.</summary>
         public const double ScrimFull = 0.35;
 
-        /// <summary>The palette's colour keys the scrim is drawn from: the OnArt scrim and the hero's foot.</summary>
-        public const string ScrimColourKey = "LunaOnArtScrimColor", FootColourKey = "LunaHeroFootColor";
+        /// <summary>The palette's colour keys the scrim is drawn from: the OnArt scrim, and Void at the hero's foot.</summary>
+        public const string ScrimColourKey = "LunaOnArtScrimColor", FootColourKey = "LunaVoidColor";
 
-        /// <summary>The brush drawn over the picture: clear at the top, the OnArt scrim at ScrimFull, the hero's foot at the bottom, in the palette's colours (black at 72 and 94 per cent where none is in reach).</summary>
+        /// <summary>The brush drawn over the picture: clear at the top, the OnArt scrim at ScrimFull, the hero's foot at the bottom, in the palette's colours (black at 72 per cent and black where none is in reach).</summary>
         public IBrush ScrimBrush => new LinearGradientBrush
         {
             StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
@@ -54,7 +54,7 @@ namespace EmuSen.LunaP.Controls
             {
                 new GradientStop(Color.FromArgb(0, 0, 0, 0), 0),
                 new GradientStop(Colour(ScrimColourKey, Color.FromArgb(0xB8, 0, 0, 0)), ScrimFull),
-                new GradientStop(Colour(FootColourKey, Color.FromArgb(0xF0, 0, 0, 0)), 1),
+                new GradientStop(Colour(FootColourKey, Colors.Black), 1),
             },
         };
 

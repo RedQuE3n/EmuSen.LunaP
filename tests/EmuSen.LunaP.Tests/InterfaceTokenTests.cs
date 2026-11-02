@@ -36,7 +36,6 @@ namespace EmuSen.LunaP.Tests
             { "LunaErrorColor", "#D37070", "#B3261E" },
             { "LunaOnArtColor", "#FFFFFF", "#FFFFFF" },
             { "LunaOnArtScrimColor", "#B8000000", "#B8000000" },
-            { "LunaHeroFootColor", "#F0000000", "#F0000000" },
             { "LunaRuleColor", "#333337", "#D6D6D6" },
         };
 
