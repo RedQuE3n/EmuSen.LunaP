@@ -25,6 +25,8 @@ answer.
   Select keeps it, and the card then opens only through `OpenListTools`; `SetToolActions` now declares `More` among the actions.
   `SetActions` and `SetToolActions` take the actions the big screen draws as buttons, the rest being the desktop
   toolbar's there. `FitAudit` passes over what a sheet layer marks covered.
+  The layout's child is the `AdaptiveLayers` panel, the arranged form with the List card or a cover above it when open, so every
+  form's tree reads one level deeper (`§208.12`).
   `LunaTable.ShowsHeader`, `LunaColumn.Tone`, `AdaptiveLayout.PadFamily` and `SectionWord`, `SheetLayer.IsScreenShown`;
   the frame's big-screen table, strip, pane, help bar and apply bar drawn as the design (`§208.10`).
   `AdaptiveLayout.OpenCover`, `CloseCover`, `IsCoverOpen` and `CoverHints`; `ManagerLayout.StopAction`; the question as a
