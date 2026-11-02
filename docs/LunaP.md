@@ -14703,7 +14703,7 @@ before `Scale` (the height over 800):
 | rows | 64, 156, the panel's width less 88; as many whole rows as fit above the help bar |
 | footer | under the rows, left-aligned, in Barlow |
 | pane room | from the panel's right plus 64 to the width less 64, from 156 to 16 above the help bar |
-| help bar | a band 58 high whose foot is 40 above the screen's, the full width, on the panel colour with the Border token's line along its top; its entries from 64, Barlow 20 in their own case, 40 apart, each glyph 1.5 times the words' size (`HintBar.IconScale`, appended, 1 by default) |
+| help bar | a band from 98 above the screen's foot down to it (58 for the bar and the 40 of the safe area under it, filled so the bar does not float; decided 2026-11-02 by the tester), the entries centred in it, the full width, on the panel colour with the Border token's line along its top; its entries from 64, Barlow 20 in their own case, 40 apart, each glyph 1.5 times the words' size (`HintBar.IconScale`, appended, 1 by default) |
 | shadow | the one shadow of the design, on the panel's open edge: the Void token at 50 per cent, 8 to the right, blurred 24 |
 
 `Left` and `Centre` are unchanged.
