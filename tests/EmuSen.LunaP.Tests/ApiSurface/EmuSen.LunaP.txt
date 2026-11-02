@@ -2057,10 +2057,14 @@ public class EmuSen.LunaP.Controls.PathPickerRow : Avalonia.Controls.Primitives.
 
 public class EmuSen.LunaP.Controls.PosterSlot : Avalonia.Controls.Control
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    public Avalonia.Media.IBrush ScrimBrush { get; }
     public Avalonia.Media.IImage? Poster { get; set; }
     public PosterSlot()
     public bool PlaysClip { get; }
     public bool Scrim { get; set; }
+    public const double ScrimFull = 0.35
+    public const string FootColourKey = "LunaHeroFootColor"
+    public const string ScrimColourKey = "LunaOnArtScrimColor"
     public object? Video { get; set; }
     public override void Render(Avalonia.Media.DrawingContext context)
     public static System.TimeSpan PosterDelay { get; }

@@ -27,6 +27,7 @@
     <Color x:Key="LunaOnAccentColor">#0E0E10</Color>
     <Color x:Key="LunaOnArtColor">#FFFFFF</Color>
     <Color x:Key="LunaOnArtScrimColor">#B8000000</Color>
+    <Color x:Key="LunaHeroFootColor">#F0000000</Color>
 
     <Color x:Key="LunaErrorColor">#D37070</Color>
     <Color x:Key="LunaSuccessColor">#35A064</Color>

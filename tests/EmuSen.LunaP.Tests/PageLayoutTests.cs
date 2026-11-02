@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.VisualTree;
@@ -213,6 +214,51 @@ namespace EmuSen.LunaP.Tests
             Assert.False(page.Poster.IsHitTestVisible);
             window.Close();
         });
+
+        // White art, the brightest there is: under the hero's scrim the title band behind the title and the facts is dark enough for both, at every size and on both forms.
+        [Theory]
+        [InlineData(1280, 800, AdaptiveForm.BigScreen)]
+        [InlineData(1920, 1080, AdaptiveForm.BigScreen)]
+        [InlineData(1280, 800, AdaptiveForm.Desktop)]
+        public Task The_title_band_sits_on_the_hero_scrim_whatever_art_is_behind_it(int width, int height, AdaptiveForm form) => UiTest.Run(() =>
+        {
+            var (window, page, _) = Page(width, height, "rows", form);
+            var white = Picture(64, 64);
+            using (var locked = white.Lock())
+                System.Runtime.InteropServices.Marshal.Copy(Enumerable.Repeat((byte)255, 64 * 64 * 4).ToArray(), 0, locked.Address, 64 * 64 * 4);
+            page.Hero = page.Hero! with { Art = white };
+            UiTest.Settle(page);
+            var stops = ((LinearGradientBrush)page.Poster.ScrimBrush).GradientStops;
+            Assert.True(page.Poster.TryFindResource(PosterSlot.FootColourKey, page.Poster.ActualThemeVariant, out object? footColour) && Equals(footColour, stops[^1].Color), "the foot is the palette's token");
+            Assert.True(page.Poster.TryFindResource(PosterSlot.ScrimColourKey, page.Poster.ActualThemeVariant, out object? scrim) && Equals(scrim, stops[1].Color), "the band's start is the OnArt scrim's token");
+            RenderedFrame frame = UiTest.Capture(window);
+            Control title = page.GetVisualDescendants().OfType<Control>().First(c => c.Name == "PageTitle");
+            Control facts = page.GetVisualDescendants().OfType<Control>().First(c => c.Name == "PageFacts");
+            double right = width - 8;
+            foreach (Control words in new[] { title, facts })
+            {
+                Point top = words.TranslatePoint(default, window)!.Value, foot = words.TranslatePoint(new Point(0, words.Bounds.Height), window)!.Value;
+                foreach (double y in new[] { top.Y + 2, (top.Y + foot.Y) / 2, foot.Y - 2 })
+                {
+                    int at = ((int)y * frame.Width + (int)right) * 4;
+                    Color under = Color.FromRgb(frame.Rgba[at], frame.Rgba[at + 1], frame.Rgba[at + 2]);
+                    double opacity = words == facts ? words.Opacity : 1;
+                    byte ink = (byte)Math.Round(255 * opacity + under.R * (1 - opacity));
+                    double ratio = Contrast(Color.FromRgb(ink, ink, ink), under);
+                    output.WriteLine($"{form} {width}x{height} {words.Name} at y {y:F0}: {under} {ratio:F2}:1");
+                    Assert.True(ratio >= 4.5, $"{words.Name} at y {y:F0} is {ratio:F2}:1 over {under}");
+                }
+            }
+            window.Close();
+        });
+
+        private static double Contrast(Color a, Color b)
+        {
+            static double L(byte v) { double c = v / 255.0; return c <= 0.03928 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4); }
+            static double Lum(Color c) => 0.2126 * L(c.R) + 0.7152 * L(c.G) + 0.0722 * L(c.B);
+            double la = Lum(a), lb = Lum(b);
+            return (Math.Max(la, lb) + 0.05) / (Math.Min(la, lb) + 0.05);
+        }
 
         private sealed class RectComparer(double slack) : IEqualityComparer<Rect>
         {

@@ -30,7 +30,7 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The clip the poster turns into, kept for the video surface that will play it; nothing plays it yet, so the poster stays.</summary>
         public object? Video { get => GetValue(VideoProperty); set => SetValue(VideoProperty, value); }
 
-        /// <summary>Whether the OnArt gradient, black from nothing at the top to 72 per cent at the foot, is drawn over the picture so words over it read. True by default.</summary>
+        /// <summary>Whether the hero's scrim, clear at the top, the OnArt scrim by a third of the height and near black at the foot, is drawn over the picture so words low in it read. True by default.</summary>
         public bool Scrim { get => GetValue(ScrimProperty); set => SetValue(ScrimProperty, value); }
 
         /// <summary>Whether a clip is playing in place of the poster: false until a video surface exists, and always false under reduced motion.</summary>
@@ -39,8 +39,26 @@ namespace EmuSen.LunaP.Controls
         /// <summary>How long the poster shows before a clip would cross-fade in, the Poster motion token.</summary>
         public static TimeSpan PosterDelay => LunaMotion.Nominal(LunaMotionToken.Poster);
 
-        // The OnArt scrim's foot, black at 72 per cent, where the palette gives none.
-        private static readonly Color ScrimFoot = Color.FromArgb(0xB8, 0, 0, 0);
+        /// <summary>Where down the hero the scrim reaches the OnArt scrim's darkness, as a share of its height; below it the scrim deepens to the hero's foot.</summary>
+        public const double ScrimFull = 0.35;
+
+        /// <summary>The palette's colour keys the scrim is drawn from: the OnArt scrim and the hero's foot.</summary>
+        public const string ScrimColourKey = "LunaOnArtScrimColor", FootColourKey = "LunaHeroFootColor";
+
+        /// <summary>The brush drawn over the picture: clear at the top, the OnArt scrim at ScrimFull, the hero's foot at the bottom, in the palette's colours (black at 72 and 94 per cent where none is in reach).</summary>
+        public IBrush ScrimBrush => new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(Color.FromArgb(0, 0, 0, 0), 0),
+                new GradientStop(Colour(ScrimColourKey, Color.FromArgb(0xB8, 0, 0, 0)), ScrimFull),
+                new GradientStop(Colour(FootColourKey, Color.FromArgb(0xF0, 0, 0, 0)), 1),
+            },
+        };
+
+        private Color Colour(string key, Color fallback) => this.TryFindResource(key, ActualThemeVariant, out object? found) && found is Color c ? c : fallback;
 
         /// <inheritdoc/>
         public override void Render(DrawingContext context)
@@ -57,14 +75,7 @@ namespace EmuSen.LunaP.Controls
                 using (context.PushClip(box)) context.DrawImage(picture, source, box);
             }
             if (!Scrim) return;
-            Color foot = this.TryFindResource("LunaOnArtScrimColor", ActualThemeVariant, out object? f) && f is Color g ? g : ScrimFoot;
-            var gradient = new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
-                GradientStops = { new GradientStop(Color.FromArgb(0, 0, 0, 0), 0), new GradientStop(foot, 1) },
-            };
-            context.FillRectangle(gradient, box);
+            context.FillRectangle(ScrimBrush, box);
         }
 
         /// <inheritdoc/>

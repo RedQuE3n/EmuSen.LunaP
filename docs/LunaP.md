@@ -14584,8 +14584,14 @@ it unless the hints give B a key.
 
 ### 209.3 `PosterSlot`
 
-The hero's picture fills its box, cut at its edges and never stretched, under the OnArt gradient (black from nothing to
-72 per cent). `Video` holds the clip a video surface will play; until one exists `PlaysClip` is false and the poster
+The hero's picture fills its box, cut at its edges and never stretched, under the hero's scrim, drawn from two colour tokens:
+clear at the top, the OnArt scrim (black at 72 per cent) by 35 per cent of the height, and
+`LunaHeroFootColor` (black at 94 per cent, the same in both variants, as OnArt is) at the foot. The title band lies in
+the lower half, so the title and the facts sit on 80 per cent black or more whatever the art: over white art, measured
+2026-11-02, the title reads at 12:1 or better and the facts at 70 per cent at 7:1 or better on both forms, where the
+OnArt gradient alone left them at 2.7 to 3.5:1 (`The_title_band_sits_on_the_hero_scrim_whatever_art_is_behind_it`,
+which samples the rendered band beside the words and holds both to 4.5:1). `ScrimBrush` is the gradient in the palette's
+colours, built each draw from the tokens rather than kept as a shared brush, so a palette change reaches it. `Video` holds the clip a video surface will play; until one exists `PlaysClip` is false and the poster
 stays. `PosterDelay` is the new `Poster` motion token, 1.5 s, after which a clip would cross-fade in over Enter. It takes
 no pointer, so it is never counted as something drawn under the words on it.
 
@@ -14620,3 +14626,4 @@ reverted after its run:
 |---|---|
 | Up from the first row stays in the rows | the pad walk's case (the focus not back on the actions) |
 | The shoulders step the sections on a deeper page | the deeper page's case (the shoulders not declined) |
+| The hero drawn under the OnArt gradient alone | the title band's case at all three sizes (2.7 to 3.5:1 over white art) |
