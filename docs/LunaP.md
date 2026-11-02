@@ -14498,3 +14498,9 @@ action buttons and its summary line adrift above them. Each is now the frame's:
   tool's status column at its own width at the right (`Width = "Auto"`, `Alignment = Right`).
 - **`ManagerLayout.StopAction`**: the action that stops the running work, drawn in the apply bar beside the meter while
   the progress line shows and hidden at `Finish`, so a tool gives the big screen no button for it.
+
+Accepted by the consumer's tester on the third pictures (2026-11-01), with three small changes made alongside: the
+cover's scrim at 72 per cent (`CoverScrim`), so the card alone is read; the focused answer filled with the base
+surface, since the card is itself raised and a raised fill vanished on it; and `AdaptiveLayout.PaneTitleClass`
+(`pane-title`), the class a tool puts on its pane's title, drawn on the big screen in Barlow Condensed at the Title
+size and strong, so a pane's title is one owner's rather than each tool's bold.

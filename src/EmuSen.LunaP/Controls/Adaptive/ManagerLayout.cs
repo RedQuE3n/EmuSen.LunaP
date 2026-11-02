@@ -491,7 +491,8 @@ namespace EmuSen.LunaP.Controls
             {
                 Setters =
                 {
-                    new Setter(Avalonia.Controls.Presenters.ContentPresenter.BackgroundProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaSurfaceRaised")),
+                    // The card is itself raised, so the focused answer's fill is the base surface, as the design's card draws it.
+                    new Setter(Avalonia.Controls.Presenters.ContentPresenter.BackgroundProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaSurface")),
                     new Setter(Avalonia.Controls.Presenters.ContentPresenter.BorderBrushProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaAccent")),
                     new Setter(Avalonia.Controls.Presenters.ContentPresenter.ForegroundProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaTextStrong")),
                 },

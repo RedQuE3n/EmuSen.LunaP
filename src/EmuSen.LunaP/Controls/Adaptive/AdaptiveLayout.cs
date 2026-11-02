@@ -140,6 +140,22 @@ namespace EmuSen.LunaP.Controls
         private readonly Border _cardPane = new() { Name = "AdaptiveCardPane" };
         private readonly Panel _cardScrim = new() { Name = "AdaptiveCardScrim" };
         private static readonly IBrush DefaultScrim = new ImmutableSolidColorBrush(Color.FromArgb(0x8C, 0, 0, 0));
+        // A question's cover dims the screen beneath to the OnArt scrim's depth, 72 per cent, so the card alone is read (§208.11).
+        private static readonly IBrush CoverScrim = new ImmutableSolidColorBrush(Color.FromArgb(0xB8, 0, 0, 0));
+
+        /// <summary>The class a tool puts on its pane's title, drawn by the frame in Barlow Condensed at the Title size on the big screen (§208.11).</summary>
+        public const string PaneTitleClass = "pane-title";
+
+        private readonly Style _paneTitle = new(x => x.OfType<TextBlock>().Class(PaneTitleClass))
+        {
+            Setters =
+            {
+                new Setter(TextBlock.FontFamilyProperty, Media.LunaFonts.Condensed),
+                new Setter(TextBlock.FontSizeProperty, LunaTokens.BigScreenType.Title),
+                new Setter(TextBlock.FontWeightProperty, FontWeight.Normal),
+                new Setter(TextBlock.ForegroundProperty, new DynamicResourceExtension("LunaTextStrong")),
+            },
+        };
 
         /// <summary>The panel's share of the width in the Card form, 40 per cent.</summary>
         public const double CardShare = 0.4;
@@ -525,6 +541,7 @@ namespace EmuSen.LunaP.Controls
             if (Form != AdaptiveForm.BigScreen) return false;
             CloseListTools();
             _coverScrim.Children.Clear();
+            _coverScrim.Background = CoverScrim;
             card.HorizontalAlignment = HorizontalAlignment.Center;
             card.VerticalAlignment = VerticalAlignment.Center;
             _coverScrim.Children.Add(Detach(card));
@@ -1022,6 +1039,7 @@ namespace EmuSen.LunaP.Controls
             _search.ClearValue(TextBox.FontSizeProperty);
             _detailHost.ClearValue(TextElement.FontFamilyProperty);
             _detailHost.ClearValue(TextElement.FontSizeProperty);
+            _detailHost.Styles.Remove(_paneTitle);
             _detailHost.IsVisible = _detail is not null;
             _contentHost.IsVisible = true;
             _detailHost.Margin = default;
@@ -1121,9 +1139,10 @@ namespace EmuSen.LunaP.Controls
             _hintBar.Margin = default;
             _search.FontFamily = Media.LunaFonts.Body;
             _search.FontSize = LunaTokens.BigScreenType.Caption;
-            // The pane's words in Barlow at the big screen's Body size, whatever the tool put in it (§208.10).
+            // The pane's words in Barlow at the big screen's Body size, whatever the tool put in it, and its title in the Condensed face (§208.10, §208.11).
             TextElement.SetFontFamily(_detailHost, Media.LunaFonts.Body);
             TextElement.SetFontSize(_detailHost, LunaTokens.BigScreenType.Body);
+            if (!_detailHost.Styles.Contains(_paneTitle)) _detailHost.Styles.Add(_paneTitle);
             for (int i = 0; i < rows.Length; i++)
             {
                 Detach(rows[i]);

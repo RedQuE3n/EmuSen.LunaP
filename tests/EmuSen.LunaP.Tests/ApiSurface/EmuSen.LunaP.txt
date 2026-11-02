@@ -154,6 +154,7 @@ public class EmuSen.LunaP.Controls.AdaptiveLayout : Avalonia.Controls.Border
     public bool SwapsAcceptAndBack { get; set; }
     public const double CardShare = 0.4
     public const string MainClass = "adaptive-main"
+    public const string PaneTitleClass = "pane-title"
     public double ContentShare { get; set; }
     public event System.Action<string> FilterChosen
     public event System.Action<string> SearchChanged
