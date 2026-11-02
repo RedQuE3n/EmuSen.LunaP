@@ -1,5 +1,7 @@
 using System;
 using Avalonia;
+using Avalonia.Media;
+using EmuSen.LunaP.Media;
 using EmuSen.LunaP.Platform;
 
 namespace EmuSen.LunaP
@@ -51,6 +53,13 @@ namespace EmuSen.LunaP
         public static AppBuilder EmbedPopups(this AppBuilder builder, bool embed = true) =>
             embed && OperatingSystem.IsLinux() ? builder.With(new X11PlatformOptions { OverlayPopups = true }) : builder;
 
+        // The kit's fonts in one call for every app of the kit, headless ones included, so no recording depends on the machine's fonts - see docs/LunaP.md §208.13.
+        /// <summary>Installs the kit's fonts: Inter as Avalonia bundles it, and the fallback that gives a symbol glyph the same bundled face on every machine.</summary>
+        /// <param name="builder">The builder being configured.</param>
+        /// <returns>The same builder.</returns>
+        public static AppBuilder WithLunaFonts(this AppBuilder builder) =>
+            builder.WithInterFont().With(new FontManagerOptions { FontFallbacks = LunaFonts.Fallbacks });
+
         private static AppBuilder Finish(AppBuilder builder, IWindowingBackend? windowing)
         {
             // AfterSetup, because the saved theme merges into Application.Current.Resources and needs the instance to exist.
@@ -61,7 +70,7 @@ namespace EmuSen.LunaP
             // remember them would eventually not.
             if (windowing is not null)
             {
-                builder = builder.UseSkia().UseHarfBuzz().WithInterFont().LogToTrace()
+                builder = builder.UseSkia().UseHarfBuzz().WithLunaFonts().LogToTrace()
                     .AfterSetup(_ =>
                     {
                         Theme.LunaTheme.ApplyVariant();
@@ -71,7 +80,7 @@ namespace EmuSen.LunaP
                 return windowing.Install(builder);
             }
 
-            builder = builder.UsePlatformDetect().WithInterFont().LogToTrace()
+            builder = builder.UsePlatformDetect().WithLunaFonts().LogToTrace()
                 .AfterSetup(_ =>
                 {
                     // Before the saved theme, so a theme that overrides palette keys lands on top

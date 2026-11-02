@@ -7,6 +7,7 @@ public static class EmuSen.LunaP.LunaApp
     public static Avalonia.AppBuilder Configure<TApp>(System.Func<TApp> factory) where TApp : Avalonia.Application
     public static Avalonia.AppBuilder Configure<TApp>(System.Func<TApp> factory, EmuSen.LunaP.Platform.IWindowingBackend windowing) where TApp : Avalonia.Application
     public static Avalonia.AppBuilder EmbedPopups(this Avalonia.AppBuilder builder, bool embed = true)
+    public static Avalonia.AppBuilder WithLunaFonts(this Avalonia.AppBuilder builder)
 
 public class EmuSen.LunaP.Automation.LunaAutomationPeer : Avalonia.Automation.Peers.ControlAutomationPeer
     protected override Avalonia.Automation.Peers.AutomationControlType GetAutomationControlTypeCore()
@@ -2571,13 +2572,16 @@ public enum EmuSen.LunaP.Media.LetterCase
 
 public static class EmuSen.LunaP.Media.LunaFonts
     public const string Folder = "LunaP/Fonts"
+    public static System.Collections.Generic.IReadOnlyList<Avalonia.Media.FontFallback> Fallbacks { get; }
     public static readonly Avalonia.Media.FontFamily Body
     public static readonly Avalonia.Media.FontFamily Condensed
+    public static readonly Avalonia.Media.FontFamily Symbols
     public static string BodyFile { get; }
     public static string BodyMediumFile { get; }
     public static string CondensedFile { get; }
     public static string CondensedMediumFile { get; }
     public static string LicenceFile { get; }
+    public static string SymbolsLicenceFile { get; }
 
 public enum EmuSen.LunaP.Media.LunaSoundCue
     public const EmuSen.LunaP.Media.LunaSoundCue Back = 3

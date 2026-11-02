@@ -150,6 +150,7 @@ namespace EmuSen.LunaP.Testing
                 // a real render pass and a colour count means something - see §10.
                 .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
                 .UseSkia()
+                .WithLunaFonts()
                 .AfterSetup(b =>
                 {
                     b.Instance!.Styles.Add(new StyleInclude(null as Uri)

@@ -159,11 +159,11 @@
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
-  <!-- Barlow and Barlow Condensed under the SIL Open Font License 1.1, with its text: a resource for the typefaces, and
-       copied beside the application for text drawn from a file (docs/LunaP.md §206.3). -->
+  <!-- Barlow and Barlow Condensed, and Adwaita Mono for the symbol glyphs they lack, under the SIL Open Font License 1.1 with
+       its texts: a resource for the typefaces, and copied beside the application for text drawn from a file (docs/LunaP.md §206.3, §208.13). -->
   <ItemGroup>
     <AvaloniaResource Include="Assets\Fonts\**\*.ttf" />
-    <None Include="Assets\Fonts\**\*.ttf;Assets\Fonts\OFL.txt" Link="LunaP\Fonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Assets\Fonts\**\*.ttf;Assets\Fonts\OFL.txt;Assets\Fonts\AdwaitaMono-OFL-1.1.txt" Link="LunaP\Fonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
