@@ -14372,7 +14372,7 @@ explicitly, since the card has its own class.
 
 ### 208.1 The gap
 
-EmuSen's Cores window as built (its `EmuSen_Interface.md` §14.1, measured 2026-11-01) showed what the frame of §202 and
+EmuSen's Cores window as built (its `EmuSen_Interface.md` §15.1, measured 2026-11-01) showed what the frame of §202 and
 §203 lacked once a tool is a destination on a big screen. The tool was drawn inside the sheet layer's centred menu
 frame, 812 × 668 of 1280 × 800, with the layer's title and hint bar beside the layout's own header and help bar; its
 state filters were sections, so a strip of twenty-three; every action was a button, so a wall of nine; the detail was
