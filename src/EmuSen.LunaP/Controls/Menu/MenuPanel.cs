@@ -32,6 +32,8 @@ namespace EmuSen.LunaP.Controls
         Centre,
         /// <summary>At the area's left edge, leaving the room on its right to the pane, as a card over a paused game.</summary>
         Left,
+        /// <summary>The full height of the area at its left edge, the design's card: the title row, rows and pane inside the safe area and the help bar a band across the foot - see docs/LunaP.md §210.</summary>
+        Edge,
     }
 
     // A big-screen menu's panel: wide, centred, rounded, a large upper-case title, the rows, a footer line, and the help bar at the foot of the screen - see docs/LunaP.md §181.2.
@@ -89,6 +91,12 @@ namespace EmuSen.LunaP.Controls
 
         // The scroll indicator's design sizes: each chevron pair's square, the gap between the two pairs, and the inset from the panel's right edge (§195.2).
         private const double IndicatorSide = 25, IndicatorGap = 7, IndicatorInset = 11;
+
+        // The edge card's design sizes (§210): the safe area at the sides, top and foot, the help bar's band, the gap above the rows and the pane, the room right of the rows, the cover's height and the help bar's text.
+        private const double SafeSide = 64, SafeTop = 40, SafeFoot = 40, HelpBand = 58, RowsGap = 16, RowsRight = 24, EdgeIconHeight = 44, EdgeHintText = 20;
+
+        // With a breadcrumb over an edge card's title: the breadcrumb's centre, the title's centre below it, the breadcrumb's size and its lines' pitch.
+        private const double CrumbCentre = 31, CrumbedTitleCentre = 65, CrumbSize = 20, CrumbPitch = 26;
 
         private readonly HintBar _hints = new() { LetterCase = LetterCase.Upper };
         private ScrollViewer? _watched;
@@ -326,8 +334,8 @@ namespace EmuSen.LunaP.Controls
             get
             {
                 if (IconSpace() is not > 0 || TitleBounds.Height <= 0) return default;
-                double u = Unit, h = IconHeight * u;
-                return new Rect(TitleBounds.X + 24 * u, TitleCentre() - h / 2, IconSpace() - IconGap * u, h);
+                double u = Unit, h = IconHigh * u;
+                return new Rect(TitleBounds.X + (IsEdge ? 0 : 24 * u), TitleCentre() - h / 2, IconSpace() - IconGap * u, h);
             }
         }
 
@@ -335,7 +343,7 @@ namespace EmuSen.LunaP.Controls
         private double IconSpace()
         {
             if (TitleIcon is not { } icon || icon.Size.Height <= 0) return 0;
-            double u = Unit, h = IconHeight * u;
+            double u = Unit, h = IconHigh * u;
             return h * Math.Clamp(icon.Size.Width / icon.Size.Height, IconNarrowest, IconWidest) + IconGap * u;
         }
 
@@ -351,6 +359,13 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The help bar, which a host may read but should configure through Hints and the colours.</summary>
         public HintBar HelpBar => _hints;
 
+        private bool IsEdge => Anchor == MenuAnchor.Edge;
+
+        private double IconHigh => IsEdge ? EdgeIconHeight : IconHeight;
+
+        // The edge card's help bar band, from the foot's safe area up, in this control's coordinates.
+        private Rect HelpBandBounds(Size area) => new(0, area.Height - (SafeFoot + HelpBand) * Unit, area.Width, HelpBand * Unit);
+
         private double Unit => double.IsFinite(GetValue(ScaleProperty)) && GetValue(ScaleProperty) > 0 ? GetValue(ScaleProperty) : 1;
 
         private double BottomBand => FooterMaxLines > 1 ? (FooterMaxLines * FooterSize * 1.25 + 2 * FooterPad) * Unit : (Footer is { Length: > 0 } ? FooterBand : BareFooter) * Unit;
@@ -363,6 +378,7 @@ namespace EmuSen.LunaP.Controls
         private double TopBandAt(double panelWidth)
         {
             if (!ShowsTitleBand && Title is not { Length: > 0 }) return 0;
+            if (IsEdge) return (TitleBand + CrumbPitch * Math.Max(0, SubtitleLines.Length - 1)) * Unit;
             if (SubtitleLines.Length is var n && n > 0) return (FirstSubtitleCentre + SubtitlePitch * (n - 1) + UnderSubtitle) * Unit;
             double extra = Title is { Length: > 0 } t && TitleLayout(t, panelWidth).Lines is { Lines.Count: > 1 } l ? (l.Lines.Count - 1) * l.LineHeight : 0;
             return TitleBand * Unit + extra;
@@ -416,6 +432,21 @@ namespace EmuSen.LunaP.Controls
             _hints.Padding = new Thickness(14 * u, 8 * u);
             _hints.EntrySpacing = 18 * u;
             _hints.IconTextSpacing = 6 * u;
+            _hints.IconScale = 1;
+            _hints.LetterCase = LetterCase.Upper;
+            if (IsEdge)
+            {
+                // On the edge card the band is the bar's background, and its words are Barlow in their own case (§210).
+                _hints.FontPath = LunaFonts.BodyFile;
+                _hints.FontSize = EdgeHintText * u;
+                _hints.BackgroundColor = Colors.Transparent;
+                _hints.BackgroundCornerRadius = 0;
+                _hints.Padding = default;
+                _hints.EntrySpacing = 40 * u;
+                _hints.IconTextSpacing = 10 * u;
+                _hints.IconScale = 1.5;
+                _hints.LetterCase = LetterCase.None;
+            }
         }
 
         // The rows' scroller, redrawn as it scrolls or its rows change, so the indicator follows it.
@@ -437,7 +468,8 @@ namespace EmuSen.LunaP.Controls
             child as ScrollViewer ?? child?.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
 
         // The title's capitals' centre: the band's middle, or with a subtitle the title's own line.
-        private double TitleCentre() => SubtitleLines.Length > 0 ? TitleBounds.Top + SubtitledTitleCentre * Unit : TitleBounds.Center.Y;
+        private double TitleCentre() => IsEdge ? (SubtitleLines.Length > 0 ? TitleBounds.Top + (CrumbedTitleCentre + CrumbPitch * (SubtitleLines.Length - 1)) * Unit : TitleBounds.Center.Y)
+            : SubtitleLines.Length > 0 ? TitleBounds.Top + SubtitledTitleCentre * Unit : TitleBounds.Center.Y;
 
         // Two chevrons one above the other in a square, pointing up or down, as the reference's indicator is drawn (§195.2).
         private static void DrawChevrons(DrawingContext context, Rect box, bool down, IPen pen)
@@ -463,7 +495,8 @@ namespace EmuSen.LunaP.Controls
         {
             double u = Unit;
             double width = Math.Max(0, Math.Min(Math.Min(area.Width * WidthFraction, area.Height * MaxWidthToHeight), area.Width - 2 * Edge * u));
-            double rowsMax = Math.Max(0, area.Height - hintHeight - 2 * Edge * u - TopBandAt(width) - ButtonsBand - BottomBand);
+            double rowsMax = IsEdge ? Math.Max(0, area.Height - (SafeTop + RowsGap + RowsGap + HelpBand + SafeFoot) * u - TopBandAt(width) - ButtonsBand - (Footer is { Length: > 0 } ? BottomBand : 0))
+                : Math.Max(0, area.Height - hintHeight - 2 * Edge * u - TopBandAt(width) - ButtonsBand - BottomBand);
             // Rows that do not all fit scroll, and the last one shown is never cut through.
             double pitch = RowPitch * u;
             if (pitch > 0 && rowsMax >= pitch) rowsMax = Math.Floor((rowsMax + 0.01) / pitch) * pitch;
@@ -478,7 +511,7 @@ namespace EmuSen.LunaP.Controls
             Size area = new(double.IsFinite(availableSize.Width) ? availableSize.Width : 1280 * Unit, double.IsFinite(availableSize.Height) ? availableSize.Height : 800 * Unit);
             Buttons?.Measure(new Size(double.IsFinite(area.Width) ? area.Width : double.PositiveInfinity, double.PositiveInfinity));
             (double width, double rowsMax) = Frame(area, hintHeight);
-            Child?.Measure(new Size(width, rowsMax));
+            Child?.Measure(new Size(IsEdge ? RowsWidth(width) : width, rowsMax));
             Pane?.Measure(PaneRoom(area, width, hintHeight).Size);
             return area;
         }
@@ -489,6 +522,7 @@ namespace EmuSen.LunaP.Controls
             double hintHeight = _hints.IsVisible ? _hints.DesiredSize.Height + HintGap * u : 0;
             (double width, double rowsMax) = Frame(finalSize, hintHeight);
             double rows = Math.Min(Child?.DesiredSize.Height ?? 0, rowsMax);
+            if (IsEdge) return ArrangeEdge(finalSize, width, rows);
             double buttons = ButtonsBand, band = TopBandAt(width);
             double height = band + rows + buttons + BottomBand;
             double top = Math.Clamp((finalSize.Height - height) / 2, Edge * u, Math.Max(Edge * u, finalSize.Height - hintHeight - Edge * u - height));
@@ -514,13 +548,48 @@ namespace EmuSen.LunaP.Controls
             return finalSize;
         }
 
+        // The edge card: the panel the area's full height at its left, the title row and rows inside the safe area, the pane beside them, the help bar in its band (§210).
+        private Size ArrangeEdge(Size area, double width, double rows)
+        {
+            double u = Unit, band = TopBandAt(width), x = SafeSide * u, top = SafeTop * u;
+            PanelBounds = new Rect(0, 0, width, area.Height);
+            TitleBounds = new Rect(x, top, RowsWidth(width), band);
+            double rowsTop = top + band + RowsGap * u;
+            Child?.Arrange(new Rect(x, rowsTop, RowsWidth(width), rows));
+            if (Scroller(Child) is var scroller && !ReferenceEquals(scroller, _watched)) Watch(scroller);
+            ButtonsBounds = Buttons is { IsVisible: true } ? new Rect(x, rowsTop + rows, RowsWidth(width), ButtonsBand) : default;
+            if (Buttons is { } b) b.Arrange(new Rect(x, rowsTop + rows + ButtonsPad * u, Math.Min(RowsWidth(width), b.DesiredSize.Width), b.DesiredSize.Height));
+            PaneBounds = PaneRoom(area, width, 0);
+            Pane?.Arrange(PaneBounds);
+            ScaleChildren();
+            if (_hints.IsVisible)
+            {
+                Rect help = HelpBandBounds(area);
+                Size hs = _hints.DesiredSize;
+                _hints.Arrange(new Rect(x, help.Y + (help.Height - hs.Height) / 2, Math.Min(hs.Width, Math.Max(0, area.Width - 2 * x)), hs.Height));
+            }
+            return area;
+        }
+
+        // The edge card's footer: under the rows and the buttons, as wide as the rows.
+        private Rect EdgeFooter(double height) => new(TitleBounds.X, TitleBounds.Bottom + RowsGap * Unit + (Child?.Bounds.Height ?? 0) + ButtonsBand, TitleBounds.Width, height);
+
+        // The rows' width on the edge card: the panel less the safe area at its left and the gap at its right.
+        private double RowsWidth(double width) => Math.Max(0, width - (SafeSide + RowsRight) * Unit);
+
         // The panel's left edge: the margin when anchored left, else centred.
-        private double PanelLeft(double areaWidth, double width) => Anchor == MenuAnchor.Left ? Math.Min(Edge * Unit, Math.Max(0, areaWidth - width)) : (areaWidth - width) / 2;
+        private double PanelLeft(double areaWidth, double width) => Anchor == MenuAnchor.Edge ? 0 : Anchor == MenuAnchor.Left ? Math.Min(Edge * Unit, Math.Max(0, areaWidth - width)) : (areaWidth - width) / 2;
 
         // The room right of the panel for the pane: inside the margins, above the help bar.
         private Rect PaneRoom(Size area, double width, double hintHeight)
         {
             double u = Unit, x = PanelLeft(area.Width, width) + width + Edge * u;
+            if (IsEdge)
+            {
+                x = width + SafeSide * u;
+                double top = (SafeTop + RowsGap) * u + TopBandAt(width), bottom = HelpBandBounds(area).Y - RowsGap * u;
+                return new Rect(x, top, Math.Max(0, area.Width - SafeSide * u - x), Math.Max(0, bottom - top));
+            }
             return new Rect(x, Edge * u, Math.Max(0, area.Width - Edge * u - x), Math.Max(0, area.Height - hintHeight - 2 * Edge * u));
         }
 
@@ -559,12 +628,29 @@ namespace EmuSen.LunaP.Controls
             if (panel.Width <= 0) return;
             double k = OpeningScale;
             using DrawingContext.PushedState opening = context.PushTransform(Matrix.CreateTranslation(-panel.Center.X, -panel.Center.Y) * Matrix.CreateScale(k, k) * Matrix.CreateTranslation(panel.Center.X, panel.Center.Y));
-            double radius = PanelCornerRadius * u;
-            context.DrawRectangle(new ImmutableSolidColorBrush(PanelColor), null, panel, radius, radius);
+            double radius = IsEdge ? 0 : PanelCornerRadius * u;
             double rule = Math.Max(1, Math.Round(u));
-            if (TitleBounds.Height > 0) context.FillRectangle(new ImmutableSolidColorBrush(RuleColor), new Rect(panel.X, TitleBounds.Bottom - rule, panel.Width, rule));
+            if (IsEdge && _hints.IsVisible)
+            {
+                // The help bar's band across the foot, on the panel's surface with the Border token's line along its top (§210).
+                Rect help = HelpBandBounds(Bounds.Size);
+                context.FillRectangle(new ImmutableSolidColorBrush(PanelColor), help);
+                Color line = this.TryFindResource("LunaBorderColor", ActualThemeVariant, out object? found) && found is Color c ? c : EmuSen.LunaP.Theme.LunaPalette.Border.Color;
+                context.FillRectangle(new ImmutableSolidColorBrush(line), new Rect(help.X, help.Y, help.Width, rule));
+            }
+            if (IsEdge)
+            {
+                // The one shadow, on the card's open edge: the Void token at half, 8 out and 24 blurred (§210.2).
+                Color voidColour = this.TryFindResource("LunaVoidColor", ActualThemeVariant, out object? v) && v is Color vc ? vc : Colors.Black;
+                var shadow = new BoxShadow { OffsetX = 8 * u, Blur = 24 * u, Color = Color.FromArgb(0x80, voidColour.R, voidColour.G, voidColour.B) };
+                context.DrawRectangle(new ImmutableSolidColorBrush(PanelColor), null, new RoundedRect(panel), new BoxShadows(shadow));
+            }
+            else context.DrawRectangle(new ImmutableSolidColorBrush(PanelColor), null, panel, radius, radius);
+            if (TitleBounds.Height > 0 && !IsEdge) context.FillRectangle(new ImmutableSolidColorBrush(RuleColor), new Rect(panel.X, TitleBounds.Bottom - rule, panel.Width, rule));
 
             GlyphTypeface typeface = GetValue(FontPathProperty) is { Length: > 0 } p && FontFiles.Load(p) is { } t ? t : FontFiles.Default;
+            // On the edge card the title alone is in the panel's face; the breadcrumb and the footer are Barlow (§210).
+            GlyphTypeface small = IsEdge && FontFiles.Load(LunaFonts.BodyFile) is { } body ? body : typeface;
             string[] lines = SubtitleLines;
             if (ScrollIndicator is var scroll and not MenuScrollIndicator.None)
             {
@@ -581,8 +667,8 @@ namespace EmuSen.LunaP.Controls
             if (Title is { Length: > 0 } title)
             {
                 (double size, FontLayout? wrappedTitle, _) = TitleLayout(title, TitleBounds.Width);
-                Rect band = TitleBounds.Deflate(new Thickness(24 * u, 0));
-                TextAlignment align = TextAlignment.Center;
+                Rect band = IsEdge ? TitleBounds : TitleBounds.Deflate(new Thickness(24 * u, 0));
+                TextAlignment align = IsEdge ? TextAlignment.Left : TextAlignment.Center;
                 if (IconSpace() is > 0 and var iconSpace)
                 {
                     band = new Rect(band.X + iconSpace, band.Y, Math.Max(0, band.Width - iconSpace), band.Height);
@@ -591,7 +677,14 @@ namespace EmuSen.LunaP.Controls
                 if (wrappedTitle is { Lines.Count: > 1 }) wrappedTitle.Draw(context, new ImmutableSolidColorBrush(TitleColor), band, align, 0.5);
                 else MenuRow.DrawLine(context, typeface, size, FontLayout.Cased(title, LetterCase), band, TitleCentre() + MenuRow.CapHeight(typeface, size) / 2, align, new ImmutableSolidColorBrush(TitleColor));
             }
-            for (int i = 0; i < lines.Length; i++)
+            for (int i = 0; i < lines.Length && IsEdge; i++)
+            {
+                // On the edge card the subtitle is the way back, a breadcrumb over the title.
+                double size = CrumbSize * u;
+                double centre = TitleBounds.Top + (CrumbCentre + CrumbPitch * i) * u;
+                MenuRow.DrawLine(context, small, size, FontLayout.Cased(lines[i], SubtitleLetterCase), TitleBounds, centre + MenuRow.CapHeight(small, size) / 2, TextAlignment.Left, new ImmutableSolidColorBrush(FooterColor));
+            }
+            for (int i = 0; i < lines.Length && !IsEdge; i++)
             {
                 double size = SubtitleSize * u;
                 Rect band = TitleBounds.Deflate(new Thickness(24 * u, 0));
@@ -601,16 +694,16 @@ namespace EmuSen.LunaP.Controls
             if (Footer is { Length: > 0 } wrapped && FooterMaxLines > 1)
             {
                 double size = FooterSize * u;
-                var band = new Rect(panel.X + 24 * u, panel.Bottom - BottomBand, panel.Width - 48 * u, BottomBand);
-                double lineHeight = FontLayout.Create(typeface, size, "H", 1, double.PositiveInfinity, double.PositiveInfinity, false, null).LineHeight;
-                FontLayout wrappedLines = FontLayout.Create(typeface, size, FontLayout.Cased(wrapped, FooterCase), 1, band.Width, FooterMaxLines * lineHeight + 0.5, true, "…");
-                wrappedLines.Draw(context, new ImmutableSolidColorBrush(FooterColor), band, TextAlignment.Center, 0.5);
+                var band = IsEdge ? EdgeFooter(BottomBand) : new Rect(panel.X + 24 * u, panel.Bottom - BottomBand, panel.Width - 48 * u, BottomBand);
+                double lineHeight = FontLayout.Create(small, size, "H", 1, double.PositiveInfinity, double.PositiveInfinity, false, null).LineHeight;
+                FontLayout wrappedLines = FontLayout.Create(small, size, FontLayout.Cased(wrapped, FooterCase), 1, band.Width, FooterMaxLines * lineHeight + 0.5, true, "…");
+                wrappedLines.Draw(context, new ImmutableSolidColorBrush(FooterColor), band, IsEdge ? TextAlignment.Left : TextAlignment.Center, 0.5);
             }
             else if (Footer is { Length: > 0 } footer)
             {
                 double size = FooterSize * u;
-                var band = new Rect(panel.X + 24 * u, panel.Bottom - FooterBand * u, panel.Width - 48 * u, FooterBand * u);
-                MenuRow.DrawLine(context, typeface, size, FontLayout.Cased(footer, FooterCase), band, band.Center.Y + MenuRow.CapHeight(typeface, size) / 2, TextAlignment.Center, new ImmutableSolidColorBrush(FooterColor));
+                var band = IsEdge ? EdgeFooter(FooterBand * u) : new Rect(panel.X + 24 * u, panel.Bottom - FooterBand * u, panel.Width - 48 * u, FooterBand * u);
+                MenuRow.DrawLine(context, small, size, FontLayout.Cased(footer, FooterCase), band, band.Center.Y + MenuRow.CapHeight(small, size) / 2, IsEdge ? TextAlignment.Left : TextAlignment.Center, new ImmutableSolidColorBrush(FooterColor));
             }
         }
 

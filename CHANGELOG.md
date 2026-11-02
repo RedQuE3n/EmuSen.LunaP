@@ -14,6 +14,12 @@ answer.
 
 ## Unreleased
 
+- **The edge card (`§210`).** `MenuAnchor.Edge`: the panel the full height at the left edge, the title row and rows in
+  the safe area, the pane room beside them, the help bar a band across the foot, the open edge's shadow. The Card form
+  uses it, and its pane (`AdaptiveCardPane`) is a raised surface shown only while its detail is. `MenuRow.MutedColor`
+  and `MenuRow.FilledMarks`; `HintBar.IconScale`; `AdaptiveLayout.AcceptWord` and `BackWord`; `LunaFonts.SymbolsFile`,
+  and drawn lines fall back to it for a symbol their typeface lacks. What it costs: a card's recordings move, since its
+  panel, title row, rows and help bar stand elsewhere and its rows are inset 24.
 - **The tool screen, and the frame's row action, row page, question form, filters and List card (`§208`).**
   `SheetLayer.Screen` (attached): a window presented full screen in the safe area on a menu-look layer, with no frame,
   title or hint bar of the layer's. `AdaptiveLayout`: `SetFilters`, `Filters`, `SelectedFilter`, `SelectFilter`,

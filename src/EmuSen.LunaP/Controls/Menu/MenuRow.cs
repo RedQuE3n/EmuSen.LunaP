@@ -56,6 +56,8 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<Color?> ValueColorProperty = AvaloniaProperty.Register<MenuRow, Color?>(nameof(ValueColor));
         public static readonly StyledProperty<LetterCase?> ValueLetterCaseProperty = AvaloniaProperty.Register<MenuRow, LetterCase?>(nameof(ValueLetterCase));
         public static readonly StyledProperty<double> InsetProperty = AvaloniaProperty.Register<MenuRow, double>(nameof(Inset), 8);
+        public static readonly StyledProperty<Color?> MutedColorProperty = AvaloniaProperty.Register<MenuRow, Color?>(nameof(MutedColor));
+        public static readonly StyledProperty<bool> FilledMarksProperty = AvaloniaProperty.Register<MenuRow, bool>(nameof(FilledMarks));
 
         // Width at the right a MenuFieldRow keeps for the control it hosts, so the label is cut short of it - see docs/LunaP.md §182.3.
         internal static readonly StyledProperty<double> TrailingWidthProperty = AvaloniaProperty.Register<MenuRow, double>("TrailingWidth");
@@ -66,7 +68,7 @@ namespace EmuSen.LunaP.Controls
         static MenuRow()
         {
             AffectsMeasure<MenuRow>(ScaleProperty, RowHeightProperty);
-            AffectsRender<MenuRow>(InsetProperty, LabelProperty, ValueProperty, KindProperty, IsOnProperty, IsHighlightedProperty, FontPathProperty, TextSizeProperty, TextColorProperty,
+            AffectsRender<MenuRow>(InsetProperty, MutedColorProperty, FilledMarksProperty, LabelProperty, ValueProperty, KindProperty, IsOnProperty, IsHighlightedProperty, FontPathProperty, TextSizeProperty, TextColorProperty,
                 HighlightTextColorProperty, BarColorProperty, RuleColorProperty, AccentColorProperty, LetterCaseProperty, LabelOverrideProperty, ValueColorProperty,
                 ValueLetterCaseProperty, TrailingWidthProperty);
         }
@@ -125,6 +127,12 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The room between the row's edges and its label and right-hand parts, in design pixels before Scale. 8 by default; an item's page uses 24 (docs/LunaP.md §209).</summary>
         public double Inset { get => GetValue(InsetProperty); set => SetValue(InsetProperty, value); }
 
+        /// <summary>The colour of the value and the marks of a row that is not highlighted, quieter than its label; a highlighted row draws them in its own ink. Null draws them as the label is. Null by default; a card uses the Muted token (docs/LunaP.md §210).</summary>
+        public Color? MutedColor { get => GetValue(MutedColorProperty); set => SetValue(MutedColorProperty, value); }
+
+        /// <summary>Whether the chevron and the step arrows are small filled triangles, the design's ▸, rather than outlines. False by default; a card sets it (docs/LunaP.md §210).</summary>
+        public bool FilledMarks { get => GetValue(FilledMarksProperty); set => SetValue(FilledMarksProperty, value); }
+
         private double Unit => double.IsFinite(Scale) && Scale > 0 ? Scale : 1;
 
         private string Text => FontLayout.Cased(GetValue(LabelOverrideProperty) ?? Label ?? "", LetterCase);
@@ -172,7 +180,9 @@ namespace EmuSen.LunaP.Controls
             string valueText = ValueText;
             if (valueText.Length > 0 && Kind != MenuRowKind.Switch)
             {
-                double vw = Math.Min(FontLayout.Measure(Typeface(), TextSize * u, valueText), Math.Max(0, (right - pad) / 2));
+                // The value takes what the label leaves it, and never less than half the room (§210.4).
+                double room = Math.Max(0, right - pad), words = FontLayout.Measure(Typeface(), TextSize * u, Text);
+                double vw = Math.Min(FontLayout.Measure(Typeface(), TextSize * u, valueText), Math.Max(room / 2, room - words - 3 * gap));
                 value = new Rect(right - vw, 0, vw, h - rule);
                 right = value.Left - (Kind == MenuRowKind.Option ? arrowGap : gap);
             }
@@ -216,12 +226,22 @@ namespace EmuSen.LunaP.Controls
             double size = TextSize * u;
             double baseline = at.Bar.Height / 2 + CapHeight(typeface, size) / 2;
             DrawLine(context, typeface, size, Text, at.Label, baseline, TextAlignment.Left, brush);
-            if (at.Value.Width > 0) DrawLine(context, typeface, size, ValueText, at.Value, baseline, TextAlignment.Right, ValueColor is { } own ? new ImmutableSolidColorBrush(own) : brush);
+            ImmutableSolidColorBrush quiet = !IsHighlighted && MutedColor is { } muted ? new ImmutableSolidColorBrush(muted) : brush;
+            if (at.Value.Width > 0) DrawLine(context, typeface, size, ValueText, at.Value, baseline, TextAlignment.Right, ValueColor is { } own ? new ImmutableSolidColorBrush(own) : quiet);
 
-            var pen = new ImmutablePen(brush, Math.Max(1, 1.6 * u), lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
-            if (at.Chevron.Width > 0) Chevron(context, pen, at.Chevron);
-            if (at.LeftArrow.Width > 0) Arrow(context, pen, at.LeftArrow, left: true);
-            if (at.RightArrow.Width > 0) Arrow(context, pen, at.RightArrow, left: false);
+            var pen = new ImmutablePen(quiet, Math.Max(1, 1.6 * u), lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
+            if (FilledMarks)
+            {
+                if (at.Chevron.Width > 0) Triangle(context, quiet, at.Chevron, left: false);
+                if (at.LeftArrow.Width > 0) Triangle(context, quiet, at.LeftArrow, left: true);
+                if (at.RightArrow.Width > 0) Triangle(context, quiet, at.RightArrow, left: false);
+            }
+            else
+            {
+                if (at.Chevron.Width > 0) Chevron(context, pen, at.Chevron);
+                if (at.LeftArrow.Width > 0) Arrow(context, pen, at.LeftArrow, left: true);
+                if (at.RightArrow.Width > 0) Arrow(context, pen, at.RightArrow, left: false);
+            }
             if (at.Switch.Width > 0) Switch(context, ink, at.Switch, u);
         }
 
@@ -245,6 +265,21 @@ namespace EmuSen.LunaP.Controls
                 c.EndFigure(false);
             }
             context.DrawGeometry(null, pen, g);
+        }
+
+        // A small filled triangle, as wide as half its height, centred in its box and pointing one way.
+        private static void Triangle(DrawingContext context, IBrush brush, Rect box, bool left)
+        {
+            double h = Math.Min(box.Height, box.Width * 2) * 0.7, w = h * 0.8, x = box.Center.X - w / 2, y = box.Center.Y - h / 2;
+            var g = new StreamGeometry();
+            using (StreamGeometryContext c = g.Open())
+            {
+                c.BeginFigure(new Point(left ? x + w : x, y), true);
+                c.LineTo(new Point(left ? x : x + w, y + h / 2));
+                c.LineTo(new Point(left ? x + w : x, y + h));
+                c.EndFigure(true);
+            }
+            context.DrawGeometry(brush, null, g);
         }
 
         // An outlined triangle pointing the way the value steps.

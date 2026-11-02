@@ -110,6 +110,16 @@ namespace EmuSen.LunaP.Tests
             ("P:EmuSen.LunaP.Controls.SliderRow.Maximum", "1 by default", () => new SliderRow().Maximum),
             ("P:EmuSen.LunaP.Controls.SliderRow.DefaultValue", "0 by default", () => new SliderRow().DefaultValue),
             ("P:EmuSen.LunaP.Controls.SliderList.Search", "Empty by default", () => new SliderList().Search),
+
+            ("P:EmuSen.LunaP.Controls.MenuRow.MutedColor", "Null by default", () => new MenuRow().MutedColor),
+
+            ("P:EmuSen.LunaP.Controls.MenuRow.FilledMarks", "False by default", () => new MenuRow().FilledMarks),
+
+            ("P:EmuSen.LunaP.Controls.HintBar.IconScale", "1 by default", () => new HintBar().IconScale),
+
+            ("P:EmuSen.LunaP.Controls.AdaptiveLayout.AcceptWord", "Null by default", () => new AdaptiveLayout().AcceptWord),
+
+            ("P:EmuSen.LunaP.Controls.AdaptiveLayout.BackWord", "\"Back\" by default", () => new AdaptiveLayout().BackWord),
         };
 
         // What each claim's words mean, kept apart from the phrase so that neither can be quietly
@@ -152,6 +162,11 @@ namespace EmuSen.LunaP.Tests
             ["P:EmuSen.LunaP.Controls.SliderRow.Maximum"] = 1.0,
             ["P:EmuSen.LunaP.Controls.SliderRow.DefaultValue"] = 0.0,
             ["P:EmuSen.LunaP.Controls.SliderList.Search"] = "",
+            ["P:EmuSen.LunaP.Controls.MenuRow.MutedColor"] = null,
+            ["P:EmuSen.LunaP.Controls.MenuRow.FilledMarks"] = false,
+            ["P:EmuSen.LunaP.Controls.HintBar.IconScale"] = 1.0,
+            ["P:EmuSen.LunaP.Controls.AdaptiveLayout.AcceptWord"] = null,
+            ["P:EmuSen.LunaP.Controls.AdaptiveLayout.BackWord"] = "Back",
         };
 
         // A claim the sweep finds and this file does not check, with the reason it cannot be.

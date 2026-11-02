@@ -61,12 +61,13 @@ namespace EmuSen.LunaP.Tests
             MenuPanel panel = layout.CardPanel;
             Assert.True(panel.IsEffectivelyVisible);
             Rect box = panel.PanelBounds;
-            Assert.Equal(24 * u, box.Left, 0.5);
+            Assert.Equal(0, box.Left, 0.5);
             Assert.Equal(width * AdaptiveLayout.CardShare, box.Width, 0.5);
+            Assert.Equal(height, box.Height, 0.5);
             Assert.Equal(MenuScrollIndicator.None, panel.ScrollIndicator);
             Assert.True(panel.IsVisualAncestorOf(rows), "the content is in the card's panel");
             Rect paneRoom = panel.PaneBounds;
-            Assert.True(paneRoom.Left >= box.Right && paneRoom.Width > width * 0.5, $"pane room {paneRoom} beside {box}");
+            Assert.True(paneRoom.Left >= box.Right + 64 * u - 0.5 && paneRoom.Right <= width - 64 * u + 0.5 && paneRoom.Width > width * 0.45, $"pane room {paneRoom} beside {box}");
             Assert.True(paneRoom.Contains(In(pane, panel)), $"the detail {In(pane, panel)} outside its room {paneRoom}");
             foreach (MenuRow r in rows.GetVisualDescendants().OfType<MenuRow>()) output.WriteLine($"{width}x{height}: row {In(r, panel)} in {box}");
             Assert.Equal(8, rows.GetVisualDescendants().OfType<MenuRow>().Count(r => r.IsEffectivelyVisible && box.Inflate(0.5).Contains(In(r, panel))));
@@ -75,6 +76,100 @@ namespace EmuSen.LunaP.Tests
             window.Close();
             Assert.Empty(faults);
         });
+
+        // The design's card (§210): the panel the full height at the left edge, the title row and rows inside the safe area, the pane on a raised surface beside them, the help bar a band across the foot.
+        [Theory]
+        [MemberData(nameof(Screens))]
+        public Task The_card_stands_where_the_design_puts_it(int width, int height) => UiTest.Run(() =>
+        {
+            var (window, layout, rows, _, _) = Card(width, height);
+            double u = height / 800.0, panelWidth = width * AdaptiveLayout.CardShare;
+            MenuPanel panel = layout.CardPanel;
+            Assert.Equal(new Rect(0, 0, panelWidth, height), panel.PanelBounds, new RectComparer(0.5));
+            Assert.Equal(new Rect(64 * u, 40 * u, panelWidth - 88 * u, 100 * u), panel.TitleBounds, new RectComparer(0.5));
+            Rect list = In(rows, panel);
+            Assert.Equal(64 * u, list.X, 0.5);
+            Assert.Equal(156 * u, list.Y, 0.5);
+            Assert.Equal(panelWidth - 88 * u, list.Width, 0.5);
+            Assert.Equal(new Rect(panelWidth + 64 * u, 156 * u, width - panelWidth - 128 * u, height - 270 * u), panel.PaneBounds, new RectComparer(0.5));
+            Rect help = In(panel.HelpBar, panel);
+            Assert.Equal(64 * u, help.X, 0.5);
+            Assert.True(help.Y >= height - 98 * u - 0.5 && help.Bottom <= height - 40 * u + 0.5, $"the help bar {help} in its band");
+            Assert.Equal(LetterCase.None, panel.HelpBar.LetterCase);
+            Border surface = panel.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "AdaptiveCardPane");
+            Assert.Equal(panel.PaneBounds, In(surface, panel), new RectComparer(0.5));
+            Assert.Equal(Color.Parse("#26262B"), ((ISolidColorBrush)surface.Background!).Color);
+            Assert.Equal(8 * u, surface.CornerRadius.TopLeft, 0.01);
+            MenuRow row = rows.GetVisualDescendants().OfType<MenuRow>().First();
+            Assert.True(row.FilledMarks);
+            Assert.Equal(Color.Parse("#8D8D91"), row.MutedColor);
+            Assert.Equal(24, row.Inset);
+            window.Close();
+        });
+
+        // Whatever is under the card, the brightest or the darkest, every word on it and on its pane keeps WCAG's 4.5:1 against what is actually behind it (§210).
+        [Theory]
+        [InlineData(1280, 800, "#FFFFFF")]
+        [InlineData(1280, 800, "#000000")]
+        [InlineData(1920, 1080, "#FFFFFF")]
+        [InlineData(1920, 1080, "#000000")]
+        public Task Every_word_on_the_card_reads_over_a_white_or_a_black_screen(int width, int height, string under) => UiTest.Run(() =>
+        {
+            var (window, layout, rows, pane, _) = Card(width, height);
+            window.Background = new SolidColorBrush(Color.Parse(under));
+            var quiet = new TextBlock { Text = "Saved 3 days ago", FontSize = 20 * height / 800.0 };
+            quiet.Bind(TextBlock.ForegroundProperty, quiet.GetResourceObservable("LunaMuted"));
+            ((StackPanel)pane).Children.Add(quiet);
+            layout.SetActions(new[] { new LunaAction("Screenshot", () => { }) { PadButton = PadGlyphButton.West } });
+            UiTest.Settle(layout);
+            RenderedFrame frame = UiTest.Capture(window);
+            MenuPanel panel = layout.CardPanel;
+            var runs = new List<(string What, Color Ink, Rect Box)> { ("title", panel.TitleColor, panel.TitleBounds) };
+            foreach (Visual v in layout.GetVisualDescendants().Where(v => v.IsEffectivelyVisible))
+            {
+                if (v is TextBlock { Text.Length: > 0 } t && t.Foreground is ISolidColorBrush b) runs.Add(($"\"{t.Text}\"", b.Color, In(t, window)));
+                if (v is MenuRow r) runs.Add(($"row {r.Label}", r.IsHighlighted ? r.HighlightTextColor : r.TextColor, In(r, window)));
+                if (v is MenuRow { MutedColor: { } m, IsHighlighted: false } q) runs.Add(($"row {q.Label}'s value", m, In(q, window)));
+            }
+            List<string> faults = [];
+            foreach ((string what, Color ink, Rect box) in runs)
+            {
+                Color behind = MostOften(frame, box);
+                double ratio = Contrast(ink, behind);
+                output.WriteLine($"{width}x{height} over {under}: {what} {ink} on {behind} {ratio:F2}:1");
+                if (ratio < 4.5) faults.Add($"{what} is {ratio:F2}:1, {ink} on {behind}");
+            }
+            window.Close();
+            Assert.True(faults.Count == 0, string.Join("\n", faults));
+        });
+
+        // The colour most often under a box, which is what its words are read against.
+        private static Color MostOften(RenderedFrame frame, Rect box)
+        {
+            var counts = new Dictionary<int, int>();
+            for (int y = Math.Max(0, (int)box.Y); y < Math.Min(frame.Height, (int)box.Bottom); y++)
+                for (int x = Math.Max(0, (int)box.X); x < Math.Min(frame.Width, (int)box.Right); x++)
+                {
+                    int i = (y * frame.Width + x) * 4, key = frame.Rgba[i] | frame.Rgba[i + 1] << 8 | frame.Rgba[i + 2] << 16;
+                    counts[key] = counts.GetValueOrDefault(key) + 1;
+                }
+            int best = counts.Count == 0 ? 0 : counts.MaxBy(p => p.Value).Key;
+            return Color.FromRgb((byte)best, (byte)(best >> 8), (byte)(best >> 16));
+        }
+
+        private static double Contrast(Color a, Color b)
+        {
+            static double L(byte v) { double c = v / 255.0; return c <= 0.03928 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4); }
+            static double Lum(Color c) => 0.2126 * L(c.R) + 0.7152 * L(c.G) + 0.0722 * L(c.B);
+            double la = Lum(a), lb = Lum(b);
+            return (Math.Max(la, lb) + 0.05) / (Math.Min(la, lb) + 0.05);
+        }
+
+        private sealed class RectComparer(double slack) : IEqualityComparer<Rect>
+        {
+            public bool Equals(Rect a, Rect b) => Math.Abs(a.X - b.X) <= slack && Math.Abs(a.Y - b.Y) <= slack && Math.Abs(a.Width - b.Width) <= slack && Math.Abs(a.Height - b.Height) <= slack;
+            public int GetHashCode(Rect r) => 0;
+        }
 
         [Fact]
         public Task Navigation_search_and_the_action_buttons_are_not_drawn_and_the_actions_are_in_the_help_bar() => UiTest.Run(() =>
@@ -87,6 +182,9 @@ namespace EmuSen.LunaP.Tests
             Assert.NotNull(layout.HostOf(AdaptiveRole.Detail));
             Assert.Equal(new[] { "Select", "Back", "Screenshot" }, layout.CardPanel.Hints!.Select(h => h.Label));
             Assert.Equal(new PadGlyphButton?[] { PadGlyphButton.South, PadGlyphButton.East, PadGlyphButton.West }, layout.CardPanel.Hints!.Select(h => h.Button));
+            layout.AcceptWord = "Choose";
+            layout.BackWord = "Resume";
+            Assert.Equal(new[] { "Choose", "Resume", "Screenshot" }, layout.CardPanel.Hints!.Select(h => h.Label));
             Assert.False(layout.IsDetailOpen);
             window.Close();
         });

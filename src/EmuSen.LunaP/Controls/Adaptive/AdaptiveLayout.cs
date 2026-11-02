@@ -91,6 +91,12 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<double> ContentShareProperty =
             AvaloniaProperty.Register<AdaptiveLayout, double>(nameof(ContentShare), 0.4);
 
+        /// <summary>Defines the AcceptWord property.</summary>
+        public static readonly StyledProperty<string?> AcceptWordProperty = AvaloniaProperty.Register<AdaptiveLayout, string?>(nameof(AcceptWord));
+
+        /// <summary>Defines the BackWord property.</summary>
+        public static readonly StyledProperty<string> BackWordProperty = AvaloniaProperty.Register<AdaptiveLayout, string>(nameof(BackWord), "Back");
+
         /// <summary>Defines the SwapsAcceptAndBack property.</summary>
         public static readonly StyledProperty<bool> SwapsAcceptAndBackProperty =
             AvaloniaProperty.Register<AdaptiveLayout, bool>(nameof(SwapsAcceptAndBack));
@@ -136,7 +142,7 @@ namespace EmuSen.LunaP.Controls
         private readonly Border _headerHost = new() { Name = "AdaptiveHeader" };
 
         // The Card form's parts: the panel the roles are placed into, the rows' and the pane's hosts in the body type, and the scrim under them (§207).
-        private readonly MenuPanel _cardPanel = new() { Name = "AdaptiveCard", Anchor = MenuAnchor.Left, WidthFraction = CardShare, MaxWidthToHeight = 4, TitleSize = 32, TitleMinScale = 0.55, TitleMaxLines = 1, PanelCornerRadius = 8 };
+        private readonly MenuPanel _cardPanel = new() { Name = "AdaptiveCard", Anchor = MenuAnchor.Edge, WidthFraction = CardShare, MaxWidthToHeight = 4, TitleSize = 32, TitleMinScale = 0.55, TitleMaxLines = 1, PanelCornerRadius = 0, LetterCase = Media.LetterCase.None, SubtitleLetterCase = Media.LetterCase.None, HintGlyphStyle = PadGlyphStyle.Outline };
         private readonly Border _cardRows = new() { Name = "AdaptiveCardRows" };
         private readonly Border _cardPane = new() { Name = "AdaptiveCardPane" };
         private readonly Panel _cardScrim = new() { Name = "AdaptiveCardScrim" };
@@ -295,6 +301,20 @@ namespace EmuSen.LunaP.Controls
             set => SetValue(ContentShareProperty, value);
         }
 
+        /// <summary>What the help bar calls A on the content, such as Choose; null leaves the generated word, Select or Open. Null by default (docs/LunaP.md §210.5).</summary>
+        public string? AcceptWord
+        {
+            get => GetValue(AcceptWordProperty);
+            set => SetValue(AcceptWordProperty, value);
+        }
+
+        /// <summary>What the help bar calls B, such as Resume where B returns to a game. "Back" by default (docs/LunaP.md §210.5).</summary>
+        public string BackWord
+        {
+            get => GetValue(BackWordProperty);
+            set => SetValue(BackWordProperty, value);
+        }
+
         /// <summary>Whether the help bar and the pad take East as Select and South as Back, as a player's swap of the two asks; false by default.</summary>
         public bool SwapsAcceptAndBack
         {
@@ -391,8 +411,8 @@ namespace EmuSen.LunaP.Controls
                 var hints = new List<HintEntry>();
                 if (IsCoverOpen && CoverHints is { } covered) return covered;
                 PadGlyphButton accept = SwapsAcceptAndBack ? PadGlyphButton.East : PadGlyphButton.South, back = SwapsAcceptAndBack ? PadGlyphButton.South : PadGlyphButton.East;
-                if (_content is not null && AcceptHint is { } accepted) hints.Add(new HintEntry(accepted) { Button = accept });
-                hints.Add(new HintEntry("Back") { Button = back });
+                if (_content is not null && (AcceptWord ?? AcceptHint) is { } accepted) hints.Add(new HintEntry(accepted) { Button = accept });
+                hints.Add(new HintEntry(BackWord) { Button = back });
                 if (_sections.Count > 1 && Form != AdaptiveForm.Card) hints.Add(new HintEntry(_sectionWord) { Button = PadGlyphButton.Shoulders });
                 if (ListToolsOnSelect) hints.Add(new HintEntry("List") { Button = PadGlyphButton.Select });
                 foreach (LunaAction action in Padded().OrderByDescending(a => a.IsMain))
@@ -760,6 +780,7 @@ namespace EmuSen.LunaP.Controls
                 Arrange();
                 if (focused is { } role) Avalonia.Threading.Dispatcher.UIThread.Post(() => Refocus(role), Avalonia.Threading.DispatcherPriority.Loaded);
             }
+            if (change.Property == AcceptWordProperty || change.Property == BackWordProperty) RefreshHints();
         }
 
         /// <inheritdoc/>
@@ -964,12 +985,20 @@ namespace EmuSen.LunaP.Controls
         {
             _cardScrim.Children.Add(_cardPanel);
             _cardScrim.Bind(Panel.BackgroundProperty, _cardScrim.GetResourceObservable("LunaScrim", r => r as IBrush ?? DefaultScrim));
+            // The pane: a raised surface with the card radius and the pane's gutter, so its words never sit on the screen beneath (§210).
+            _cardPane[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaSurfaceRaised");
+            _cardPane.Bind(Border.PaddingProperty, _cardPane.GetObservable(MenuPanel.ScaleProperty, u => new Thickness(24 * u)));
+            _cardPane.Bind(Border.CornerRadiusProperty, _cardPane.GetObservable(MenuPanel.ScaleProperty, u => new CornerRadius(8 * u)));
             MenuPanel.SetFontPath(_cardPanel, Media.LunaFonts.CondensedFile);
             MenuPanel.SetFontPath(_cardRows, Media.LunaFonts.BodyFile);
             MenuPanel.SetFontPath(_cardPane, Media.LunaFonts.BodyFile);
             _cardRows.Styles.Add(new Style(x => x.OfType<MenuRow>())
             {
-                Setters = { new Setter(MenuRow.TextSizeProperty, LunaTokens.BigScreenType.Row), new Setter(MenuRow.LetterCaseProperty, Media.LetterCase.None) },
+                Setters =
+                {
+                    new Setter(MenuRow.TextSizeProperty, LunaTokens.BigScreenType.Row), new Setter(MenuRow.LetterCaseProperty, Media.LetterCase.None),
+                    new Setter(MenuRow.InsetProperty, 24.0), new Setter(MenuRow.FilledMarksProperty, true), new Setter(MenuRow.MutedColorProperty, new DynamicResourceExtension("LunaMutedColor")),
+                },
             });
         }
 
@@ -983,6 +1012,7 @@ namespace EmuSen.LunaP.Controls
             _cardPanel.Child = _cardRows;
             if (_detail is not null)
             {
+                _cardPane[!IsVisibleProperty] = _detail[!IsVisibleProperty];
                 _cardPane.Child = Detach(_detailHost);
                 _cardPanel.Pane = _cardPane;
             }

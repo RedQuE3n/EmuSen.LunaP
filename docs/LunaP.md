@@ -14672,3 +14672,85 @@ reverted after its run:
 | Up from the first row stays in the rows | the pad walk's case (the focus not back on the actions) |
 | The shoulders step the sections on a deeper page | the deeper page's case (the shoulders not declined) |
 | The hero drawn under the OnArt gradient alone | the title band's case at all three sizes (2.7 to 3.5:1 over white art) |
+
+## 210. The edge card: `MenuAnchor.Edge`, the pane's surface, and the quiet row
+
+### 210.1 The gap
+
+The consumer's tester reported on 2026-11-02, on the handheld, that the words to the right of a chosen row in its
+library's Home card and its in-game Pause Card could barely be read. Both are the Card form (§207). The card's
+pane, `AdaptiveCardPane`, had no surface: its words were drawn on the form's scrim, black at 55 per cent, straight over
+whatever screen lay beneath. Over a white screen that scrim is #737373, on which the Muted token reads at 1.43:1 and
+TextStrong at 4.09:1; over a black one both clear the floor, so every recording, taken over a dark library or an empty
+frame, passed (measured 2026-11-02 in the consumer's `WindowFitAuditTests.CardContrast`, all ten card states over
+white). The rows, on the panel's opaque Surface, read at 11.6:1 or better either way. The approved mockups also put
+the card elsewhere: the panel the full height of the screen at its left edge rather than a rounded box at the 24-pixel
+margin, the title row left-aligned in the words' own case inside the 64-pixel safe area, the rows 24 in from the
+panel's right, the pane on a raised surface beside them, and the help bar a band across the foot in Barlow, not a
+centred pill in capitals.
+
+### 210.2 `MenuAnchor.Edge`
+
+Appended after `Left`, so no value moved. With it `MenuPanel` lays itself out as the design's card, in design pixels
+before `Scale` (the height over 800):
+
+| Part | Where |
+|---|---|
+| panel | 0, 0, `WidthFraction` of the width, the full height; no corner radius |
+| title row | 64, 40, the panel's width less 88, 100 high; left-aligned, no rule under it |
+| breadcrumb (the `Subtitle`) | over the title, Barlow 20 in the footer colour, centred 31 down; the title then centred 65 down |
+| cover (`TitleIcon`) | 44 high at the title row's left, the title after it |
+| rows | 64, 156, the panel's width less 88; as many whole rows as fit above the help bar |
+| footer | under the rows, left-aligned, in Barlow |
+| pane room | from the panel's right plus 64 to the width less 64, from 156 to 16 above the help bar |
+| help bar | a band 58 high whose foot is 40 above the screen's, the full width, on the panel colour with the Border token's line along its top; its entries from 64, Barlow 20 in their own case, 40 apart, each glyph 1.5 times the words' size (`HintBar.IconScale`, appended, 1 by default) |
+| shadow | the one shadow of the design, on the panel's open edge: the Void token at 50 per cent, 8 to the right, blurred 24 |
+
+`Left` and `Centre` are unchanged.
+
+### 210.3 The card form uses it
+
+`AdaptiveLayout`'s card panel is anchored `Edge` with the title and breadcrumb in their own case and the help bar's
+glyphs outlined. `AdaptiveCardPane` is a raised surface (`LunaSurfaceRaised`, radius 8, padding 24, both scaled),
+shown only while the detail it holds is visible, so a page whose pane has nothing to say shows the dimmed screen, as
+the mockup of the Pause Card's first page does. The rows take `Inset` 24 (§209), `FilledMarks` and `MutedColor` from
+the Muted token.
+
+### 210.4 `MenuRow.MutedColor` and `MenuRow.FilledMarks`
+
+Both appended, default off. `MutedColor` draws the value and the marks of a row that is not highlighted in a quieter
+colour than its label; the highlighted row draws them in its own ink, TextStrong, as the mockups do (sampled
+2026-11-02: label #D4D4D4, value and marks #8D8D91, focused all #EEEEF0). `FilledMarks` draws the chevron and the step
+arrows as small filled triangles, the design's ▸, instead of outlines. Muted on the raised focus bar is 4.55:1 (§206.1),
+so a quiet value still reads. A row's value now takes what its label leaves it, less three gaps, and never less than
+half the room as before: a short label beside a long name, such as *Selected game* beside a game's title, no longer cuts
+the name at half the row while the other half stands empty; a label is never cut for it.
+
+### 210.5 The help bar's words, and symbols in drawn lines
+
+The mockups name A and B by what they do on the page: *Choose* and *Back* on a card's pages, *Select* and *Resume* on
+a game's first page, where B returns to the game. `AdaptiveLayout.AcceptWord` (null by default, leaving the generated
+Select or Open) and `BackWord` ("Back" by default), both appended, let a host say so; the help bar is generated from
+them as before, so it still follows `SwapsAcceptAndBack`.
+
+Lines a control draws itself (`MenuRow`, `MenuPanel`, `HintBar`) were laid out in one typeface, so a symbol Barlow
+lacks, such as the ⚠ of a row's status *⚠ 1 to approve*, drew as an empty box, though §208.13 declares Adwaita Mono to
+the font manager for the controls that draw through it. `FontLayout` now cuts a line into runs, each character in the
+line's typeface where that has it and in Adwaita Mono (`LunaFonts.SymbolsFile`, appended) where only that has it; a
+line wholly in its typeface is one run, shaped as before without a copy.
+
+### 210.6 Tests and seeded faults
+
+`CardFormTests.The_card_stands_where_the_design_puts_it` holds the geometry of the table at 1280 × 800, 1920 × 1200 and
+1280 × 720, the pane's surface and the rows' look. `Every_word_on_the_card_reads_over_a_white_or_a_black_screen` renders
+the card over a white and a black window at 1280 × 800 and 1920 × 1080 and measures every run of words (the title, each
+row's label and quiet value, each text of the pane) against the colour most often under its box, failing below 4.5:1.
+Measured on 2026-11-02 over white: rows 11.59:1, a quiet value 5.20:1 on the panel, the focused row 13.00:1, a Muted
+pane line 4.55:1 on the raised surface. The existing eight-row case now expects the panel at the left edge, the full
+height, with the pane room 64 beyond it. Measured on 2026-11-02, each fault reverted after its run:
+
+| Fault | Caught by |
+|---|---|
+| the pane without its surface | both white cases of the contrast test, and the geometry case at all three sizes |
+| the card anchored `Left` as before | the geometry case and the eight-row case at all three sizes |
+| the help bar centred in its band | the geometry case at all three sizes |

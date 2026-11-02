@@ -45,6 +45,9 @@ namespace EmuSen.LunaP.Media
         /// <summary>Adwaita Mono's licence, copied beside the fonts.</summary>
         public static string SymbolsLicenceFile => FileOf("AdwaitaMono-OFL-1.1.txt");
 
+        /// <summary>Adwaita Mono's file, the face a drawn line's symbols fall back to.</summary>
+        public static string SymbolsFile => FileOf("AdwaitaMono-Regular.ttf");
+
         private static string FileOf(string name) => Path.Combine(AppContext.BaseDirectory, Folder, name);
     }
 }

@@ -134,7 +134,9 @@ namespace EmuSen.LunaP.Media
             if (text.Length == 0) return ends;
             ShapedBuffer shaped = Shape(typeface, size, text);
             var perChar = new double[text.Length];
-            foreach (GlyphInfo g in shaped) if (g.GlyphCluster >= 0 && g.GlyphCluster < text.Length) perChar[g.GlyphCluster] += g.GlyphAdvance;
+            foreach ((GlyphTypeface face, int from, int length) in Runs(typeface, text))
+                foreach (GlyphInfo g in from == 0 && length == text.Length ? shaped : Shape(face, size, length == text.Length ? text : text.Substring(from, length)))
+                    if (g.GlyphCluster >= 0 && g.GlyphCluster < length) perChar[from + g.GlyphCluster] += g.GlyphAdvance;
             for (int i = 0; i < text.Length; i++) ends[i + 1] = ends[i] + perChar[i];
             return ends;
         }
@@ -143,8 +145,26 @@ namespace EmuSen.LunaP.Media
         {
             if (text.Length == 0) return 0;
             double width = 0;
-            foreach (GlyphInfo g in Shape(typeface, size, text)) width += g.GlyphAdvance;
+            foreach ((GlyphTypeface face, int from, int length) in Runs(typeface, text))
+                foreach (GlyphInfo g in Shape(face, size, length == text.Length ? text : text.Substring(from, length))) width += g.GlyphAdvance;
             return width;
+        }
+
+        // The symbols' face, Adwaita Mono, which a character the typeface lacks is drawn in (§208.13).
+        private static readonly Lazy<GlyphTypeface?> SymbolFace = new(() => FontFiles.Load(LunaFonts.SymbolsFile));
+
+        // The text cut into runs, each in the typeface where it has the character and in the symbols' face where only that has it.
+        private static IEnumerable<(GlyphTypeface Face, int From, int Length)> Runs(GlyphTypeface typeface, string text)
+        {
+            GlyphTypeface? symbols = SymbolFace.Value;
+            GlyphTypeface FaceOf(char c) => symbols is not null && !char.IsSurrogate(c) && !typeface.CharacterToGlyphMap.TryGetGlyph(c, out _) && symbols.CharacterToGlyphMap.TryGetGlyph(c, out _) ? symbols : typeface;
+            int start = 0;
+            for (int i = 1; i <= text.Length; i++)
+            {
+                if (i < text.Length && ReferenceEquals(FaceOf(text[i]), FaceOf(text[start]))) continue;
+                yield return (FaceOf(text[start]), start, i - start);
+                start = i;
+            }
         }
 
         private static ShapedBuffer Shape(GlyphTypeface typeface, double size, string text) =>
@@ -166,9 +186,13 @@ namespace EmuSen.LunaP.Media
                     _ => box.X,
                 };
                 double baseline = top + i * LineHeight + halfLeading + Ascent;
-                ShapedBuffer shaped = Shape(Typeface, Size, text);
-                var run = new GlyphRun(Typeface, Size, text.AsMemory(), shaped.ToArray(), new Point(x, baseline), 0);
-                dc.DrawGlyphRun(brush, run);
+                foreach ((GlyphTypeface face, int from, int length) in Runs(Typeface, text))
+                {
+                    string part = length == text.Length ? text : text.Substring(from, length);
+                    GlyphInfo[] shaped = Shape(face, Size, part).ToArray();
+                    dc.DrawGlyphRun(brush, new GlyphRun(face, Size, part.AsMemory(), shaped, new Point(x, baseline), 0));
+                    x += shaped.Sum(g => g.GlyphAdvance);
+                }
             }
         }
     }

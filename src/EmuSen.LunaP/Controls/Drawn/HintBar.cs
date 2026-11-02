@@ -30,6 +30,7 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<string?> FontPathProperty = AvaloniaProperty.Register<HintBar, string?>(nameof(FontPath));
         public static readonly StyledProperty<double> FontSizeProperty = AvaloniaProperty.Register<HintBar, double>(nameof(FontSize), 16);
         public static readonly StyledProperty<double> EntryScaleProperty = AvaloniaProperty.Register<HintBar, double>(nameof(EntryScale), 1);
+        public static readonly StyledProperty<double> IconScaleProperty = AvaloniaProperty.Register<HintBar, double>(nameof(IconScale), 1);
         public static readonly StyledProperty<Color> IconColorProperty = AvaloniaProperty.Register<HintBar, Color>(nameof(IconColor), LunaPalette.Text.Color);
         public static readonly StyledProperty<Color> TextColorProperty = AvaloniaProperty.Register<HintBar, Color>(nameof(TextColor), LunaPalette.Text.Color);
         public static readonly StyledProperty<Color> BackgroundColorProperty = AvaloniaProperty.Register<HintBar, Color>(nameof(BackgroundColor), Colors.Transparent);
@@ -43,7 +44,7 @@ namespace EmuSen.LunaP.Controls
 
         static HintBar()
         {
-            AffectsMeasure<HintBar>(EntriesProperty, FontPathProperty, FontSizeProperty, EntryScaleProperty, PaddingProperty, EntrySpacingProperty, IconTextSpacingProperty, LetterCaseProperty);
+            AffectsMeasure<HintBar>(EntriesProperty, FontPathProperty, FontSizeProperty, EntryScaleProperty, IconScaleProperty, PaddingProperty, EntrySpacingProperty, IconTextSpacingProperty, LetterCaseProperty);
             AffectsRender<HintBar>(IconColorProperty, TextColorProperty, BackgroundColorProperty, BackgroundCornerRadiusProperty, PadFamilyProperty, GlyphStyleProperty);
         }
 
@@ -89,6 +90,9 @@ namespace EmuSen.LunaP.Controls
         /// <summary>How an entry's Button is drawn: outlined, or filled with its letter cut out. Outline by default; like PadFamily, a change moves nothing.</summary>
         public PadGlyphStyle GlyphStyle { get => GetValue(GlyphStyleProperty); set => SetValue(GlyphStyleProperty, value); }
 
+        /// <summary>The button's glyph as a multiple of the words' size, so a design's larger rings sit beside smaller words. 1 by default (docs/LunaP.md §210.2).</summary>
+        public double IconScale { get => GetValue(IconScaleProperty); set => SetValue(IconScaleProperty, value); }
+
         private double Size => FontSize * EntryScale;
 
         private GlyphTypeface Typeface() => FontPath is { Length: > 0 } p && FontFiles.Load(p) is { } t ? t : FontFiles.Default;
@@ -100,7 +104,7 @@ namespace EmuSen.LunaP.Controls
         {
             var boxes = new List<(Rect, Rect)>();
             GlyphTypeface typeface = Typeface();
-            double size = Size, icon = size, x = Padding.Left, y = Padding.Top;
+            double size = Size, icon = size * (IconScale > 0 ? IconScale : 1), x = Padding.Left, y = Padding.Top;
             double rowHeight = Math.Max(icon, size * 1.2);
             foreach (HintEntry e in Entries ?? Array.Empty<HintEntry>())
             {
