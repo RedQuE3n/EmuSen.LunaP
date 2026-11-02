@@ -127,7 +127,7 @@ namespace EmuSen.LunaP.Controls
         private static readonly AdaptiveRole[] FocusOrder = { AdaptiveRole.Navigation, AdaptiveRole.Content, AdaptiveRole.Detail, AdaptiveRole.Actions };
 
         private readonly SourceList _sidebar = new();
-        private readonly WholeRow _sectionRow = new() { Spacing = 8 };
+        private readonly WholeRow _sectionRow = new() { Spacing = 0 };
         private readonly ToolBar _toolBar = new();
         private readonly WrapPanel _actionRow = new() { Orientation = Orientation.Horizontal, ItemSpacing = 12, LineSpacing = 8 };
         private readonly TextBox _search = new() { MinWidth = 180 };
@@ -227,7 +227,15 @@ namespace EmuSen.LunaP.Controls
         }
 
         // The big screen's section strip: names in Caption upper case on nothing, the chosen one strong with a 3-unit accent underline (§208.10).
-        private void SetUpSectionStrip() => StyleStrip(_sectionRow);
+        private void SetUpSectionStrip()
+        {
+            StyleStrip(_sectionRow);
+            // The frame's strip: the underline as wide as the name, the names 32 apart, as the design draws them (docs/LunaP.md §211.3).
+            _sectionRow.Styles.Add(new Style(x => x.OfType<ToggleButton>())
+            {
+                Setters = { new Setter(TemplatedControl.PaddingProperty, new Thickness(0, 8)), new Setter(Layoutable.MarginProperty, new Thickness(16, 0)) },
+            });
+        }
 
         // The strip's look on any row of toggle buttons, so an item's page draws its sections as the frame does (§209).
         internal static void StyleStrip(Panel row)
@@ -414,8 +422,11 @@ namespace EmuSen.LunaP.Controls
                 if (_content is not null && (AcceptWord ?? AcceptHint) is { } accepted) hints.Add(new HintEntry(accepted) { Button = accept });
                 hints.Add(new HintEntry(BackWord) { Button = back });
                 if (_sections.Count > 1 && Form != AdaptiveForm.Card) hints.Add(new HintEntry(_sectionWord) { Button = PadGlyphButton.Shoulders });
+                // The face buttons' actions, then List, then the main action last (docs/LunaP.md §211.2).
+                foreach (LunaAction action in Padded().Where(a => !a.IsMain))
+                    hints.Add(new HintEntry(action.Text) { Button = action.PadButton });
                 if (ListToolsOnSelect) hints.Add(new HintEntry("List") { Button = PadGlyphButton.Select });
-                foreach (LunaAction action in Padded().OrderByDescending(a => a.IsMain))
+                foreach (LunaAction action in Padded().Where(a => a.IsMain))
                     hints.Add(new HintEntry(action.Text) { Button = action.PadButton });
                 return hints;
             }
@@ -566,6 +577,8 @@ namespace EmuSen.LunaP.Controls
             CloseListTools();
             _coverScrim.Children.Clear();
             _coverScrim.Background = CoverScrim;
+            // The help band stays undimmed under the cover, naming the question's answers, and the card is centred above it (docs/LunaP.md §211.3).
+            _coverScrim.Margin = new Thickness(0, 0, 0, _hintBand.IsEffectivelyVisible ? _hintBand.Bounds.Height : 0);
             card.HorizontalAlignment = HorizontalAlignment.Center;
             card.VerticalAlignment = VerticalAlignment.Center;
             _coverScrim.Children.Add(Detach(card));
@@ -1038,7 +1051,8 @@ namespace EmuSen.LunaP.Controls
             }
             bool big = Form == AdaptiveForm.BigScreen;
             LunaTypeScale type = LunaTokens.Type(big ? LunaForm.BigScreen : LunaForm.Desktop);
-            var row = new DockPanel { LastChildFill = true, Margin = big ? new Thickness(16, 12, 16, 0) : new Thickness(8, 6, 8, 2) };
+            // The big screen's header row is 48 high, its title centred in it, as the design's grid draws it (docs/LunaP.md §211.3).
+            var row = new DockPanel { LastChildFill = true, Margin = big ? new Thickness(16, 12, 16, 0) : new Thickness(8, 6, 8, 2), MinHeight = big ? 48 : 0 };
             if (h.Picture is { } picture)
             {
                 var image = new Image { Source = picture, Height = big ? 64 : 32, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, big ? 16 : 8, 0), VerticalAlignment = VerticalAlignment.Center };
@@ -1071,6 +1085,11 @@ namespace EmuSen.LunaP.Controls
             _actionsHost.Child = _toolBar;
             _search.ClearValue(TextBox.FontFamilyProperty);
             _search.ClearValue(TextBox.FontSizeProperty);
+            _search.MinWidth = 180;
+            _search.ClearValue(MinHeightProperty);
+            _hintBand.ClearValue(MinHeightProperty);
+            _hintBand.Padding = new Thickness(48, 10, 48, 6);
+            _hintBar.ClearValue(VerticalAlignmentProperty);
             _detailHost.ClearValue(TextElement.FontFamilyProperty);
             _detailHost.ClearValue(TextElement.FontSizeProperty);
             _detailHost.Styles.Remove(_paneTitle);
@@ -1122,7 +1141,8 @@ namespace EmuSen.LunaP.Controls
             _detailHost.IsVisible = (page && !ownPage) || (beside && !ownPage);
             _pageHost.IsVisible = ownPage;
 
-            var top = new DockPanel { LastChildFill = true, Margin = new Thickness(16, 12) };
+            // The strip 44 high with 12 above and 16 below, the search box 240 by 44 (docs/LunaP.md §211.3).
+            var top = new DockPanel { LastChildFill = true, Margin = new Thickness(16, 12, 16, 16), MinHeight = 44 };
             DockPanel.SetDock(_searchHost, Dock.Right);
             top.Children.Add(Detach(_searchHost));
             top.Children.Add(Detach(_navigationHost));
@@ -1173,6 +1193,12 @@ namespace EmuSen.LunaP.Controls
             _hintBar.Margin = default;
             _search.FontFamily = Media.LunaFonts.Body;
             _search.FontSize = LunaTokens.BigScreenType.Caption;
+            _search.MinWidth = 240;
+            _search.MinHeight = 44;
+            // The help band 58 high, its first glyph at the content's edge.
+            _hintBand.MinHeight = 58;
+            _hintBand.Padding = new Thickness(16, 0, 16, 0);
+            _hintBar.VerticalAlignment = VerticalAlignment.Center;
             // The pane's words in Barlow at the big screen's Body size, whatever the tool put in it, and its title in the Condensed face (§208.10, §208.11).
             TextElement.SetFontFamily(_detailHost, Media.LunaFonts.Body);
             TextElement.SetFontSize(_detailHost, LunaTokens.BigScreenType.Body);

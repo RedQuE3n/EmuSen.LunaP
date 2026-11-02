@@ -40,6 +40,7 @@
                          says otherwise. Without it a table scrolled right draws its
                          leftmost heading over the window beside it. §59. -->
                     <Border DockPanel.Dock="Top"
+                            IsVisible="{TemplateBinding ShowsHeader}"
                             BorderBrush="{DynamicResource LunaBorder}"
                             BorderThickness="0,0,0,1"
                             ClipToBounds="True"

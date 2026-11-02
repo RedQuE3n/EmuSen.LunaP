@@ -303,7 +303,43 @@ namespace EmuSen.LunaP.Tests
             Assert.DoesNotContain(m.HostOf(AdaptiveRole.Actions)!.GetVisualDescendants().OfType<Button>(), b => Equals(b.Content, "Apply…"));
             Assert.Contains(m.HostOf(AdaptiveRole.Status)!.GetVisualDescendants().OfType<Button>(), b => Equals(b.Content, "Apply…"));
             Assert.Contains(m.Hints, h => h.Label == "Apply…" && h.Button == PadGlyphButton.Start);
-            Assert.Equal("Apply…", m.Hints.First(h => h.Button is PadGlyphButton.Start or PadGlyphButton.North or PadGlyphButton.West or PadGlyphButton.Select).Label);
+            // The main action is named last, after the face buttons' actions and List (docs/LunaP.md §211.2).
+            Assert.Equal("Apply…", m.Hints.Last(h => h.Button is PadGlyphButton.Start or PadGlyphButton.North or PadGlyphButton.West or PadGlyphButton.Select).Label);
+            window.Close();
+        });
+
+        // The big screen's list and bar held to the design's mockups - see docs/LunaP.md §211.2.
+        [Fact]
+        public Task The_big_screen_list_has_no_header_box_full_width_rows_and_Apply_beside_the_meter() => UiTest.Run(() =>
+        {
+            ManagerLayout<Row> m = Cores(AdaptiveForm.BigScreen);
+            m.PageFor = r => new[] { new LunaAction("Details", () => { }) };
+            Window window = Host(m);
+            m.BigScreenTable.Select(CoreRows[1]);
+            UiTest.Settle(m);
+            Assert.DoesNotContain(m.BigScreenTable.GetVisualDescendants().OfType<Border>(), b => b.IsEffectivelyVisible && b.Child is Grid { Name: "PART_Header" });
+            ListBoxItem item = m.BigScreenTable.GetVisualDescendants().OfType<ListBoxItem>().First(i => ReferenceEquals(i.DataContext, CoreRows[1]));
+            Border row = item.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains(LunaTable<Row>.GroupRowClass));
+            Assert.Equal(item.Bounds.Width, row.Bounds.Width, 1);
+            Assert.Equal(new Avalonia.Thickness(4, 0, 0, 0), row.BorderThickness);
+            Assert.Equal(new Avalonia.Thickness(0, 0, 0, 1), item.Padding);
+            Assert.Contains(m.HostOf(AdaptiveRole.Status)!.GetVisualDescendants().OfType<Button>(), b => b.IsEffectivelyVisible && b.Command == m.Apply);
+            List<string> said = m.Hints.Select(h => h.Label).ToList();
+            Assert.Equal("Apply…", said[^1]);
+            Assert.True(said.IndexOf("More") is > 2 and var more && more < said.Count - 1, string.Join(", ", said));
+            window.Close();
+        });
+
+        [Fact]
+        public Task A_frame_lists_its_rows_under_group_headings_in_both_forms() => UiTest.Run(() =>
+        {
+            ManagerLayout<Row> m = Cores(AdaptiveForm.BigScreen);
+            m.GroupOf = r => r.Group == "ps2" ? "Sony 2" : "Sony 1";
+            Window window = Host(m);
+            Assert.Equal(new string?[] { "SONY 2", null, "SONY 1", null }, Enumerable.Range(0, 4).Select(m.BigScreenTable.HeadingAt));
+            m.Form = AdaptiveForm.Desktop;
+            UiTest.Settle(m);
+            Assert.Equal("SONY 2", m.Table.HeadingAt(0));
             window.Close();
         });
     }

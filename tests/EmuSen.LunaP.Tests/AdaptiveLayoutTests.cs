@@ -130,7 +130,7 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(new (string, PadGlyphButton?)[]
             {
                 ("Open", PadGlyphButton.South), ("Back", PadGlyphButton.East), ("Section", PadGlyphButton.Shoulders),
-                ("Check for Updates", PadGlyphButton.Start), ("Install", PadGlyphButton.North), ("Make Default", PadGlyphButton.Select),
+                ("Install", PadGlyphButton.North), ("Make Default", PadGlyphButton.Select), ("Check for Updates", PadGlyphButton.Start),
             }, hints);
             HintBar bar = layout.GetVisualDescendants().OfType<HintBar>().Single();
             Assert.Equal(layout.Hints.Select(h => h.Label), bar.Entries!.Select(h => h.Label));

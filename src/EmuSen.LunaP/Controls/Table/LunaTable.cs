@@ -200,6 +200,7 @@ namespace EmuSen.LunaP.Controls
             object? wasSelected = Selected is { } previous ? Key(previous) : null;
 
             _view = Flatten();
+            FindHeadings();
 
             // WHERE EACH ROW SITS ON SCREEN, BUILT ONCE PER REBUILD rather than searched per row.
             // RowHeader is handed the displayed index, and a virtualising list asks for that index
@@ -336,6 +337,7 @@ namespace EmuSen.LunaP.Controls
                 if (e.Container.DataContext is T model)
                 {
                     AutomationProperties.SetName(e.Container, Spoken(model));
+                    ShowHeading(e.Container, model);
                     RowPrepared?.Invoke(model, e.Container);
                 }
             };

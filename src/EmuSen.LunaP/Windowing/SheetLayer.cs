@@ -479,8 +479,8 @@ namespace EmuSen.LunaP.Windowing
                 return root;
             }
 
-            // A screen's inset in design pixels before the menus' scale: with the layout's own margins of 16 and 12 it is the safe area, 64 at the sides and 40 above.
-            private const double ScreenSidePadding = 48, ScreenTopPadding = 28, ScreenBottomPadding = 8;
+            // A screen's inset in design pixels before the menus' scale: with the layout's own margins of 16 and 12 it is the safe area, 64 at the sides and 40 above and below.
+            private const double ScreenSidePadding = 48, ScreenTopPadding = 28, ScreenBottomPadding = 40;
 
             // The window's own help bar, else the layer's for it, read once the sheet is on the layer so the layer's can look at its content.
             public void RefreshHints()

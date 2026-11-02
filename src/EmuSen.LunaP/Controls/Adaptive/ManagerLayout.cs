@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -62,9 +63,12 @@ namespace EmuSen.LunaP.Controls
             SetUpAnswers();
         }
         private readonly Border _planSheet = new() { IsVisible = false, Padding = new Thickness(16), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, MaxWidth = 720 };
-        private readonly TextBlock _planText = new() { TextWrapping = TextWrapping.Wrap };
+        // The question's words, each paragraph (a blank line in the tool's text) its own block 8 apart (§211.2).
+        private readonly StackPanel _planText = new() { Spacing = 8 };
+        private string _planWords = string.Empty;
+        private readonly ScrollViewer _planScroll = new() { MaxHeight = 360, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
         private readonly Grid _contentGrid = new();
-        private readonly Grid _bar = new() { Margin = new Thickness(4) };
+        private readonly Grid _bar = new();
         private readonly Grid _words = new() { ColumnDefinitions = new ColumnDefinitions("Auto,*"), ColumnSpacing = 8 };
         private readonly StackPanel _barRight = new() { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
         private List<T> _rows = new();
@@ -82,6 +86,7 @@ namespace EmuSen.LunaP.Controls
         private string _yes = "Apply", _no = "Cancel";
         private Func<T, LunaAction?>? _actionFor;
         private Func<T, IReadOnlyList<LunaAction>>? _pageFor;
+        private Func<T, string?>? _groupOf;
 
         /// <summary>A manager with no rows, columns or marks; the tool adds its columns with Column and its rows with SetRows.</summary>
         public ManagerLayout()
@@ -118,15 +123,17 @@ namespace EmuSen.LunaP.Controls
             _planSheet.Child = new DockPanel
             {
                 LastChildFill = true,
-                Children = { _planHeading, _planButtons, _planOptions, new ScrollViewer { Content = _planText, MaxHeight = 360, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled } },
+                Children = { _planHeading, _planButtons, _planOptions, _planScroll },
             };
             ArrangeQuestion();
             ArrangeAnswers();
             _barRight.Children.Add(_stopButton);
             _contentGrid.SizeChanged += (_, e) => { _contentHeight = e.NewSize.Height; CapPlan(); };
+            SizeChanged += (_, _) => CapPlan();
             _planSheet[!Border.BackgroundProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaSurface");
             _planSheet[!Border.BorderBrushProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaBorder");
             _planSheet.BorderThickness = new Thickness(1);
+            _planScroll.Content = _planText;
             _contentGrid.Children.Add(_desktopTable);
             _contentGrid.Children.Add(_planSheet);
             Content = _contentGrid;
@@ -148,7 +155,8 @@ namespace EmuSen.LunaP.Controls
 
         private double _contentHeight;
 
-        private void CapPlan() => _planSheet.MaxHeight = Math.Max(Form == AdaptiveForm.Desktop ? PlanFloor : BigScreenPlanFloor, _contentHeight);
+        // On the desktop the question stands in the content's place; on the big screen it is a card over the screen, as tall as the screen less the help band and its margins (§211.2).
+        private void CapPlan() => _planSheet.MaxHeight = Form == AdaptiveForm.Desktop ? Math.Max(PlanFloor, _contentHeight) : Math.Max(BigScreenPlanFloor, Bounds.Height - 100);
 
         /// <summary>The action that cycles the chosen row through its marks: the X button on a pad.</summary>
         public LunaAction Mark { get; }
@@ -176,6 +184,18 @@ namespace EmuSen.LunaP.Controls
                 Mark.PadButton = value is null ? PadGlyphButton.West : null;
                 More.PadButton = value is null ? null : PadGlyphButton.West;
                 RefreshHints();
+            }
+        }
+
+        /// <summary>The group a row is listed under, drawn as a heading above the group's first row in both forms while the rows shown hold more than one group; null for none - see docs/LunaP.md §211.1.</summary>
+        public Func<T, string?>? GroupOf
+        {
+            get => _groupOf;
+            set
+            {
+                _groupOf = value;
+                _desktopTable.GroupOf = value;
+                Show();
             }
         }
 
@@ -244,7 +264,7 @@ namespace EmuSen.LunaP.Controls
         public string SummaryText => _summary.Text ?? string.Empty;
 
         /// <summary>The plan's text as last shown.</summary>
-        public string PlanText => _planText.Text ?? string.Empty;
+        public string PlanText => _planWords;
 
         private LunaTable<T> CurrentTable => Form == AdaptiveForm.BigScreen ? _bigTable : _desktopTable;
 
@@ -368,7 +388,10 @@ namespace EmuSen.LunaP.Controls
             ClosePage();
             CloseListTools();
             _planHeading.Text = title;
-            _planText.Text = words;
+            _planWords = words;
+            _planText.Children.Clear();
+            foreach (string paragraph in words.Split("\n\n"))
+                _planText.Children.Add(new TextBlock { Text = paragraph, TextWrapping = TextWrapping.Wrap });
             ArrangeQuestion();
             _planOptions.IsVisible = options && _planOptions.Children.Count > 0;
             _planSheet.IsVisible = true;
@@ -460,11 +483,13 @@ namespace EmuSen.LunaP.Controls
             _planHeading.FontFamily = big ? Media.LunaFonts.Condensed : FontFamily.Default;
             _planHeading.FontWeight = big ? FontWeight.Normal : FontWeight.SemiBold;
             _planHeading.FontSize = type.Title;
-            _planText.FontFamily = big ? Media.LunaFonts.Body : FontFamily.Default;
-            _planText.FontSize = type.Body;
+            TextElement.SetFontFamily(_planText, big ? Media.LunaFonts.Body : FontFamily.Default);
+            TextElement.SetFontSize(_planText, type.Body);
             _planSheet.Padding = new Thickness(big ? 32 : 16);
             _planSheet.CornerRadius = new CornerRadius(big ? 8 : 0);
             _planSheet.MinWidth = big ? 720 : 0;
+            // The card's words take what the screen leaves them on the big screen, and scroll only past that (§211.2).
+            _planScroll.MaxHeight = big ? double.PositiveInfinity : 360;
             _planSheet[!Border.BackgroundProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension(big ? "LunaSurfaceRaised" : "LunaSurface");
             CapPlan();
         }
@@ -581,6 +606,9 @@ namespace EmuSen.LunaP.Controls
             AutomationProperties.SetItemStatus(_spaceBar, text);
         }
 
+        /// <summary>Draws the shown rows and the chosen row's detail again, after what the tool says of them has changed, such as a running job's progress.</summary>
+        public void RefreshRows() => Show();
+
         /// <summary>The space meter's words as shown.</summary>
         public string SpaceText => _spaceText.Text ?? string.Empty;
 
@@ -628,6 +656,7 @@ namespace EmuSen.LunaP.Controls
         /// <inheritdoc/>
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
+            if (change.Property == PadFamilyProperty) ArrangeBar();
             if (change.Property == FormProperty)
             {
                 T? selected = (change.OldValue is AdaptiveForm.BigScreen ? _bigTable : _desktopTable).Selected;
@@ -659,56 +688,86 @@ namespace EmuSen.LunaP.Controls
         {
             ManagerMark? mark = MarkOf(row);
             if (!big) return new TextBlock { Text = (mark is null ? "☐" : "☑ " + mark.Label), VerticalAlignment = VerticalAlignment.Center };
-            var cell = new TextBlock { Text = mark is null ? "" : "✓ " + mark.Label, VerticalAlignment = VerticalAlignment.Center };
+            var cell = new TextBlock { Text = mark is null ? "" : "✓ " + mark.Label, VerticalAlignment = VerticalAlignment.Center, IsVisible = mark is not null && !_running };
             cell.Bind(TextBlock.ForegroundProperty, cell.GetResourceObservable("LunaAccent"));
             return cell;
         }
 
-        // The big screen's list as the design draws it: no header, rows of 54 in Barlow at the Row size with a rule under each and a gap after a cell, the chosen row raised with the accent bar, the list filling its height on the input surface.
+        // The big screen's list as the design draws it: no header, full-width rows of 54 in Barlow at the Row size with a rule under each, the chosen row raised with the accent bar, maker headings riding on rows (§211.2).
         private void SetUpBigScreenTable()
         {
             _bigTable.ShowsHeader = false;
-            _bigTable.GridLines = LunaGridLines.Horizontal;
+            _bigTable.GridLines = LunaGridLines.None;
+            _bigTable.GroupOf = row => _groupOf?.Invoke(row);
             _bigTable.VerticalAlignment = VerticalAlignment.Stretch;
-            _bigTable[!TemplatedControl.BackgroundProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaInputSurface");
-            _bigTable.Styles.Add(new Style(x => x.OfType<ListBox>())
-            {
-                Setters = { new Setter(TemplatedControl.BackgroundProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaInputSurface")) },
-            });
-            // The focus alone marks nothing: the chosen row is the focused one, and it carries the bar (§208.10).
-            _bigTable.Styles.Add(new Style(x => x.OfType<ListBoxItem>().Class(":focus-within").Template().OfType<Avalonia.Controls.Presenters.ContentPresenter>().Name("PART_ContentPresenter"))
-            {
-                Setters = { new Setter(Avalonia.Controls.Presenters.ContentPresenter.BackgroundProperty, Brushes.Transparent), new Setter(Avalonia.Controls.Presenters.ContentPresenter.BorderBrushProperty, Brushes.Transparent) },
-            });
+            _bigTable[!TemplatedControl.BackgroundProperty] = Resource("LunaInputSurface");
             _bigTable.Styles.Add(new Style(x => x.OfType<ListBoxItem>())
             {
                 Setters =
                 {
-                    new Setter(Layoutable.MinHeightProperty, 54.0),
+                    new Setter(Layoutable.MinHeightProperty, 0.0),
+                    new Setter(TemplatedControl.BackgroundProperty, Resource("LunaRule")),
                     new Setter(TemplatedControl.FontFamilyProperty, Media.LunaFonts.Body),
                     new Setter(TemplatedControl.FontSizeProperty, LunaTokens.BigScreenType.Row),
-                    new Setter(TemplatedControl.PaddingProperty, new Thickness(20, 0, 24, 0)),
-                    new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(4, 0, 0, 0)),
-                    new Setter(TemplatedControl.BorderBrushProperty, Brushes.Transparent),
+                    // The item's fill is the rule, showing through the one unit left under its row, edge to edge.
+                    new Setter(TemplatedControl.PaddingProperty, new Thickness(0, 0, 0, 1)),
+                    new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(0)),
                 },
             });
-            _bigTable.Styles.Add(new Style(x => x.OfType<ListBoxItem>().Class(":selected"))
+            // The focus and the selection paint nothing on the item; the row part below a heading carries them.
+            foreach (string state in new[] { "", ":pointerover", ":selected", ":focus-within", ":selected:focus-within", ":selected:pointerover" })
+                _bigTable.Styles.Add(new Style(x => (state.Length == 0 ? x.OfType<ListBoxItem>() : x.OfType<ListBoxItem>().Class(state)).Template().OfType<Avalonia.Controls.Presenters.ContentPresenter>().Name("PART_ContentPresenter"))
+                {
+                    Setters = { new Setter(Avalonia.Controls.Presenters.ContentPresenter.BackgroundProperty, Resource("LunaRule")), new Setter(Avalonia.Controls.Presenters.ContentPresenter.BorderBrushProperty, Brushes.Transparent) },
+                });
+            _bigTable.Styles.Add(new Style(x => x.OfType<Border>().Class(LunaTable<T>.GroupRowClass))
             {
                 Setters =
                 {
-                    new Setter(TemplatedControl.BorderBrushProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaAccent")),
-                    new Setter(TemplatedControl.ForegroundProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaTextStrong")),
+                    new Setter(Layoutable.MinHeightProperty, 53.0),
+                    new Setter(Decorator.PaddingProperty, new Thickness(20, 0, 0, 0)),
+                    new Setter(Border.BorderThicknessProperty, new Thickness(4, 0, 0, 0)),
+                    new Setter(Border.BorderBrushProperty, Brushes.Transparent),
+                    new Setter(Border.BackgroundProperty, Resource("LunaInputSurface")),
                 },
             });
-            _bigTable.Styles.Add(new Style(x => x.OfType<ListBoxItem>().Class(":selected").Template().OfType<Avalonia.Controls.Presenters.ContentPresenter>().Name("PART_ContentPresenter"))
+            _bigTable.Styles.Add(new Style(x => x.OfType<ListBoxItem>().Class(":selected").Descendant().OfType<Border>().Class(LunaTable<T>.GroupRowClass))
             {
-                Setters = { new Setter(Avalonia.Controls.Presenters.ContentPresenter.BackgroundProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaSurfaceRaised")) },
+                Setters = { new Setter(Border.BorderBrushProperty, Resource("LunaAccent")), new Setter(Border.BackgroundProperty, Resource("LunaSurfaceRaised")) },
+            });
+            _bigTable.Styles.Add(new Style(x => x.OfType<ListBoxItem>().Class(":selected"))
+            {
+                Setters = { new Setter(TemplatedControl.ForegroundProperty, Resource("LunaTextStrong")) },
             });
             _bigTable.Styles.Add(new Style(x => x.Is<TextBlock>())
             {
                 Setters = { new Setter(Layoutable.MarginProperty, new Thickness(0, 0, 24, 0)) },
             });
+            _bigTable.Styles.Add(new Style(x => x.OfType<TextBlock>().Class(LunaTable<T>.GroupHeadingClass))
+            {
+                Setters =
+                {
+                    new Setter(Layoutable.HeightProperty, 32.0),
+                    new Setter(Layoutable.MarginProperty, new Thickness(0)),
+                    new Setter(TextBlock.PaddingProperty, new Thickness(24, 6, 24, 0)),
+                    new Setter(TextBlock.FontSizeProperty, LunaTokens.BigScreenType.Caption),
+                    new Setter(TextBlock.ForegroundProperty, Resource("LunaMuted")),
+                    new Setter(TextBlock.BackgroundProperty, Resource("LunaInputSurface")),
+                },
+            });
+            _desktopTable.Styles.Add(new Style(x => x.OfType<TextBlock>().Class(LunaTable<T>.GroupHeadingClass))
+            {
+                Setters =
+                {
+                    new Setter(Layoutable.HeightProperty, 20.0),
+                    new Setter(TextBlock.PaddingProperty, new Thickness(4, 4, 0, 0)),
+                    new Setter(TextBlock.FontSizeProperty, LunaTokens.DesktopType.Caption),
+                    new Setter(TextBlock.ForegroundProperty, Resource("LunaMuted")),
+                },
+            });
         }
+
+        private static Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension Resource(string key) => new(key);
 
         private void Show()
         {
@@ -732,6 +791,10 @@ namespace EmuSen.LunaP.Controls
             ShowSummary(marked);
             Apply.IsEnabled = marked.Count > 0 && !_running;
             Mark.IsEnabled = !_running;
+            // While work runs the help bar names only what still works: Back, the shoulders and List (§211.2).
+            Apply.PadButton = _running ? null : PadGlyphButton.Start;
+            More.PadButton = _running || _pageFor is null ? null : PadGlyphButton.West;
+            RefreshHints();
             _desktopTable.Refresh(_desktopTable.Models.ToList());
             _bigTable.Refresh(_bigTable.Models.ToList());
             MarksChanged?.Invoke();
@@ -769,8 +832,10 @@ namespace EmuSen.LunaP.Controls
         private void ArrangeBar()
         {
             bool big = Form == AdaptiveForm.BigScreen;
-            // On the big screen Apply is the help bar's Start alone; the bar keeps the words and the meter (§208.10).
-            _applyButton.IsVisible = !big;
+            // Apply beside the meter in both forms, on the big screen with its Start glyph (§211.2).
+            _applyButton.Content = big ? ApplyFace() : "Apply…";
+            _applyButton.MinWidth = big ? 170 : 0;
+            _applyButton.MinHeight = big ? 44 : 0;
             // The list's panel on the input surface, the look's list painting nothing of its own (§208.11).
             if (big) _contentGrid[!Panel.BackgroundProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaInputSurface");
             else _contentGrid.ClearValue(Panel.BackgroundProperty);
@@ -788,11 +853,33 @@ namespace EmuSen.LunaP.Controls
             }
             _bar.ColumnDefinitions = big ? new ColumnDefinitions("*") : new ColumnDefinitions("*,Auto");
             _bar.RowDefinitions = big ? new RowDefinitions("Auto,Auto") : new RowDefinitions("Auto");
-            _bar.RowSpacing = big ? 8 : 0;
+            // The big screen's bar is the design's 88 under an 18 gap: the progress over the words, then Apply and the meter (§211.2).
+            _bar.RowSpacing = big ? 17 : 0;
+            _bar.Margin = big ? new Thickness(0, 18, 0, 0) : new Thickness(4);
+            _words.ColumnDefinitions = big ? new ColumnDefinitions("*") : new ColumnDefinitions("Auto,*");
+            _words.RowDefinitions = big ? new RowDefinitions("Auto,Auto") : new RowDefinitions("Auto");
+            _words.RowSpacing = big ? 4 : 0;
+            Grid.SetColumn(_progressLine, big ? 0 : 1);
+            Grid.SetColumn(_summary, big ? 0 : 1);
+            Grid.SetRow(_progressLine, big ? 1 : 0);
+            Grid.SetRow(_summary, big ? 1 : 0);
+            _progress.Height = big ? 8 : double.NaN;
+            // The pane's own gutter is the frame's on the big screen; the detail adds none of its own (§211.2).
+            _detailBox.Padding = new Thickness(big ? 0 : 8);
             _bar.ColumnSpacing = big ? 0 : 12;
             Grid.SetColumn(_barRight, big ? 0 : 1);
             Grid.SetRow(_barRight, big ? 1 : 0);
             _barRight.HorizontalAlignment = big ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
+        }
+
+        // The Start glyph in the layout's pad family, then the words at the Row size.
+        private Control ApplyFace()
+        {
+            LunaTypeScale type = LunaTokens.BigScreenType;
+            var glyph = new PadGlyph { Family = PadFamily, Button = PadGlyphButton.Start, GlyphSize = type.Glyph, Width = type.Glyph, Height = type.Glyph, VerticalAlignment = VerticalAlignment.Center };
+            glyph.Bind(PadGlyph.ColorProperty, glyph.GetResourceObservable("LunaMutedColor"));
+            var words = new TextBlock { Text = "Apply…", FontFamily = Media.LunaFonts.Body, FontSize = type.Row, VerticalAlignment = VerticalAlignment.Center };
+            return new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Children = { glyph, words } };
         }
 
         private static void FocusFirstIn(Control root)

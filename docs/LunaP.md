@@ -14754,3 +14754,70 @@ height, with the pane room 64 beyond it. Measured on 2026-11-02, each fault reve
 | the pane without its surface | both white cases of the contrast test, and the geometry case at all three sizes |
 | the card anchored `Left` as before | the geometry case and the eight-row case at all three sizes |
 | the help bar centred in its band | the geometry case at all three sizes |
+
+## 211. Group headings in a table: `LunaTable.GroupOf`, and the frame's list to the mockups (2026-11-02)
+
+### 211.1 The heading
+
+A consumer's tool lists its rows under groups (EmuSen's Cores, by the console's maker, decided 2026-11-02 by the
+tester). `GroupedList` (§94.1) already draws headings, but a `ManagerLayout` shows a `LunaTable`, which had none.
+
+- **`LunaTable<T>.GroupOf`**, a `Func<T, string?>`, null by default. Set, every row's container carries a heading band
+  above the row (class `group-heading`) and the row itself in a `Border` of class `group-row`. The band is shown on a
+  row whose group differs from the row before it in the displayed order, in upper case, and only while the displayed
+  rows hold more than one group: a heading over every row says nothing. A row whose group is null has none.
+- **It rides on the row, never a row of its own**, as `GroupedList`'s does: the arrow keys and the pad step from row
+  to row and never land on a heading, `Models`, `Selected` and the indices are what they were, and a container's
+  spoken name is prefixed with its heading where it shows one ("Nintendo: VenusRT, …").
+- **Recycling**: the band is set when a container is prepared for a model, from the heading worked out once per
+  `Refresh`, so a recycled container shows its new model's heading.
+- **The look**: Caption in Muted, on the list's surface. The big screen's band is 32 units with the row's 24-unit
+  inset; the desktop's 20 px with the cells' inset.
+
+### 211.2 The frame's big-screen list, held to the mockups again
+
+Compared on 2026-11-02 with EmuSen's approved Cores mockups (EmuSen_Cores.md §3.7), five things in §208.10 were not as
+drawn, and are now the frame's:
+
+1. **The rows are full width.** The rule under a row ran inset by the row's padding at both ends, since it was the
+   row grid's border. The big-screen table now draws no grid lines; each row is the list's surface with a gap of one
+   unit under it, and the list's own fill (`LunaRule`) shows through the gaps, from edge to edge. The chosen row's
+   raised fill and its 4-unit accent bar are the row part's (`group-row`), so a heading band above it is never raised.
+2. **No empty strip above the first row.** With `ShowsHeader` false the header grid was hidden but its bordered,
+   padded box was not, which left about 11 units above the first row. The box now follows `ShowsHeader`.
+3. **`Apply…` beside the meter on the big screen too**, with the Start glyph in it, as the mockups draw it under the
+   summary; it was the help bar's Start alone (§208.10), and stays named there while something is marked.
+4. **The help bar's order**: the accept action, Back, the shoulders, the face-button actions that are not the main
+   one (More), then List, then the main action (Apply): `A · B · Console · More · List · Apply`.
+5. **The search box's hint** is the tool's; the frame's default stays "Search".
+
+6. **The bar's rows**: on the big screen the progress bar runs the list's width above the words, the words under it, and
+   `Apply…` with the meter beneath them, under a gap of 18 so the bar is the design's 88.
+7. **While work runs** the help bar names only what still works (Back, the shoulders, List), and a marked row's mark
+   word gives way to the tool's status for it. `RefreshRows()` lets a tool draw its rows and detail again as a job
+   reports, such as a status word or the steps a download has passed.
+8. **The detail adds no gutter of its own** on the big screen, where the pane's 24 is the frame's; and the question,
+   a card over the screen there, may be as tall as the screen less the help band, its words scrolling only past that.
+
+### 211.3 The big screen's grid
+
+The design's grid at 1280 × 800 (EmuSen_Interface.md §15.2) against what the frame drew on 2026-11-02: the title 5 units,
+the strip 11 and the list 13 above their places, and the help band at the screen's foot with no safe area under it. Now:
+
+- the header row is 48 high with its title centred (40 to 88);
+- the strip is 44 high with 12 above and 16 below (100 to 144, the list from 160), its names 32 apart with the
+  underline as wide as the name, and the search box 240 × 44;
+- the tool screen keeps the safe area's 40 below as well as above, and the help band is 58 high with its first glyph
+  at the content's edge.
+
+A question's cover (`OpenCover`) stops at the help band, which stays undimmed with the answers it names, and centres
+its card in the screen above the band, as the approval's mockup draws it.
+
+The help band's rule still runs within the screen's side inset, not edge to edge as drawn: the band belongs to the
+layout, which does not know the host's inset, and reaching past it would break a layout hosted elsewhere.
+
+Tests: `TableGroupTests` (the band on a group's first row only, none with one group, none for a null group, the
+keyboard stepping past every band, the band following a recycled container, the spoken name) and
+`ManagerLayoutTests`' big-screen cases (no header box, rows full width, Apply drawn on the big screen, the hint order, the
+headings in both forms); `AdaptiveLayoutTests`' help bar case now reads the main action last. Seeded on 2026-11-02 and
+caught: a heading drawn over a single group (`TableGroupTests`), and the rows inset again (`ManagerLayoutTests`).

@@ -76,7 +76,7 @@ namespace EmuSen.LunaP.Controls
             var grid = new Grid();
             Define(grid, scope);
 
-            if (item is null) return Ruled(grid);
+            if (item is null) return Grouped(Ruled(grid), null);
 
             // THE GUTTER, AND IT IS NOT A CELL. No column marker goes on it, so it never answers to
             // Cell(item, n), never takes an editor and is not one of the things TryGetCell finds -
@@ -128,7 +128,7 @@ namespace EmuSen.LunaP.Controls
 
             AddFrozenEdge(grid);
             NameRow(grid, item);
-            return Ruled(grid);
+            return Grouped(Ruled(grid), item);
         }
 
         // ONE PLACE THAT DECIDES WHAT A CELL IS, and everything after it is the same for all three
