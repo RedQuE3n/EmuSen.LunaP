@@ -19,7 +19,7 @@ namespace EmuSen.LunaP.Controls
     {
         private readonly Panel _root = new();
         private readonly List<Control> _rowControls = new();
-        private readonly List<(string Key, Control Ring, Control? Buttons)> _tileControls = new();
+        private readonly List<(string Key, Control Ring, Control? Buttons, TextBlock Label)> _tileControls = new();
         private bool _filling;
 
         private LunaTypeScale Type => LunaTokens.Type(Big ? LunaForm.BigScreen : LunaForm.Desktop);
@@ -355,9 +355,10 @@ namespace EmuSen.LunaP.Controls
         {
             if (_content is PageContent.Rows r && Big) { _contentHost.Child = BigRows(r); return; }
             if (_content is PageContent.Tiles t && Big) { _contentHost.Child = BigTiles(t); return; }
-            foreach ((string key, Control ring, Control? buttons) in _tileControls)
+            foreach ((string key, Control ring, Control? buttons, TextBlock label) in _tileControls)
             {
                 ring.IsVisible = !_inActions && key == _focusKey;
+                label.Bind(TextBlock.ForegroundProperty, label.GetResourceObservable(ring.IsVisible ? "LunaTextStrong" : "LunaText"));
                 if (buttons is not null) buttons.IsVisible = key == _focusKey;
             }
         }
@@ -518,7 +519,6 @@ namespace EmuSen.LunaP.Controls
                 face.PointerEntered += (_, _) => bar.IsVisible = true;
                 face.PointerExited += (_, _) => bar.IsVisible = tile.Key == _focusKey;
             }
-            _tileControls.Add((tile.Key, ring, buttons));
             face.PointerPressed += (_, e) =>
             {
                 _inActions = false;
@@ -531,6 +531,7 @@ namespace EmuSen.LunaP.Controls
             cell.Children.Add(face);
             var label = new TextBlock { Text = tile.Label, FontFamily = LunaFonts.Body, FontSize = Type.Caption, TextWrapping = TextWrapping.Wrap, MaxLines = tile.Status is { Length: > 0 } ? 1 : 2, Margin = new Thickness(0, Big ? 8 : 6, 0, 0) };
             label.Bind(TextBlock.ForegroundProperty, label.GetResourceObservable(focused ? "LunaTextStrong" : "LunaText"));
+            _tileControls.Add((tile.Key, ring, buttons, label));
             cell.Children.Add(label);
             if (tile.Status is { Length: > 0 } status)
             {
