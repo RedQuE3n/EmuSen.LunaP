@@ -172,6 +172,7 @@ namespace EmuSen.LunaP.Windowing
             }
 
             var sheet = new Sheet(this, window);
+            if (_sheets.Count > 0) sheet.FocusBefore = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
             _sheets.Add(sheet);
             Presenters[window] = this;
             Children.Add(sheet.Root);
@@ -226,7 +227,7 @@ namespace EmuSen.LunaP.Windowing
             if (_sheets.Count > 0)
             {
                 ShowOnly(_sheets[^1]);
-                _sheets[^1].FocusFirst();
+                _sheets[^1].FocusAgain(sheet.FocusBefore);
             }
             else
             {
@@ -337,6 +338,9 @@ namespace EmuSen.LunaP.Windowing
             public bool Screen { get; }
             public bool OwnChrome => Chromeless || MenuFramed || Screen;
             public TaskCompletionSource Done { get; } = new();
+
+            // What had the focus on the sheet beneath when this one was presented, given back when it closes - §90.8.
+            public IInputElement? FocusBefore { get; set; }
 
             public Sheet(SheetLayer layer, Window window)
             {
@@ -513,6 +517,13 @@ namespace EmuSen.LunaP.Windowing
 
                 e.Handled = true;
                 Window.Close();
+            }
+
+            // The control that opened the sheet above, where it is still on this sheet and can take the focus, else the first.
+            public void FocusAgain(IInputElement? before)
+            {
+                if (before is InputElement e && e.IsEffectivelyVisible && e.IsEffectivelyEnabled && e.GetVisualAncestors().Contains(Root) && e.Focus()) return;
+                FocusFirst();
             }
 
             // The default button if there is one, as a dialog starts, else the control nearest the top left that is not a tab header - §90.1.

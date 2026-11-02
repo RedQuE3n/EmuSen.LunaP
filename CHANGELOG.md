@@ -29,6 +29,9 @@ answer.
   the frame's big-screen table, strip, pane, help bar and apply bar drawn as the design (`§208.10`).
   `AdaptiveLayout.OpenCover`, `CloseCover`, `IsCoverOpen` and `CoverHints`; `ManagerLayout.StopAction`; the question as a
   card over the big screen with row answers; one mark on the chosen row; the help band (`§208.11`). `AdaptiveLayout.PaneTitleClass`.
+- **The focus goes back to the control that opened a sheet (`§90.8`).** When a sheet presented over another closes, the
+  sheet beneath gives the focus back to the control that had it, such as the button that asked a question, where it is
+  still there; otherwise its first control, as before. No API change.
 - **The Card form and the header role (`§207`).** `AdaptiveForm.Card`, appended: the content in `AdaptiveLayout.CardPanel`,
   a `MenuPanel` anchored left at `CardShare` (0.4) over `LunaScrim`, the detail beside it, the actions in the help bar,
   no navigation; its rows in Barlow at 26 in their own case. `AdaptiveRole.Header`, appended, with `AdaptiveHeader`

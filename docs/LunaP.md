@@ -10746,6 +10746,24 @@ collections, that neither is reachable; without the change the host is. It ticks
 collecting, because the compositor keeps a closed window's last batch until a frame takes it: without the tick the
 case failed when it ran after the class's other cases and passed alone, with or without the fix.
 
+
+### 90.8 The focus goes back to the control that opened a sheet (2026-11-01)
+
+**The defect.** When a sheet closed over another sheet, the one beneath took the focus at its first control
+(`FocusFirst`), not at the control that opened the closed sheet. A pad player who asked a question from a page's
+button, such as Cores' Approve in the consumer's big screen, came back to the search box at the top of the window. The
+next press then landed far from where they had been. A sheet over the host's own content already gave the focus back
+(`_focusBefore`). Only a sheet over a sheet did not.
+
+**The rule now.** Each sheet presented over another records what had the focus when it was presented. When it closes,
+the sheet beneath gives the focus back to that control if it is still on that sheet, visible and enabled. Otherwise
+the sheet's first control takes it, as before. The rule holds for every dialog, so `Dialogs.ConfirmAsync` and the other
+small modals behave this way without a change at any call site.
+
+**Test.** `SheetLayerTests.Closing_a_sheet_gives_the_focus_back_to_the_control_that_opened_it`:
+- a question asked from a sheet's second button gives the focus back to that button;
+- with the button removed while the question was up, the focus goes to the sheet's first control.
+
 ## 91. An on-screen keyboard, and a path that can be typed
 
 **What was missing.** A consumer on a handheld's game session needs text from a pad: a cheat code, a description, a
