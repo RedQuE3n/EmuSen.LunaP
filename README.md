@@ -941,7 +941,7 @@ not. First place to look if an image comes out sheared (§53.2).
     dotnet build
     dotnet test
 
-**1868 tests, all headless** — no window is ever put on a screen, including for
+**1880 tests, all headless** — no window is ever put on a screen, including for
 the render tests, which drive a real Avalonia control tree through a real Skia
 pass. That figure is checked by the suite itself, because a hand-written count
 of a thing the runner knows is a number that rots: this one said 207 for four
@@ -1021,7 +1021,12 @@ Barlow Project Authors (https://github.com/jpt/barlow), under the SIL Open Font
 License 1.1. The licence's text is `src/EmuSen.LunaP/Assets/Fonts/OFL.txt`, and
 it is copied beside an application with the fonts (`LunaP/Fonts/OFL.txt`). The
 fonts may be used, embedded and redistributed with any software; they may not be
-sold by themselves, and a modified version may not use the name Barlow.
+sold by themselves, and a modified version may not use the name Barlow. For the
+symbol glyphs Barlow lacks it bundles Adwaita Mono, from the Adwaita fonts
+(https://gitlab.gnome.org/GNOME/adwaita-fonts; Copyright 2015-2025 Renzhi Li,
+2025 Jamie Gravendeel, 2025 Florian Müllner, 2016 The Inter Project Authors), under
+the same licence (`src/EmuSen.LunaP/Assets/Fonts/AdwaitaMono-OFL-1.1.txt`, copied
+beside the fonts; docs §208.13).
 
 Versions 0.2.0 through 0.5.0 were published GPL-3.0-or-later, and remain so —
 a package already on nuget.org cannot have its metadata changed, and a grant

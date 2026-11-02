@@ -14535,3 +14535,40 @@ so a recording of any `AdaptiveLayout` reads one level deeper than before it: a 
 EmuSen recordings of the Pause Card and the Home card, taken before the panel, read `AdaptiveCardScrim` at the layout's
 root and were re-recorded on 2026-11-01 for the one level; `CardFormTests` asserts the layering and the scrim's paint
 beneath the card, so a card losing its dim fails a test rather than a recording.
+
+
+### 208.13 Symbols from one face: `LunaFonts.Fallbacks`, `WithLunaFonts`
+
+A recording of EmuSen's scrape status sheet measured 383 or 385 tall from one run to the next, by 2 px in the one line
+holding `▸`: Barlow has no glyph for it, and the face the font manager fell back to depended on what the process had
+loaded before, so a landing went red at random (2026-10-31 one way, 2026-11-01 the other). Avalonia's
+`FontManagerOptions.FontFallbacks` names the face for a range of codepoints ahead of any system match, so the kit now
+declares its own: every symbol block the interface draws (U+2190 to U+21FF, U+2300 to U+23FF, U+25A0 to U+25FF, U+2600
+to U+27BF, U+2B00 to U+2BFF: the arrows, triangles, ticks, warning sign, dot, stars, boxes and pause bars) resolves to
+Adwaita Mono, bundled beside Barlow under the SIL Open Font License 1.1 (`Assets/Fonts/AdwaitaMono/`, version 34.08 as
+the Adwaita fonts project distributes it, its licence `AdwaitaMono-OFL-1.1.txt` copied beside the fonts).
+`LunaFonts.Symbols` and `LunaFonts.Fallbacks` are the one owner, and `LunaApp.WithLunaFonts` installs Inter and the
+fallback in one call, used by `LunaApp.Configure` on both its paths, by `LunaHeadless.BuildApp`, and by a host's own
+headless builder.
+
+**Why this face.** The face a line falls back to sets the line's height: Avalonia takes the tallest ascent, the deepest
+descent and the largest line gap among a line's runs, so a symbol from a face with a tall line or a line gap pushes every
+line holding one apart from its neighbours. Measured on 2026-11-01 over the fonts on hand that hold the small triangle,
+as ascent, descent and gap in em **[M]**: Barlow 1.00, 0.20, 0; Adwaita Sans, the face the machine had been falling back
+to for the tick, dot and warning sign, 0.97, 0.24, 0, but without the small triangles; Adwaita Mono 0.96, 0.28, 0; STIX
+Two Math 0.76, 0.24, 0.25; Symbola 0.93, 0.34, 0 (not under a free licence); Noto Sans Math 1.07, 0.42, 0, without the
+warning sign, the boxes and the pause bar; Noto Sans Symbols 2 1.07, 0.63, 0, without the arrows. Beside Barlow at the
+Caption size of 20, a line holding one glyph is 24 px plain, 26 with Adwaita Sans or Adwaita Mono, 30 with STIX Two Math
+(its gap), 34 with Noto Sans Symbols 2 (its descent). Noto Sans Symbols 2 and STIX Two Math were each tried and
+re-recorded before the measurement said why their lines grew; Inter, which Avalonia bundles, has the arrows and the tick
+but not the small triangles or the boxes. Adwaita Mono holds all twenty-one glyphs the interface draws at the line the
+machine's own fallback had given; its glyphs sit in a monospace cell, which for a lone symbol beside words shows only as
+its advance.
+
+What it changes: a symbol glyph that a machine's fonts used to draw in Adwaita Sans, Noto Sans or Noto Sans Mono draws
+in Adwaita Mono everywhere, and the same on a machine with no such fonts; the lines holding one may measure differently
+once, and never again by the machine. `FontFallbackTests` shapes each glyph the interface uses under both typefaces and
+asserts the face, and that the fallback names a face the font manager resolves. Not covered: a glyph outside the declared
+ranges, which still falls to the system; add its block to `Fallbacks` when the interface first draws one. The lasting
+answer is a line height declared by the type scale rather than taken from the tallest run, which would make the fallback
+face's metrics moot; that is a change to every text style and is left for a stage of its own.

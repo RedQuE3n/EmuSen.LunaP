@@ -27,6 +27,10 @@ answer.
   toolbar's there. `FitAudit` passes over what a sheet layer marks covered.
   The layout's child is the `AdaptiveLayers` panel, the arranged form with the List card or a cover above it when open, so every
   form's tree reads one level deeper (`§208.12`).
+- **Symbols from one face (`§208.13`).** `LunaFonts.Symbols` (Adwaita Mono, bundled under the OFL) and `LunaFonts.Fallbacks`;
+  `LunaApp.WithLunaFonts` installs Inter and the fallback, and `LunaApp.Configure` and `LunaHeadless.BuildApp` call it, so a
+  glyph Barlow lacks shapes in the same bundled face on every machine. What it costs: a line holding such a glyph may measure
+  differently once, as the face changes from the machine's to the kit's.
   `LunaTable.ShowsHeader`, `LunaColumn.Tone`, `AdaptiveLayout.PadFamily` and `SectionWord`, `SheetLayer.IsScreenShown`;
   the frame's big-screen table, strip, pane, help bar and apply bar drawn as the design (`§208.10`).
   `AdaptiveLayout.OpenCover`, `CloseCover`, `IsCoverOpen` and `CoverHints`; `ManagerLayout.StopAction`; the question as a
