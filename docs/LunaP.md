@@ -11367,6 +11367,14 @@ this is its cost: one CPU pass per distinct (picture, size, effect), paid once.
   with the first form.
 - The processed-bitmap cache is not bounded. A consumer showing thousands of distinct images at distinct sizes would
   grow it without limit; the EmuSen consumer shows tens. Recorded as a hazard.
+- **A picture is kept against its file's length and last write** (2026-11-02). The decoded file and the processed
+  bitmap were keyed by path alone, so a file written again at the same path drew as it had been until the process
+  ended. EmuSen's launch-screen test found it: an earlier test had written a solid Orchid marquee to the same fixed
+  run folder, and the launch screen showed that instead of the test's own two-colour picture. A scraper replacing a
+  marquee would have hit it too. Each read now compares the file's stamp, one `stat` per `Open`, which a control makes
+  once per `Source`. A control already showing the picture keeps it until its `Source` is set again.
+  `A_picture_written_again_at_its_path_is_drawn_as_it_now_is` covers the plain and the tinted path, and failed
+  against the cache keyed by path alone. GIFs (`Media/GifFile`) are kept the same way.
 
 A missing file draws nothing and reports `IsMissing`. A refused SVG draws a box crossed in `LunaPalette.Error`, so a
 gap is never mistaken for a design.

@@ -11,7 +11,7 @@ namespace EmuSen.LunaP.Media
     // A GIF read into frame records, composited into whole frames on demand by each frame's disposal method - see docs/LunaP.md §194.
     internal sealed class GifFile
     {
-        private static readonly Dictionary<string, GifFile?> Files = new(StringComparer.Ordinal);
+        private static readonly Dictionary<string, (FileStamp Stamp, GifFile? File)> Files = new(StringComparer.Ordinal);
 
         // One image block as the file holds it: its rectangle, colours and still-compressed codes.
         private sealed record Record(int Left, int Top, int W, int H, bool Interlaced, uint[] Palette, int Transparent, int Disposal, int MinCode, byte[] Data);
@@ -38,15 +38,16 @@ namespace EmuSen.LunaP.Media
 
         internal int Count => _records.Count;
 
-        // One read per full path; null when the file is missing or is not a GIF this decoder reads.
+        // One read per full path while the file stays as it was; null when the file is missing or is not a GIF this decoder reads.
         internal static GifFile? Open(string path)
         {
             string full = Path.GetFullPath(path);
-            if (Files.TryGetValue(full, out GifFile? known)) return known;
+            FileStamp stamp = FileStamp.Of(full);
+            if (Files.TryGetValue(full, out var known) && known.Stamp == stamp) return known.File;
             GifFile? file = null;
-            try { if (File.Exists(full)) file = Decode(File.ReadAllBytes(full)); }
+            try { if (stamp.Exists) file = Decode(File.ReadAllBytes(full)); }
             catch (Exception e) when (e is IOException or InvalidDataException or IndexOutOfRangeException or ArgumentException) { file = null; }
-            Files[full] = file;
+            Files[full] = (stamp, file);
             return file;
         }
 
