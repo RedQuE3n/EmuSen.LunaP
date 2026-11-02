@@ -31,6 +31,22 @@ namespace EmuSen.LunaP.Controls
         public static readonly AttachedProperty<bool> FadesRightProperty =
             AvaloniaProperty.RegisterAttached<ScrollViewer, bool>("FadesRight", typeof(MenuLook));
 
+        /// <summary>Whether a scrolling area outside the look fades its edges as one in the look does, such as an item page's content on the desktop (docs/LunaP.md §209.2).</summary>
+        public static readonly AttachedProperty<bool> FadesEdgesProperty =
+            AvaloniaProperty.RegisterAttached<ScrollViewer, bool>("FadesEdges", typeof(MenuLook));
+
+        /// <summary>Asks a scrolling area outside the look to fade its edges where more lies beyond.</summary>
+        /// <param name="viewer">The scrolling area.</param>
+        /// <param name="value">True to fade them.</param>
+        public static void SetFadesEdges(ScrollViewer viewer, bool value) => viewer.SetValue(FadesEdgesProperty, value);
+
+        /// <summary>Reads whether a scrolling area outside the look fades its edges.</summary>
+        /// <param name="viewer">The scrolling area.</param>
+        /// <returns>True when asked with SetFadesEdges.</returns>
+        public static bool GetFadesEdges(ScrollViewer viewer) => viewer.GetValue(FadesEdgesProperty);
+
+        private static bool FadeCovers(ScrollViewer viewer) => viewer.GetValue(FadesEdgesProperty) || Covers(viewer);
+
         /// <summary>Reads whether a scrolling area fades its left edge.</summary>
         /// <param name="viewer">The scrolling area.</param>
         /// <returns>True while its left edge fades in the look.</returns>
@@ -62,12 +78,12 @@ namespace EmuSen.LunaP.Controls
 
         // A scrolling area that moves up and down, other than a text box's own.
         private static bool Fades(ScrollViewer viewer) =>
-            viewer.TemplatedParent is not TextBox && viewer.VerticalScrollBarVisibility != Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled && Covers(viewer);
+            viewer.TemplatedParent is not TextBox && viewer.VerticalScrollBarVisibility != Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled && FadeCovers(viewer);
 
         // Once layout has placed the rows, so the focused row's place is where it is drawn.
         private static void FadeSoon(ScrollViewer viewer)
         {
-            if (viewer.GetValue(FadePendingProperty) || !Covers(viewer)) return;
+            if (viewer.GetValue(FadePendingProperty) || !FadeCovers(viewer)) return;
             viewer.SetValue(FadePendingProperty, true);
             Dispatcher.UIThread.Post(() =>
             {
@@ -122,7 +138,7 @@ namespace EmuSen.LunaP.Controls
 
         // A scrolling area that moves sideways, other than a text box's own.
         private static bool FadesAcross(ScrollViewer viewer) =>
-            viewer.TemplatedParent is not TextBox && viewer.HorizontalScrollBarVisibility != Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled && Covers(viewer);
+            viewer.TemplatedParent is not TextBox && viewer.HorizontalScrollBarVisibility != Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled && FadeCovers(viewer);
 
         // Where the focused control's row lies in the area's viewport: its item's container when it is in a list, else itself; null when the focus is elsewhere.
         private static Rect? FocusedRow(ScrollContentPresenter presenter)

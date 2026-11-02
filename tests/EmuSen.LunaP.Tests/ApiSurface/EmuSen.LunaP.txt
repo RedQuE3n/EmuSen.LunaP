@@ -189,7 +189,7 @@ public enum EmuSen.LunaP.Controls.AdaptiveRole
     public int value__
 
 public sealed class EmuSen.LunaP.Controls.AdaptiveSection : System.IEquatable<EmuSen.LunaP.Controls.AdaptiveSection>
-    public AdaptiveSection(string Key, string Label, string? Group = null)
+    public AdaptiveSection(string Key, string Label, string? Group = null, string? Status = null)
     public bool Equals(EmuSen.LunaP.Controls.AdaptiveSection? other)
     public override bool Equals(object? obj)
     public override int GetHashCode()
@@ -199,7 +199,8 @@ public sealed class EmuSen.LunaP.Controls.AdaptiveSection : System.IEquatable<Em
     public string Key { get; init; }
     public string Label { get; init; }
     public string? Group { get; init; }
-    public void Deconstruct(out string Key, out string Label, out string? Group)
+    public string? Status { get; init; }
+    public void Deconstruct(out string Key, out string Label, out string? Group, out string? Status)
 
 public sealed class EmuSen.LunaP.Controls.BadgeEntry : System.IEquatable<EmuSen.LunaP.Controls.BadgeEntry>
     public BadgeEntry(EmuSen.LunaP.Controls.BadgeKind Kind)
@@ -1430,6 +1431,7 @@ public static class EmuSen.LunaP.Controls.MenuLook
     public static System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? GetHints(Avalonia.Controls.Window window)
     public static bool Covers(Avalonia.Controls.Control element)
     public static bool GetFadesBottom(Avalonia.Controls.ScrollViewer viewer)
+    public static bool GetFadesEdges(Avalonia.Controls.ScrollViewer viewer)
     public static bool GetFadesLeft(Avalonia.Controls.ScrollViewer viewer)
     public static bool GetFadesRight(Avalonia.Controls.ScrollViewer viewer)
     public static bool GetFadesTop(Avalonia.Controls.ScrollViewer viewer)
@@ -1439,6 +1441,7 @@ public static class EmuSen.LunaP.Controls.MenuLook
     public static int GetFooterLines(Avalonia.Controls.Window window)
     public static readonly Avalonia.AttachedProperty<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>?> HintsProperty = null
     public static readonly Avalonia.AttachedProperty<bool> FadesBottomProperty = false
+    public static readonly Avalonia.AttachedProperty<bool> FadesEdgesProperty = false
     public static readonly Avalonia.AttachedProperty<bool> FadesLeftProperty = false
     public static readonly Avalonia.AttachedProperty<bool> FadesRightProperty = false
     public static readonly Avalonia.AttachedProperty<bool> FadesTopProperty = false
@@ -1450,6 +1453,7 @@ public static class EmuSen.LunaP.Controls.MenuLook
     public static readonly Avalonia.Controls.Templates.IDataTemplate UpperCaseText
     public static readonly Avalonia.Data.Converters.IValueConverter UpperCase
     public static string? GetFooter(Avalonia.Controls.Window window)
+    public static void SetFadesEdges(Avalonia.Controls.ScrollViewer viewer, bool value)
     public static void SetFooter(Avalonia.Controls.Window window, string? value)
     public static void SetFooterLines(Avalonia.Controls.Window window, int value)
     public static void SetHints(Avalonia.Controls.Window window, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? value)
@@ -1566,6 +1570,7 @@ public class EmuSen.LunaP.Controls.MenuRow : Avalonia.Controls.Control
     public MenuRow()
     public bool IsHighlighted { get; set; }
     public bool IsOn { get; set; }
+    public double Inset { get; set; }
     public double RowHeight { get; set; }
     public double Scale { get; set; }
     public double TextSize { get; set; }
@@ -1581,6 +1586,7 @@ public class EmuSen.LunaP.Controls.MenuRow : Avalonia.Controls.Control
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase?> ValueLetterCaseProperty = null
     public static readonly Avalonia.StyledProperty<bool> IsHighlightedProperty = false
     public static readonly Avalonia.StyledProperty<bool> IsOnProperty = false
+    public static readonly Avalonia.StyledProperty<double> InsetProperty = 8
     public static readonly Avalonia.StyledProperty<double> RowHeightProperty = 54
     public static readonly Avalonia.StyledProperty<double> ScaleProperty = 1
     public static readonly Avalonia.StyledProperty<double> TextSizeProperty = 36
@@ -1836,6 +1842,189 @@ public enum EmuSen.LunaP.Controls.PadGlyphStyle
     public const EmuSen.LunaP.Controls.PadGlyphStyle Outline = 0
     public int value__
 
+public sealed class EmuSen.LunaP.Controls.PageAction : System.IEquatable<EmuSen.LunaP.Controls.PageAction>
+    public EmuSen.LunaP.Controls.PadGlyphButton? PadButton { get; init; }
+    public EmuSen.LunaP.Controls.PageMark Mark { get; init; }
+    public PageAction(string Key, string Text)
+    public System.Collections.Generic.IReadOnlyList<string>? Choices { get; init; }
+    public bool Equals(EmuSen.LunaP.Controls.PageAction? other)
+    public bool IsEnabled { get; init; }
+    public bool IsMain { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.PageAction? left, EmuSen.LunaP.Controls.PageAction? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.PageAction? left, EmuSen.LunaP.Controls.PageAction? right)
+    public string Key { get; init; }
+    public string Text { get; init; }
+    public string? Value { get; init; }
+    public void Deconstruct(out string Key, out string Text)
+
+public abstract class EmuSen.LunaP.Controls.PageContent : System.IEquatable<EmuSen.LunaP.Controls.PageContent>
+    protected PageContent(EmuSen.LunaP.Controls.PageContent original)
+    protected virtual System.Type EqualityContract { get; }
+    protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.PageContent? left, EmuSen.LunaP.Controls.PageContent? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.PageContent? left, EmuSen.LunaP.Controls.PageContent? right)
+    public virtual bool Equals(EmuSen.LunaP.Controls.PageContent? other)
+
+public struct EmuSen.LunaP.Controls.PageFocus : System.ValueType, System.IEquatable<EmuSen.LunaP.Controls.PageFocus>
+    public PageFocus(bool InActions, string? Key)
+    public bool Equals(EmuSen.LunaP.Controls.PageFocus other)
+    public bool InActions { get; init; }
+    public override bool Equals(object obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.PageFocus left, EmuSen.LunaP.Controls.PageFocus right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.PageFocus left, EmuSen.LunaP.Controls.PageFocus right)
+    public string? Key { get; init; }
+    public void Deconstruct(out bool InActions, out string? Key)
+
+public sealed class EmuSen.LunaP.Controls.PageHero : System.IEquatable<EmuSen.LunaP.Controls.PageHero>
+    public Avalonia.Media.IImage? Art { get; init; }
+    public Avalonia.Media.IImage? Cover { get; init; }
+    public PageHero(string Title, string? Facts = null, Avalonia.Media.IImage? Art = null, Avalonia.Media.IImage? Cover = null, double CoverAspect = 0.75, string? Mark = null)
+    public bool Equals(EmuSen.LunaP.Controls.PageHero? other)
+    public double CoverAspect { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.PageHero? left, EmuSen.LunaP.Controls.PageHero? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.PageHero? left, EmuSen.LunaP.Controls.PageHero? right)
+    public string Title { get; init; }
+    public string? Facts { get; init; }
+    public string? Mark { get; init; }
+    public void Deconstruct(out string Title, out string? Facts, out Avalonia.Media.IImage? Art, out Avalonia.Media.IImage? Cover, out double CoverAspect, out string? Mark)
+
+public sealed class EmuSen.LunaP.Controls.PageHint : System.IEquatable<EmuSen.LunaP.Controls.PageHint>
+    public EmuSen.LunaP.Controls.PadGlyphButton Button { get; init; }
+    public PageHint(EmuSen.LunaP.Controls.PadGlyphButton Button, string Text, string? Key = null)
+    public bool Equals(EmuSen.LunaP.Controls.PageHint? other)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.PageHint? left, EmuSen.LunaP.Controls.PageHint? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.PageHint? left, EmuSen.LunaP.Controls.PageHint? right)
+    public string Text { get; init; }
+    public string? Key { get; init; }
+    public void Deconstruct(out EmuSen.LunaP.Controls.PadGlyphButton Button, out string Text, out string? Key)
+
+public class EmuSen.LunaP.Controls.PageLayout : Avalonia.Controls.Border
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public EmuSen.LunaP.Controls.AdaptiveForm Form { get; set; }
+    public EmuSen.LunaP.Controls.PadFamily PadFamily { get; set; }
+    public EmuSen.LunaP.Controls.PageContent? Content { get; set; }
+    public EmuSen.LunaP.Controls.PageFocus Focused { get; }
+    public EmuSen.LunaP.Controls.PageHero? Hero { get; set; }
+    public EmuSen.LunaP.Controls.PosterSlot Poster { get; }
+    public PageLayout()
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.AdaptiveSection> Sections { get; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry> Hints { get; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PageAction> Actions { get; }
+    public System.Func<EmuSen.LunaP.Controls.PageFocus, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PageHint>>? HintsFor { get; set; }
+    public System.Func<bool>? Back { get; set; }
+    public bool CloseViewer()
+    public bool FocusActions(string? key = null)
+    public bool FocusContent(string? key = null)
+    public bool IsDeeper { get; }
+    public bool IsViewerOpen { get; }
+    public bool Move(int dx, int dy)
+    public bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
+    public bool SelectSection(string key)
+    public bool StepSection(int by)
+    public const double ActionsTop = 328
+    public const double ContentTop = 464
+    public const double CoverMaxHeight = 268
+    public const double CoverWidth = 240
+    public const double DesignHeight = 800
+    public const double DesktopCoverHeight = 200
+    public const double DesktopCoverWidth = 160
+    public const double DesktopHeroHeight = 200
+    public const double FactsTop = 286
+    public const double HelpBarHeight = 58
+    public const double HelpBarTop = 702
+    public const double HeroHeight = 360
+    public const double RowHeight = 54
+    public const double Side = 64
+    public const double StripTop = 396
+    public const double TitleLeft = 336
+    public const double TitleTop = 226
+    public event System.Action<EmuSen.LunaP.Controls.PageFocus> FocusChanged
+    public event System.Action<int> ViewerStepped
+    public event System.Action<string, int> ActionStepped
+    public event System.Action<string, int> RowStepped
+    public event System.Action<string, string> RowEdited
+    public event System.Action<string, string> TileButton
+    public event System.Action<string> ActionInvoked
+    public event System.Action<string> ContentButton
+    public event System.Action<string> HintInvoked
+    public event System.Action<string> RowChosen
+    public event System.Action<string> SectionChosen
+    public event System.Action<string> TileChosen
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.AdaptiveForm> FormProperty = Desktop
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadFamily> PadFamilyProperty = Xbox
+    public string? SelectedSection { get; }
+    public void LeaveDeeper()
+    public void SetActions(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.PageAction> actions)
+    public void SetSections(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.AdaptiveSection> sections, string? selected = null)
+    public void ShowDeeper(string parent, string title, EmuSen.LunaP.Controls.PageContent content)
+    public void ShowViewer(Avalonia.Media.IImage? picture, string caption)
+
+public enum EmuSen.LunaP.Controls.PageMark
+    public const EmuSen.LunaP.Controls.PageMark FilledHeart = 2
+    public const EmuSen.LunaP.Controls.PageMark Heart = 1
+    public const EmuSen.LunaP.Controls.PageMark None = 0
+    public int value__
+
+public sealed class EmuSen.LunaP.Controls.PageRow : System.IEquatable<EmuSen.LunaP.Controls.PageRow>
+    public EmuSen.LunaP.Controls.PageRowKind Kind { get; init; }
+    public PageRow(string Key, string Label)
+    public System.Collections.Generic.IReadOnlyList<string>? Choices { get; init; }
+    public bool Equals(EmuSen.LunaP.Controls.PageRow? other)
+    public bool IsEnabled { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.PageRow? left, EmuSen.LunaP.Controls.PageRow? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.PageRow? left, EmuSen.LunaP.Controls.PageRow? right)
+    public string Key { get; init; }
+    public string Label { get; init; }
+    public string? Sentence { get; init; }
+    public string? Status { get; init; }
+    public void Deconstruct(out string Key, out string Label)
+
+public enum EmuSen.LunaP.Controls.PageRowKind
+    public const EmuSen.LunaP.Controls.PageRowKind Action = 0
+    public const EmuSen.LunaP.Controls.PageRowKind Asks = 2
+    public const EmuSen.LunaP.Controls.PageRowKind Opens = 1
+    public const EmuSen.LunaP.Controls.PageRowKind Steps = 3
+    public const EmuSen.LunaP.Controls.PageRowKind Text = 4
+    public int value__
+
+public sealed class EmuSen.LunaP.Controls.PageTile : System.IEquatable<EmuSen.LunaP.Controls.PageTile>
+    public Avalonia.Media.IImage? Picture { get; init; }
+    public PageTile(string Key, string Label)
+    public System.Collections.Generic.IReadOnlyList<System.ValueTuple<string, string>>? Buttons { get; init; }
+    public bool Equals(EmuSen.LunaP.Controls.PageTile? other)
+    public bool IsEmpty { get; init; }
+    public bool IsMarked { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.PageTile? left, EmuSen.LunaP.Controls.PageTile? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.PageTile? left, EmuSen.LunaP.Controls.PageTile? right)
+    public string Key { get; init; }
+    public string Label { get; init; }
+    public string? Caption { get; init; }
+    public string? Mark { get; init; }
+    public string? Status { get; init; }
+    public void Deconstruct(out string Key, out string Label)
+
 public enum EmuSen.LunaP.Controls.PanelSide
     public const EmuSen.LunaP.Controls.PanelSide Bottom = 2
     public const EmuSen.LunaP.Controls.PanelSide Left = 0
@@ -1865,6 +2054,19 @@ public class EmuSen.LunaP.Controls.PathPickerRow : Avalonia.Controls.Primitives.
     public string BrowseTitle { get; set; }
     public string Path { get; set; }
     public string Placeholder { get; set; }
+
+public class EmuSen.LunaP.Controls.PosterSlot : Avalonia.Controls.Control
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    public Avalonia.Media.IImage? Poster { get; set; }
+    public PosterSlot()
+    public bool PlaysClip { get; }
+    public bool Scrim { get; set; }
+    public object? Video { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static System.TimeSpan PosterDelay { get; }
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.IImage?> PosterProperty = null
+    public static readonly Avalonia.StyledProperty<bool> ScrimProperty = true
+    public static readonly Avalonia.StyledProperty<object?> VideoProperty = null
 
 public class EmuSen.LunaP.Controls.RatingPicker : Avalonia.Controls.Control, EmuSen.LunaP.Controls.ISidewaysAdjustable
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
@@ -1904,6 +2106,22 @@ public class EmuSen.LunaP.Controls.RgbaImageView : Avalonia.Controls.Primitives.
     public void SetFrame(System.ReadOnlySpan<byte> rgba, int width, int height)
     public void SetFrame(System.ValueTuple<byte[], int, int> frame)
     public void SetFrame(byte[] rgba, int width, int height)
+
+public sealed class EmuSen.LunaP.Controls.PageContent.Rows : EmuSen.LunaP.Controls.PageContent, System.IEquatable<EmuSen.LunaP.Controls.PageContent.Rows>
+    protected override System.Type EqualityContract { get; }
+    protected override bool PrintMembers(System.Text.StringBuilder builder)
+    public Rows(System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PageRow> Items, string? Sentence = null, System.Collections.Generic.IReadOnlyList<System.ValueTuple<string, string>>? Buttons = null)
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PageRow> Items { get; init; }
+    public System.Collections.Generic.IReadOnlyList<System.ValueTuple<string, string>>? Buttons { get; init; }
+    public bool Equals(EmuSen.LunaP.Controls.PageContent.Rows? other)
+    public bool Equals(EmuSen.LunaP.Controls.PageContent? other)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.PageContent.Rows? left, EmuSen.LunaP.Controls.PageContent.Rows? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.PageContent.Rows? left, EmuSen.LunaP.Controls.PageContent.Rows? right)
+    public string? Sentence { get; init; }
+    public void Deconstruct(out System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PageRow> Items, out string? Sentence, out System.Collections.Generic.IReadOnlyList<System.ValueTuple<string, string>>? Buttons)
 
 public class EmuSen.LunaP.Controls.ScrollLetterOverlay : Avalonia.Controls.Control
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
@@ -2109,6 +2327,22 @@ public class EmuSen.LunaP.Controls.Tabs : Avalonia.Controls.TabControl
     public const string StyleClass = "luna-tabs"
     public void RemoveFrom(int index)
 
+public sealed class EmuSen.LunaP.Controls.PageContent.Text : EmuSen.LunaP.Controls.PageContent, System.IEquatable<EmuSen.LunaP.Controls.PageContent.Text>
+    protected override System.Type EqualityContract { get; }
+    protected override bool PrintMembers(System.Text.StringBuilder builder)
+    public Avalonia.Media.IImage? Picture { get; init; }
+    public Text(string Words, Avalonia.Media.IImage? Picture = null, string? Caption = null)
+    public bool Equals(EmuSen.LunaP.Controls.PageContent.Text? other)
+    public bool Equals(EmuSen.LunaP.Controls.PageContent? other)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.PageContent.Text? left, EmuSen.LunaP.Controls.PageContent.Text? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.PageContent.Text? left, EmuSen.LunaP.Controls.PageContent.Text? right)
+    public string Words { get; init; }
+    public string? Caption { get; init; }
+    public void Deconstruct(out string Words, out Avalonia.Media.IImage? Picture, out string? Caption)
+
 public sealed class EmuSen.LunaP.Controls.TextRow : System.IEquatable<EmuSen.LunaP.Controls.TextRow>
     public EmuSen.LunaP.Controls.TextRowMarker Marker { get; init; }
     public TextRow(string Text, bool Secondary = false, EmuSen.LunaP.Controls.TextRowMarker Marker = 0)
@@ -2248,6 +2482,22 @@ public class EmuSen.LunaP.Controls.TileStrip<T> : EmuSen.LunaP.Controls.TileStri
     public int SelectedIndex { get; }
     public void Refresh(System.Collections.Generic.IReadOnlyList<T> items)
     public void Select(T? item)
+
+public sealed class EmuSen.LunaP.Controls.PageContent.Tiles : EmuSen.LunaP.Controls.PageContent, System.IEquatable<EmuSen.LunaP.Controls.PageContent.Tiles>
+    protected override System.Type EqualityContract { get; }
+    protected override bool PrintMembers(System.Text.StringBuilder builder)
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PageTile> Items { get; init; }
+    public Tiles(System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PageTile> Items, double Width, double Height)
+    public bool Equals(EmuSen.LunaP.Controls.PageContent.Tiles? other)
+    public bool Equals(EmuSen.LunaP.Controls.PageContent? other)
+    public double Height { get; init; }
+    public double Width { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.PageContent.Tiles? left, EmuSen.LunaP.Controls.PageContent.Tiles? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.PageContent.Tiles? left, EmuSen.LunaP.Controls.PageContent.Tiles? right)
+    public void Deconstruct(out System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PageTile> Items, out double Width, out double Height)
 
 public class EmuSen.LunaP.Controls.ToolBar : Avalonia.Controls.ItemsControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
@@ -2521,6 +2771,7 @@ public enum EmuSen.LunaP.Theme.LunaMotionToken
     public const EmuSen.LunaP.Theme.LunaMotionToken Fade = 6
     public const EmuSen.LunaP.Theme.LunaMotionToken Instant = 0
     public const EmuSen.LunaP.Theme.LunaMotionToken Pan = 4
+    public const EmuSen.LunaP.Theme.LunaMotionToken Poster = 7
     public const EmuSen.LunaP.Theme.LunaMotionToken Quick = 1
     public const EmuSen.LunaP.Theme.LunaMotionToken Reel = 5
     public int value__

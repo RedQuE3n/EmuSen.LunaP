@@ -72,7 +72,8 @@ namespace EmuSen.LunaP.Controls
     /// <param name="Key">What the window switches on, never shown.</param>
     /// <param name="Label">The words the section is shown with.</param>
     /// <param name="Group">The heading it sits under in the desktop's sidebar; null for none.</param>
-    public sealed record AdaptiveSection(string Key, string Label, string? Group = null);
+    /// <param name="Status">One line about the section, such as a count: right-aligned in the desktop's sidebar and heard with the name on the big screen; null for none (docs/LunaP.md §209.5).</param>
+    public sealed record AdaptiveSection(string Key, string Label, string? Group = null, string? Status = null);
 
     // A window described by roles and arranged for the form it is shown in - see docs/LunaP.md §202.
     /// <summary>A window's parts declared by role and arranged for its form: side by side on the desktop, stacked in the menus' type on the big screen, with the pad's focus and the help bar following the roles.</summary>
@@ -220,7 +221,10 @@ namespace EmuSen.LunaP.Controls
         }
 
         // The big screen's section strip: names in Caption upper case on nothing, the chosen one strong with a 3-unit accent underline (§208.10).
-        private void SetUpSectionStrip()
+        private void SetUpSectionStrip() => StyleStrip(_sectionRow);
+
+        // The strip's look on any row of toggle buttons, so an item's page draws its sections as the frame does (§209).
+        internal static void StyleStrip(Panel row)
         {
             var plain = new Style(x => x.OfType<ToggleButton>())
             {
@@ -264,10 +268,10 @@ namespace EmuSen.LunaP.Controls
                     new Setter(ContentPresenter.ForegroundProperty, new DynamicResourceExtension("LunaTextStrong")),
                 },
             };
-            _sectionRow.Styles.Add(plain);
-            _sectionRow.Styles.Add(chosen);
-            _sectionRow.Styles.Add(presenter);
-            _sectionRow.Styles.Add(chosenPresenter);
+            row.Styles.Add(plain);
+            row.Styles.Add(chosen);
+            row.Styles.Add(presenter);
+            row.Styles.Add(chosenPresenter);
         }
 
         /// <summary>The form the parts are arranged in; changing it rearranges them, keeping the selection and the focused role.</summary>
@@ -793,12 +797,12 @@ namespace EmuSen.LunaP.Controls
         private void FillNavigation()
         {
             _sidebar.Fill(_sections.GroupBy(s => s.Group ?? string.Empty)
-                .Select(g => new SourceListGroup(g.Key, g.Select(s => new SourceListItem(s.Key, s.Label)).ToList())), _selectedSection);
+                .Select(g => new SourceListGroup(g.Key, g.Select(s => new SourceListItem(s.Key, s.Label, s.Status)).ToList())), _selectedSection);
             _sectionRow.Children.Clear();
             foreach (AdaptiveSection section in _sections)
             {
                 var button = new ToggleButton { Content = section.Label, IsChecked = section.Key == _selectedSection };
-                AutomationProperties.SetName(button, section.Label);
+                AutomationProperties.SetName(button, section.Status is { Length: > 0 } status ? $"{section.Label}, {status}" : section.Label);
                 string key = section.Key;
                 button.Click += (_, _) => SelectSection(key, raise: true);
                 _sectionRow.Children.Add(button);

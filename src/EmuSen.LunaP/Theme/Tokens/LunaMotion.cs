@@ -20,6 +20,8 @@ namespace EmuSen.LunaP.Theme
         Reel,
         /// <summary>150 ms, linear: facts fading while a list scrolls.</summary>
         Fade,
+        /// <summary>1.5 s before a hero picture would turn into its clip, which then cross-fades over Enter (docs/LunaP.md §209.3).</summary>
+        Poster,
     }
 
     // Durations and easings of the motion tokens, and reduced motion - see docs/LunaP.md §206.5.
@@ -55,6 +57,7 @@ namespace EmuSen.LunaP.Theme
             LunaMotionToken.Pan => 320,
             LunaMotionToken.Reel => 400,
             LunaMotionToken.Fade => 150,
+            LunaMotionToken.Poster => 1500,
             _ => 0,
         });
 

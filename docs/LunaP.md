@@ -14524,3 +14524,88 @@ surface, since the card is itself raised and a raised fill vanished on it; and `
 size and strong, so a pane's title is one owner's rather than each tool's bold.
 `ManagerLayout.PlanTitle` gives the plan's question its own words for the marked rows (`Install Snes9x?`), the default
 staying `Apply these changes?`.
+
+## 209. An item's page: `PageLayout`, `PosterSlot`, and the Status on sections and rows
+
+### 209.1 The gap
+
+The consumer's unified interface gives one thing a page of its own (its `EmuSen_Interface.md` §4, screen 3, decided
+2026-11-01): a hero of the thing's best art reaching the screen's edges, its cover raised over the hero's foot, its name
+and a line of facts on the art, the actions under them as buttons (one of which steps a value), sections stepped by the
+shoulders, and in each section rows, tiles or words beside a picture; deeper pages under a section, named in the strip
+as `Parent › Page`. `AdaptiveLayout` (§202) places a header row above everything and a sidebar of sections on the
+desktop; neither its header nor its sidebar is this arrangement, and its centred safe area cannot draw a hero to the
+edges. By the rule that a screen needing a new arrangement gets a canonical layout rather than hand placement, the page
+is `PageLayout`, a canonical layout of its own beside `ManagerLayout`, general to any item a library holds: a game, a
+theme, a core.
+
+### 209.2 `PageLayout`
+
+Declared as data: `Hero` (`PageHero`: title, facts, art, cover, the cover's aspect, a mark for a generated cover),
+`SetActions` (`PageAction`: key, words, pad button, main, a stepped `Value` with its `Choices`), `SetSections`
+(`AdaptiveSection`), `Content` (`PageContent.Rows`, `.Tiles` or `.Text`), `HintsFor` (a delegate from the focus to
+`PageHint`s, so the help bar is generated from what the host declares and never written), and `Back` (a delegate for B
+and the desktop's Back button). What a press means comes back as events with keys: `ActionInvoked`, `ActionStepped`,
+`SectionChosen`, `RowChosen`, `RowStepped`, `RowEdited`, `TileChosen`, `TileButton`, `ContentButton`, `HintInvoked`,
+`ViewerStepped`. The layout keeps only the focus, so a host's view model holds every other state.
+
+**The big screen**, in design units of 1280 × 800 scaled by `MenuPanel.Scale` (the height over 800, so a 16:9 screen has
+1422 units across): the hero 0,0 full width × 360 under the OnArt gradient; the cover at 64,180, 240 wide and at most 268
+tall in the item's own shape (the design's 300 would reach 16 units into the content at 464, so it stops 16 short); the
+title at 336,226 in Barlow Condensed medium at Display 44, OnArt, shrunk to fit rather than cut; the facts at 336,286 in
+Body at 70 per cent; the actions 44 tall at 336,328, 12 apart, the main one filled with the accent, each with its pad
+glyph, a stepped value between ◂ and ▸, and the focus a ring 3 units wide drawn 4 outside; the strip at 336,396 with the
+frame's look (`AdaptiveLayout.StyleStrip`, one owner for both); the content from 64,464 to the help bar; the help bar at
+0,702, 58 tall, on the frame's band. Rows are `MenuRow`s 54 tall in Barlow at Row 26, inset 24 (`MenuRow.Inset`, new,
+8 by default), four whole rows at a time, the rest reached by whole rows, a status muted at the right except on the
+focused row; tiles are a strip of whole tiles, 24 apart, a label and a muted status of up to two lines under each, an
+empty place a dashed outline, a marked one a dot in the accent; text wraps beside a 388 × 222 picture.
+
+**The desktop**, in pixels in the content area: `‹ Back` 80 × 28 at 24,16 over a hero 200 tall; the cover 160 × 200 at
+24,93; the title in Display 24 and the facts in Body at 208; the actions 28 tall, a stepped one a split button listing
+its choices; the sections as tabs in Strong 14 with the accent underline; rows as `FieldRow`s with their sentence under
+each (a stepped row a choice, a text row a text box committed on Enter or on leaving it, an opening row a button);
+tiles as a wrapping grid of 160 × 120 with the tile's buttons on the selected and hovered one. The content scrolls in a viewer that fades its edges where more lies beyond (`MenuLook.FadesEdges`, new: a scrolling area outside the look asks for the look's edge fade, which the fit audit reads, so a row half past the edge reads as continuing rather than cut).
+
+**The viewer.** `ShowViewer(picture, caption)` covers the page with the picture on Void, scaled down to fit, and a
+caption bar 80 tall on CaptionSurface with the caption and the help bar; Left and Right raise `ViewerStepped`, B closes
+it unless the hints give B a key.
+
+### 209.3 `PosterSlot`
+
+The hero's picture fills its box, cut at its edges and never stretched, under the OnArt gradient (black from nothing to
+72 per cent). `Video` holds the clip a video surface will play; until one exists `PlaysClip` is false and the poster
+stays. `PosterDelay` is the new `Poster` motion token, 1.5 s, after which a clip would cross-fade in over Enter. It takes
+no pointer, so it is never counted as something drawn under the words on it.
+
+### 209.4 The pad
+
+The focus is on the main action first. Left and Right walk the actions; on an action with a stepped value they step it,
+and past either end of its values they move to the neighbouring action, so every action is reached without a second
+button. Down goes into the content; Up from its first row or from any tile returns to the action that had the focus.
+In rows Up and Down move by a row and Left and Right step a stepped row; in tiles Left and Right move by a tile. A does
+what the focus holds; the shoulders step the sections, wrapping, and are declined on a deeper page; B calls `Back`; a
+button a hint gives a key raises `HintInvoked`; anything else is declined, for the host.
+
+### 209.5 The Status on sections and rows
+
+The interface's §3.2 gives sections and rows one line of status. `AdaptiveSection.Status` (appended, null by default)
+is drawn right-aligned in the desktop's sidebar as its badge and heard with the name on the big screen's strip, in
+`AdaptiveLayout` and `PageLayout` alike. `PageRow.Status` is the row's: the value Left and Right step, or a line such as
+`0 of 3 on`, drawn right-aligned and muted (`MenuRow.Value`, which existed); `PageTile.Status` is the line under a tile.
+
+### 209.6 Tests and seeded faults
+
+`PageLayoutTests`: every content (text, rows, tiles, a question's sentence and rows, covers) under the fit audit at
+1280 × 800, 1920 × 1200, 1920 × 1080 and 1280 × 720 on the big screen, and in a desktop content area of 1080 × 772; the
+hero, cover, actions, content and help bar where §209.2 puts them at the four sizes; the pad's walk through the actions,
+Resume's steps and the edge rule, down into the rows, the rows reached whole and four drawn, and back up; the shoulders,
+a deeper page's strip `OPTIONS CHEATS` with the shoulders declined, B to the host, a hint's key raised and an undeclared
+button declined; tiles stepped whole, five drawn at 1280 × 800, and Up back to the actions; the viewer under the audit,
+stepped and closed by B; a section's status heard and the poster slot's delay. Measured on 2026-11-01, each fault
+reverted after its run:
+
+| Fault | Caught by |
+|---|---|
+| Up from the first row stays in the rows | the pad walk's case (the focus not back on the actions) |
+| The shoulders step the sections on a deeper page | the deeper page's case (the shoulders not declined) |

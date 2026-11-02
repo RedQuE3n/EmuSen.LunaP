@@ -55,6 +55,7 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<LetterCase> LetterCaseProperty = AvaloniaProperty.Register<MenuRow, LetterCase>(nameof(LetterCase), LetterCase.Upper);
         public static readonly StyledProperty<Color?> ValueColorProperty = AvaloniaProperty.Register<MenuRow, Color?>(nameof(ValueColor));
         public static readonly StyledProperty<LetterCase?> ValueLetterCaseProperty = AvaloniaProperty.Register<MenuRow, LetterCase?>(nameof(ValueLetterCase));
+        public static readonly StyledProperty<double> InsetProperty = AvaloniaProperty.Register<MenuRow, double>(nameof(Inset), 8);
 
         // Width at the right a MenuFieldRow keeps for the control it hosts, so the label is cut short of it - see docs/LunaP.md §182.3.
         internal static readonly StyledProperty<double> TrailingWidthProperty = AvaloniaProperty.Register<MenuRow, double>("TrailingWidth");
@@ -65,7 +66,7 @@ namespace EmuSen.LunaP.Controls
         static MenuRow()
         {
             AffectsMeasure<MenuRow>(ScaleProperty, RowHeightProperty);
-            AffectsRender<MenuRow>(LabelProperty, ValueProperty, KindProperty, IsOnProperty, IsHighlightedProperty, FontPathProperty, TextSizeProperty, TextColorProperty,
+            AffectsRender<MenuRow>(InsetProperty, LabelProperty, ValueProperty, KindProperty, IsOnProperty, IsHighlightedProperty, FontPathProperty, TextSizeProperty, TextColorProperty,
                 HighlightTextColorProperty, BarColorProperty, RuleColorProperty, AccentColorProperty, LetterCaseProperty, LabelOverrideProperty, ValueColorProperty,
                 ValueLetterCaseProperty, TrailingWidthProperty);
         }
@@ -121,6 +122,9 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The casing of the value alone, such as None for a name that must read as written; null follows LetterCase. Null by default.</summary>
         public LetterCase? ValueLetterCase { get => GetValue(ValueLetterCaseProperty); set => SetValue(ValueLetterCaseProperty, value); }
 
+        /// <summary>The room between the row's edges and its label and right-hand parts, in design pixels before Scale. 8 by default; an item's page uses 24 (docs/LunaP.md §209).</summary>
+        public double Inset { get => GetValue(InsetProperty); set => SetValue(InsetProperty, value); }
+
         private double Unit => double.IsFinite(Scale) && Scale > 0 ? Scale : 1;
 
         private string Text => FontLayout.Cased(GetValue(LabelOverrideProperty) ?? Label ?? "", LetterCase);
@@ -139,7 +143,7 @@ namespace EmuSen.LunaP.Controls
         {
             double u = Unit, w = size.Width, h = size.Height;
             double rule = RuleThickness(u);
-            double pad = 8 * u, gap = 8 * u, arrowGap = 11 * u;
+            double pad = Inset * u, gap = 8 * u, arrowGap = 11 * u;
             double mark = CapHeight(Typeface(), TextSize * u);
             double mid = (h - rule) / 2;
             double right = w - pad - Math.Max(0, GetValue(TrailingWidthProperty));

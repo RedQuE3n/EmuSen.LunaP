@@ -185,7 +185,7 @@ namespace EmuSen.LunaP.Tests
         [Fact]
         public void The_motion_tokens_have_their_durations_and_reduced_motion_stops_movement() 
         {
-            int[] ms = [0, 120, 200, 160, 320, 400, 150];
+            int[] ms = [0, 120, 200, 160, 320, 400, 150, 1500];
             Assert.Equal(ms, Enum.GetValues<LunaMotionToken>().Select(t => (int)LunaMotion.Duration(t).TotalMilliseconds));
             Assert.IsType<Avalonia.Animation.Easings.QuadraticEaseIn>(LunaMotion.Easing(LunaMotionToken.Exit));
             Assert.IsType<Avalonia.Animation.Easings.CubicEaseOut>(LunaMotion.Easing(LunaMotionToken.Pan));
