@@ -165,6 +165,9 @@ namespace EmuSen.LunaP.Controls
         /// </remarks>
         public Comparison<T>? Sort { get; init; }
 
+        /// <summary>The resource key of the colour a cell's words take for a row, such as "LunaSuccess", "LunaAttention" or "LunaMuted"; null for the row's own - see docs/LunaP.md §208.10.</summary>
+        public Func<T, string?>? Tone { get; init; }
+
         // WRITING IS THE CALLER'S JOB, WHICH IS WHY THIS IS AN ACTION AND NOT A SETTER PATH. The
         // column already turns a model into text one way; the reverse needs to know the model's
         // type, its property, and how to parse a string into it, and only the caller knows all

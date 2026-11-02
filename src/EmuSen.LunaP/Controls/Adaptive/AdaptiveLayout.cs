@@ -6,6 +6,8 @@ using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Markup.Xaml.MarkupExtensions;
+using Avalonia.Controls.Presenters;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -91,6 +93,26 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<bool> SwapsAcceptAndBackProperty =
             AvaloniaProperty.Register<AdaptiveLayout, bool>(nameof(SwapsAcceptAndBack));
 
+        /// <summary>Defines the PadFamily property.</summary>
+        public static readonly StyledProperty<PadFamily> PadFamilyProperty =
+            AvaloniaProperty.Register<AdaptiveLayout, PadFamily>(nameof(PadFamily), PadFamily.Xbox);
+
+        /// <summary>The pad whose printing the help bar draws: lettered rings by default (Xbox's A, B, X and Y), or the family the host's session knows - see docs/LunaP.md §208.10.</summary>
+        public PadFamily PadFamily
+        {
+            get => GetValue(PadFamilyProperty);
+            set => SetValue(PadFamilyProperty, value);
+        }
+
+        /// <summary>The word the help bar gives the shoulders, "Section" by default; a window names what its sections are, such as "Console".</summary>
+        public string SectionWord
+        {
+            get => _sectionWord;
+            set { _sectionWord = value ?? throw new ArgumentNullException(nameof(value)); RefreshHints(); }
+        }
+
+        private string _sectionWord = "Section";
+
         /// <summary>The style class on the big screen's button for the main action, which stands first in its row.</summary>
         public const string MainClass = "adaptive-main";
 
@@ -101,7 +123,7 @@ namespace EmuSen.LunaP.Controls
         private readonly ToolBar _toolBar = new();
         private readonly WrapPanel _actionRow = new() { Orientation = Orientation.Horizontal, ItemSpacing = 12, LineSpacing = 8 };
         private readonly TextBox _search = new() { MinWidth = 180 };
-        private readonly HintBar _hintBar = new() { FontSize = 18 };
+        private readonly HintBar _hintBar = new() { FontSize = LunaTokens.BigScreenType.Caption };
         private readonly ScrollViewer _sidebarScroll = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         private readonly Border _navigationHost = new() { Name = "AdaptiveNavigation" };
         private readonly Border _contentHost = new() { Name = "AdaptiveContent" };
@@ -163,9 +185,65 @@ namespace EmuSen.LunaP.Controls
             AutomationProperties.SetName(_search, "Search");
             AutomationProperties.SetName(_sidebar, "Sections");
             AutomationProperties.SetName(_toolBar, "Actions");
+            _hintBar[!HintBar.PadFamilyProperty] = this[!PadFamilyProperty];
+            _hintBar.FontPath = Media.LunaFonts.BodyFile;
+            _cardPanel[!MenuPanel.HintFamilyProperty] = this[!PadFamilyProperty];
+            _listCard[!MenuPanel.HintFamilyProperty] = this[!PadFamilyProperty];
             SetUpCard();
             SetUpListTools();
+            SetUpSectionStrip();
             Arrange();
+        }
+
+        // The big screen's section strip: names in Caption upper case on nothing, the chosen one strong with a 3-unit accent underline (§208.10).
+        private void SetUpSectionStrip()
+        {
+            var plain = new Style(x => x.OfType<ToggleButton>())
+            {
+                Setters =
+                {
+                    new Setter(TemplatedControl.BackgroundProperty, Brushes.Transparent),
+                    new Setter(TemplatedControl.BorderBrushProperty, Brushes.Transparent),
+                    new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(0, 0, 0, 3)),
+                    new Setter(TemplatedControl.PaddingProperty, new Thickness(16, 8)),
+                    new Setter(TemplatedControl.FontSizeProperty, LunaTokens.BigScreenType.Caption),
+                    new Setter(TemplatedControl.FontFamilyProperty, Media.LunaFonts.Body),
+                    new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(0)),
+                    new Setter(Layoutable.MinHeightProperty, 44.0),
+                    new Setter(TemplatedControl.ForegroundProperty, new DynamicResourceExtension("LunaText")),
+                },
+            };
+            var chosen = new Style(x => x.OfType<ToggleButton>().Class(":checked"))
+            {
+                Setters =
+                {
+                    new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("LunaAccent")),
+                    new Setter(TemplatedControl.ForegroundProperty, new DynamicResourceExtension("LunaTextStrong")),
+                },
+            };
+            var presenter = new Style(x => x.OfType<ToggleButton>().Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"))
+            {
+                Setters =
+                {
+                    new Setter(ContentPresenter.BackgroundProperty, Brushes.Transparent),
+                    new Setter(ContentPresenter.BorderBrushProperty, Brushes.Transparent),
+                    new Setter(ContentPresenter.BorderThicknessProperty, new Thickness(0, 0, 0, 3)),
+                    new Setter(ContentPresenter.CornerRadiusProperty, new CornerRadius(0)),
+                },
+            };
+            var chosenPresenter = new Style(x => x.OfType<ToggleButton>().Class(":checked").Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"))
+            {
+                Setters =
+                {
+                    new Setter(ContentPresenter.BackgroundProperty, Brushes.Transparent),
+                    new Setter(ContentPresenter.BorderBrushProperty, new DynamicResourceExtension("LunaAccent")),
+                    new Setter(ContentPresenter.ForegroundProperty, new DynamicResourceExtension("LunaTextStrong")),
+                },
+            };
+            _sectionRow.Styles.Add(plain);
+            _sectionRow.Styles.Add(chosen);
+            _sectionRow.Styles.Add(presenter);
+            _sectionRow.Styles.Add(chosenPresenter);
         }
 
         /// <summary>The form the parts are arranged in; changing it rearranges them, keeping the selection and the focused role.</summary>
@@ -286,7 +364,7 @@ namespace EmuSen.LunaP.Controls
                 PadGlyphButton accept = SwapsAcceptAndBack ? PadGlyphButton.East : PadGlyphButton.South, back = SwapsAcceptAndBack ? PadGlyphButton.South : PadGlyphButton.East;
                 if (_content is not null && AcceptHint is { } accepted) hints.Add(new HintEntry(accepted) { Button = accept });
                 hints.Add(new HintEntry("Back") { Button = back });
-                if (_sections.Count > 1 && Form != AdaptiveForm.Card) hints.Add(new HintEntry("Section") { Button = PadGlyphButton.Shoulders });
+                if (_sections.Count > 1 && Form != AdaptiveForm.Card) hints.Add(new HintEntry(_sectionWord) { Button = PadGlyphButton.Shoulders });
                 if (ListToolsOnSelect) hints.Add(new HintEntry("List") { Button = PadGlyphButton.Select });
                 foreach (LunaAction action in Padded().OrderByDescending(a => a.IsMain))
                     hints.Add(new HintEntry(action.Text) { Button = action.PadButton });
@@ -583,7 +661,7 @@ namespace EmuSen.LunaP.Controls
                 case PadGlyphButton.LeftShoulder when Form != AdaptiveForm.Card: return StepSection(-1);
                 case PadGlyphButton.RightShoulder when Form != AdaptiveForm.Card: return StepSection(1);
                 case PadGlyphButton.Select when ListToolsOnSelect && !IsPageOpen: return OpenListTools();
-                case PadGlyphButton.South when Form == AdaptiveForm.BigScreen && !IsDetailOpen && !IsPageOpen && FocusedRole == AdaptiveRole.Content:
+                case PadGlyphButton.South when Form == AdaptiveForm.BigScreen && !IsDetailOpen && !IsPageOpen && FocusedRole is null or AdaptiveRole.Content:
                     return OpenDetail();
                 case PadGlyphButton.East:
                     if (ClosePage()) return true;
@@ -966,8 +1044,18 @@ namespace EmuSen.LunaP.Controls
                 double share = Math.Clamp(double.IsFinite(ContentShare) ? ContentShare : 0.4, 0.2, 0.8);
                 middle.ColumnDefinitions = new ColumnDefinitions { new(share, GridUnitType.Star), new(1 - share, GridUnitType.Star) };
                 _detailHost.Margin = new Thickness(16, 0, 0, 0);
+                // The pane: a raised surface with the card radius and the pane's gutter (§208.10).
+                _detailHost[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaSurfaceRaised");
+                _detailHost.CornerRadius = new CornerRadius(8);
+                _detailHost.Padding = new Thickness(24);
             }
-            else _detailHost.Margin = default;
+            else
+            {
+                _detailHost.Margin = default;
+                _detailHost.ClearValue(Border.BackgroundProperty);
+                _detailHost.CornerRadius = default;
+                _detailHost.Padding = default;
+            }
 
             var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto,Auto,Auto") };
             Control[] rows = { Detach(_headerHost), top, middle, Detach(_actionsHost), statusInColumn ? new Border() : Detach(_statusHost), _hintBar };

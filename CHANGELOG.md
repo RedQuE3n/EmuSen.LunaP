@@ -25,6 +25,8 @@ answer.
   Select keeps it, and the card then opens only through `OpenListTools`; `SetToolActions` now declares `More` among the actions.
   `SetActions` and `SetToolActions` take the actions the big screen draws as buttons, the rest being the desktop
   toolbar's there. `FitAudit` passes over what a sheet layer marks covered.
+  `LunaTable.ShowsHeader`, `LunaColumn.Tone`, `AdaptiveLayout.PadFamily` and `SectionWord`, `SheetLayer.IsScreenShown`;
+  the frame's big-screen table, strip, pane, help bar and apply bar drawn as the design (`§208.10`).
 - **The Card form and the header role (`§207`).** `AdaptiveForm.Card`, appended: the content in `AdaptiveLayout.CardPanel`,
   a `MenuPanel` anchored left at `CardShare` (0.4) over `LunaScrim`, the detail beside it, the actions in the help bar,
   no navigation; its rows in Barlow at 26 in their own case. `AdaptiveRole.Header`, appended, with `AdaptiveHeader`

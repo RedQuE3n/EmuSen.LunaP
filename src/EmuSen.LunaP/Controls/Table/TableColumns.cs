@@ -71,7 +71,7 @@ namespace EmuSen.LunaP.Controls
                 column.Commit, column.Validate,
                 column.MinWidth, column.MaxWidth, column.IsVisible,
                 column.Kind, column.Checked, column.Toggle, column.Build,
-                column.Alignment, column.VerticalAlignment));
+                column.Alignment, column.VerticalAlignment, column.Tone));
             Rebuild();
 
             // A saved layout can only be matched once the columns it describes exist, and there is
@@ -113,7 +113,8 @@ namespace EmuSen.LunaP.Controls
             Action<T, bool>? Toggle,
             Func<T, Control>? Build,
             HorizontalAlignment? Alignment,
-            VerticalAlignment? VerticalAlignment)
+            VerticalAlignment? VerticalAlignment,
+            Func<T, string?>? Tone = null)
         {
             // Matches LunaColumn<T>.IsEditable rather than restating it loosely: a Check column is
             // changed by being ticked and must not answer to the text editor, or F2 stops at it.

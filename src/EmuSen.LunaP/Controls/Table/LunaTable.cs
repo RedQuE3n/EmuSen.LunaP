@@ -1,3 +1,4 @@
+using Avalonia;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,6 +31,12 @@ namespace EmuSen.LunaP.Controls
         // moment a table gets long enough to scroll.
         /// <summary>The header row from the template, or null before the template has been applied.</summary>
         protected Grid? HeaderGrid;
+
+        /// <summary>Defines the ShowsHeader property.</summary>
+        public static readonly StyledProperty<bool> ShowsHeaderProperty = AvaloniaProperty.Register<LunaTable, bool>(nameof(ShowsHeader), true);
+
+        /// <summary>Whether the header row of column names is drawn; off, the rows begin at the top, as a big screen's list does (docs/LunaP.md §208.10).</summary>
+        public bool ShowsHeader { get => GetValue(ShowsHeaderProperty); set => SetValue(ShowsHeaderProperty, value); }
         /// <summary>The row list from the template, or null before the template has been applied.</summary>
         protected ListBox? Rows;
 
@@ -49,11 +56,14 @@ namespace EmuSen.LunaP.Controls
         protected override AutomationPeer OnCreateAutomationPeer() =>
             new LunaAutomationPeer(this, AutomationControlType.Group);
 
+        static LunaTable() => ShowsHeaderProperty.Changed.AddClassHandler<LunaTable>((t, _) => { if (t.HeaderGrid is not null) t.HeaderGrid.IsVisible = t.ShowsHeader; });
+
         protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
         {
             base.OnApplyTemplate(e);
 
             HeaderGrid = e.NameScope.Find<Grid>("PART_Header");
+            if (HeaderGrid is not null) HeaderGrid.IsVisible = ShowsHeader;
             Rows = e.NameScope.Find<ListBox>("PART_Rows");
             Message = e.NameScope.Find<ErrorText>("PART_Error");
             ApplyFitsWidth();

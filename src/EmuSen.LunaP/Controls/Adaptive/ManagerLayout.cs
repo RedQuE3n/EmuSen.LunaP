@@ -5,8 +5,10 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Styling;
 using EmuSen.LunaP.Commands;
 using EmuSen.LunaP.Theme;
 
@@ -77,11 +79,13 @@ namespace EmuSen.LunaP.Controls
             AutomationProperties.SetName(_progress, "Progress");
             foreach (LunaTable<T> table in new[] { _desktopTable, _bigTable })
             {
+                bool big = ReferenceEquals(table, _bigTable);
                 table.Key = row => KeyOf(row);
                 table.FitsWidth = true;
-                table.Column(new LunaColumn<T>("Mark", row => MarkCell(row), row => MarkOf(row)?.Label ?? "not marked") { Width = "Auto" });
+                table.Column(new LunaColumn<T>("Mark", row => MarkCell(row, big), row => MarkOf(row)?.Label ?? "not marked") { Width = "Auto" });
                 table.AddHandler(Avalonia.Controls.Primitives.SelectingItemsControl.SelectionChangedEvent, (_, _) => { ShowDetail(); RefreshHints(); });
             }
+            SetUpBigScreenTable();
             AutomationProperties.SetName(_desktopTable, "Rows");
             AutomationProperties.SetName(_bigTable, "Rows");
 
@@ -378,7 +382,7 @@ namespace EmuSen.LunaP.Controls
             if (!IsPlanOpen) return false;
             _planSheet.IsVisible = false;
             ShowTables();
-            FocusRole(AdaptiveRole.Content);
+            if (!FocusRole(AdaptiveRole.Content)) Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (!IsPlanOpen) FocusRole(AdaptiveRole.Content); }, Avalonia.Threading.DispatcherPriority.Loaded);
             if (_asking is { } asked)
             {
                 _asking = null;
@@ -535,7 +539,7 @@ namespace EmuSen.LunaP.Controls
                 if (button == PadGlyphButton.Start) return _asking is null && Confirm();
                 return false;
             }
-            if (button == accept && ActsOnRow && !IsPageOpen && !IsListToolsOpen && FocusedRole == AdaptiveRole.Content && Selected is { } row && _actionFor!(row) is { IsEnabled: true } action)
+            if (button == accept && ActsOnRow && !IsPageOpen && !IsListToolsOpen && FocusedRole is null or AdaptiveRole.Content && Selected is { } row && _actionFor!(row) is { IsEnabled: true } action)
             {
                 action.Invoke();
                 return true;
@@ -571,10 +575,51 @@ namespace EmuSen.LunaP.Controls
             if (Selected is { } row) CycleMark(row);
         }
 
-        private Control MarkCell(T row)
+        // The desktop's box on every row; on the big screen nothing until a row is marked, then its mark's word in the accent (§208.10).
+        private Control MarkCell(T row, bool big)
         {
             ManagerMark? mark = MarkOf(row);
-            return new TextBlock { Text = (mark is null ? "☐" : "☑ " + mark.Label), VerticalAlignment = VerticalAlignment.Center };
+            if (!big) return new TextBlock { Text = (mark is null ? "☐" : "☑ " + mark.Label), VerticalAlignment = VerticalAlignment.Center };
+            var cell = new TextBlock { Text = mark is null ? "" : "✓ " + mark.Label, VerticalAlignment = VerticalAlignment.Center };
+            cell.Bind(TextBlock.ForegroundProperty, cell.GetResourceObservable("LunaAccent"));
+            return cell;
+        }
+
+        // The big screen's list as the design draws it: no header, rows of 54 in Barlow at the Row size with a rule under each and a gap after a cell, the chosen row raised with the accent bar, the list filling its height on the input surface.
+        private void SetUpBigScreenTable()
+        {
+            _bigTable.ShowsHeader = false;
+            _bigTable.GridLines = LunaGridLines.Horizontal;
+            _bigTable.VerticalAlignment = VerticalAlignment.Stretch;
+            _bigTable[!TemplatedControl.BackgroundProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaInputSurface");
+            _bigTable.Styles.Add(new Style(x => x.OfType<ListBoxItem>())
+            {
+                Setters =
+                {
+                    new Setter(Layoutable.MinHeightProperty, 54.0),
+                    new Setter(TemplatedControl.FontFamilyProperty, Media.LunaFonts.Body),
+                    new Setter(TemplatedControl.FontSizeProperty, LunaTokens.BigScreenType.Row),
+                    new Setter(TemplatedControl.PaddingProperty, new Thickness(20, 0, 24, 0)),
+                    new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(4, 0, 0, 0)),
+                    new Setter(TemplatedControl.BorderBrushProperty, Brushes.Transparent),
+                },
+            });
+            _bigTable.Styles.Add(new Style(x => x.OfType<ListBoxItem>().Class(":selected"))
+            {
+                Setters =
+                {
+                    new Setter(TemplatedControl.BorderBrushProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaAccent")),
+                    new Setter(TemplatedControl.ForegroundProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaTextStrong")),
+                },
+            });
+            _bigTable.Styles.Add(new Style(x => x.OfType<ListBoxItem>().Class(":selected").Template().OfType<Avalonia.Controls.Presenters.ContentPresenter>().Name("PART_ContentPresenter"))
+            {
+                Setters = { new Setter(Avalonia.Controls.Presenters.ContentPresenter.BackgroundProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaSurfaceRaised")) },
+            });
+            _bigTable.Styles.Add(new Style(x => x.OfType<TextBlock>())
+            {
+                Setters = { new Setter(Layoutable.MarginProperty, new Thickness(0, 0, 24, 0)) },
+            });
         }
 
         private void Show()
@@ -636,6 +681,8 @@ namespace EmuSen.LunaP.Controls
         private void ArrangeBar()
         {
             bool big = Form == AdaptiveForm.BigScreen;
+            // On the big screen Apply is the help bar's Start alone; the bar keeps the words and the meter (§208.10).
+            _applyButton.IsVisible = !big;
             _bar.ColumnDefinitions = big ? new ColumnDefinitions("*") : new ColumnDefinitions("*,Auto");
             _bar.RowDefinitions = big ? new RowDefinitions("Auto,Auto") : new RowDefinitions("Auto");
             _bar.RowSpacing = big ? 8 : 0;

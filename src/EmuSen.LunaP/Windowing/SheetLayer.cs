@@ -139,6 +139,9 @@ namespace EmuSen.LunaP.Windowing
         /// <summary>The window whose sheet is on screen, or null when nothing is presented.</summary>
         public Window? Current => _sheets.Count == 0 ? null : _sheets[^1].Window;
 
+        /// <summary>Whether the window on top is presented as a screen, so a host can hide what a screen should cover, such as its status bar (§208.2).</summary>
+        public bool IsScreenShown => _sheets.Count > 0 && _sheets[^1].Screen;
+
         /// <summary>Whether any window is presented.</summary>
         public bool IsPresenting => _sheets.Count > 0;
 

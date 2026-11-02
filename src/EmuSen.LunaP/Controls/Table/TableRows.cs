@@ -214,6 +214,7 @@ namespace EmuSen.LunaP.Controls
                     ? text => SetFromAutomation(item, index, text)
                     : null,
             };
+            if (_columns[index].Tone?.Invoke(item) is { Length: > 0 } tone) cell.Bind(Avalonia.Controls.TextBlock.ForegroundProperty, cell.GetResourceObservable(tone));
 
             // DOUBLE-CLICK OPENS THE EDITOR, and the handler goes on the CELL rather than on the
             // row because the cell is the only thing that knows which column was hit. Doing it

@@ -14449,3 +14449,27 @@ Measured on 2026-11-01, each reverted after its run, against `ToolFrameTests` al
 `ManagerLayoutTests`' and `ManagerFitAuditTests`' earlier cases held throughout, with one change of theirs: the big
 screen's plan floor is `BigScreenPlanFloor`, 420, since the question's title and its two answer rows are taller than
 the desktop's line of buttons (§203.7 kept its 240 for the desktop).
+
+### 208.10 The big screen's list and strip as the design draws them
+
+The first screens built on §208 (EmuSen's Packages, Scraper and Library Manager, 2026-11-01) were held against the
+consumer's approved mockups and differed in eight ways: a header row with a column grip, names running into the next
+column, a box on every row, status words without their glyphs and colours, rows at the look's 42 in Barlow Condensed
+with no bar on the chosen one, the drawn pad icons in the help bar with the frame's generic words, an Apply button in
+the bar under an empty area, and a pane with no surface. Each is now the frame's, so every tool gets it:
+
+- **`LunaTable.ShowsHeader`**, true by default; the frame's big-screen table turns it off, so the rows begin at the
+  top. **`LunaColumn.Tone`** gives a cell's words a colour by resource key per row (`LunaSuccess`, `LunaAttention`,
+  `LunaMuted`), so a status column's glyph and colour come from the tool's one owner of its words.
+- **The big-screen table**: rows of 54 in Barlow at the Row size, a rule under each (`GridLines`), a gap of 24 after a
+  cell, the chosen row raised on `LunaSurfaceRaised` with a 4-unit accent bar at its left and strong words, the list
+  on `LunaInputSurface` filling its height; the mark cell empty until a row is marked, then its mark's word in the
+  accent (the desktop keeps its box on every row).
+- **The pane** beside the content on a raised surface with the card radius and a gutter of 24.
+- **The section strip**: names in Caption upper case on nothing, the chosen one strong with a 3-unit accent underline.
+- **The help bar** at Caption 20 in the layout's `PadFamily` (lettered rings by default; a host gives its session's),
+  the shoulders named by `SectionWord` (`Console`, `System`, `Finding`) rather than `Section`.
+- **Apply** is the help bar's Start alone on the big screen; the bar keeps the summary, the progress and the meter.
+- **`SheetLayer.IsScreenShown`**, so a host hides what a screen should cover, such as its status bar.
+
+Held by the fit audit and the consumer's recordings; the kit's tests of §208.8 are unchanged in count.
