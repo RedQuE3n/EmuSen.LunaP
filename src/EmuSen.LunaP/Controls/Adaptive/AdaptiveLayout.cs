@@ -6,6 +6,7 @@ using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Documents;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
@@ -163,6 +164,8 @@ namespace EmuSen.LunaP.Controls
         private readonly Border _pageHost = new() { Name = "AdaptivePage" };
         private Control? _page;
         private readonly Panel _listScrim = new() { Name = "AdaptiveListTools", IsVisible = false };
+        private readonly Panel _coverScrim = new() { Name = "AdaptiveCover", IsVisible = false };
+        private readonly Border _hintBand = new() { Name = "AdaptiveHelpBar", BorderThickness = new Thickness(0, 1, 0, 0), Padding = new Thickness(48, 10, 48, 6) };
         private readonly MenuPanel _listCard = new() { Name = "AdaptiveListCard", Anchor = MenuAnchor.Left, WidthFraction = CardShare, MaxWidthToHeight = 4, TitleSize = 32, PanelCornerRadius = 8, Title = "List" };
         private readonly StackPanel _listRows = new() { Spacing = 8 };
         private readonly ComboBox _filterBox = new() { MinWidth = 140, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
@@ -187,6 +190,11 @@ namespace EmuSen.LunaP.Controls
             AutomationProperties.SetName(_toolBar, "Actions");
             _hintBar[!HintBar.PadFamilyProperty] = this[!PadFamilyProperty];
             _hintBar.FontPath = Media.LunaFonts.BodyFile;
+            _hintBar.FontSize = 24;
+            _hintBar.Bind(HintBar.IconColorProperty, _hintBar.GetResourceObservable("LunaTextStrongColor", c => c is Color colour ? colour : _hintBar.IconColor));
+            _hintBar.Bind(HintBar.TextColorProperty, _hintBar.GetResourceObservable("LunaTextColor", c => c is Color colour ? colour : _hintBar.TextColor));
+            _hintBand[!Border.BorderBrushProperty] = new DynamicResourceExtension("LunaBorder");
+            _hintBand.Child = _hintBar;
             _cardPanel[!MenuPanel.HintFamilyProperty] = this[!PadFamilyProperty];
             _listCard[!MenuPanel.HintFamilyProperty] = this[!PadFamilyProperty];
             SetUpCard();
@@ -361,6 +369,7 @@ namespace EmuSen.LunaP.Controls
             get
             {
                 var hints = new List<HintEntry>();
+                if (IsCoverOpen && CoverHints is { } covered) return covered;
                 PadGlyphButton accept = SwapsAcceptAndBack ? PadGlyphButton.East : PadGlyphButton.South, back = SwapsAcceptAndBack ? PadGlyphButton.South : PadGlyphButton.East;
                 if (_content is not null && AcceptHint is { } accepted) hints.Add(new HintEntry(accepted) { Button = accept });
                 hints.Add(new HintEntry("Back") { Button = back });
@@ -504,6 +513,45 @@ namespace EmuSen.LunaP.Controls
         /// <summary>Whether a page of the window's own is open in the content's place.</summary>
         public bool IsPageOpen => _page is not null;
 
+        /// <summary>Whether a cover of the layout's own is open over the big screen, such as a question's card.</summary>
+        public bool IsCoverOpen => _coverScrim.IsVisible;
+
+        /// <summary>Opens a card centred over the big screen under the scrim, what lies beneath marked covered; a layout's question takes this form - see docs/LunaP.md §208.11.</summary>
+        /// <param name="card">The card's control, centred and sized to its content.</param>
+        /// <returns>Whether it was opened; false on the desktop or in a card, where the layout draws it in place.</returns>
+        protected bool OpenCover(Control card)
+        {
+            if (card is null) throw new ArgumentNullException(nameof(card));
+            if (Form != AdaptiveForm.BigScreen) return false;
+            CloseListTools();
+            _coverScrim.Children.Clear();
+            card.HorizontalAlignment = HorizontalAlignment.Center;
+            card.VerticalAlignment = VerticalAlignment.Center;
+            _coverScrim.Children.Add(Detach(card));
+            if (!_root.Children.Contains(_coverScrim)) _root.Children.Add(Detach(_coverScrim));
+            foreach (Control beneath in _root.Children.Where(c => !ReferenceEquals(c, _coverScrim))) beneath.SetValue(SheetLayer.IsCoveredProperty, true);
+            _coverScrim.IsVisible = true;
+            RefreshHints();
+            return true;
+        }
+
+        /// <summary>Closes the cover and gives its card back to the layout.</summary>
+        /// <returns>The card, or null when no cover was open.</returns>
+        protected Control? CloseCover()
+        {
+            if (!IsCoverOpen) return null;
+            Control? card = _coverScrim.Children.Count > 0 ? _coverScrim.Children[0] : null;
+            _coverScrim.Children.Clear();
+            _coverScrim.IsVisible = false;
+            _root.Children.Remove(_coverScrim);
+            foreach (Control beneath in _root.Children) beneath.ClearValue(SheetLayer.IsCoveredProperty);
+            RefreshHints();
+            return card;
+        }
+
+        /// <summary>The help bar's entries while a cover is open, in place of the roles'; null keeps the roles'.</summary>
+        protected virtual IReadOnlyList<HintEntry>? CoverHints => null;
+
         /// <summary>Gives the navigation its sections and the chosen one, without raising SectionChosen.</summary>
         /// <param name="sections">The sections in order; their keys must be distinct.</param>
         /// <param name="selected">The chosen section's key; null or an unknown key chooses the first.</param>
@@ -627,7 +675,10 @@ namespace EmuSen.LunaP.Controls
         public bool FocusRole(AdaptiveRole role)
         {
             if (HostOf(role) is not { } host) return false;
-            InputElement? first = host.GetVisualDescendants().OfType<InputElement>()
+            // A list's chosen row takes the focus ahead of its first row, so one row carries both marks (§208.10).
+            InputElement? first = host.GetVisualDescendants().OfType<ListBoxItem>()
+                .FirstOrDefault(i => i.IsSelected && i.Focusable && i.IsEffectivelyEnabled && i.IsEffectivelyVisible);
+            first ??= host.GetVisualDescendants().OfType<InputElement>()
                 .FirstOrDefault(e => e.Focusable && e.IsEffectivelyEnabled && e.IsEffectivelyVisible && !ReferenceEquals(e, host));
             return first is not null && first.Focus(NavigationMethod.Directional);
         }
@@ -654,7 +705,8 @@ namespace EmuSen.LunaP.Controls
         public virtual bool Press(PadGlyphButton button)
         {
             if (SwapsAcceptAndBack) button = button switch { PadGlyphButton.South => PadGlyphButton.East, PadGlyphButton.East => PadGlyphButton.South, _ => button };
-            // While the List card is open its rows take A through the focused control; B or Select closes it, and nothing reaches past it.
+            // While the List card is open its rows take A through the focused control; B or Select closes it, and nothing reaches past it; a cover is its layout's to answer.
+            if (IsCoverOpen) return false;
             if (IsListToolsOpen) return button is PadGlyphButton.East or PadGlyphButton.Select ? CloseListTools() : false;
             switch (button)
             {
@@ -944,7 +996,7 @@ namespace EmuSen.LunaP.Controls
             }
             if (h.Facts is { Length: > 0 } facts)
             {
-                var line = new TextBlock { Text = facts, FontSize = type.Caption, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(12, 0, 0, 0), Classes = { "muted" } };
+                var line = new TextBlock { Text = facts, FontFamily = Media.LunaFonts.Body, FontSize = type.Caption, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(12, 0, 0, 0), Classes = { "muted" } };
                 line.Bind(TextBlock.ForegroundProperty, line.GetResourceObservable("LunaMuted"));
                 DockPanel.SetDock(line, Dock.Right);
                 row.Children.Add(line);
@@ -953,7 +1005,7 @@ namespace EmuSen.LunaP.Controls
             words.Children.Add(new TextBlock { Text = h.Title, FontFamily = Media.LunaFonts.Condensed, FontSize = type.Title, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis });
             if (h.Subtitle is { Length: > 0 } sub)
             {
-                var subtitle = new TextBlock { Text = sub, FontSize = type.Caption, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis };
+                var subtitle = new TextBlock { Text = sub, FontFamily = Media.LunaFonts.Body, FontSize = type.Caption, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis };
                 subtitle.Bind(TextBlock.ForegroundProperty, subtitle.GetResourceObservable("LunaMuted"));
                 words.Children.Add(subtitle);
             }
@@ -966,6 +1018,10 @@ namespace EmuSen.LunaP.Controls
         {
             _navigationHost.Child = _sidebarScroll;
             _actionsHost.Child = _toolBar;
+            _search.ClearValue(TextBox.FontFamilyProperty);
+            _search.ClearValue(TextBox.FontSizeProperty);
+            _detailHost.ClearValue(TextElement.FontFamilyProperty);
+            _detailHost.ClearValue(TextElement.FontSizeProperty);
             _detailHost.IsVisible = _detail is not null;
             _contentHost.IsVisible = true;
             _detailHost.Margin = default;
@@ -1058,9 +1114,16 @@ namespace EmuSen.LunaP.Controls
             }
 
             var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto,Auto,Auto") };
-            Control[] rows = { Detach(_headerHost), top, middle, Detach(_actionsHost), statusInColumn ? new Border() : Detach(_statusHost), _hintBar };
+            Detach(_hintBar);
+            _hintBand.Child = _hintBar;
+            Control[] rows = { Detach(_headerHost), top, middle, Detach(_actionsHost), statusInColumn ? new Border() : Detach(_statusHost), _hintBand };
             _actionsHost.Margin = new Thickness(16, 8);
-            _hintBar.Margin = new Thickness(16, 8);
+            _hintBar.Margin = default;
+            _search.FontFamily = Media.LunaFonts.Body;
+            _search.FontSize = LunaTokens.BigScreenType.Caption;
+            // The pane's words in Barlow at the big screen's Body size, whatever the tool put in it (§208.10).
+            TextElement.SetFontFamily(_detailHost, Media.LunaFonts.Body);
+            TextElement.SetFontSize(_detailHost, LunaTokens.BigScreenType.Body);
             for (int i = 0; i < rows.Length; i++)
             {
                 Detach(rows[i]);

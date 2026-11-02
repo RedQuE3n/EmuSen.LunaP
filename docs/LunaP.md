@@ -14473,3 +14473,28 @@ the bar under an empty area, and a pane with no surface. Each is now the frame's
 - **`SheetLayer.IsScreenShown`**, so a host hides what a screen should cover, such as its status bar.
 
 Held by the fit audit and the consumer's recordings; the kit's tests of §208.8 are unchanged in count.
+
+### 208.11 The question as a card, the help band, the chosen row's focus, Stop in the bar
+
+A second check against the mockups (2026-11-01) found what §208.10 had left: two rows marked at once, the chosen one
+and the one the focus landed on; the big screen's question drawn in the list's place with the look's boxed, upper-case
+buttons; a help bar at the look's small size in the frame's generic words; the summary, the search, the bar's words,
+the question's body and the pane in Barlow Condensed; the table's rules on the bare surface; a tool's Stop among the
+action buttons and its summary line adrift above them. Each is now the frame's:
+
+- **One mark.** `FocusRole` gives the focus to a list's chosen row ahead of its first row, and the big-screen table
+  draws nothing for the focus alone, so the chosen row is the focused one and carries the bar.
+- **The question is a card** on the big screen: `OpenCover(card)` and `CloseCover()` centre a control over the whole
+  layout under `LunaScrim`, what lies beneath marked covered, and `CoverHints` gives the help bar its two entries
+  meanwhile (`A Choose`, `B No`); the plan sheet takes this form, 720 wide on the raised surface with the card's radius,
+  its body in Barlow at the Body size, and its answers `No` then `Yes` as rows of 54 in the words' own case, the focused
+  one raised with the accent bar. The desktop keeps the sheet in the content's place with its buttons.
+- **The help band**: the bar at 24 with the ring at the label's height, the words in Barlow in the text colour and the
+  glyphs in the strong one, on its own band with a rule above and the safe area's inset.
+- **Barlow** for the header's facts and subtitle, the search box at the Caption size, the apply bar's words (Body) and
+  meter (Caption), and the pane's words at the Body size, whatever the tool put in it; the screen's title alone stays
+  Barlow Condensed.
+- **The list** on `LunaInputSurface` through the look's list, the gap of 24 reaching every cell (`Is<TextBlock>`), a
+  tool's status column at its own width at the right (`Width = "Auto"`, `Alignment = Right`).
+- **`ManagerLayout.StopAction`**: the action that stops the running work, drawn in the apply bar beside the meter while
+  the progress line shows and hidden at `Finish`, so a tool gives the big screen no button for it.

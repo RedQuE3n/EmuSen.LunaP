@@ -43,6 +43,24 @@ namespace EmuSen.LunaP.Controls
         private readonly TextBlock _spaceText = new() { VerticalAlignment = VerticalAlignment.Center };
         private readonly StackPanel _space = new() { Orientation = Orientation.Horizontal, Spacing = 8, IsVisible = false };
         private readonly Button _applyButton = new() { Content = "Apply…" };
+        private readonly Button _stopButton = new() { Content = "Stop", IsVisible = false };
+        private LunaAction? _stopAction;
+        private bool _answersStyled;
+
+        /// <summary>The action that stops the running work, drawn in the apply bar beside the meter while the progress line shows; null for none.</summary>
+        public LunaAction? StopAction
+        {
+            get => _stopAction;
+            set { _stopAction = value; _stopButton.Command = value; _stopButton.IsVisible = value is not null && _progress.IsVisible; }
+        }
+
+        // The answers take their row look once the layout is on the big screen, and never on the desktop.
+        private void ArrangeAnswers()
+        {
+            if (_answersStyled || Form == AdaptiveForm.Desktop) return;
+            _answersStyled = true;
+            SetUpAnswers();
+        }
         private readonly Border _planSheet = new() { IsVisible = false, Padding = new Thickness(16), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, MaxWidth = 720 };
         private readonly TextBlock _planText = new() { TextWrapping = TextWrapping.Wrap };
         private readonly Grid _contentGrid = new();
@@ -103,6 +121,8 @@ namespace EmuSen.LunaP.Controls
                 Children = { _planHeading, _planButtons, _planOptions, new ScrollViewer { Content = _planText, MaxHeight = 360, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled } },
             };
             ArrangeQuestion();
+            ArrangeAnswers();
+            _barRight.Children.Add(_stopButton);
             _contentGrid.SizeChanged += (_, e) => { _contentHeight = e.NewSize.Height; CapPlan(); };
             _planSheet[!Border.BackgroundProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaSurface");
             _planSheet[!Border.BorderBrushProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaBorder");
@@ -349,17 +369,30 @@ namespace EmuSen.LunaP.Controls
             ArrangeQuestion();
             _planOptions.IsVisible = options && _planOptions.Children.Count > 0;
             _planSheet.IsVisible = true;
-            ShowTables();
+            // On the big screen the question is a card over the dimmed screen; on the desktop it stands in the content's place.
+            if (!OpenCover(_planSheet)) ShowTables();
             FocusFirstIn(_planSheet);
         }
+
+        // The card back in the content grid once the question is answered.
+        private void CloseSheet()
+        {
+            _planSheet.IsVisible = false;
+            if (CloseCover() is { } card && !_contentGrid.Children.Contains(card)) _contentGrid.Children.Add(card);
+            ShowTables();
+        }
+
+        /// <inheritdoc/>
+        protected override IReadOnlyList<HintEntry>? CoverHints => IsPlanOpen
+            ? new[] { new HintEntry("Choose") { Button = SwapsAcceptAndBack ? PadGlyphButton.East : PadGlyphButton.South }, new HintEntry("No") { Button = SwapsAcceptAndBack ? PadGlyphButton.South : PadGlyphButton.East } }
+            : null;
 
         /// <summary>Confirms the plan: the marked rows are handed to Applying and the bar shows progress until Finish; a question of Ask's answers yes.</summary>
         /// <returns>Whether a plan or a question was open.</returns>
         public bool Confirm()
         {
             if (!IsPlanOpen) return false;
-            _planSheet.IsVisible = false;
-            ShowTables();
+            CloseSheet();
             if (_asking is { } asked)
             {
                 _asking = null;
@@ -380,8 +413,7 @@ namespace EmuSen.LunaP.Controls
         public bool CancelPlan()
         {
             if (!IsPlanOpen) return false;
-            _planSheet.IsVisible = false;
-            ShowTables();
+            CloseSheet();
             if (!FocusRole(AdaptiveRole.Content)) Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (!IsPlanOpen) FocusRole(AdaptiveRole.Content); }, Avalonia.Threading.DispatcherPriority.Loaded);
             if (_asking is { } asked)
             {
@@ -413,17 +445,57 @@ namespace EmuSen.LunaP.Controls
                 b.HorizontalAlignment = big ? HorizontalAlignment.Stretch : HorizontalAlignment.Left;
                 b.HorizontalContentAlignment = big ? HorizontalAlignment.Left : HorizontalAlignment.Center;
             }
-            _cancel.Content = big ? "No" : _no;
-            _confirm.Content = big ? "Yes" : _yes;
-            AutomationProperties.SetName(_cancel, (string)_cancel.Content);
-            AutomationProperties.SetName(_confirm, (string)_confirm.Content);
+            string no = big ? "No" : _no, yes = big ? "Yes" : _yes;
+            // The look's template upper-cases a button's words; a row's answer keeps its own case.
+            _cancel.Content = big ? new TextBlock { Text = no } : no;
+            _confirm.Content = big ? new TextBlock { Text = yes } : yes;
+            AutomationProperties.SetName(_cancel, no);
+            AutomationProperties.SetName(_confirm, yes);
             _planButtons.Children.Add(_cancel);
             _planButtons.Children.Add(_confirm);
             LunaTypeScale type = LunaTokens.Type(big ? LunaForm.BigScreen : LunaForm.Desktop);
             _planHeading.FontFamily = big ? Media.LunaFonts.Condensed : FontFamily.Default;
             _planHeading.FontWeight = big ? FontWeight.Normal : FontWeight.SemiBold;
             _planHeading.FontSize = type.Title;
+            _planText.FontFamily = big ? Media.LunaFonts.Body : FontFamily.Default;
+            _planText.FontSize = type.Body;
+            _planSheet.Padding = new Thickness(big ? 32 : 16);
+            _planSheet.CornerRadius = new CornerRadius(big ? 8 : 0);
+            _planSheet.MinWidth = big ? 720 : 0;
+            _planSheet[!Border.BackgroundProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension(big ? "LunaSurfaceRaised" : "LunaSurface");
             CapPlan();
+        }
+
+        // The answers as rows of the card on the big screen: on nothing, in Barlow at the Row size, the focused one raised with the accent bar.
+        private void SetUpAnswers()
+        {
+            _planButtons.Styles.Add(new Style(x => x.OfType<Button>())
+            {
+                Setters =
+                {
+                    new Setter(TemplatedControl.BackgroundProperty, Brushes.Transparent),
+                    new Setter(TemplatedControl.BorderBrushProperty, Brushes.Transparent),
+                    new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(4, 0, 0, 0)),
+                    new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(0)),
+                    new Setter(TemplatedControl.PaddingProperty, new Thickness(24, 0)),
+                    new Setter(Layoutable.MinHeightProperty, 54.0),
+                    new Setter(TemplatedControl.FontFamilyProperty, Media.LunaFonts.Body),
+                    new Setter(TemplatedControl.FontSizeProperty, LunaTokens.BigScreenType.Row),
+                },
+            });
+            _planButtons.Styles.Add(new Style(x => x.OfType<Button>().Template().OfType<Avalonia.Controls.Presenters.ContentPresenter>().Name("PART_ContentPresenter"))
+            {
+                Setters = { new Setter(Avalonia.Controls.Presenters.ContentPresenter.BackgroundProperty, Brushes.Transparent), new Setter(Avalonia.Controls.Presenters.ContentPresenter.BorderBrushProperty, Brushes.Transparent) },
+            });
+            _planButtons.Styles.Add(new Style(x => x.OfType<Button>().Class(":focus").Template().OfType<Avalonia.Controls.Presenters.ContentPresenter>().Name("PART_ContentPresenter"))
+            {
+                Setters =
+                {
+                    new Setter(Avalonia.Controls.Presenters.ContentPresenter.BackgroundProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaSurfaceRaised")),
+                    new Setter(Avalonia.Controls.Presenters.ContentPresenter.BorderBrushProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaAccent")),
+                    new Setter(Avalonia.Controls.Presenters.ContentPresenter.ForegroundProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaTextStrong")),
+                },
+            });
         }
 
         private void FillPlanOptions()
@@ -478,6 +550,7 @@ namespace EmuSen.LunaP.Controls
             _progressLine.IsVisible = true;
             _progressLine.Text = line;
             _summary.IsVisible = false;
+            _stopButton.IsVisible = _stopAction is not null;
         }
 
         /// <summary>Ends the running work: the progress line gives way to the summary, and the marks are cleared or kept.</summary>
@@ -487,6 +560,7 @@ namespace EmuSen.LunaP.Controls
             _running = false;
             _progress.IsVisible = false;
             _progressLine.IsVisible = false;
+            _stopButton.IsVisible = false;
             _summary.IsVisible = true;
             if (clearMarks) _marks.Clear();
             Changed();
@@ -560,6 +634,7 @@ namespace EmuSen.LunaP.Controls
                 ArrangeBar();
                 ArrangeQuestion();
                 FillPlanOptions();
+                ArrangeAnswers();
                 Show();
                 CurrentTable.Select(selected);
             }
@@ -592,6 +667,15 @@ namespace EmuSen.LunaP.Controls
             _bigTable.GridLines = LunaGridLines.Horizontal;
             _bigTable.VerticalAlignment = VerticalAlignment.Stretch;
             _bigTable[!TemplatedControl.BackgroundProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaInputSurface");
+            _bigTable.Styles.Add(new Style(x => x.OfType<ListBox>())
+            {
+                Setters = { new Setter(TemplatedControl.BackgroundProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaInputSurface")) },
+            });
+            // The focus alone marks nothing: the chosen row is the focused one, and it carries the bar (§208.10).
+            _bigTable.Styles.Add(new Style(x => x.OfType<ListBoxItem>().Class(":focus-within").Template().OfType<Avalonia.Controls.Presenters.ContentPresenter>().Name("PART_ContentPresenter"))
+            {
+                Setters = { new Setter(Avalonia.Controls.Presenters.ContentPresenter.BackgroundProperty, Brushes.Transparent), new Setter(Avalonia.Controls.Presenters.ContentPresenter.BorderBrushProperty, Brushes.Transparent) },
+            });
             _bigTable.Styles.Add(new Style(x => x.OfType<ListBoxItem>())
             {
                 Setters =
@@ -616,7 +700,7 @@ namespace EmuSen.LunaP.Controls
             {
                 Setters = { new Setter(Avalonia.Controls.Presenters.ContentPresenter.BackgroundProperty, new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaSurfaceRaised")) },
             });
-            _bigTable.Styles.Add(new Style(x => x.OfType<TextBlock>())
+            _bigTable.Styles.Add(new Style(x => x.Is<TextBlock>())
             {
                 Setters = { new Setter(Layoutable.MarginProperty, new Thickness(0, 0, 24, 0)) },
             });
@@ -683,6 +767,21 @@ namespace EmuSen.LunaP.Controls
             bool big = Form == AdaptiveForm.BigScreen;
             // On the big screen Apply is the help bar's Start alone; the bar keeps the words and the meter (§208.10).
             _applyButton.IsVisible = !big;
+            // The list's panel on the input surface, the look's list painting nothing of its own (§208.11).
+            if (big) _contentGrid[!Panel.BackgroundProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("LunaInputSurface");
+            else _contentGrid.ClearValue(Panel.BackgroundProperty);
+            LunaTypeScale type = LunaTokens.Type(big ? LunaForm.BigScreen : LunaForm.Desktop);
+            foreach (TextBlock words in new[] { _summary, _progressLine, _spaceText })
+            {
+                words.FontFamily = big ? Media.LunaFonts.Body : FontFamily.Default;
+                words.FontSize = ReferenceEquals(words, _spaceText) ? type.Caption : type.Body;
+            }
+            // The bar's words wrap on the big screen, where a notice at the Body size outruns the list's column, and keep to one trimmed line on the desktop.
+            foreach (TextBlock words in new[] { _summary, _progressLine })
+            {
+                words.TextWrapping = big ? TextWrapping.Wrap : TextWrapping.NoWrap;
+                words.TextTrimming = big ? TextTrimming.None : TextTrimming.CharacterEllipsis;
+            }
             _bar.ColumnDefinitions = big ? new ColumnDefinitions("*") : new ColumnDefinitions("*,Auto");
             _bar.RowDefinitions = big ? new RowDefinitions("Auto,Auto") : new RowDefinitions("Auto");
             _bar.RowSpacing = big ? 8 : 0;

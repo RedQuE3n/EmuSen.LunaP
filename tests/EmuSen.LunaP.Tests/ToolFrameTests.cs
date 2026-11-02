@@ -174,7 +174,7 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal("Apply these changes?", b.Frame.QuestionTitle);
             Control sheet = b.Frame.GetVisualDescendants().OfType<Border>().First(x => x.Classes.Contains(ManagerLayout<Row>.PlanClass));
             List<Button> answers = sheet.GetVisualDescendants().OfType<Button>().Where(x => x is not Avalonia.Controls.Primitives.ToggleButton).ToList();
-            Assert.Equal(new[] { "No", "Yes" }, answers.Select(a => a.Content?.ToString()));
+            Assert.Equal(new[] { "No", "Yes" }, answers.Select(a => a.Content is TextBlock t ? t.Text : a.Content?.ToString()));
             Assert.True(answers[0].Bounds.Top < answers[1].Bounds.Top, "No is above Yes");
             Assert.Same(answers[0], TopLevel.GetTopLevel(b.Frame)?.FocusManager?.GetFocusedElement());
             Assert.Empty(Faults(b.Frame, AdaptiveForm.BigScreen));

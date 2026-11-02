@@ -107,10 +107,13 @@ public sealed class EmuSen.LunaP.Controls.AdaptiveHeader : System.IEquatable<Emu
     public void Deconstruct(out string Title, out string? Subtitle, out Avalonia.Media.IImage? Picture, out string? Facts)
 
 public class EmuSen.LunaP.Controls.AdaptiveLayout : Avalonia.Controls.Border
+    protected Avalonia.Controls.Control? CloseCover()
+    protected bool OpenCover(Avalonia.Controls.Control card)
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    protected virtual System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? CoverHints { get; }
     protected virtual string? AcceptHint { get; }
     protected virtual void FilterChanged()
     protected void RefreshHints()
@@ -136,6 +139,7 @@ public class EmuSen.LunaP.Controls.AdaptiveLayout : Avalonia.Controls.Border
     public bool FocusRole(EmuSen.LunaP.Controls.AdaptiveRole role)
     public bool HasListTools { get; }
     public bool HasSearch { get; set; }
+    public bool IsCoverOpen { get; }
     public bool IsDetailOpen { get; }
     public bool IsListToolsOpen { get; }
     public bool IsPageOpen { get; }
@@ -1308,12 +1312,14 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public void SortBy(int column, bool descending = false)
 
 public class EmuSen.LunaP.Controls.ManagerLayout<T> : EmuSen.LunaP.Controls.AdaptiveLayout where T : class
+    protected override System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? CoverHints { get; }
     protected override string? AcceptHint { get; }
     protected override void FilterChanged()
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     public EmuSen.LunaP.Commands.LunaAction Apply { get; }
     public EmuSen.LunaP.Commands.LunaAction Mark { get; }
     public EmuSen.LunaP.Commands.LunaAction More { get; }
+    public EmuSen.LunaP.Commands.LunaAction? StopAction { get; set; }
     public EmuSen.LunaP.Controls.LunaTable<T> BigScreenTable { get; }
     public EmuSen.LunaP.Controls.LunaTable<T> Table { get; }
     public EmuSen.LunaP.Controls.ManagerLayout<T> Column(EmuSen.LunaP.Controls.LunaColumn<T> column, bool bigScreen = false)
