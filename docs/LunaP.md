@@ -14524,3 +14524,14 @@ surface, since the card is itself raised and a raised fill vanished on it; and `
 size and strong, so a pane's title is one owner's rather than each tool's bold.
 `ManagerLayout.PlanTitle` gives the plan's question its own words for the marked rows (`Install Snes9x?`), the default
 staying `Apply these changes?`.
+
+### 208.12 The layers panel: `AdaptiveLayers`
+
+Since the List card and the cover were added, the layout's child is a panel named `AdaptiveLayers` holding the arranged
+form first and, only while one is open, the List card's scrim or the cover's above it; closed, the panel holds the
+arranged form alone. The panel paints nothing and draws no role, and it is there in every form, the Card form included,
+so a recording of any `AdaptiveLayout` reads one level deeper than before it: a Card form's tree is
+`AdaptiveLayers › AdaptiveCardScrim › the card`, the scrim still painting `LunaScrim` across the whole layout. The
+EmuSen recordings of the Pause Card and the Home card, taken before the panel, read `AdaptiveCardScrim` at the layout's
+root and were re-recorded on 2026-11-01 for the one level; `CardFormTests` asserts the layering and the scrim's paint
+beneath the card, so a card losing its dim fails a test rather than a recording.

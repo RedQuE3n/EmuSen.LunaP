@@ -185,5 +185,19 @@ namespace EmuSen.LunaP.Tests
             Assert.Null(layout.HostOf(AdaptiveRole.Header));
             window.Close();
         });
+        // The layout's child is the layers panel: the arranged form first, the List card or a cover above it when open; the Card form's dim is its scrim, painting LunaScrim across the layout beneath the card (§208.12).
+        [Fact]
+        public Task The_cards_scrim_paints_the_dim_across_the_layout_beneath_the_card() => UiTest.Run(() =>
+        {
+            var (window, layout, _, _, _) = Card(1280, 800);
+            var layers = Assert.IsType<Panel>(layout.Child);
+            Assert.Equal("AdaptiveLayers", layers.Name);
+            var scrim = Assert.IsType<Panel>(layers.Children[0]);
+            Assert.Equal("AdaptiveCardScrim", scrim.Name);
+            Assert.Equal(Color.Parse("#8C000000"), Assert.IsAssignableFrom<ISolidColorBrush>(scrim.Background).Color);
+            Assert.Equal(new Rect(0, 0, 1280, 800), In(scrim, layout));
+            Assert.Single(layers.Children);
+            window.Close();
+        });
     }
 }

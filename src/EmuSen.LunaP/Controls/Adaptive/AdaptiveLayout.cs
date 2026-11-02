@@ -176,7 +176,7 @@ namespace EmuSen.LunaP.Controls
         private string _title = string.Empty;
 
         // A page of the window's own over the content, the List card over the big screen, and the filters both forms draw (docs/LunaP.md §208).
-        private readonly Panel _root = new();
+        private readonly Panel _root = new() { Name = "AdaptiveLayers" };
         private readonly Border _pageHost = new() { Name = "AdaptivePage" };
         private Control? _page;
         private readonly Panel _listScrim = new() { Name = "AdaptiveListTools", IsVisible = false };
