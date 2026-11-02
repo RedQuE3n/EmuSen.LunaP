@@ -14,12 +14,16 @@ namespace EmuSen.LunaP.Media
     {
         private static readonly Dictionary<string, ImageFile> Files = new(StringComparer.Ordinal);
 
-        private ImageFile(Bitmap? raster, SvgDocument? svg, bool missing)
+        private ImageFile(Bitmap? raster, SvgDocument? svg, bool missing, FileStamp stamp)
         {
             Raster = raster;
             Svg = svg;
             Missing = missing;
+            Stamp = stamp;
         }
+
+        // The file as it stood when read; a later read of a file whose stamp moved reads it again - see docs/LunaP.md §98.2.
+        internal FileStamp Stamp { get; }
 
         internal Bitmap? Raster { get; }
         internal SvgDocument? Svg { get; }
@@ -28,18 +32,19 @@ namespace EmuSen.LunaP.Media
 
         internal Size Intrinsic => Raster is { } r ? new Size(r.PixelSize.Width, r.PixelSize.Height) : Svg is { IsRefused: false } s ? s.Size : default;
 
-        // One read per full path, on the UI thread, which is the only thread controls are built on.
+        // One read per full path while the file stays as it was, on the UI thread, which is the only thread controls are built on.
         internal static ImageFile Open(string path)
         {
             string full = Path.GetFullPath(path);
-            if (Files.TryGetValue(full, out ImageFile? known)) return known;
+            FileStamp stamp = FileStamp.Of(full);
+            if (Files.TryGetValue(full, out ImageFile? known) && known.Stamp == stamp) return known;
             ImageFile file;
-            if (!File.Exists(full)) file = new ImageFile(null, null, true);
-            else if (full.EndsWith(".svg", StringComparison.OrdinalIgnoreCase)) file = new ImageFile(null, SvgDocument.Load(full), false);
+            if (!stamp.Exists) file = new ImageFile(null, null, true, stamp);
+            else if (full.EndsWith(".svg", StringComparison.OrdinalIgnoreCase)) file = new ImageFile(null, SvgDocument.Load(full), false, stamp);
             else
             {
-                try { file = new ImageFile(new Bitmap(full), null, false); }
-                catch (Exception e) when (e is IOException or ArgumentException or InvalidOperationException or NotSupportedException) { file = new ImageFile(null, null, true); }
+                try { file = new ImageFile(new Bitmap(full), null, false, stamp); }
+                catch (Exception e) when (e is IOException or ArgumentException or InvalidOperationException or NotSupportedException) { file = new ImageFile(null, null, true, stamp); }
             }
 
             Files[full] = file;
@@ -47,6 +52,16 @@ namespace EmuSen.LunaP.Media
         }
 
         internal static void Forget() => Files.Clear();
+    }
+
+    // A file's length and last write, which a picture read from it is kept against; a missing file has neither.
+    internal readonly record struct FileStamp(bool Exists, long Length, DateTime Written)
+    {
+        internal static FileStamp Of(string full)
+        {
+            var info = new FileInfo(full);
+            return info.Exists ? new FileStamp(true, info.Length, info.LastWriteTimeUtc) : default;
+        }
     }
 
     // A tint, an optional second tint for a gradient, and a saturation, applied to a picture's pixels once and cached - see docs/LunaP.md §98.2.
@@ -60,7 +75,7 @@ namespace EmuSen.LunaP.Media
 
     internal static class ImagePixels
     {
-        private static readonly Dictionary<(string, int, int, ImageEffects), Bitmap> Prepared = new();
+        private static readonly Dictionary<(string, FileStamp, int, int, ImageEffects), Bitmap> Prepared = new();
 
         // The picture rasterised at a pixel size (its own, for a raster) with the effects applied; null when there is nothing to draw.
         internal static Bitmap? Prepare(string path, ImageFile file, PixelSize size, ImageEffects effects)
@@ -72,7 +87,7 @@ namespace EmuSen.LunaP.Media
                 size = raster.PixelSize;
             }
 
-            var key = (Path.GetFullPath(path), size.Width, size.Height, effects);
+            var key = (Path.GetFullPath(path), file.Stamp, size.Width, size.Height, effects);
             if (Prepared.TryGetValue(key, out Bitmap? done)) return done;
 
             using var target = new RenderTargetBitmap(size);

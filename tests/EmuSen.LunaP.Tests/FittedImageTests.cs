@@ -189,5 +189,31 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(EmuSen.LunaP.Theme.LunaPalette.Error.Color, At(crossed, 40, 40));
             window.Close();
         });
+
+        // A file written again at the same path is read again, plain and tinted, as a picture a scraper replaces must show at once.
+        [Fact]
+        public Task A_picture_written_again_at_its_path_is_drawn_as_it_now_is() => UiTest.Run(() =>
+        {
+            string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "LunaPRewritten_" + Guid.NewGuid().ToString("N") + ".png");
+            System.IO.File.Copy(Png("rewritten-red", 40, 40, (_, _) => Colors.Red), path);
+            foreach (Color tint in new[] { Colors.White, Color.FromRgb(254, 254, 254) })
+            {
+                System.IO.File.Copy(Png("rewritten-red", 40, 40, (_, _) => Colors.Red), path, overwrite: true);
+                System.IO.File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(-1));
+                var first = new FittedImage { Source = path, Fit = ImageFit.Fill, Tint = tint };
+                ToolWindow window = Host(first, 40, 40);
+                Assert.True(At(Frame(window), 20, 20).R > 240);
+                window.Close();
+
+                System.IO.File.Copy(Png("rewritten-blue", 40, 40, (_, _) => Colors.Blue), path, overwrite: true);
+                System.IO.File.SetLastWriteTimeUtc(path, DateTime.UtcNow);
+                var again = new FittedImage { Source = path, Fit = ImageFit.Fill, Tint = tint };
+                window = Host(again, 40, 40);
+                Color c = At(Frame(window), 20, 20);
+                Assert.True(c.B > 200 && c.R < 50, $"tint {tint}: {c}");
+                window.Close();
+            }
+            System.IO.File.Delete(path);
+        });
     }
 }
