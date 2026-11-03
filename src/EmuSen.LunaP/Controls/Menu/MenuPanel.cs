@@ -364,7 +364,7 @@ namespace EmuSen.LunaP.Controls
         private double IconHigh => IsEdge ? EdgeIconHeight : IconHeight;
 
         // The edge card's help bar band, from the foot's safe area up, in this control's coordinates.
-        private Rect HelpBandBounds(Size area) => new(0, area.Height - (SafeFoot + HelpBand) * Unit, area.Width, HelpBand * Unit);
+        private Rect HelpBandBounds(Size area) => new(0, area.Height - (SafeFoot + HelpBand) * Unit, area.Width, (SafeFoot + HelpBand) * Unit);
 
         private double Unit => double.IsFinite(GetValue(ScaleProperty)) && GetValue(ScaleProperty) > 0 ? GetValue(ScaleProperty) : 1;
 
@@ -632,7 +632,7 @@ namespace EmuSen.LunaP.Controls
             double rule = Math.Max(1, Math.Round(u));
             if (IsEdge && _hints.IsVisible)
             {
-                // The help bar's band across the foot, on the panel's surface with the Border token's line along its top (§210).
+                // The help bar's band down to the screen's foot, on the panel's surface with the Border token's line along its top (§210).
                 Rect help = HelpBandBounds(Bounds.Size);
                 context.FillRectangle(new ImmutableSolidColorBrush(PanelColor), help);
                 Color line = this.TryFindResource("LunaBorderColor", ActualThemeVariant, out object? found) && found is Color c ? c : EmuSen.LunaP.Theme.LunaPalette.Border.Color;
