@@ -14965,3 +14965,74 @@ favourite's heart within its cover's top right, and a dimmed row's brightest lab
 
 `ManagerLayout.Applies` (true by default) says whether a list's marks are applied at all: set false, for a list nothing is
 marked in such as a consumer's collections, the help bar names no Apply and Start does nothing. `HubLayoutTests` holds it.
+
+## 213. Settings: `SettingsLayout`, the third canonical layout (2026-11-03)
+
+### 213.1 The gap
+
+The consumer's unified interface (its `EmuSen_Interface.md` §3.2 and §4, screen 6, decided 2026-11-01) gives settings a
+screen of their own on both forms: a strip of sections, rows each with one value and one sentence, a pane beside them that
+explains the focused row and shows a preview where the row has a picture, and pages under rows (a console's settings, the
+levers of a shader, a page of choices). `AdaptiveLayout` places a list and its detail but no sentence per row and no pane of
+previews; `PageLayout` has a hero and actions a settings screen does not; and a host converting desktop sheets into menu
+rows (the consumer's `BigMenuForm`) arranges by hand what a canonical layout should own (§209.1). `SettingsLayout` is that
+layout, general to any application with preferences.
+
+### 213.2 The description
+
+Everything is data the host declares and the layout draws in either form:
+
+- **Sections**: `SetSections(sections, selected)` with `AdaptiveSection`s, stepped by the shoulders while no page is open.
+- **The trail**: `SetTrail(titles)`, the titles of the pages open under a section, outermost first (`Consoles`,
+  `Super Nintendo`, `Engine`). While it holds anything the strip draws the trail in place of the sections, the last title
+  chosen, and the shoulders are the host's.
+- **Rows**: `SetRows(rows, focus)` with the `PageRow`s of §209 (one model for a page's rows and a setting's): `Label`,
+  `Status` as the value, `Kind` (`Steps` drawn `◂ value ▸`, `Opens` drawn `value ▸`, `Asks` drawn `…`, `Action` drawn as
+  its value alone, as a page of choices' status words), `Sentence` and `IsEnabled` (a row not enabled is drawn muted and A
+  does nothing on it). The focus is kept on its key across `SetRows`, else the first row.
+- **The pane**: `PaneFor`, a delegate from the focused row's key to a `SettingsPane`: its `Lines` (`SettingsLine`: text,
+  a `SettingsTone` of `Text`, `Muted`, `Success` or `Attention`, an optional `Mark` drawn in the tone's colour before the
+  text, as `✓`, and an optional `Size` in units for a sample of type) and an optional `Preview`: `SettingsPicture` (a
+  picture, or the generated stand-in with its caption, in the box of a 4:3 frame), `SettingsMeter` (a fraction drawn as a
+  bar) or `SettingsVariants` (the palette's two variants side by side, the chosen one named). A row with no pane draws its
+  `Sentence` there.
+- **The help bar**: `HintsFor`, a delegate from the focused row's key to `PageHint`s, generated, never written.
+
+Presses come back as `SectionChosen` (the shoulders or a click on a section), `RowChosen` (A or a click on the focused
+row), `RowStepped` (Left and Right on a `Steps` row, or a desktop choice, with the step) and `HintInvoked` (a button a hint
+gives a key). B and Start are declined for the host, which closes a page or the screen.
+
+### 213.3 The big screen
+
+In units of 1280 × 800 scaled by `MenuPanel.Scale` (the height over 800), the width the window's in those units (1422 on a
+16:9 screen):
+
+| Part | Where | Look |
+|---|---|---|
+| Strip | 64,40, 44 high | the frame's strip (`StyleStrip`, `WholeRow`): Caption upper case, the chosen one TextStrong with the 3-unit Accent underline |
+| Rows | 64,108 to the pane less 32 (704 wide at 1280, 847 at 16:9) | 54 high, `MenuRow`s as a page's: the label at x+24 in Row 26, the value right-aligned in Muted, the focused row the raised bar with its 4-unit Accent bar and TextStrong words, a Rule under each |
+| Pane | 416 wide at the safe area's right (800,108 at 1280), 578 high to 686 | SurfaceRaised, radius 8, its words inset 24 |
+| Preview | the pane's top, inset 24: 368 × 276 | a picture fitted in the box on Void, radius 8, its caption in Title Condensed TextStrong centred over it; a meter 368 × 16 radius 8, the fraction in Accent over Border; the two variants 176 × 160 each, 16 apart, each on its own palette's surface with its name at its top left |
+| Lines | under the preview, or from the pane's top + 24, 12 under a preview | Body 22 (or the line's `Size`), wrapped; Text, or Muted; a mark in Success or Attention |
+| Help bar | the band of §211.4 at 702 | generated from `HintsFor` |
+
+Rows are whole only: as many as fit in the pane's height, ten at 54 in 578; the window moves a row at a time as the focus
+leaves it, and a long list (every console a home's runtime lists) scrolls by it. Up and Down move the focus, wrapping
+never; Left and Right step a `Steps` row; A raises `RowChosen` on an enabled row.
+
+### 213.4 The desktop
+
+The same description in the desktop's scale (`EmuSen_Interface.md` §17.7 there): a `SourceList` of the sections 200 wide
+at the left; at the content's top the trail as a path line (`Consoles › Super Nintendo`) with `‹ Back` while a page is
+open; rows 48 high, each the label in Body over its sentence in Caption Muted at the left and its control at the right (a
+`Steps` row a dropdown of its choices, an `Opens` row its value with `›` as a button, an `Asks` row a button ending `…`, an
+`Action` row its status words); the pane 276 wide at the right with the preview over its lines; a search field 220 wide at
+the top right, whose text the host is given (`SearchChanged`) to filter rows across every section. A click chooses, a
+double click or Enter on a row raises `RowChosen`.
+
+### 213.5 Tests
+
+`SettingsLayoutTests`: the strip, the rows, the pane and the help band where §213.3 puts them at 1280 × 800, 1920 × 1200,
+1920 × 1080 and 1280 × 720 under the fit audit; rows whole, ten shown and the window moving a row at a time; the trail in
+place of the sections and the shoulders declined under it; Left and Right raising `RowStepped` only on a `Steps` row; A
+declined on a row not enabled; the pane's preview kinds and its tones; the help bar generated from the focus.

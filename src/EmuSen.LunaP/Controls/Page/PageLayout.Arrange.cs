@@ -385,31 +385,8 @@ namespace EmuSen.LunaP.Controls
             return stack;
         }
 
-        private MenuRow BigRow(PageRow row, bool focused)
-        {
-            var m = new MenuRow
-            {
-                Name = "PageRow." + row.Key,
-                Label = row.Label,
-                Value = row.Status ?? (row.Kind == PageRowKind.Asks ? "…" : null),
-                Kind = row.Kind switch { PageRowKind.Opens or PageRowKind.Text => MenuRowKind.Submenu, PageRowKind.Steps => MenuRowKind.Option, _ => MenuRowKind.Action },
-                IsHighlighted = focused,
-                LetterCase = LetterCase.None,
-                FontPath = LunaFonts.BodyFile,
-                TextSize = Type.Row,
-                RowHeight = RowHeight,
-                Inset = 24,
-                Scale = 1,
-            };
-            m.Bind(MenuRow.TextColorProperty, m.GetResourceObservable(row.IsEnabled ? "LunaTextColor" : "LunaMutedColor", c => c is Color colour ? colour : m.TextColor));
-            m.Bind(MenuRow.HighlightTextColorProperty, m.GetResourceObservable("LunaTextStrongColor", c => c is Color colour ? colour : m.HighlightTextColor));
-            m.Bind(MenuRow.BarColorProperty, m.GetResourceObservable("LunaSurfaceRaisedColor", c => c is Color colour ? colour : m.BarColor));
-            m.Bind(MenuRow.RuleColorProperty, m.GetResourceObservable("LunaRuleColor", c => c is Color colour ? colour : m.RuleColor));
-            m.Bind(MenuRow.AccentColorProperty, m.GetResourceObservable("LunaAccentColor", c => c is Color colour ? colour : m.AccentColor));
-            if (!focused) m.Bind(MenuRow.ValueColorProperty, m.GetResourceObservable("LunaMutedColor", c => c is Color colour ? colour : (Color?)null));
-            m.PointerPressed += (_, _) => { _inActions = false; _focusKey = row.Key; Refocused(); if (row.IsEnabled) RowChosen?.Invoke(row.Key); };
-            return m;
-        }
+        private MenuRow BigRow(PageRow row, bool focused) =>
+            PageRowLook.Big(row, focused, "PageRow.", () => { _inActions = false; _focusKey = row.Key; Refocused(); if (row.IsEnabled) RowChosen?.Invoke(row.Key); });
 
         private Control DesktopRows(PageContent.Rows r)
         {
