@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Automation.Peers;
+using Avalonia.Automation.Provider;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
@@ -40,6 +43,50 @@ namespace EmuSen.LunaP.Tests
             "question" => new PageContent.Rows([new PageRow("m1", "Granite Choir (1994, Super Nintendo)"), new PageRow("m2", "Granite Choir II (1996, Super Nintendo)"), new PageRow("other", "Search by another name…") { Kind = PageRowKind.Text }, new PageRow("no", "No")], "Fetches the name, the facts, the cover and the screenshots of the match chosen."),
             _ => new PageContent.Tiles(Enumerable.Range(1, 6).Select(i => new PageTile($"c{i}", $"Cover {i}") { Caption = "Granite Choir", Mark = "SNES" }).ToList(), 150, 200),
         };
+
+        private static AutomationPeer? Focused(Window window) =>
+            window.FocusManager?.GetFocusedElement() is Control c ? ControlAutomationPeer.CreatePeerForElement(c) : null;
+
+        private static string RowsSelected(PageLayout page) =>
+            string.Join("|", ControlAutomationPeer.CreatePeerForElement(page.GetVisualDescendants().OfType<Control>().First(c => c.Name == "PageRows")).GetProvider<ISelectionProvider>()!.GetSelection().Select(p => p.GetName()));
+
+        // A reader on the big screen (docs/LunaP.md §213.8): the focused row holds the focus and is selected, told once a move and never the page between; in the actions the page holds it; the chosen section selected.
+        [Fact]
+        public Task The_focused_row_and_the_chosen_section_are_reported_selected_and_the_focus_follows_the_pad() => UiTest.Run(() =>
+        {
+            var (window, page, _) = Page(1280, 800);
+            var told = new List<object?>();
+            window.AddHandler(InputElement.GotFocusEvent, (_, e) => told.Add(e.Source));
+            page.Focus();
+            UiTest.Settle(page);
+            Assert.Same(page, window.FocusManager!.GetFocusedElement());
+            Assert.Equal("", RowsSelected(page));
+            Assert.Equal("Overview", SettingsLayoutTests.ChosenTab(page));
+            Assert.True(page.FocusContent("r1"));
+            UiTest.Settle(page);
+            Assert.Equal("Row 1, Diamond (EmuSen, default)", Focused(window)?.GetName());
+            for (int i = 2; i <= 9; i++)
+            {
+                told.Clear();
+                Assert.True(page.Move(0, 1));
+                UiTest.Settle(page);
+                AutomationPeer focused = Focused(window)!;
+                Assert.Equal($"Row {i}, Off", focused.GetName());
+                Assert.True(focused.HasKeyboardFocus());
+                Assert.True(focused.GetProvider<ISelectionItemProvider>()?.IsSelected);
+                Assert.Equal($"Row {i}, Off", RowsSelected(page));
+                Assert.NotEmpty(told);
+                Assert.DoesNotContain(page, told);
+            }
+            Assert.True(page.FocusActions());
+            UiTest.Settle(page);
+            Assert.Same(page, window.FocusManager!.GetFocusedElement());
+            Assert.Equal("", RowsSelected(page));
+            Assert.True(page.StepSection(1));
+            UiTest.Settle(page);
+            Assert.Equal("States, 4", SettingsLayoutTests.ChosenTab(page));
+            window.Close();
+        });
 
         private static (Window Window, PageLayout Page, List<string> Said) Page(int width, int height, string content = "rows", AdaptiveForm form = AdaptiveForm.BigScreen)
         {

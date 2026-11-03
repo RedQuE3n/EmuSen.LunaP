@@ -127,7 +127,7 @@ namespace EmuSen.LunaP.Controls
         private static readonly AdaptiveRole[] FocusOrder = { AdaptiveRole.Navigation, AdaptiveRole.Content, AdaptiveRole.Detail, AdaptiveRole.Actions };
 
         private readonly SourceList _sidebar = new();
-        private readonly WholeRow _sectionRow = new() { Spacing = 0 };
+        private readonly WholeRow _sectionRow = new() { Spacing = 0, Selects = AutomationControlType.Tab };
         private readonly ToolBar _toolBar = new();
         private readonly WrapPanel _actionRow = new() { Orientation = Orientation.Horizontal, ItemSpacing = 12, LineSpacing = 8 };
         private readonly TextBox _search = new() { MinWidth = 180 };
@@ -847,9 +847,9 @@ namespace EmuSen.LunaP.Controls
             _sectionRow.Children.Clear();
             foreach (AdaptiveSection section in _sections)
             {
-                var button = new ToggleButton { Content = section.Label, IsChecked = section.Key == _selectedSection };
-                AutomationProperties.SetName(button, section.Status is { Length: > 0 } status ? $"{section.Label}, {status}" : section.Label);
                 string key = section.Key;
+                var button = new SectionTab(() => key == _selectedSection, () => SelectSection(key, raise: true)) { Content = section.Label, IsChecked = section.Key == _selectedSection };
+                AutomationProperties.SetName(button, section.Status is { Length: > 0 } status ? $"{section.Label}, {status}" : section.Label);
                 button.Click += (_, _) => SelectSection(key, raise: true);
                 _sectionRow.Children.Add(button);
             }

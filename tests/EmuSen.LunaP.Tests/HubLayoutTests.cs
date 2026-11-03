@@ -180,6 +180,18 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // The gallery's strip is a tab list whose selection is the chosen console (docs/LunaP.md §213.8).
+        [Fact]
+        public Task The_gallery_s_chosen_section_is_reported_selected() => UiTest.Run(() =>
+        {
+            var (window, gallery, _) = Gallery(1280, 800);
+            Assert.Equal("All", SettingsLayoutTests.ChosenTab(gallery));
+            Assert.True(gallery.StepSection(1));
+            UiTest.Settle(gallery);
+            Assert.Equal("Favourites", SettingsLayoutTests.ChosenTab(gallery));
+            window.Close();
+        });
+
         private static (Window Window, GalleryLayout Gallery, List<string> Said) Gallery(int width, int height, int covers = 12)
         {
             var said = new List<string>();

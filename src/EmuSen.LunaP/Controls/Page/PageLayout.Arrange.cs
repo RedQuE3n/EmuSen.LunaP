@@ -312,7 +312,8 @@ namespace EmuSen.LunaP.Controls
             int chosen = 0, n = 0;
             foreach ((string key, string label, bool isChosen, string? status) in shown)
             {
-                var button = new Avalonia.Controls.Primitives.ToggleButton { Content = label.ToUpperInvariant(), IsChecked = isChosen, Focusable = !Big, IsTabStop = !Big };
+                string k = key;
+                var button = new SectionTab(() => _pageTitle is null ? k == _selected : isChosen, () => { if (_pageTitle is null && k != _selected) Choose(k); }) { Content = label.ToUpperInvariant(), IsChecked = isChosen, Focusable = !Big, IsTabStop = !Big };
                 if (!Big)
                 {
                     button.FontSize = Type.Strong;
@@ -322,7 +323,6 @@ namespace EmuSen.LunaP.Controls
                 AutomationProperties.SetName(button, status is { Length: > 0 } ? $"{label}, {status}" : label);
                 if (_pageTitle is null)
                 {
-                    string k = key;
                     button.Click += (_, _) => { if (k != _selected) Choose(k); else button.IsChecked = true; };
                 }
                 else button.Click += (_, _) => button.IsChecked = isChosen;
@@ -335,6 +335,7 @@ namespace EmuSen.LunaP.Controls
 
         private void FillContent()
         {
+            _focusRow = null;
             _rowControls.Clear();
             _tileControls.Clear();
             IReadOnlyList<string> keys = Keys();
@@ -347,6 +348,7 @@ namespace EmuSen.LunaP.Controls
                 PageContent.Text x => TextContent(x),
                 _ => null,
             };
+            if (ReferenceEquals(_contentHost.Child, _bigRows) && ReaderFocus.Held(this)) ReaderFocus.Pass(this, true, _focusRow);
             FillActionsFocus();
             RefreshHints();
         }
@@ -363,10 +365,13 @@ namespace EmuSen.LunaP.Controls
             }
         }
 
-        // The rows that fit, whole, the focused one kept in view; the rest scroll by whole rows.
+        // The rows that fit, whole, the focused one kept in view; the rest scroll by whole rows; the new rows go in before the old come out, so a reader's focus passes between them (§213.8).
         private Control BigRows(PageContent.Rows r)
         {
-            var stack = new StackPanel { Name = "PageRows" };
+            SelectionStack stack = _bigRows;
+            bool held = ReaderFocus.Held(this);
+            int old = stack.Children.Count;
+            _focusRow = null;
             double room = ContentHeight;
             if (r.Sentence is { Length: > 0 } sentence)
             {
@@ -382,11 +387,19 @@ namespace EmuSen.LunaP.Controls
             if (at >= _firstShown + fit) _firstShown = at - fit + 1;
             _firstShown = Math.Clamp(_firstShown, 0, Math.Max(0, r.Items.Count - fit));
             foreach (PageRow row in r.Items.Skip(_firstShown).Take(fit)) stack.Children.Add(BigRow(row, !_inActions && row.Key == _focusKey));
+            if (ReferenceEquals(_contentHost.Child, stack)) ReaderFocus.Pass(this, held, _focusRow);
+            stack.Children.RemoveRange(0, old);
             return stack;
         }
 
-        private MenuRow BigRow(PageRow row, bool focused) =>
-            PageRowLook.Big(row, focused, "PageRow.", () => { _inActions = false; _focusKey = row.Key; Refocused(); if (row.IsEnabled) RowChosen?.Invoke(row.Key); });
+        private MenuRow BigRow(PageRow row, bool focused)
+        {
+            void Select() { _inActions = false; _focusKey = row.Key; Refocused(); }
+            MenuRow drawn = PageRowLook.Big(row, focused, "PageRow.", () => { Select(); if (row.IsEnabled) RowChosen?.Invoke(row.Key); }, (() => !_inActions && row.Key == _focusKey, Select));
+            drawn.GotFocus += (_, _) => { if (_inActions || row.Key != _focusKey) Select(); };
+            if (focused) _focusRow = drawn;
+            return drawn;
+        }
 
         private Control DesktopRows(PageContent.Rows r)
         {

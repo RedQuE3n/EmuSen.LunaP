@@ -50,7 +50,7 @@ namespace EmuSen.LunaP.Controls
 
         private readonly Panel _root = new();
         private readonly HintBar _hintBar = new();
-        private readonly WholeRow _strip = new() { Spacing = 8, Name = "GallerySections" };
+        private readonly WholeRow _strip = new() { Spacing = 8, Name = "GallerySections", Selects = Avalonia.Automation.Peers.AutomationControlType.Tab };
         private readonly TextBox _search = new() { Name = "GallerySearch", PlaceholderText = "Search" };
         private IReadOnlyList<AdaptiveSection> _sections = Array.Empty<AdaptiveSection>();
         private IReadOnlyList<CoverItem> _items = Array.Empty<CoverItem>();
@@ -394,14 +394,18 @@ namespace EmuSen.LunaP.Controls
             int chosen = 0, n = 0;
             foreach (AdaptiveSection s in _sections)
             {
-                var button = new ToggleButton { Content = s.Label.ToUpperInvariant(), IsChecked = s.Key == _selected, Focusable = false, IsTabStop = false };
-                AutomationProperties.SetName(button, s.Status is { Length: > 0 } status ? $"{s.Label}, {status}" : s.Label);
                 string key = s.Key;
-                button.Click += (_, _) =>
+                bool Choose()
                 {
-                    if (key != _selected) { _selected = key; Fill(); SectionChosen?.Invoke(key); }
-                    else button.IsChecked = true;
-                };
+                    if (key == _selected) return false;
+                    _selected = key;
+                    Fill();
+                    SectionChosen?.Invoke(key);
+                    return true;
+                }
+                var button = new SectionTab(() => key == _selected, () => Choose()) { Content = s.Label.ToUpperInvariant(), IsChecked = s.Key == _selected, Focusable = false, IsTabStop = false };
+                AutomationProperties.SetName(button, s.Status is { Length: > 0 } status ? $"{s.Label}, {status}" : s.Label);
+                button.Click += (_, _) => { if (!Choose()) button.IsChecked = true; };
                 if (s.Key == _selected) chosen = n;
                 n++;
                 _strip.Children.Add(button);

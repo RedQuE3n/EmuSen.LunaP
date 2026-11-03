@@ -6,12 +6,10 @@ using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
-using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.Styling;
-using Avalonia.VisualTree;
 using EmuSen.LunaP.Automation;
 using EmuSen.LunaP.Media;
 using EmuSen.LunaP.Theme;
@@ -355,10 +353,9 @@ namespace EmuSen.LunaP.Controls
         // The new drawing goes in before the old comes out, so a focus held by the screen or its row passes to the new row without resting on the screen between - see docs/LunaP.md §213.8.
         private void HandOver(Control drawing)
         {
-            IInputElement? had = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
-            bool held = ReferenceEquals(had, this) || had is MenuRow { Selection: not null } row && this.IsVisualAncestorOf(row);
+            bool held = ReaderFocus.Held(this);
             _root.Children.Add(drawing);
-            if (held && !(_focusRow?.Focus() ?? false)) Focus();
+            ReaderFocus.Pass(this, held, _focusRow);
             while (_root.Children.Count > 1) _root.Children.RemoveAt(0);
         }
 
@@ -402,7 +399,7 @@ namespace EmuSen.LunaP.Controls
 
         private void FillRows(Panel surface)
         {
-            var stack = new RowList { Name = "SettingsRows", Width = Math.Max(0, PaneLeft - PaneGap - Side), Margin = new Thickness(Side, ContentTop, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+            var stack = new SelectionStack { Name = "SettingsRows", Width = Math.Max(0, PaneLeft - PaneGap - Side), Margin = new Thickness(Side, ContentTop, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
             AutomationProperties.SetName(stack, _trail.LastOrDefault() ?? _sections.FirstOrDefault(s => s.Key == _selected)?.Label ?? "Settings");
             foreach (PageRow row in _rows.Skip(_first).Take(RowsShown))
             {
@@ -445,12 +442,12 @@ namespace EmuSen.LunaP.Controls
         // The content's tabs, the chosen one marked as the sections' strip marks its own; a click raises ContentTabChosen.
         private WholeRow ContentTabs(SettingsContent content, double height)
         {
-            var tabs = new WholeRow { Spacing = 8, Name = "SettingsContentTabs", Height = height, VerticalAlignment = VerticalAlignment.Top };
+            var tabs = new WholeRow { Spacing = 8, Name = "SettingsContentTabs", Height = height, VerticalAlignment = VerticalAlignment.Top, Selects = AutomationControlType.Tab };
             AdaptiveLayout.StyleStrip(tabs);
             for (int i = 0; i < content.Tabs.Count; i++)
             {
                 int at = i;
-                var tab = new ToggleButton { Content = content.Tabs[i].ToUpperInvariant(), IsChecked = i == content.Chosen, Focusable = false, IsTabStop = false };
+                var tab = new SectionTab(() => at == content.Chosen, () => ContentTabChosen?.Invoke(at)) { Content = content.Tabs[i].ToUpperInvariant(), IsChecked = i == content.Chosen, Focusable = false, IsTabStop = false };
                 AutomationProperties.SetName(tab, content.Tabs[i]);
                 tab.Click += (_, _) => { tab.IsChecked = at == content.Chosen; ContentTabChosen?.Invoke(at); };
                 tabs.Children.Add(tab);
@@ -554,21 +551,6 @@ namespace EmuSen.LunaP.Controls
             swatch.Bind(Border.BackgroundProperty, swatch.GetResourceObservable("LunaSurfaceColor", c => c is Color col ? new SolidColorBrush(col) : null));
             swatch.Bind(Border.BorderBrushProperty, swatch.GetResourceObservable("LunaBorderColor", c => c is Color col ? new SolidColorBrush(col) : null));
             return new ThemeVariantScope { RequestedThemeVariant = variant, Child = swatch, Name = "SettingsVariant." + name };
-        }
-
-        // The rows' box, which a reader hears as a list whose selection is the focused row (§213.8).
-        private sealed class RowList : StackPanel
-        {
-            protected override AutomationPeer OnCreateAutomationPeer() => SingleSelectionPeer.OfChildren(this, AutomationControlType.List);
-        }
-
-        // A strip's button, styled as the toggle it is, which a reader hears as a tab, selected while chosen (§213.8).
-        private sealed class SectionTab(Func<bool> isSelected, Action select) : ToggleButton
-        {
-            protected override Type StyleKeyOverride => typeof(ToggleButton);
-
-            protected override AutomationPeer OnCreateAutomationPeer() =>
-                new SelectableItemPeer(this, () => Content as string, isSelected, select, () => Parent as Control, type: AutomationControlType.TabItem);
         }
     }
 }

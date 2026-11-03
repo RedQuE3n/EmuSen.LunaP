@@ -41,6 +41,18 @@ namespace EmuSen.LunaP.Tests
             new LunaAction("Check for Updates", () => invoked.Add("Check for Updates")) { IsMain = true, PadButton = PadGlyphButton.Start },
         };
 
+        // The big screen's section row is a tab list whose selection is the chosen section (docs/LunaP.md §213.8).
+        [Fact]
+        public Task The_big_screen_s_chosen_section_is_reported_selected() => UiTest.Run(() =>
+        {
+            var (window, layout, _, _) = Build(AdaptiveForm.BigScreen, 1280, 800);
+            Assert.Equal("All", SettingsLayoutTests.ChosenTab(layout));
+            Assert.True(layout.SelectSection("installed"));
+            UiTest.Settle(layout);
+            Assert.Equal("Installed", SettingsLayoutTests.ChosenTab(layout));
+            window.Close();
+        });
+
         private static (Window Window, AdaptiveLayout Layout, List<string> Chosen, List<string> Invoked) Build(AdaptiveForm form, int width, int height, bool detail = true)
         {
             var chosen = new List<string>();

@@ -284,6 +284,12 @@ namespace EmuSen.LunaP.Tests
         private static string? Chosen(Control root, string name) =>
             PeerOf(root, name).GetProvider<ISelectionProvider>() is { } list ? string.Join("|", list.GetSelection().Select(p => p.GetName())) : null;
 
+        // The selection a reader is given by a strip of tabs under root, its tabs' names joined.
+        internal static string ChosenTab(Control root) =>
+            root.GetVisualDescendants().OfType<Control>().Select(ControlAutomationPeer.CreatePeerForElement)
+                .First(p => p.GetAutomationControlType() == AutomationControlType.Tab && p.GetProvider<ISelectionProvider>() is not null)
+                .GetProvider<ISelectionProvider>()!.GetSelection().Select(p => p.GetName()).Aggregate("", (a, b) => a.Length == 0 ? b : a + "|" + b);
+
         // What a platform bridge reads as the focus: the peer of the element the focus manager holds.
         private static AutomationPeer? Focus(Window window) =>
             window.FocusManager?.GetFocusedElement() is Control c ? ControlAutomationPeer.CreatePeerForElement(c) : null;
@@ -325,9 +331,10 @@ namespace EmuSen.LunaP.Tests
             UiTest.Settle(layout);
             Assert.Equal("Sound", Chosen(layout, "SettingsSections"));
             Assert.Equal(AutomationControlType.TabItem, PeerOf(layout, "SettingsSections").GetChildren().First().GetAutomationControlType());
-            layout.SetContent(new SettingsContent("bind:Y", new Border { Name = "Drawing" }));
+            layout.SetContent(new SettingsContent("bind:Y", new Border { Name = "Drawing" }) { Tabs = ["Player 1", "Super Nintendo"], Chosen = 1 });
             UiTest.Settle(layout);
             Assert.Same(layout, window.FocusManager!.GetFocusedElement());
+            Assert.Equal("Super Nintendo", Chosen(layout, "SettingsContentTabs"));
             window.Close();
         });
 
