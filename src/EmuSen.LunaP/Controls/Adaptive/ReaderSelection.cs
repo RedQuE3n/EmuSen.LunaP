@@ -24,13 +24,20 @@ namespace EmuSen.LunaP.Controls
         protected override AutomationPeer OnCreateAutomationPeer() => SingleSelectionPeer.OfChildren(this, Selects);
     }
 
+    // A drawn cell of a choice of one, such as a page's action, which a reader hears selected while it is the focused one (§213.8).
+    internal sealed class SelectableCell(Func<bool> isSelected, Action select) : Panel
+    {
+        protected override AutomationPeer OnCreateAutomationPeer() =>
+            new SelectableItemPeer(this, () => null, isSelected, select, () => Parent as Control);
+    }
+
     // The keyboard focus kept on a layout's focused drawn row while the layout holds it, so a reader follows the pad (§213.8).
     internal static class ReaderFocus
     {
-        // Whether the focus is the layout's own or one of its selectable drawn rows'.
+        // Whether the focus is the layout's own or one of its selectable drawn rows' or cells'.
         public static bool Held(Control layout) =>
             TopLevel.GetTopLevel(layout)?.FocusManager?.GetFocusedElement() is { } had
-            && (ReferenceEquals(had, layout) || had is MenuRow { Selection: not null } row && layout.IsVisualAncestorOf(row));
+            && (ReferenceEquals(had, layout) || had is MenuRow { Selection: not null } or SelectableCell && layout.IsVisualAncestorOf((Control)had));
 
         // Gives a held focus to the focused row, attached before the old one is taken out, else back to the layout.
         public static void Pass(Control layout, bool held, Control? row)

@@ -50,7 +50,7 @@ namespace EmuSen.LunaP.Tests
         private static string RowsSelected(PageLayout page) =>
             string.Join("|", ControlAutomationPeer.CreatePeerForElement(page.GetVisualDescendants().OfType<Control>().First(c => c.Name == "PageRows")).GetProvider<ISelectionProvider>()!.GetSelection().Select(p => p.GetName()));
 
-        // A reader on the big screen (docs/LunaP.md §213.8): the focused row holds the focus and is selected, told once a move and never the page between; in the actions the page holds it; the chosen section selected.
+        // A reader on the big screen (docs/LunaP.md §213.8): the focused action or row holds the focus and is selected, told once a move and never the page between; the chosen section selected.
         [Fact]
         public Task The_focused_row_and_the_chosen_section_are_reported_selected_and_the_focus_follows_the_pad() => UiTest.Run(() =>
         {
@@ -59,8 +59,21 @@ namespace EmuSen.LunaP.Tests
             window.AddHandler(InputElement.GotFocusEvent, (_, e) => told.Add(e.Source));
             page.Focus();
             UiTest.Settle(page);
-            Assert.Same(page, window.FocusManager!.GetFocusedElement());
             Assert.Equal("", RowsSelected(page));
+            foreach (string expected in new[] { "Play", "Resume, Slot 3 · 3 days ago", "♥ Favourite" })
+            {
+                AutomationPeer action = Focused(window)!;
+                Assert.Equal(expected, action.GetName());
+                Assert.True(action.HasKeyboardFocus());
+                Assert.True(action.GetProvider<ISelectionItemProvider>()?.IsSelected);
+                Assert.Equal(expected, string.Join("|", ControlAutomationPeer.CreatePeerForElement(page.GetVisualDescendants().OfType<Control>().First(c => c.Name == "PageActions")).GetProvider<ISelectionProvider>()!.GetSelection().Select(p => p.GetName())));
+                told.Clear();
+                if (expected == "♥ Favourite") break;
+                Assert.True(page.Move(1, 0));
+                UiTest.Settle(page);
+                Assert.NotEmpty(told);
+                Assert.DoesNotContain(page, told);
+            }
             Assert.Equal("Overview", SettingsLayoutTests.ChosenTab(page));
             Assert.True(page.FocusContent("r1"));
             UiTest.Settle(page);
@@ -78,13 +91,30 @@ namespace EmuSen.LunaP.Tests
                 Assert.NotEmpty(told);
                 Assert.DoesNotContain(page, told);
             }
+            told.Clear();
             Assert.True(page.FocusActions());
             UiTest.Settle(page);
-            Assert.Same(page, window.FocusManager!.GetFocusedElement());
+            Assert.Equal("Play", Focused(window)?.GetName());
+            Assert.DoesNotContain(page, told);
             Assert.Equal("", RowsSelected(page));
             Assert.True(page.StepSection(1));
             UiTest.Settle(page);
             Assert.Equal("States, 4", SettingsLayoutTests.ChosenTab(page));
+            window.Close();
+        });
+
+        // Over content that is not rows, the focused action still holds the focus as the pad moves across them (§213.8).
+        [Fact]
+        public Task The_focused_action_holds_the_focus_over_tiles() => UiTest.Run(() =>
+        {
+            var (window, page, _) = Page(1280, 800, "tiles");
+            page.Focus();
+            UiTest.Settle(page);
+            Assert.Equal("Play", Focused(window)?.GetName());
+            Assert.True(page.Move(1, 0));
+            UiTest.Settle(page);
+            Assert.Equal("Resume, Slot 3 · 3 days ago", Focused(window)?.GetName());
+            Assert.True(Focused(window)!.GetProvider<ISelectionItemProvider>()?.IsSelected);
             window.Close();
         });
 

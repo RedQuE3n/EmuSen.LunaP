@@ -52,7 +52,7 @@ namespace EmuSen.LunaP.Controls
         private readonly TextBlock _facts = new() { Name = "PageFacts", TextWrapping = TextWrapping.NoWrap };
         private readonly Viewbox _titleFit = new() { Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly, HorizontalAlignment = HorizontalAlignment.Left };
         private readonly Viewbox _factsFit = new() { Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly, HorizontalAlignment = HorizontalAlignment.Left };
-        private readonly StackPanel _actionRow = new() { Name = "PageActions", Orientation = Orientation.Horizontal, Spacing = 12 };
+        private readonly SelectionStack _actionRow = new() { Name = "PageActions", Orientation = Orientation.Horizontal, Spacing = 12 };
         private readonly WholeRow _strip = new() { Spacing = 8, Name = "PageSections", Selects = AutomationControlType.Tab };
         private readonly SelectionStack _tabs = new() { Name = "PageTabs", Orientation = Orientation.Horizontal, Spacing = 24, Selects = AutomationControlType.Tab };
         private readonly SelectionStack _bigRows = new() { Name = "PageRows" };
@@ -90,7 +90,7 @@ namespace EmuSen.LunaP.Controls
             AutomationProperties.SetName(_back, "Back");
             AutomationProperties.SetName(_actionRow, "Actions");
             AutomationProperties.SetName(_strip, "Sections");
-            GotFocus += (_, e) => { if (ReferenceEquals(e.Source, this) && Big) _focusRow?.Focus(); };
+            GotFocus += (_, e) => { if (ReferenceEquals(e.Source, this) && Big) FocusTarget()?.Focus(); };
             Arrange();
         }
 

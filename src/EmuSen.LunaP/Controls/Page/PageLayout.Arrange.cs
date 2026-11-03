@@ -200,8 +200,11 @@ namespace EmuSen.LunaP.Controls
 
         private void FillActions()
         {
-            _actionRow.Children.Clear();
+            bool held = Big && ReaderFocus.Held(this);
+            int old = _actionRow.Children.Count;
             for (int i = 0; i < _actions.Count; i++) _actionRow.Children.Add(Big ? BigAction(_actions[i], i) : DesktopAction(_actions[i]));
+            if (held) ReaderFocus.Pass(this, true, FocusTarget(old));
+            _actionRow.Children.RemoveRange(0, old);
             FillActionsFocus();
         }
 
@@ -234,7 +237,9 @@ namespace EmuSen.LunaP.Controls
             }
             var ring = new Border { Margin = new Thickness(-7), BorderThickness = new Thickness(3), CornerRadius = new CornerRadius(11), IsVisible = false, IsHitTestVisible = false };
             ring[!Border.BorderBrushProperty] = new DynamicResourceExtension("LunaAccent");
-            var cell = new Panel { Children = { button, ring } };
+            void Select() { _actionAt = index; _inActions = true; Refocused(); }
+            var cell = new SelectableCell(() => Big && _inActions && _actionAt == index, Select) { Children = { button, ring }, Focusable = true, IsTabStop = false };
+            cell.GotFocus += (_, _) => { if (!_inActions || _actionAt != index) Select(); };
             AutomationProperties.SetName(cell, a.Value is null ? a.Text : $"{a.Text}, {a.Value}");
             cell.PointerPressed += (_, _) => { _actionAt = index; _inActions = true; Refocused(); if (a.IsEnabled) ActionInvoked?.Invoke(a.Key); };
             return cell;
@@ -299,7 +304,12 @@ namespace EmuSen.LunaP.Controls
         {
             for (int i = 0; i < _actionRow.Children.Count; i++)
                 if (_actionRow.Children[i] is Panel { Children: [_, Border ring] }) ring.IsVisible = Big && _inActions && i == _actionAt;
+            if (Big && _inActions && ReaderFocus.Held(this)) ReaderFocus.Pass(this, true, FocusTarget());
         }
+
+        // What holds the focus for a reader on the big screen: the focused action's cell, or the focused row; the cells counted from skip (§213.8).
+        private Control? FocusTarget(int skip = 0) =>
+            !_inActions ? _focusRow : _actionAt + skip < _actionRow.Children.Count ? _actionRow.Children[_actionAt + skip] as SelectableCell : null;
 
         private void FillStrip()
         {
@@ -348,7 +358,7 @@ namespace EmuSen.LunaP.Controls
                 PageContent.Text x => TextContent(x),
                 _ => null,
             };
-            if (ReferenceEquals(_contentHost.Child, _bigRows) && ReaderFocus.Held(this)) ReaderFocus.Pass(this, true, _focusRow);
+            if (Big && ReaderFocus.Held(this)) ReaderFocus.Pass(this, true, FocusTarget());
             FillActionsFocus();
             RefreshHints();
         }
@@ -387,7 +397,7 @@ namespace EmuSen.LunaP.Controls
             if (at >= _firstShown + fit) _firstShown = at - fit + 1;
             _firstShown = Math.Clamp(_firstShown, 0, Math.Max(0, r.Items.Count - fit));
             foreach (PageRow row in r.Items.Skip(_firstShown).Take(fit)) stack.Children.Add(BigRow(row, !_inActions && row.Key == _focusKey));
-            if (ReferenceEquals(_contentHost.Child, stack)) ReaderFocus.Pass(this, held, _focusRow);
+            if (ReferenceEquals(_contentHost.Child, stack)) ReaderFocus.Pass(this, held, FocusTarget());
             stack.Children.RemoveRange(0, old);
             return stack;
         }

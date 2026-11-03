@@ -15109,8 +15109,8 @@ consumer's accessibility tests read the focused row, so nothing caught it.
   is a `SectionTab`, a toggle button styled as before (its style key is `ToggleButton`) whose peer is `SelectableItemPeer`
   of type TabItem, selected while chosen; a reader's Select chooses it as a click does. Under a trail the last title is
   the selected one. The content page's tabs (§213.7) are the same, in both forms.
-- **One owner.** `SectionTab`, `SelectionStack` (a stack whose peer is a list, or a tab list, of its selected children)
-  and `ReaderFocus` (whether the focus is the layout's or one of its rows', and handing it to the new focused row) live in
+- **One owner.** `SectionTab`, `SelectionStack` (a stack whose peer is a list, or a tab list, of its selected children),
+  `SelectableCell` (a drawn cell selected while focused) and `ReaderFocus` (whether the focus is the layout's or one of its rows', and handing it to the new focused row) live in
   `Controls/Adaptive/ReaderSelection.cs`, used by every layout below.
 - **The desktop form already did.** Its rows are real focusable controls named "label, value", with a dropdown, switch or
   button named by the label; the focused one is the element the focus manager holds and reports the focus. The sections
@@ -15119,9 +15119,12 @@ consumer's accessibility tests read the focused row, so nothing caught it.
 **The same defect elsewhere, repaired the same way (decided 2026-11-03).** `PageLayout` drew its rows through the same
 `PageRowLook` and kept its focus as a key, so a game's page had the defect too. Its big rows now carry a `Selection`
 (selected while the focus is in the content and on that row), its rows' stack is one `SelectionStack` kept for the page so
-the new rows go in before the old come out, and the focused row holds the focus while the page does; while the focus is in
-the actions no row is selected and the page itself holds the focus, since its actions are drawn cells a reader is not yet
-told about. Its strip (named `PageSections`) and its desktop tabs are tab lists of `SectionTab`s, a trail's page title the
+the new rows go in before the old come out, and the focused row holds the focus while the page does. Its actions are
+drawn cells too: each is a `SelectableCell` (focusable, not a tab stop, selected while the focus is in the actions and on
+it) in a `SelectionStack`, so while the focus is in the actions the focused action holds it and a reader hears its words
+and value; the cells are drawn anew only when the actions change, new before old, as the rows are. `ReaderFocus.Held`
+counts a held cell as it counts a held row, and one `FocusTarget` (the focused action's cell, or the focused row) is where
+the focus is handed. Its strip (named `PageSections`) and its desktop tabs are tab lists of `SectionTab`s, a trail's page title the
 selected one. `GalleryLayout`'s strip and `AdaptiveLayout`'s big-screen section row are tab lists of `SectionTab`s too.
 
 **Tests.** `SettingsLayoutTests.The_focused_row_and_the_chosen_section_are_reported_selected_and_the_focus_follows_the_pad`:
@@ -15136,7 +15139,9 @@ went in.
 `HubLayoutTests.The_gallery_s_chosen_section_is_reported_selected` and
 `AdaptiveLayoutTests.The_big_screen_s_chosen_section_is_reported_selected` hold the rest; seeded the same day and caught:
 a row reported selected while the focus is in the actions, the page's rows taken out before the new went in, the
-gallery's section never selected.
+gallery's section never selected. `PageLayoutTests.The_focused_action_holds_the_focus_over_tiles` and the consumer's walk
+across a game page's actions hold the actions; seeded the same day, the focus not handed from action to action over
+content that is not rows was caught by both.
 
 ## 214. Text size and reduced motion as the kit's own switches (2026-11-03)
 
