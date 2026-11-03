@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Automation.Peers;
+using Avalonia.Automation.Provider;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Headless;
 using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
@@ -272,6 +275,79 @@ namespace EmuSen.LunaP.Tests
             bool Has(string name) => layout.GetVisualDescendants().OfType<Control>().Any(c => c.Name == name);
             Assert.True(Has("SettingsContent") && Has("SettingsContentTabs") && Has("Drawing") && Has("SettingsContentCaption") && Has("SettingsPane"));
             Assert.Empty(FitAudit.Check(layout, [], smallest: 0));
+            window.Close();
+        });
+
+        private static AutomationPeer PeerOf(Control root, string name) =>
+            ControlAutomationPeer.CreatePeerForElement(root.GetVisualDescendants().OfType<Control>().First(c => c.Name == name));
+
+        private static string? Chosen(Control root, string name) =>
+            PeerOf(root, name).GetProvider<ISelectionProvider>() is { } list ? string.Join("|", list.GetSelection().Select(p => p.GetName())) : null;
+
+        // What a platform bridge reads as the focus: the peer of the element the focus manager holds.
+        private static AutomationPeer? Focus(Window window) =>
+            window.FocusManager?.GetFocusedElement() is Control c ? ControlAutomationPeer.CreatePeerForElement(c) : null;
+
+        // The reader's view of the big screen (§213.8): the focused row selected and holding the focus, told on every move, and the chosen section selected.
+        [Fact]
+        public Task The_focused_row_and_the_chosen_section_are_reported_selected_and_the_focus_follows_the_pad() => UiTest.Run(() =>
+        {
+            var (window, layout, said) = Screen(1280, 800);
+            var told = new List<object?>();
+            window.AddHandler(InputElement.GotFocusEvent, (_, e) => told.Add(e.Source));
+            layout.Focus();
+            UiTest.Settle(layout);
+            Assert.Equal("Picture shape, Console's", Chosen(layout, "SettingsRows"));
+            Assert.Equal("Picture shape, Console's", Focus(window)?.GetName());
+            Assert.Equal("Display", Chosen(layout, "SettingsSections"));
+            foreach (string expected in new[] { "CRT shader, Balanced", "Shader levers", "Crop overscan, Console's" })
+            {
+                int before = told.Count;
+                Assert.True(layout.Move(0, 1));
+                UiTest.Settle(layout);
+                Assert.True(told.Count > before, "the move was not told");
+                Assert.DoesNotContain(layout, told.Skip(before));
+                AutomationPeer focused = Focus(window)!;
+                Assert.Equal(expected, focused.GetName());
+                Assert.True(focused.HasKeyboardFocus());
+                Assert.True(focused.GetProvider<ISelectionItemProvider>()?.IsSelected, "the focused row is not selected");
+                Assert.Equal(expected, Chosen(layout, "SettingsRows"));
+                Assert.Single(PeerOf(layout, "SettingsRows").GetChildren(), p => p.GetProvider<ISelectionItemProvider>()?.IsSelected == true);
+            }
+            layout.SetRows(Display().Select(r => r.Key == "crop" ? r with { Status = "None" } : r));
+            UiTest.Settle(layout);
+            Assert.Equal("Crop overscan, None", Focus(window)?.GetName());
+            PeerOf(layout, "SettingsRow.volume").GetProvider<ISelectionItemProvider>()!.Select();
+            UiTest.Settle(layout);
+            Assert.Equal("volume", layout.Focused);
+            Assert.Equal("Volume, 80%", Focus(window)?.GetName());
+            Assert.True(layout.StepSection(1));
+            UiTest.Settle(layout);
+            Assert.Equal("Sound", Chosen(layout, "SettingsSections"));
+            Assert.Equal(AutomationControlType.TabItem, PeerOf(layout, "SettingsSections").GetChildren().First().GetAutomationControlType());
+            layout.SetContent(new SettingsContent("bind:Y", new Border { Name = "Drawing" }));
+            UiTest.Settle(layout);
+            Assert.Same(layout, window.FocusManager!.GetFocusedElement());
+            window.Close();
+        });
+
+        // The desktop form's rows are real controls: the focused one is what the reader is given.
+        [Fact]
+        public Task The_desktop_form_reports_its_focused_control() => UiTest.Run(() =>
+        {
+            var layout = new SettingsLayout { Form = AdaptiveForm.Desktop };
+            layout.SetSections(Sections, "display");
+            layout.SetRows(Display());
+            var window = new Window { Width = 960, Height = 640, Content = layout };
+            window.Show();
+            UiTest.Settle(layout);
+            Control row = layout.GetVisualDescendants().OfType<Control>().First(c => c.Name == "SettingsRow.levers");
+            Assert.True(row.Focus());
+            Assert.Equal("Shader levers", Focus(window)?.GetName());
+            Assert.True(Focus(window)!.HasKeyboardFocus());
+            ComboBox crt = layout.GetVisualDescendants().OfType<ComboBox>().First(b => (string?)b.SelectedItem == "Balanced");
+            Assert.True(crt.Focus());
+            Assert.Equal("CRT shader", Focus(window)?.GetName());
             window.Close();
         });
 

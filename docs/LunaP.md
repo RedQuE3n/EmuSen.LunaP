@@ -15081,6 +15081,50 @@ content page's words are what tell the player the focused part's value.
 desktop form under the fit audit; the directions raising `ContentMoved` and never `RowStepped`; A raising `RowChosen` with
 the focus; the pane asked for the content's focus; null giving the rows back with their focus.
 
+### 213.8 What a reader is told (2026-11-03)
+
+**The defect.** Found on the handheld on 2026-11-03: over a running game, Console Settings on the big screen gave a reader
+its rows as "list item: Engine, …", "list item: BIOS, auto" and so on, none marked selected or focused; the focus was the
+layout itself, a pane named for the page ("PlayStation 2"). The rows are drawn `MenuRow`s (§213.6, `PageRowLook`) that
+never take the focus, and the layout kept its focused row as a key only, so a reader could not tell which row the pad was
+on. The Pause Card's rows did not have the defect: they are a `ListBox` drawn by `MenuRows.Apply` (§181.3), whose items
+take the keyboard focus and report themselves selected through the stock list peers. Neither the toolkit's tests nor the
+consumer's accessibility tests read the focused row, so nothing caught it.
+
+**The repair: the same answer a list gives, through the kit's own selection peers (§88.6).**
+
+- **The focused row holds the keyboard focus.** A row drawn by `SettingsLayout` is focusable (not a tab stop) and, while the
+  focus is the layout's or one of its rows', the focused row has it. The layout draws itself anew on every change, so the
+  new drawing goes in before the old comes out and the focus passes straight from the old row to the new one: a reader is
+  told once per move, the new row's label and value, and never hears the screen's own name between. A row's value changed
+  by Left or Right is told again the same way. When the focus reaches the layout itself (`Focus()` from the host) it is
+  passed to the focused row; a page of content (§213.7) has no rows, and the focus stays on the layout.
+- **The row reports itself selected.** `MenuRow` takes an internal `Selection` (whether it is the chosen one, and how a
+  reader chooses it); with it, its peer is `SelectableItemPeer`, the peer `TileGrid`, `TileStrip` and `SourceList` already
+  use, with the same name as before (`MenuRow.Describe`: the label, then the value). The rows' box is a list whose peer is
+  `SingleSelectionPeer` over its children (`SingleSelectionPeer.OfChildren`), so its selection is the focused row. A
+  reader's Select on a row focuses it, and a row given the focus by any other route (a click, the platform's directional
+  navigation) becomes the focused row, so the two never disagree.
+- **The section strip is a tab list.** `WholeRow.Selects` gives the strip `SingleSelectionPeer` of type Tab; each section
+  is a toggle button styled as before (its style key is `ToggleButton`) whose peer is `SelectableItemPeer` of type TabItem,
+  selected while chosen; a reader's Select chooses it as a click does. Under a trail the last title is the selected one.
+- **The desktop form already did.** Its rows are real focusable controls named "label, value", with a dropdown, switch or
+  button named by the label; the focused one is the element the focus manager holds and reports the focus. The sections
+  are a `SourceList`, which reports its selection (§88.6). Nothing changed there.
+
+**Not changed.** `PageLayout` draws its rows through the same `PageRowLook` and keeps its focus as a key the same way; it
+passes no `Selection`, so its rows are as they were. The same repair applies there when it is wanted. The content page's
+tabs (§213.7) are toggle buttons as before.
+
+**Tests.** `SettingsLayoutTests.The_focused_row_and_the_chosen_section_are_reported_selected_and_the_focus_follows_the_pad`:
+after each Down the element holding the focus is the focused row, its peer named "label, value", reporting the focus and
+selected, the rows' list selecting it alone, a focus event raised and none on the layout; a changed value told; a reader's
+Select moving the focus; the chosen section selected and of type TabItem; a page of content leaving the focus on the
+layout. `SettingsLayoutTests.The_desktop_form_reports_its_focused_control` records the desktop's answer. Seeded on
+2026-11-03, each caught by the first: the focus not passed to the new row (it rested on the layout first), the first row
+shown reported selected in place of the focused one, a section never selected, the old drawing taken out before the new
+went in.
+
 ## 214. Text size and reduced motion as the kit's own switches (2026-11-03)
 
 **The gap.** The consumer's Settings offers Display ▸ Text size and Reduced motion (its `EmuSen_Interface.md` §2.7,

@@ -312,8 +312,14 @@ namespace EmuSen.LunaP.Controls
             context.DrawEllipse(new ImmutableSolidColorBrush(IsOn ? HighlightTextColor : ink), null, centre, knob, knob);
         }
 
-        protected override AutomationPeer OnCreateAutomationPeer() =>
-            new LunaAutomationPeer(this, AutomationControlType.ListItem, () => Describe(GetValue(LabelOverrideProperty) ?? Label, Value, Kind, IsOn));
+        // Given by a layout whose drawn rows are a choice of one, so the row's peer says whether it is the chosen one - see docs/LunaP.md §213.8.
+        internal (Func<bool> IsSelected, Action Select)? Selection { get; init; }
+
+        protected override AutomationPeer OnCreateAutomationPeer() => Selection is { } s
+            ? new SelectableItemPeer(this, Spoken, s.IsSelected, s.Select, () => Parent as Control)
+            : new LunaAutomationPeer(this, AutomationControlType.ListItem, Spoken);
+
+        private string? Spoken() => Describe(GetValue(LabelOverrideProperty) ?? Label, Value, Kind, IsOn);
 
         /// <summary>What a screen reader hears for a row: its label, then its value or its switch's state.</summary>
         /// <param name="label">The row's label.</param>

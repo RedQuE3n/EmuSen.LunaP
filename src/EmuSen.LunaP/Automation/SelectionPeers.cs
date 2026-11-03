@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia.Automation.Peers;
 using Avalonia.Automation.Provider;
 using Avalonia.Controls;
@@ -34,6 +35,10 @@ namespace EmuSen.LunaP.Automation
         public bool IsSelectionRequired => false;
 
         public IReadOnlyList<AutomationPeer> GetSelection() => _selection();
+
+        // A panel's selection is whichever of its children's peers say they are selected - see docs/LunaP.md §213.8.
+        public static SingleSelectionPeer OfChildren(Panel owner, AutomationControlType type) =>
+            new(owner, type, () => owner.Children.Select(CreatePeerForElement).Where(p => p.GetProvider<ISelectionItemProvider>() is { IsSelected: true }).ToList());
     }
 
     // One item of such a list. Select() is a person acting through assistive technology, so the
@@ -53,8 +58,9 @@ namespace EmuSen.LunaP.Automation
             Func<bool> isSelected,
             Action select,
             Func<Control?> container,
-            Func<string?>? status = null)
-            : base(owner, AutomationControlType.ListItem, name: name, status: status)
+            Func<string?>? status = null,
+            AutomationControlType type = AutomationControlType.ListItem)
+            : base(owner, type, name: name, status: status)
         {
             _isSelected = isSelected;
             _select = select;

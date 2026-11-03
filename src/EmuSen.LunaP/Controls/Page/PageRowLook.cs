@@ -12,10 +12,13 @@ namespace EmuSen.LunaP.Controls
     {
         public const double RowHeight = 54;
 
-        public static MenuRow Big(PageRow row, bool focused, string namePrefix, Action pressed)
+        public static MenuRow Big(PageRow row, bool focused, string namePrefix, Action pressed, (Func<bool>, Action)? selection = null)
         {
             var m = new MenuRow
             {
+                Selection = selection,
+                Focusable = selection is not null,
+                IsTabStop = false,
                 Name = namePrefix + row.Key,
                 Label = row.Label,
                 Value = row.Status ?? (row.Kind == PageRowKind.Asks ? "…" : null),

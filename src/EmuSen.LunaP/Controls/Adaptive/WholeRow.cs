@@ -1,6 +1,8 @@
 using System;
 using Avalonia;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
+using EmuSen.LunaP.Automation;
 
 namespace EmuSen.LunaP.Controls
 {
@@ -12,6 +14,9 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>The gap between two children.</summary>
         public double Spacing { get; init; } = 8;
+
+        // Set where the row's children are a choice of one, so a reader hears the chosen child selected - see docs/LunaP.md §213.8.
+        public AutomationControlType? Selects { get; init; }
 
         /// <summary>The child that is always drawn.</summary>
         public int Chosen
@@ -26,6 +31,9 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>The first and last child drawn at the width last arranged.</summary>
         public (int First, int Last) Drawn { get; private set; } = (0, -1);
+
+        protected override AutomationPeer OnCreateAutomationPeer() =>
+            Selects is { } type ? SingleSelectionPeer.OfChildren(this, type) : base.OnCreateAutomationPeer();
 
         protected override Size MeasureOverride(Size availableSize)
         {
