@@ -1368,6 +1368,8 @@ public class EmuSen.LunaP.Controls.ManagerLayout<T> : EmuSen.LunaP.Controls.Adap
     public const double BigScreenPlanFloor = 420
     public const double PlanFloor = 240
     public const string PlanClass = "manager-plan"
+    public const string PlanOptionNameClass = "manager-plan-option-name"
+    public const string PlanOptionSentenceClass = "manager-plan-option-sentence"
     public event System.Action MarksChanged
     public event System.Action<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.ManagerMarked<T>>> Applying
     public override bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
