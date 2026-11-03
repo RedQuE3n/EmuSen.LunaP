@@ -13,6 +13,7 @@ namespace EmuSen.LunaP.Controls
     {
         private bool _wholeRows;
         private bool _snapping;
+        private double _snappedTo = double.NaN;
 
         /// <summary>Whether only whole rows are drawn: a scroll that stops inside a row moves on to the next row's top, with room made under the last row where the rows end, and a row the viewport still cuts at the foot is left undrawn. False by default.</summary>
         public bool WholeRows
@@ -44,24 +45,33 @@ namespace EmuSen.LunaP.Controls
             (double Top, double Bottom)[] spans = RowSpans(viewer, presenter);
             double height = presenter.Bounds.Height, slack = 0.5;
             if (spans.Length == 0 || height <= 0) return;
-            // A scroll that stopped inside the first row goes on to the next row's top, while the extent allows it.
-            if (spans.FirstOrDefault(s => s.Top < -slack && s.Bottom > slack) is { Bottom: > 0 } cut)
+            // A scroll that stopped inside the first row goes on to the next row's top; a row taller than the viewport can never be whole and is left as it is.
+            if (spans.FirstOrDefault(s => s.Top < -slack && s.Bottom > slack) is { Bottom: > 0 } cut && cut.Bottom - cut.Top <= height + slack)
             {
-                // At the end of the rows there is no room to move on, so room is made under the last row: the rows stay flush with the top.
-                double short_ = viewer.Offset.Y + cut.Bottom - (viewer.Extent.Height - viewer.Viewport.Height);
-                _snapping = true;
-                try
+                double target = viewer.Offset.Y + cut.Bottom, end = viewer.Extent.Height - viewer.Viewport.Height;
+                // At the end of the rows room is made under the last row, never more than a viewport of it, so the rows stay flush with the top.
+                double room = Math.Ceiling(target - end);
+                bool roomy = room <= slack || Rows.Padding.Bottom + room <= height;
+                // A snap that left the rows cut where it put them is not tried again there, so layout never chases it.
+                if (roomy && !(Math.Abs(viewer.Offset.Y - _snappedTo) <= slack))
                 {
-                    if (short_ > slack) Rows.Padding = new Thickness(Rows.Padding.Left, Rows.Padding.Top, Rows.Padding.Right, Rows.Padding.Bottom + Math.Ceiling(short_));
-                    else viewer.Offset = new Vector(viewer.Offset.X, viewer.Offset.Y + cut.Bottom);
+                    _snappedTo = target;
+                    _snapping = true;
+                    try
+                    {
+                        if (room > slack) Rows.Padding = new Thickness(Rows.Padding.Left, Rows.Padding.Top, Rows.Padding.Right, Rows.Padding.Bottom + room);
+                        viewer.Offset = new Vector(viewer.Offset.X, target);
+                    }
+                    finally { _snapping = false; }
+                    return;
                 }
-                finally { _snapping = false; }
-                return;
             }
             double top = spans.Where(s => s.Top >= -slack).Select(s => s.Top).DefaultIfEmpty(0).Min();
             double bottom = spans.Where(s => s.Top >= -slack && s.Bottom <= height + slack).Select(s => s.Bottom).DefaultIfEmpty(height).Max();
             bool whole = top <= slack && spans.All(s => s.Bottom <= height + slack || s.Top >= height - slack);
-            presenter.Clip = whole ? null : new RectangleGeometry(new Rect(0, Math.Max(0, top), presenter.Bounds.Width, Math.Max(0, bottom - Math.Max(0, top))));
+            Geometry? clip = whole ? null : new RectangleGeometry(new Rect(0, Math.Max(0, top), presenter.Bounds.Width, Math.Max(0, bottom - Math.Max(0, top))));
+            // The clip is set only when it changes, so drawing it asks for no layout of its own.
+            if (clip?.Bounds != presenter.Clip?.Bounds) presenter.Clip = clip;
         }
     }
 }

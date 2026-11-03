@@ -487,6 +487,10 @@ namespace EmuSen.LunaP.Tests
         // checkable as an assertion.
         private static readonly Dictionary<(Type Type, string Method), string> Exempt = new()
         {
+            [(typeof(ManagerLayout<>), "RefreshRows")] =
+                "RefreshRows draws the rows the tool already gave again; before the template there is nothing drawn, and SetRows keeps the rows for the first draw.",
+            [(typeof(LunaTable<>), "HeadingAt")] =
+                "HeadingAt reads the headings worked out at the last display; before the template there is none, and it answers null.",
             [(typeof(CrossFadeImage), nameof(CrossFadeImage.Show))] =
                 "CrossFadeImage has no template: its two pictures are built in the constructor, so Show sets sources that exist and ScreensaverPieceTests reads them back.",
             [(typeof(MenuTextPopup), nameof(MenuTextPopup.Finish))] =

@@ -1269,6 +1269,7 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
     protected override void OnPartsAttached()
+    public Avalonia.Rect DrawnRows { get; }
     public EmuSen.LunaP.Controls.LunaCell<T>? SelectedCell { get; }
     public EmuSen.LunaP.Controls.LunaEditGestures EditGestures { get; set; }
     public EmuSen.LunaP.Controls.LunaGridLines GridLines { get; set; }
@@ -1284,6 +1285,7 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public System.Func<T, System.Collections.Generic.IEnumerable<T>>? Children { get; set; }
     public System.Func<T, int, string>? RowHeader { get; set; }
     public System.Func<T, object?> Key { get; set; }
+    public System.Func<T, string?>? GroupOf { get; set; }
     public T? Selected { get; }
     public bool CanReorderRows { get; set; }
     public bool IsCellSelected(T item, int column)
@@ -1293,6 +1295,9 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public bool TryGetCell(T item, int column, out Avalonia.Controls.Control? cell)
     public bool TryGetRow(T item, out Avalonia.Controls.Control? row)
     public bool VirtualizeColumns { get; set; }
+    public bool WholeRows { get; set; }
+    public const string GroupHeadingClass = "group-heading"
+    public const string GroupRowClass = "group-row"
     public double IndentSize { get; set; }
     public event System.Action<EmuSen.LunaP.Controls.LunaCell<T>?> CellChosen
     public event System.Action<EmuSen.LunaP.Controls.LunaRowDrop<T>> RowDropped
@@ -1305,6 +1310,7 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public int SortedColumn { get; }
     public string RowHeaderCaption { get; set; }
     public string RowHeaderWidth { get; set; }
+    public string? HeadingAt(int index)
     public string? TableKey { get; set; }
     public void BringRowIntoView(T item)
     public void ClearCellSelection()
@@ -1349,8 +1355,9 @@ public class EmuSen.LunaP.Controls.ManagerLayout<T> : EmuSen.LunaP.Controls.Adap
     public System.Func<T, string, bool>? InSection { get; set; }
     public System.Func<T, string>? PageTitle { get; set; }
     public System.Func<T, string>? SearchKey { get; set; }
+    public System.Func<T, string?>? GroupOf { get; set; }
     public System.Func<T?, Avalonia.Controls.Control?>? DetailFor { get; set; }
-    public System.Threading.Tasks.Task<bool> Ask(string title, string sentences, string yes = "Yes", string no = "No")
+    public System.Threading.Tasks.Task<bool> Ask(string title, string sentences, string yes = "Yes", string no = "No", string? smallPrint = null)
     public T? Selected { get; }
     public bool CancelPlan()
     public bool Confirm()
@@ -1370,6 +1377,7 @@ public class EmuSen.LunaP.Controls.ManagerLayout<T> : EmuSen.LunaP.Controls.Adap
     public string SummaryText { get; }
     public void ClearMarks()
     public void Finish(bool clearMarks = true)
+    public void RefreshRows()
     public void SetNotice(string? words)
     public void SetPlanOptions(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> options)
     public void SetProgress(double? fraction, string line)
@@ -3032,6 +3040,7 @@ public class EmuSen.LunaP.Windowing.SheetLayer : Avalonia.Controls.Panel
     public bool PresentsWindows { get; set; }
     public double Scale { get; set; }
     public event System.Action PresentedChanged
+    public static Avalonia.Thickness GetSafeArea(Avalonia.Controls.Control element)
     public static EmuSen.LunaP.Windowing.SheetLayer? LayerFor(Avalonia.Controls.Window? owner)
     public static EmuSen.LunaP.Windowing.SheetLayer? PresenterOf(Avalonia.Controls.Window window)
     public static System.Threading.Tasks.Task Show(Avalonia.Controls.Window window, Avalonia.Controls.Window? owner)
@@ -3040,6 +3049,7 @@ public class EmuSen.LunaP.Windowing.SheetLayer : Avalonia.Controls.Panel
     public static bool GetIsCovered(Avalonia.Controls.Control element)
     public static bool GetKeepsBeneathDrawn(Avalonia.Controls.Window window)
     public static bool GetScreen(Avalonia.Controls.Window window)
+    public static readonly Avalonia.AttachedProperty<Avalonia.Thickness> SafeAreaProperty = 0,0,0,0
     public static readonly Avalonia.AttachedProperty<bool> ChromelessProperty = false
     public static readonly Avalonia.AttachedProperty<bool> IsCoveredProperty = false
     public static readonly Avalonia.AttachedProperty<bool> KeepsBeneathDrawnProperty = false

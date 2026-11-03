@@ -783,7 +783,6 @@ namespace EmuSen.LunaP.Controls
             return true;
         }
 
-        /// <inheritdoc/>
         // The help band 58 high across the screen and down to its foot, its entries centred in the 58 and its first glyph at the content's edge (docs/LunaP.md §211.4).
         private void PlaceHelpBand()
         {
@@ -793,6 +792,7 @@ namespace EmuSen.LunaP.Controls
             _hintBand.Padding = new Thickness(safe.Left + 16, 0, safe.Right + 16, safe.Bottom);
         }
 
+        /// <inheritdoc/>
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);

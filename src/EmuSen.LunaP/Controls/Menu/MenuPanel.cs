@@ -566,7 +566,8 @@ namespace EmuSen.LunaP.Controls
             {
                 Rect help = HelpBandBounds(area);
                 Size hs = _hints.DesiredSize;
-                _hints.Arrange(new Rect(x, help.Y + (help.Height - hs.Height) / 2, Math.Min(hs.Width, Math.Max(0, area.Width - 2 * x)), hs.Height));
+                // Centred in the bar's 58, with the safe area under it, as the band's design and CardFormTests place it.
+                _hints.Arrange(new Rect(x, help.Y + (HelpBand * Unit - hs.Height) / 2, Math.Min(hs.Width, Math.Max(0, area.Width - 2 * x)), hs.Height));
             }
             return area;
         }
