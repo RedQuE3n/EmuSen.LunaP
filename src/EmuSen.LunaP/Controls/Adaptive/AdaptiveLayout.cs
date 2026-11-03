@@ -139,7 +139,7 @@ namespace EmuSen.LunaP.Controls
         private readonly Border _actionsHost = new() { Name = "AdaptiveActions" };
         private readonly Border _searchHost = new() { Name = "AdaptiveSearch" };
         private readonly Border _statusHost = new() { Name = "AdaptiveStatus" };
-        private readonly Border _headerHost = new() { Name = "AdaptiveHeader" };
+        private readonly AdaptiveHeaderRow _headerHost = new() { Name = "AdaptiveHeader" };
 
         // The Card form's parts: the panel the roles are placed into, the rows' and the pane's hosts in the body type, and the scrim under them (§207).
         private readonly MenuPanel _cardPanel = new() { Name = "AdaptiveCard", Anchor = MenuAnchor.Edge, WidthFraction = CardShare, MaxWidthToHeight = 4, TitleSize = 32, TitleMinScale = 0.55, TitleMaxLines = 1, PanelCornerRadius = 0, LetterCase = Media.LetterCase.None, SubtitleLetterCase = Media.LetterCase.None, HintGlyphStyle = PadGlyphStyle.Outline };
@@ -341,6 +341,13 @@ namespace EmuSen.LunaP.Controls
             set { _header = value; ShowHeader(); }
         }
 
+        /// <summary>The chosen row's one action, drawn at the right of the desktop's header row and never on the big screen, where A carries it; null for none - see docs/LunaP.md §215.</summary>
+        public LunaAction? HeaderAction
+        {
+            get => _headerHost.Action;
+            set => _headerHost.Action = value;
+        }
+
         /// <summary>The panel the Card form places the content, the detail, the header and the help bar into, for a host that animates it or a test that measures it; it is shown only in that form.</summary>
         public MenuPanel CardPanel => _cardPanel;
 
@@ -437,7 +444,7 @@ namespace EmuSen.LunaP.Controls
         protected virtual string? AcceptHint => IsDetailOpen || _detail is null || DetailBeside ? "Select" : "Open";
 
         /// <summary>Redraws the help bar from Hints, after what a hint names has changed, such as the focused row.</summary>
-        protected void RefreshHints()
+        protected virtual void RefreshHints()
         {
             _hintBar.Entries = Hints;
             AutomationProperties.SetName(_hintBar, string.Join(", ", Hints.Select(h => h.Label)));
@@ -1056,39 +1063,9 @@ namespace EmuSen.LunaP.Controls
             _cardPanel.TitleIcon = h?.Picture;
             _cardPanel.Footer = h?.Facts;
             _headerHost.IsVisible = h is not null && Form != AdaptiveForm.Card;
-            if (h is null || Form == AdaptiveForm.Card)
-            {
-                _headerHost.Child = null;
-                return;
-            }
-            bool big = Form == AdaptiveForm.BigScreen;
-            LunaTypeScale type = LunaTokens.Type(big ? LunaForm.BigScreen : LunaForm.Desktop);
-            // The big screen's header row is 48 high, its title centred in it, as the design's grid draws it (docs/LunaP.md §211.3).
-            var row = new DockPanel { LastChildFill = true, Margin = big ? new Thickness(16, 12, 16, 0) : new Thickness(8, 6, 8, 2), MinHeight = big ? 48 : 0 };
-            if (h.Picture is { } picture)
-            {
-                var image = new Image { Source = picture, Height = big ? 64 : 32, Stretch = Stretch.Uniform, Margin = new Thickness(0, 0, big ? 16 : 8, 0), VerticalAlignment = VerticalAlignment.Center };
-                DockPanel.SetDock(image, Dock.Left);
-                row.Children.Add(image);
-            }
-            if (h.Facts is { Length: > 0 } facts)
-            {
-                var line = new TextBlock { Text = facts, FontFamily = Media.LunaFonts.Body, FontSize = type.Caption, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(12, 0, 0, 0), Classes = { "muted" } };
-                line.Bind(TextBlock.ForegroundProperty, line.GetResourceObservable("LunaMuted"));
-                DockPanel.SetDock(line, Dock.Right);
-                row.Children.Add(line);
-            }
-            var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            words.Children.Add(new TextBlock { Text = h.Title, FontFamily = Media.LunaFonts.Condensed, FontSize = type.Title, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis });
-            if (h.Subtitle is { Length: > 0 } sub)
-            {
-                var subtitle = new TextBlock { Text = sub, FontFamily = Media.LunaFonts.Body, FontSize = type.Caption, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis };
-                subtitle.Bind(TextBlock.ForegroundProperty, subtitle.GetResourceObservable("LunaMuted"));
-                words.Children.Add(subtitle);
-            }
-            row.Children.Add(words);
-            AutomationProperties.SetName(_headerHost, h.Title);
-            _headerHost.Child = row;
+            bool card = h is null || Form == AdaptiveForm.Card;
+            _headerHost.Form = Form == AdaptiveForm.BigScreen ? AdaptiveForm.BigScreen : AdaptiveForm.Desktop;
+            _headerHost.Header = card ? null : h;
         }
 
         private Control ArrangeDesktop()

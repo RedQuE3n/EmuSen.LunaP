@@ -14,6 +14,12 @@ answer.
 
 ## Unreleased
 
+- **The header row's facts and the row's action (`§215`).** `AdaptiveHeaderRow`, the header's row as a control of its
+  own, which `AdaptiveLayout` now draws its header with: each fact its own text, a fact beginning with `⚠` in
+  `LunaAttention`; on the desktop the facts after the name and `AdaptiveLayout.HeaderAction` at the right, filled
+  `LunaAccent`. `ManagerLayout` sets the header action to `ActionFor(Selected)`. `AdaptiveLayout.RefreshHints` is now
+  virtual. What it costs: a tool screen's recordings move, since the header's host is the new control and its facts
+  are one text per fact.
 - **The edge card (`§210`).** `MenuAnchor.Edge`: the panel the full height at the left edge, the title row and rows in
   the safe area, the pane room beside them, the help bar a band across the foot, the open edge's shadow. The Card form
   uses it, and its pane (`AdaptiveCardPane`) is a raised surface shown only while its detail is. `MenuRow.MutedColor`

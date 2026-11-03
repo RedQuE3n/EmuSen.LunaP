@@ -15176,3 +15176,42 @@ Whether the system prefers reduced motion is the host's to read; the kit holds o
 the clamp; a glide, a notice's keyframes and the overlay bar's transition under reduced motion; the big screen's Settings
 at the largest scale under the fit audit at 1280 × 720 and 1280 × 800 (`KitSwitchTests`, run alone since the switches are
 the process's).
+
+## 215. The header row's facts and the row's action (2026-11-03)
+
+**The gap.** The consumer's tool screens (its `EmuSen_Interface.md` §4 screen 5 and §15.2) draw the header row as the
+name at the left and the tool's facts in Caption, where a count that needs the person is in Attention after `⚠`
+(`⚠ 1 to approve`). The header role drew the facts as one Muted line on both forms, docked at the right, so a warning
+was told by its glyph alone; and on the desktop the facts stood apart from the name at the window's far edge, where the
+desktop mockups set them beside the name with the focused row's one action at the right.
+
+**The facts.** `AdaptiveHeader.Facts` stays one string, its facts joined by ` · `. Each fact is drawn as its own text: a
+fact that begins with `⚠` in `LunaAttention`, every other fact and the separators in `LunaMuted`. The glyph and the
+colour go together (the consumer's §5.7), so a fact is never Attention without its sign, and the words stay the
+consumer's. `AdaptiveHeaderRow.FactsLine(facts, size)` builds the line, one owner for the rule.
+
+**The forms.** On the big screen the row is as §211.3 sets it: the name at the left, the facts right-aligned in the
+48-unit row. On the desktop the facts follow the name at the left, 12 pixels after it, and the row's action stands at
+the right.
+
+**The row's action.** `AdaptiveLayout.HeaderAction`, a `LunaAction` or null, drawn on the desktop at the right of the
+header row as a button filled `LunaAccent` with `LunaOnAccent` words, and never on the big screen, where A carries it
+and the help bar names it (§208.3). `ManagerLayout` sets it to `ActionFor(Selected)` whenever the chosen row changes or
+`ActionFor` is set, so the desktop's header and the big screen's A name the same action; a row with none leaves the
+place empty. The desktop toolbar is unchanged: trimming it to the mockups' few buttons and a More menu is the
+consumer's window follow-on.
+
+### 215.2 A header row outside the frame
+
+`AdaptiveHeaderRow`, the header's row as a control of its own, for a window that is not yet on the frame and should
+carry the same row: `Header`, `Form` and `Action`, drawn exactly as `AdaptiveLayout` draws its own, which builds its row
+from the same control. A window shown as a centred sheet on the big screen already has the sheet's title, so it draws
+the row on the desktop only until it is rebuilt on the frame. Measured on 2026-11-03: the facts as the sheet's subtitle
+took 40 units from the consumer's cheat database and left its list of games 75 high, under the fit audit's floor.
+
+### 215.3 Tests and seeded faults
+
+`HeaderRowTests`: a `⚠` fact drawn in Attention and the others Muted; the desktop's facts after the name and left of
+the row's action; the big screen drawing no action button and the facts at the right; `ManagerLayout`'s header action
+following the chosen row and empty for a row with none. Seeded faults, each caught: the warning fact drawn Muted; the
+header action left at the previous row's; the desktop drawing the facts at the right edge.

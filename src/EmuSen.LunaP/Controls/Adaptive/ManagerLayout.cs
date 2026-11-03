@@ -196,6 +196,13 @@ namespace EmuSen.LunaP.Controls
             set { _actionFor = value; RefreshHints(); }
         }
 
+        /// <inheritdoc/>
+        protected override void RefreshHints()
+        {
+            HeaderAction = _actionFor is { } actionFor && Selected is { } row ? actionFor(row) : null;
+            base.RefreshHints();
+        }
+
         /// <summary>The rows of the chosen row's page, which X opens in the content's place on the big screen, each closing the page when invoked; once set, Mark leaves X and is reached through the page - see docs/LunaP.md §208.4.</summary>
         public Func<T, IReadOnlyList<LunaAction>>? PageFor
         {

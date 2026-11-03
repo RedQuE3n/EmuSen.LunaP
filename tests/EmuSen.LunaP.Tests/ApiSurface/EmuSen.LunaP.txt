@@ -107,6 +107,16 @@ public sealed class EmuSen.LunaP.Controls.AdaptiveHeader : System.IEquatable<Emu
     public string? Subtitle { get; init; }
     public void Deconstruct(out string Title, out string? Subtitle, out Avalonia.Media.IImage? Picture, out string? Facts)
 
+public sealed class EmuSen.LunaP.Controls.AdaptiveHeaderRow : Avalonia.Controls.Border
+    public AdaptiveHeaderRow()
+    public EmuSen.LunaP.Commands.LunaAction? Action { get; set; }
+    public EmuSen.LunaP.Controls.AdaptiveForm Form { get; set; }
+    public EmuSen.LunaP.Controls.AdaptiveHeader? Header { get; set; }
+    public const string ActionName = "AdaptiveHeaderAction"
+    public const string FactsName = "AdaptiveHeaderFacts"
+    public const string Warning = "⚠"
+    public static Avalonia.Controls.StackPanel FactsLine(string facts, double size)
+
 public class EmuSen.LunaP.Controls.AdaptiveLayout : Avalonia.Controls.Border
     protected Avalonia.Controls.Control? CloseCover()
     protected bool OpenCover(Avalonia.Controls.Control card)
@@ -117,12 +127,13 @@ public class EmuSen.LunaP.Controls.AdaptiveLayout : Avalonia.Controls.Border
     protected virtual System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? CoverHints { get; }
     protected virtual string? AcceptHint { get; }
     protected virtual void FilterChanged()
-    protected void RefreshHints()
+    protected virtual void RefreshHints()
     public AdaptiveLayout()
     public Avalonia.Controls.Control? Content { get; set; }
     public Avalonia.Controls.Control? Detail { get; set; }
     public Avalonia.Controls.Control? HostOf(EmuSen.LunaP.Controls.AdaptiveRole role)
     public Avalonia.Controls.Control? Status { get; set; }
+    public EmuSen.LunaP.Commands.LunaAction? HeaderAction { get; set; }
     public EmuSen.LunaP.Controls.AdaptiveDetailPlacement DetailPlacement { get; set; }
     public EmuSen.LunaP.Controls.AdaptiveForm Form { get; set; }
     public EmuSen.LunaP.Controls.AdaptiveHeader? Header { get; set; }
@@ -1537,6 +1548,7 @@ public class EmuSen.LunaP.Controls.ManagerLayout<T> : EmuSen.LunaP.Controls.Adap
     protected override string? AcceptHint { get; }
     protected override void FilterChanged()
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    protected override void RefreshHints()
     public EmuSen.LunaP.Commands.LunaAction Apply { get; }
     public EmuSen.LunaP.Commands.LunaAction Mark { get; }
     public EmuSen.LunaP.Commands.LunaAction More { get; }
