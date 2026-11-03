@@ -72,7 +72,8 @@ namespace EmuSen.LunaP.Controls
         // The keyframes this notice fades by: Curve, or the same shape with its edges at FadeTime (§170).
         internal (double Cue, double Opacity)[] Keyframes()
         {
-            if (FadeTime is not { } fade || Duration <= TimeSpan.Zero) return Curve;
+            TimeSpan? time = EmuSen.LunaP.Theme.LunaMotion.Reduced ? EmuSen.LunaP.Theme.LunaMotion.ReducedFade : FadeTime;
+            if (time is not { } fade || Duration <= TimeSpan.Zero) return Curve;
             double edge = Math.Clamp(fade.TotalMilliseconds / Duration.TotalMilliseconds, 0, 0.5);
             return new[] { (0.0, 0.0), (edge, 1.0), (1 - edge, 1.0), (1.0, 0.0) };
         }

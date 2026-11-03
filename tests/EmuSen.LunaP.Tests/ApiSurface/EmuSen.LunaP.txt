@@ -2013,6 +2013,7 @@ public class EmuSen.LunaP.Controls.OnScreenKeyboard : Avalonia.Controls.Border
 
 public class EmuSen.LunaP.Controls.OverlayBar : Avalonia.Controls.ContentControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     protected override void OnPointerExited(Avalonia.Input.PointerEventArgs e)
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
@@ -2027,6 +2028,7 @@ public class EmuSen.LunaP.Controls.OverlayBar : Avalonia.Controls.ContentControl
     public static readonly Avalonia.StyledProperty<Avalonia.Controls.Control?> WatchProperty = null
     public static readonly Avalonia.StyledProperty<System.TimeSpan> HideAfterProperty = 00:00:01.5000000
     public static readonly Avalonia.StyledProperty<bool> KeepOpenProperty = false
+    public static readonly System.TimeSpan FadeTime
     public void Conceal()
     public void Reveal()
 
@@ -3174,6 +3176,7 @@ public static class EmuSen.LunaP.Theme.LunaMotion
     public static System.TimeSpan Nominal(EmuSen.LunaP.Theme.LunaMotionToken token)
     public static bool Breathes { get; }
     public static bool Reduced { get; set; }
+    public static event System.Action Changed
     public static readonly System.TimeSpan BreathDelay
     public static readonly System.TimeSpan BreathPeriod
     public static readonly System.TimeSpan ReducedFade
@@ -3267,17 +3270,20 @@ public static class EmuSen.LunaP.Theme.LunaTheme
     public static void Restyle(Avalonia.Controls.ContentControl root)
 
 public static class EmuSen.LunaP.Theme.LunaTokens
+    public const double MaxTextScale = 1.3
     public const double SafeAreaFraction = 0.05
     public static Avalonia.Thickness SafeAreaOf(Avalonia.Size size)
     public static EmuSen.LunaP.Theme.LunaFocus Focus(EmuSen.LunaP.Theme.LunaForm form)
     public static EmuSen.LunaP.Theme.LunaSpacing Spacing(EmuSen.LunaP.Theme.LunaForm form)
+    public static EmuSen.LunaP.Theme.LunaTypeScale BigScreenType { get; }
+    public static EmuSen.LunaP.Theme.LunaTypeScale DesktopType { get; }
     public static EmuSen.LunaP.Theme.LunaTypeScale Type(EmuSen.LunaP.Theme.LunaForm form)
     public static double HeaderSize(EmuSen.LunaP.Theme.LunaForm form)
+    public static double TextScale { get; set; }
+    public static event System.Action Changed
     public static readonly EmuSen.LunaP.Theme.LunaFocus FocusMarks
     public static readonly EmuSen.LunaP.Theme.LunaSpacing BigScreenSpacing
     public static readonly EmuSen.LunaP.Theme.LunaSpacing DesktopSpacing
-    public static readonly EmuSen.LunaP.Theme.LunaTypeScale BigScreenType
-    public static readonly EmuSen.LunaP.Theme.LunaTypeScale DesktopType
 
 public sealed class EmuSen.LunaP.Theme.LunaTypeScale : System.IEquatable<EmuSen.LunaP.Theme.LunaTypeScale>
     public LunaTypeScale(double Display, double Title, double Strong, double Row, double Body, double Caption, double Glyph)

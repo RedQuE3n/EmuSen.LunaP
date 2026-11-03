@@ -15080,3 +15080,38 @@ content page's words are what tell the player the focused part's value.
 **Tests.** `SettingsLayoutTests`: the card, tabs, body and caption where this section puts them at 1280 × 800 and in the
 desktop form under the fit audit; the directions raising `ContentMoved` and never `RowStepped`; A raising `RowChosen` with
 the focus; the pane asked for the content's focus; null giving the rows back with their focus.
+
+## 214. Text size and reduced motion as the kit's own switches (2026-11-03)
+
+**The gap.** The consumer's Settings offers Display ▸ Text size and Reduced motion (its `EmuSen_Interface.md` §2.7,
+approved 2026-11-03), each applying at once on both forms. The kit's type scale was two fixed records, read by every
+layout as it builds and written into `LunaMetrics`' resources once; and `LunaMotion.Reduced` (§206.5) shortened the
+motion tokens but nothing told the kit's own movements: `Glide` ran its whole span, a notice faded over 15 % of its time,
+and the overlay bar's opacity moved over a fixed 250 ms. A host could only scale each control itself, which §209.1 rules
+out, and could not stop movement it did not write.
+
+**Text size.** `LunaTokens.TextScale`, 1 by default, clamped to 1 to 1.3: `BigScreenType` and `DesktopType` are the base
+scales multiplied by it, each size rounded to a half unit, so every layout that reads the tokens as it fills draws the new
+size the next time it fills, and nothing scales per control. Spacing is not scaled: a row stays 54 units, which holds the
+row size's 26 × 1.3 = 34. What holds a line of text at a fixed height grows with it instead: a section strip's least height
+(`StyleStrip`, 44 × the scale), and `SettingsLayout`'s strip and its content's tabs, into the gap above the rows, the strip
+styled again when the scale has changed since its last fill. 1.5 was tried first and cut the strip's captions at
+1280 × 800 even so, measured on 2026-11-03. Setting it raises `LunaTokens.Changed`, and every `LunaMetrics` dictionary fills itself again,
+so whatever reads the size resources (`LunaBodyFontSize`, `ControlContentThemeFontSize` and the rest) changes at once.
+The host fills what it shows again on the same event. The names of the sizes a player chooses are the host's.
+
+**Reduced motion.** `LunaMotion.Reduced` raises `LunaMotion.Changed` when set. While it is set:
+
+- a `Glide` is at its end at every time (`ValueAt` gives `To`, `IsSettledAt` is true), so a position or a size moved by a
+  glide jumps;
+- a `NoticeLayer` fades in and out over `LunaMotion.ReducedFade` (120 ms) whatever its `FadeTime`;
+- an `OverlayBar` reveals and conceals over the same 120 ms instead of 250 ms, its transition set in code from
+  `LunaMotion.FadeDuration(Fade)` and set again on `Changed`;
+- the idle ring does not breathe (`Breathes`), as before.
+
+Whether the system prefers reduced motion is the host's to read; the kit holds only the switch.
+
+**Tests.** `InterfaceTokenTests`: the scaled type scales and their rounding, a `LunaMetrics` dictionary following a change,
+the clamp; a glide, a notice's keyframes and the overlay bar's transition under reduced motion; the big screen's Settings
+at the largest scale under the fit audit at 1280 × 720 and 1280 × 800 (`KitSwitchTests`, run alone since the switches are
+the process's).

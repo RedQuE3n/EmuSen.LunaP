@@ -240,6 +240,7 @@ namespace EmuSen.LunaP.Controls
         // The strip's look on any row of toggle buttons, so an item's page draws its sections as the frame does (§209).
         internal static void StyleStrip(Panel row)
         {
+            row.Styles.Clear();
             var plain = new Style(x => x.OfType<ToggleButton>())
             {
                 Setters =
@@ -251,7 +252,7 @@ namespace EmuSen.LunaP.Controls
                     new Setter(TemplatedControl.FontSizeProperty, LunaTokens.BigScreenType.Caption),
                     new Setter(TemplatedControl.FontFamilyProperty, Media.LunaFonts.Body),
                     new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(0)),
-                    new Setter(Layoutable.MinHeightProperty, 44.0),
+                    new Setter(Layoutable.MinHeightProperty, 44.0 * LunaTokens.TextScale),
                     new Setter(TemplatedControl.ForegroundProperty, new DynamicResourceExtension("LunaText")),
                 },
             };

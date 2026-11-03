@@ -25,7 +25,7 @@ namespace EmuSen.LunaP.Motion
         /// <returns>From before Start, To from End on, and the eased value between.</returns>
         public double ValueAt(TimeSpan now)
         {
-            if (Duration <= TimeSpan.Zero || now >= End) return To;
+            if (Duration <= TimeSpan.Zero || now >= End || Theme.LunaMotion.Reduced) return To;
             if (now <= Start) return From;
             double t = (now - Start).Ticks / (double)Duration.Ticks;
             double eased = Easing?.Ease(t) ?? t;
@@ -35,7 +35,7 @@ namespace EmuSen.LunaP.Motion
         /// <summary>Whether the move is over at a time.</summary>
         /// <param name="now">The host's time.</param>
         /// <returns>True from End on.</returns>
-        public bool IsSettledAt(TimeSpan now) => now >= End;
+        public bool IsSettledAt(TimeSpan now) => now >= End || Theme.LunaMotion.Reduced;
 
         /// <summary>A new move to another value, starting at a time from wherever this one has got to, so an interrupted move continues without a jump.</summary>
         /// <param name="to">The new destination.</param>

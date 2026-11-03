@@ -40,8 +40,22 @@ namespace EmuSen.LunaP.Theme
         /// <summary>The idle ring's opacity at the bottom of a breath.</summary>
         public const double BreathLow = 0.7;
 
-        /// <summary>Whether motion is reduced, by the system's preference or the player's switch. False by default.</summary>
-        public static bool Reduced { get; set; }
+        private static bool _reduced;
+
+        /// <summary>Whether motion is reduced, by the system's preference or the player's switch. False by default. Setting it raises Changed - see docs/LunaP.md §214.</summary>
+        public static bool Reduced
+        {
+            get => _reduced;
+            set
+            {
+                if (value == _reduced) return;
+                _reduced = value;
+                Changed?.Invoke();
+            }
+        }
+
+        /// <summary>Raised when Reduced changes.</summary>
+        public static event Action? Changed;
 
         /// <summary>Whether the idle focus ring breathes: not while motion is reduced.</summary>
         public static bool Breathes => !Reduced;

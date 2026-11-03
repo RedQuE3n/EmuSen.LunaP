@@ -23,11 +23,6 @@
         <Setter Property="VerticalAlignment" Value="Bottom" />
         <Setter Property="Margin" Value="0,0,0,24" />
         <Setter Property="Opacity" Value="0" />
-        <Setter Property="Transitions">
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.25" />
-            </Transitions>
-        </Setter>
         <Setter Property="Template">
             <ControlTemplate>
                 <ThemeVariantScope RequestedThemeVariant="Dark">

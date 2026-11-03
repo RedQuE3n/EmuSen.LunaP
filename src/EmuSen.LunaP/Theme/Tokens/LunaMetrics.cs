@@ -57,8 +57,18 @@ namespace EmuSen.LunaP.Theme
     {
         private LunaForm _form;
 
-        /// <summary>A dictionary of the desktop's metrics.</summary>
-        public LunaMetrics() => Fill();
+        /// <summary>A dictionary of the desktop's metrics, filled again when the text scale changes.</summary>
+        public LunaMetrics()
+        {
+            Fill();
+            var self = new WeakReference<LunaMetrics>(this);
+            void Refill()
+            {
+                if (self.TryGetTarget(out LunaMetrics? metrics)) metrics.Fill();
+                else LunaTokens.Changed -= Refill;
+            }
+            LunaTokens.Changed += Refill;
+        }
 
         /// <summary>The form whose metrics the dictionary holds. Desktop by default.</summary>
         public LunaForm Form
@@ -112,11 +122,44 @@ namespace EmuSen.LunaP.Theme
     /// <summary>The interface's type scale, spacing and focus metrics for each form, the one place their values are written.</summary>
     public static class LunaTokens
     {
-        /// <summary>The big screen's type scale, in design units.</summary>
-        public static readonly LunaTypeScale BigScreenType = new(Display: 44, Title: 32, Strong: 26, Row: 26, Body: 22, Caption: 20, Glyph: 22);
+        private static readonly LunaTypeScale BigScreenBase = new(Display: 44, Title: 32, Strong: 26, Row: 26, Body: 22, Caption: 20, Glyph: 22);
+        private static readonly LunaTypeScale DesktopBase = new(Display: 24, Title: 16, Strong: 14, Row: 13, Body: 13, Caption: 11, Glyph: 13);
+        private static double _textScale = 1;
+        private static LunaTypeScale _bigScreen = BigScreenBase, _desktop = DesktopBase;
 
-        /// <summary>The desktop's type scale, in pixels.</summary>
-        public static readonly LunaTypeScale DesktopType = new(Display: 24, Title: 16, Strong: 14, Row: 13, Body: 13, Caption: 11, Glyph: 13);
+        /// <summary>The largest text scale.</summary>
+        public const double MaxTextScale = 1.3;
+
+        /// <summary>How much every size of the type scales is multiplied by, 1 to 1.3; 1 by default. Setting it raises Changed - see docs/LunaP.md §214.</summary>
+        public static double TextScale
+        {
+            get => _textScale;
+            set
+            {
+                double scale = double.IsFinite(value) ? Math.Clamp(value, 1, MaxTextScale) : 1;
+                if (scale == _textScale) return;
+                _textScale = scale;
+                _bigScreen = Scaled(BigScreenBase, scale);
+                _desktop = Scaled(DesktopBase, scale);
+                Changed?.Invoke();
+            }
+        }
+
+        /// <summary>Raised when the text scale changes, after the type scales have.</summary>
+        public static event Action? Changed;
+
+        // Each size times the scale, to the nearest half unit.
+        private static LunaTypeScale Scaled(LunaTypeScale t, double s)
+        {
+            static double R(double v) => Math.Round(v * 2, MidpointRounding.AwayFromZero) / 2;
+            return new(R(t.Display * s), R(t.Title * s), R(t.Strong * s), R(t.Row * s), R(t.Body * s), R(t.Caption * s), R(t.Glyph * s));
+        }
+
+        /// <summary>The big screen's type scale, in design units, at the text scale.</summary>
+        public static LunaTypeScale BigScreenType => _bigScreen;
+
+        /// <summary>The desktop's type scale, in pixels, at the text scale.</summary>
+        public static LunaTypeScale DesktopType => _desktop;
 
         /// <summary>The big screen's spacing, in design units.</summary>
         public static readonly LunaSpacing BigScreenSpacing = new(Base: 4, RowHeight: 54, ControlHeight: 44, PaneGutter: 24, PaneGap: 32,

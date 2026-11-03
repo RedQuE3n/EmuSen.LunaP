@@ -58,6 +58,7 @@ namespace EmuSen.LunaP.Controls
                 if (_revealed) Hide.Poke();
             }, RoutingStrategies.Bubble, handledEventsToo: true);
             UpdatePseudoClasses();
+            Fades();
         }
 
         /// <summary>The element whose pointer movement reveals the bar - typically the game view it floats over. The bar's own movement counts too.</summary>
@@ -190,6 +191,7 @@ namespace EmuSen.LunaP.Controls
         protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
         {
             _hide?.Cancel();
+            EmuSen.LunaP.Theme.LunaMotion.Changed -= Fades;
             base.OnDetachedFromVisualTree(e);
         }
 
@@ -198,5 +200,19 @@ namespace EmuSen.LunaP.Controls
         // one user who cannot summon them would make them unreachable.
         protected override AutomationPeer OnCreateAutomationPeer() =>
             new LunaAutomationPeer(this, AutomationControlType.ToolBar);
+
+        // The reveal's fade, a Fade token's, 120 ms while motion is reduced (docs/LunaP.md §214).
+        private void Fades() => Transitions = [new Avalonia.Animation.DoubleTransition { Property = OpacityProperty, Duration = EmuSen.LunaP.Theme.LunaMotion.Reduced ? EmuSen.LunaP.Theme.LunaMotion.ReducedFade : FadeTime }];
+
+        /// <summary>How long the bar takes to fade in or out while motion is not reduced.</summary>
+        public static readonly TimeSpan FadeTime = TimeSpan.FromMilliseconds(250);
+
+        /// <inheritdoc/>
+        protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            base.OnAttachedToVisualTree(e);
+            Fades();
+            EmuSen.LunaP.Theme.LunaMotion.Changed += Fades;
+        }
     }
 }
