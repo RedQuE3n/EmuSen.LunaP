@@ -15182,6 +15182,36 @@ the clamp; a glide, a notice's keyframes and the overlay bar's transition under 
 at the largest scale under the fit audit at 1280 × 720 and 1280 × 800 (`KitSwitchTests`, run alone since the switches are
 the process's).
 
+### 214.1 A switch set off the interface's thread (2026-11-03)
+
+**The defect.** `InterfaceTokenTests.The_motion_tokens_have_their_durations_and_reduced_motion_stops_movement` failed now and
+then in whole-suite runs, with `InvalidOperationException: The calling thread cannot access this object because a different
+thread owns it`. The trace: `LunaMotion.Reduced`'s setter invoked `Changed` on the thread that set it, a plain `[Fact]`'s
+test thread, and `Changed` reached `OverlayBar.Fades`, which sets the bar's `Transitions`, an object of the interface's
+thread. The bar was an earlier test's: `GalleryRenderTests.Every_control_in_the_kit_is_realised` leaves its gallery window,
+with its overlay bar subscribed, open, so the token test failed only when the suite's order ran it after that one. The
+setter assigns before it raises, and the token test sets `Reduced` before its `try`, so the throw also left motion reduced
+for the rest of the run; that is why `DocumentedDefaultTests.Every_documented_default_is_the_real_one` once failed beside it
+("documented False, actually True"). `LunaTokens.TextScale` raised its `Changed` the same way, to the metric dictionaries.
+
+**The proof.** `KitSwitchTests.A_switch_set_off_the_interface_thread_tells_its_controls_on_that_thread` shows an overlay bar,
+then sets both switches from a second thread (a `Thread`, since a `Task` waited on is run inline on the waiting thread and
+proves nothing). Before the repair it failed on every run (two of two, 2026-11-03) with the same exception from
+`OverlayBar.Fades`.
+
+**The repair.** A switch's `Changed` keeps, with each subscriber, the dispatcher it subscribed from (`KitSwitch`, an
+internal list behind the event's own `add` and `remove`, so the public event is unchanged), and a change tells each
+subscriber at once when the setting thread is that dispatcher's, and posts to that dispatcher otherwise. The value is
+still set at once and read by anyone; only the notification moves, and each subscriber reads the value when it runs, so two
+quick changes posted in turn leave every control on the last one. A first repair raised the event on
+`Dispatcher.UIThread` and posted from any other thread: it passed the test above, but the whole suite still failed the same
+way on two of two runs, `Raise` taking the at-once branch on the test thread. In a headless test process the thread
+`Dispatcher.UIThread` answers for is not always the session's, and Avalonia 12 asks a library to use each object's own
+`Dispatcher` (or `Dispatcher.CurrentDispatcher`) instead; the subscriber's own dispatcher is the one that is always right.
+The switches stay what §214 made them, one setting for the process that the host sets from the player's preferences, read
+by the kit's own controls; nothing uses them as a wire between components. `LunaTheme.StylesChanged` is not changed: it is
+raised by `Apply`, which edits `Application.Styles` and must already run on the interface's thread.
+
 ## 215. The header row's facts and the row's action (2026-11-03)
 
 **The gap.** The consumer's tool screens (its `EmuSen_Interface.md` §4 screen 5 and §15.2) draw the header row as the

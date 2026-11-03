@@ -42,7 +42,7 @@ namespace EmuSen.LunaP.Theme
 
         private static bool _reduced;
 
-        /// <summary>Whether motion is reduced, by the system's preference or the player's switch. False by default. Setting it raises Changed - see docs/LunaP.md §214.</summary>
+        /// <summary>Whether motion is reduced, by the system's preference or the player's switch. False by default. Setting it raises Changed, each subscriber told on its own dispatcher - see docs/LunaP.md §214.1.</summary>
         public static bool Reduced
         {
             get => _reduced;
@@ -50,12 +50,14 @@ namespace EmuSen.LunaP.Theme
             {
                 if (value == _reduced) return;
                 _reduced = value;
-                Changed?.Invoke();
+                ChangedSwitch.Raise();
             }
         }
 
         /// <summary>Raised when Reduced changes.</summary>
-        public static event Action? Changed;
+        public static event Action? Changed { add => ChangedSwitch.Add(value); remove => ChangedSwitch.Remove(value); }
+
+        private static readonly KitSwitch ChangedSwitch = new();
 
         /// <summary>Whether the idle focus ring breathes: not while motion is reduced.</summary>
         public static bool Breathes => !Reduced;

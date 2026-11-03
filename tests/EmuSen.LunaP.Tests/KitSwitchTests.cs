@@ -64,6 +64,42 @@ namespace EmuSen.LunaP.Tests
             finally { LunaTokens.TextScale = 1; }
         });
 
+        // A switch set off the interface's thread reaches every subscriber on it: an attached overlay bar takes its new fade there, and the setter never throws (docs/LunaP.md §214.1).
+        [Fact]
+        public Task A_switch_set_off_the_interface_thread_tells_its_controls_on_that_thread() => UiTest.Run(() =>
+        {
+            var bar = new OverlayBar();
+            var window = new Window { Content = bar };
+            window.Show();
+            Exception? thrown = null;
+            try
+            {
+                var other = new System.Threading.Thread(() =>
+                {
+                    try
+                    {
+                        LunaMotion.Reduced = true;
+                        LunaTokens.TextScale = 1.15;
+                    }
+                    catch (Exception e) { thrown = e; }
+                });
+                other.Start();
+                other.Join();
+                Assert.Null(thrown);
+                Assert.True(LunaMotion.Reduced);
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                Assert.Equal(TimeSpan.FromMilliseconds(120), ((DoubleTransition)bar.Transitions!.Single()).Duration);
+            }
+            finally
+            {
+                LunaMotion.Reduced = false;
+                LunaTokens.TextScale = 1;
+            }
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Equal(TimeSpan.FromMilliseconds(250), ((DoubleTransition)bar.Transitions!.Single()).Duration);
+            window.Close();
+        });
+
         [Fact]
         public Task Under_reduced_motion_a_glide_is_at_its_end_a_notice_fades_in_120_ms_and_the_overlay_bar_too() => UiTest.Run(() =>
         {

@@ -130,7 +130,7 @@ namespace EmuSen.LunaP.Theme
         /// <summary>The largest text scale.</summary>
         public const double MaxTextScale = 1.3;
 
-        /// <summary>How much every size of the type scales is multiplied by, 1 to 1.3; 1 by default. Setting it raises Changed - see docs/LunaP.md §214.</summary>
+        /// <summary>How much every size of the type scales is multiplied by, 1 to 1.3; 1 by default. Setting it raises Changed, each subscriber told on its own dispatcher - see docs/LunaP.md §214.1.</summary>
         public static double TextScale
         {
             get => _textScale;
@@ -141,12 +141,14 @@ namespace EmuSen.LunaP.Theme
                 _textScale = scale;
                 _bigScreen = Scaled(BigScreenBase, scale);
                 _desktop = Scaled(DesktopBase, scale);
-                Changed?.Invoke();
+                ChangedSwitch.Raise();
             }
         }
 
         /// <summary>Raised when the text scale changes, after the type scales have.</summary>
-        public static event Action? Changed;
+        public static event Action? Changed { add => ChangedSwitch.Add(value); remove => ChangedSwitch.Remove(value); }
+
+        private static readonly KitSwitch ChangedSwitch = new();
 
         // Each size times the scale, to the nearest half unit.
         private static LunaTypeScale Scaled(LunaTypeScale t, double s)
