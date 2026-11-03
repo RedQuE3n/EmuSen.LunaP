@@ -115,6 +115,9 @@ namespace EmuSen.LunaP.Tests
             UiTest.Settle(page);
             Assert.Equal("Resume, Slot 3 · 3 days ago", Focused(window)?.GetName());
             Assert.True(Focused(window)!.GetProvider<ISelectionItemProvider>()?.IsSelected);
+            Assert.True(page.Move(0, 1));
+            UiTest.Settle(page);
+            Assert.Same(page, window.FocusManager!.GetFocusedElement());
             window.Close();
         });
 

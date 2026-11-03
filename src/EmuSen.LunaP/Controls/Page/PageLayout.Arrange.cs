@@ -304,7 +304,13 @@ namespace EmuSen.LunaP.Controls
         {
             for (int i = 0; i < _actionRow.Children.Count; i++)
                 if (_actionRow.Children[i] is Panel { Children: [_, Border ring] }) ring.IsVisible = Big && _inActions && i == _actionAt;
-            if (Big && _inActions && ReaderFocus.Held(this)) ReaderFocus.Pass(this, true, FocusTarget());
+            if (Big && _inActions) HandFocus();
+        }
+
+        // A held focus handed to the focus target, or to the page where the focus is on tiles or text, which a reader is not yet told about.
+        private void HandFocus()
+        {
+            if (Big && ReaderFocus.Held(this)) ReaderFocus.Pass(this, true, FocusTarget());
         }
 
         // What holds the focus for a reader on the big screen: the focused action's cell, or the focused row; the cells counted from skip (§213.8).
@@ -358,7 +364,7 @@ namespace EmuSen.LunaP.Controls
                 PageContent.Text x => TextContent(x),
                 _ => null,
             };
-            if (Big && ReaderFocus.Held(this)) ReaderFocus.Pass(this, true, FocusTarget());
+            HandFocus();
             FillActionsFocus();
             RefreshHints();
         }

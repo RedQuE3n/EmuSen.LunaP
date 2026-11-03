@@ -444,6 +444,7 @@ namespace EmuSen.LunaP.Controls
         {
             FillActionsFocus();
             FillContentFocus();
+            HandFocus();
             RefreshHints();
             FocusChanged?.Invoke(Focused);
         }
