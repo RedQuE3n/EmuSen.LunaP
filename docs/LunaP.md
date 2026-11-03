@@ -14816,8 +14816,30 @@ its card in the screen above the band, as the approval's mockup draws it.
 The help band's rule still runs within the screen's side inset, not edge to edge as drawn: the band belongs to the
 layout, which does not know the host's inset, and reaching past it would break a layout hosted elsewhere.
 
+### 211.4 The help band to the screen's edges and foot (2026-11-02)
+
+Decided 2026-11-02 by the tester for the edge card (`MenuPanel`, §210), and held to the frame's screens too: the help
+band runs across the whole screen and down to its foot, its entries centred in its 58 units with the safe area under
+them, and a question's dim reaches the screen's edges. A screen's frame pads its content by the safe area, so the
+layout cannot reach past it unaided; **`SheetLayer.SafeArea`**, an inherited attached property, now carries the
+frame's inset to the content (zero outside a screen), and `AdaptiveLayout`'s big-screen form draws its help band and
+its question cover out by that much. Laid out anywhere else the inset is zero and nothing reaches past the layout.
+The band's entries take the edge card's type and spacing: Caption 20 in Barlow, 40 between entries, 10 between a
+glyph and its word, the glyph at 1.5 times.
+
+### 211.5 Whole rows only: `LunaTable.WholeRows`
+
+Compared on 2026-11-02: a list scrolled to keep its chosen row in view stopped inside the row above, drawing half of
+it under the list's top edge. With `WholeRows` a scroll that stops inside the first row moves on to the next row's
+top, where the rows end room is made under the last row so the rows stay flush with the top, and a row the viewport
+still cuts at its foot is left undrawn (the presenter's clip,
+`DrawnRows`). Both of `ManagerLayout`'s tables set it, so no tool draws a cut row. The question's small print
+(`Ask(…, smallPrint)`) is drawn in Muted Caption under its sentences, as the approval's mockup draws the tested line
+and the hash.
+
 Tests: `TableGroupTests` (the band on a group's first row only, none with one group, none for a null group, the
 keyboard stepping past every band, the band following a recycled container, the spoken name) and
 `ManagerLayoutTests`' big-screen cases (no header box, rows full width, Apply drawn on the big screen, the hint order, the
-headings in both forms); `AdaptiveLayoutTests`' help bar case now reads the main action last. Seeded on 2026-11-02 and
+headings in both forms); `TableGroupTests`' whole-rows case (a table chosen far down at five places never draws a cut
+row; it fails with `WholeRows` doing nothing); `AdaptiveLayoutTests`' help bar case now reads the main action last. Seeded on 2026-11-02 and
 caught: a heading drawn over a single group (`TableGroupTests`), and the rows inset again (`ManagerLayoutTests`).

@@ -105,6 +105,8 @@ namespace EmuSen.LunaP.Controls
                 bool big = ReferenceEquals(table, _bigTable);
                 table.Key = row => KeyOf(row);
                 table.FitsWidth = true;
+                // No row is drawn cut by the list's edge, in either form (§211.5).
+                table.WholeRows = true;
                 table.Column(new LunaColumn<T>("Mark", row => MarkCell(row, big), row => MarkOf(row)?.Label ?? "not marked") { Width = "Auto" });
                 table.AddHandler(Avalonia.Controls.Primitives.SelectingItemsControl.SelectionChangedEvent, (_, _) => { ShowDetail(); RefreshHints(); });
             }
@@ -356,8 +358,9 @@ namespace EmuSen.LunaP.Controls
         /// <param name="yes">The desktop's word for yes.</param>
         /// <param name="no">The desktop's word for no.</param>
         /// <returns>True for yes; false for no, for B, or when a question or a run is already under way.</returns>
+        /// <param name="smallPrint">What follows the sentences in Muted Caption, such as a hash; its paragraphs as the sentences' are.</param>
         /// <exception cref="System.ArgumentNullException"><paramref name="title"/> or <paramref name="sentences"/> is null.</exception>
-        public Task<bool> Ask(string title, string sentences, string yes = "Yes", string no = "No")
+        public Task<bool> Ask(string title, string sentences, string yes = "Yes", string no = "No", string? smallPrint = null)
         {
             if (title is null) throw new ArgumentNullException(nameof(title));
             if (sentences is null) throw new ArgumentNullException(nameof(sentences));
@@ -365,7 +368,7 @@ namespace EmuSen.LunaP.Controls
             _asking = new TaskCompletionSource<bool>();
             _yes = yes;
             _no = no;
-            OpenSheet(title, sentences, options: false);
+            OpenSheet(title, sentences, options: false, smallPrint);
             return _asking.Task;
         }
 
@@ -382,16 +385,22 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The question's title as last shown.</summary>
         public string QuestionTitle => _planHeading.Text ?? string.Empty;
 
-        private void OpenSheet(string title, string words, bool options)
+        private void OpenSheet(string title, string words, bool options, string? smallPrint = null)
         {
             CloseDetail();
             ClosePage();
             CloseListTools();
             _planHeading.Text = title;
-            _planWords = words;
+            _planWords = smallPrint is null ? words : words + "\n\n" + smallPrint;
             _planText.Children.Clear();
             foreach (string paragraph in words.Split("\n\n"))
                 _planText.Children.Add(new TextBlock { Text = paragraph, TextWrapping = TextWrapping.Wrap });
+            foreach (string paragraph in smallPrint?.Split("\n\n") ?? [])
+            {
+                var fine = new TextBlock { Text = paragraph, TextWrapping = TextWrapping.Wrap, FontSize = LunaTokens.Type(Form == AdaptiveForm.Desktop ? LunaForm.Desktop : LunaForm.BigScreen).Caption };
+                fine.Bind(TextBlock.ForegroundProperty, fine.GetResourceObservable("LunaMuted"));
+                _planText.Children.Add(fine);
+            }
             ArrangeQuestion();
             _planOptions.IsVisible = options && _planOptions.Children.Count > 0;
             _planSheet.IsVisible = true;

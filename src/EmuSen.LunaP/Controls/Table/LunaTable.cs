@@ -391,6 +391,7 @@ namespace EmuSen.LunaP.Controls
                 FillColumns();
                 Pin();
                 MarkCells();
+                KeepRowsWhole();
             };
 
             // Bubbling, so it catches a heading, a cell editor and a caller's own control inside a

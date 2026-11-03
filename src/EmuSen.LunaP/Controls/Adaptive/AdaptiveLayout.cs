@@ -578,7 +578,8 @@ namespace EmuSen.LunaP.Controls
             _coverScrim.Children.Clear();
             _coverScrim.Background = CoverScrim;
             // The help band stays undimmed under the cover, naming the question's answers, and the card is centred above it (docs/LunaP.md §211.3).
-            _coverScrim.Margin = new Thickness(0, 0, 0, _hintBand.IsEffectivelyVisible ? _hintBand.Bounds.Height : 0);
+            Thickness safe = Windowing.SheetLayer.GetSafeArea(this);
+            _coverScrim.Margin = new Thickness(-safe.Left, -safe.Top, -safe.Right, _hintBand.IsEffectivelyVisible ? _hintBand.Bounds.Height - safe.Bottom : -safe.Bottom);
             card.HorizontalAlignment = HorizontalAlignment.Center;
             card.VerticalAlignment = VerticalAlignment.Center;
             _coverScrim.Children.Add(Detach(card));
@@ -783,9 +784,19 @@ namespace EmuSen.LunaP.Controls
         }
 
         /// <inheritdoc/>
+        // The help band 58 high across the screen and down to its foot, its entries centred in the 58 and its first glyph at the content's edge (docs/LunaP.md §211.4).
+        private void PlaceHelpBand()
+        {
+            Thickness safe = Windowing.SheetLayer.GetSafeArea(this);
+            _hintBand.MinHeight = 58 + safe.Bottom;
+            _hintBand.Margin = new Thickness(-safe.Left, 0, -safe.Right, -safe.Bottom);
+            _hintBand.Padding = new Thickness(safe.Left + 16, 0, safe.Right + 16, safe.Bottom);
+        }
+
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);
+            if (change.Property == Windowing.SheetLayer.SafeAreaProperty && Form == AdaptiveForm.BigScreen) PlaceHelpBand();
             if (change.Property == FormProperty || change.Property == DetailPlacementProperty || change.Property == ContentShareProperty || change.Property == SwapsAcceptAndBackProperty)
             {
                 AdaptiveRole? focused = FocusedRole;
@@ -1089,7 +1100,12 @@ namespace EmuSen.LunaP.Controls
             _search.ClearValue(MinHeightProperty);
             _hintBand.ClearValue(MinHeightProperty);
             _hintBand.Padding = new Thickness(48, 10, 48, 6);
+            _hintBand.ClearValue(MarginProperty);
             _hintBar.ClearValue(VerticalAlignmentProperty);
+            _hintBar.FontSize = 24;
+            _hintBar.ClearValue(HintBar.EntrySpacingProperty);
+            _hintBar.ClearValue(HintBar.IconTextSpacingProperty);
+            _hintBar.ClearValue(HintBar.IconScaleProperty);
             _detailHost.ClearValue(TextElement.FontFamilyProperty);
             _detailHost.ClearValue(TextElement.FontSizeProperty);
             _detailHost.Styles.Remove(_paneTitle);
@@ -1195,10 +1211,12 @@ namespace EmuSen.LunaP.Controls
             _search.FontSize = LunaTokens.BigScreenType.Caption;
             _search.MinWidth = 240;
             _search.MinHeight = 44;
-            // The help band 58 high, its first glyph at the content's edge.
-            _hintBand.MinHeight = 58;
-            _hintBand.Padding = new Thickness(16, 0, 16, 0);
+            PlaceHelpBand();
             _hintBar.VerticalAlignment = VerticalAlignment.Center;
+            _hintBar.FontSize = LunaTokens.BigScreenType.Caption;
+            _hintBar.EntrySpacing = 40;
+            _hintBar.IconTextSpacing = 10;
+            _hintBar.IconScale = 1.5;
             // The pane's words in Barlow at the big screen's Body size, whatever the tool put in it, and its title in the Condensed face (§208.10, §208.11).
             TextElement.SetFontFamily(_detailHost, Media.LunaFonts.Body);
             TextElement.SetFontSize(_detailHost, LunaTokens.BigScreenType.Body);

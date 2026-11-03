@@ -35,6 +35,15 @@ namespace EmuSen.LunaP.Windowing
         /// <returns>True while its sheet is drawn beneath another.</returns>
         public static bool GetIsCovered(Control element) => element.GetValue(IsCoveredProperty);
 
+        /// <summary>The inset a screen's frame gives its content, in the content's units; inherited, so a layout can draw a band such as its help bar out to the screen's edges and foot. Zero outside a screen - see docs/LunaP.md §211.4.</summary>
+        public static readonly AttachedProperty<Thickness> SafeAreaProperty =
+            AvaloniaProperty.RegisterAttached<SheetLayer, Control, Thickness>("SafeArea", inherits: true);
+
+        /// <summary>Reads the inset a screen's frame gives an element's content.</summary>
+        /// <param name="element">Any element on a screen.</param>
+        /// <returns>The frame's inset, or zero outside a screen.</returns>
+        public static Thickness GetSafeArea(Control element) => element.GetValue(SafeAreaProperty);
+
         /// <summary>Set on a chromeless window, such as a message box, whose sheet leaves the chromeless sheet beneath it drawn, out of reach; without it a chromeless sheet over another hides it, as a submenu replaces a menu - see docs/LunaP.md §182.5.</summary>
         public static readonly AttachedProperty<bool> KeepsBeneathDrawnProperty =
             AvaloniaProperty.RegisterAttached<SheetLayer, Window, bool>("KeepsBeneathDrawn");
@@ -424,6 +433,7 @@ namespace EmuSen.LunaP.Windowing
             private Border MenuFrame(SheetLayer layer, Window window)
             {
                 _host.Padding = new Thickness(MenuSidePadding, MenuTopPadding, MenuSidePadding, 0);
+                _host.ClearValue(SafeAreaProperty);
                 _host.HorizontalContentAlignment = HorizontalAlignment.Stretch;
                 _host.VerticalContentAlignment = VerticalAlignment.Stretch;
                 // Avalonia 12.1 shrinks a list's effective viewport by the scale again for a clipping child of a scaled control, so only the scaler clips - §196.4.
@@ -468,6 +478,7 @@ namespace EmuSen.LunaP.Windowing
             private Border ScreenFrame()
             {
                 _host.Padding = new Thickness(ScreenSidePadding, ScreenTopPadding, ScreenSidePadding, ScreenBottomPadding);
+                _host.SetValue(SafeAreaProperty, _host.Padding);
                 _host.HorizontalContentAlignment = HorizontalAlignment.Stretch;
                 _host.VerticalContentAlignment = VerticalAlignment.Stretch;
                 _host.ClipToBounds = false;
