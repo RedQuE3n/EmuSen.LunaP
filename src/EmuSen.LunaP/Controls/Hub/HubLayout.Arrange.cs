@@ -74,14 +74,16 @@ namespace EmuSen.LunaP.Controls
             name.FontWeight = FontWeight.Medium;
             name.TextWrapping = TextWrapping.Wrap;
             name.MaxLines = 2;
-            At(name, left, 136, width);
+            // The lines under the caption stand apart by the text scale, as their sizes do (docs/LunaP.md §214).
+            double scale = LunaTokens.TextScale, nameTop = 112 + 24 * scale;
+            At(name, left, nameTop, width);
             surface.Children.Add(name);
             if ((_continue?.Facts ?? preview?.Facts) is { Length: > 0 } facts)
             {
                 TextBlock line = Words(facts, Type.Body, "LunaMuted", name: "HubFacts");
                 line.TextWrapping = TextWrapping.Wrap;
                 line.MaxLines = 2;
-                At(line, left, 252, width);
+                At(line, left, nameTop + 116 * scale, width);
                 surface.Children.Add(line);
             }
         }
@@ -100,7 +102,7 @@ namespace EmuSen.LunaP.Controls
         private void AddShelf(Panel surface)
         {
             TextBlock label = Words(_recentTitle.ToUpperInvariant(), Type.Caption, "LunaMuted", name: "HubRecentTitle");
-            At(label, Side, ShelfTop - 28, 400);
+            At(label, Side, ShelfTop - 28 * LunaTokens.TextScale, 400);
             surface.Children.Add(label);
             var shelf = new Panel { Name = "HubShelf", Height = TileHeight, Margin = new Thickness(Side, ShelfTop, Side, 0), VerticalAlignment = VerticalAlignment.Top };
             AutomationProperties.SetName(shelf, _recentTitle);

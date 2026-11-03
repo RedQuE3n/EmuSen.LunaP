@@ -371,10 +371,10 @@ namespace EmuSen.LunaP.Controls
                     _strip.Children.Add(button);
                 }
             _strip.Chosen = chosen;
-            // The strip grows with the text scale, into the gap above the rows, and is styled again for it (docs/LunaP.md §214).
+            // The strip is styled again for a new text scale, its buttons' least height growing with it (docs/LunaP.md §214).
             if (_stripScale != LunaTokens.TextScale) AdaptiveLayout.StyleStrip(_strip);
             _stripScale = LunaTokens.TextScale;
-            _strip.Height = StripHeight * LunaTokens.TextScale;
+            _strip.Height = StripHeight;
             _strip.Margin = new Thickness(Side, StripTop, Side, 0);
             _strip.VerticalAlignment = VerticalAlignment.Top;
             surface.Children.Add(_strip);
@@ -422,7 +422,7 @@ namespace EmuSen.LunaP.Controls
         // The content's tabs, the chosen one marked as the sections' strip marks its own; a click raises ContentTabChosen.
         private WholeRow ContentTabs(SettingsContent content, double height)
         {
-            var tabs = new WholeRow { Spacing = 8, Name = "SettingsContentTabs", Height = height * LunaTokens.TextScale, VerticalAlignment = VerticalAlignment.Top };
+            var tabs = new WholeRow { Spacing = 8, Name = "SettingsContentTabs", Height = height, VerticalAlignment = VerticalAlignment.Top };
             AdaptiveLayout.StyleStrip(tabs);
             for (int i = 0; i < content.Tabs.Count; i++)
             {

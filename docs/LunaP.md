@@ -15093,10 +15093,14 @@ out, and could not stop movement it did not write.
 **Text size.** `LunaTokens.TextScale`, 1 by default, clamped to 1 to 1.3: `BigScreenType` and `DesktopType` are the base
 scales multiplied by it, each size rounded to a half unit, so every layout that reads the tokens as it fills draws the new
 size the next time it fills, and nothing scales per control. Spacing is not scaled: a row stays 54 units, which holds the
-row size's 26 × 1.3 = 34. What holds a line of text at a fixed height grows with it instead: a section strip's least height
-(`StyleStrip`, 44 × the scale), and `SettingsLayout`'s strip and its content's tabs, into the gap above the rows, the strip
-styled again when the scale has changed since its last fill. 1.5 was tried first and cut the strip's captions at
-1280 × 800 even so, measured on 2026-11-03. Setting it raises `LunaTokens.Changed`, and every `LunaMetrics` dictionary fills itself again,
+row size's 26 × 1.3 = 34. What holds lines of text at fixed places moves with it instead: a section strip's least height
+(`StyleStrip`, 44 × the scale, the strip styled again when the scale has changed since its last fill); the hub's hero
+lines (the title 112 + 24 × the scale, the facts 116 × the scale under it) and its shelf's label (28 × the scale above
+the shelf); and the gallery's focused name and facts, the facts rising toward the grid and the name stopping at the
+grid's foot. Measured on 2026-11-03: 1.5 cut the strip's captions at 1280 × 800; 1.4, the consumer's mockup, leaves the
+gallery's name and facts about 5 units short of the 90 between the grid's foot (612) and the help band (702), so the
+name would cross the second row of covers; 1.3 fits everywhere audited. A taller strip in `SettingsLayout` was tried and
+found to change nothing the audit or a seeded fault could tell, and was taken out. Setting it raises `LunaTokens.Changed`, and every `LunaMetrics` dictionary fills itself again,
 so whatever reads the size resources (`LunaBodyFontSize`, `ControlContentThemeFontSize` and the rest) changes at once.
 The host fills what it shows again on the same event. The names of the sizes a player chooses are the host's.
 

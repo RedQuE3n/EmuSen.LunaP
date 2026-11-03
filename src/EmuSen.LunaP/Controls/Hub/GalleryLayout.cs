@@ -43,6 +43,11 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The focused item's name and facts under the grid.</summary>
         public const double NameTop = 628, FactsTop = 670;
 
+        // The focused game's two lines as the text scale grows: the facts rise toward the grid, the name above them never into it (docs/LunaP.md §214).
+        private static double FactsAt(double scale) => FactsTop - 26.7 * (scale - 1);
+
+        private static double NameAt(double scale) => Math.Max(GridTop + 2 * CellHeight + Gap, FactsAt(scale) - 42 - 38.4 * (scale - 1));
+
         private readonly Panel _root = new();
         private readonly HintBar _hintBar = new();
         private readonly WholeRow _strip = new() { Spacing = 8, Name = "GallerySections" };
@@ -455,11 +460,11 @@ namespace EmuSen.LunaP.Controls
         private void FillName(Panel surface)
         {
             if (_items.FirstOrDefault(i => i.Key == _focusKey) is not { } item) return;
-            var name = new TextBlock { Name = "GalleryName", Text = item.Title, FontFamily = LunaFonts.Condensed, FontSize = Type.Title, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(Side, NameTop, Side, 0), VerticalAlignment = VerticalAlignment.Top };
+            var name = new TextBlock { Name = "GalleryName", Text = item.Title, FontFamily = LunaFonts.Condensed, FontSize = Type.Title, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(Side, NameAt(LunaTokens.TextScale), Side, 0), VerticalAlignment = VerticalAlignment.Top };
             name[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("LunaTextStrong");
             surface.Children.Add(name);
             if (item.Facts is not { Length: > 0 } facts) return;
-            var line = new TextBlock { Name = "GalleryFacts", Text = facts, FontFamily = LunaFonts.Body, FontSize = Type.Body, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(Side, FactsTop, Side, 0), VerticalAlignment = VerticalAlignment.Top };
+            var line = new TextBlock { Name = "GalleryFacts", Text = facts, FontFamily = LunaFonts.Body, FontSize = Type.Body, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(Side, FactsAt(LunaTokens.TextScale), Side, 0), VerticalAlignment = VerticalAlignment.Top };
             line[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("LunaMuted");
             surface.Children.Add(line);
         }
