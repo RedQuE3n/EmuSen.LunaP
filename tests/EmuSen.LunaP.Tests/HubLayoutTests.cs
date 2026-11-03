@@ -178,6 +178,14 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(Avalonia.Media.TextTrimming.CharacterEllipsis, line.TextTrimming);
             Assert.Equal(Avalonia.Media.Color.Parse("#DAA520"), ((Avalonia.Media.ISolidColorBrush)line.Foreground!).Color);
             window.Close();
+
+            // The desktop keeps the sign and stays quiet: the line is Muted (docs/LunaP.md §215.4).
+            var (desk, deskHub, _) = Hub(1080, 772, AdaptiveForm.Desktop);
+            TextBlock quiet = deskHub.GetVisualDescendants().OfType<Control>().First(c => c.Name == "HubPlace.cores").GetVisualDescendants().OfType<TextBlock>().Last();
+            Assert.Equal("⚠ 1 to approve", quiet.Text);
+            Assert.True(quiet.TryFindResource("LunaMuted", quiet.ActualThemeVariant, out object? muted));
+            Assert.Equal(((Avalonia.Media.ISolidColorBrush)muted!).Color, ((Avalonia.Media.ISolidColorBrush)quiet.Foreground!).Color);
+            desk.Close();
         });
 
         // The gallery's strip is a tab list whose selection is the chosen console (docs/LunaP.md §213.8).

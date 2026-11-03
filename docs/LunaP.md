@@ -15215,3 +15215,9 @@ took 40 units from the consumer's cheat database and left its list of games 75 h
 the row's action; the big screen drawing no action button and the facts at the right; `ManagerLayout`'s header action
 following the chosen row and empty for a row with none. Seeded faults, each caught: the warning fact drawn Muted; the
 header action left at the previous row's; the desktop drawing the facts at the right edge.
+
+### 215.4 A place's warning on the desktop
+
+Decided 2026-11-03: a hub place's line that needs the person keeps its `⚠` on both forms, and is drawn in `LunaAttention`
+on the big screen only. The desktop stays quiet, as the consumer's desktop mockup draws it Muted, while the big screen
+calls the person's attention from across the room.

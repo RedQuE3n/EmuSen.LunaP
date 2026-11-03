@@ -148,7 +148,7 @@ namespace EmuSen.LunaP.Controls
             surface.Children.Add(row);
         }
 
-        // A place: its name, and its live line under it cut with an ellipsis, a line that needs the person in the attention colour after a warning sign.
+        // A place: its name, and its live line under it cut with an ellipsis, after a warning sign where it needs the person, in the attention colour on the big screen only (docs/LunaP.md §215.4).
         private Control Place(HubPlace place, double width, double height, bool big, bool focused)
         {
             double radius = big ? 8 : 6;
@@ -157,7 +157,7 @@ namespace EmuSen.LunaP.Controls
             if (!big) label.FontWeight = FontWeight.Medium;
             words.Children.Add(label);
             if (place.Status is { Length: > 0 } status)
-                words.Children.Add(Words(place.NeedsAttention ? "⚠ " + status : status, Type.Caption, place.NeedsAttention ? "LunaAttention" : "LunaMuted", name: StatusName));
+                words.Children.Add(Words(place.NeedsAttention ? "⚠ " + status : status, Type.Caption, big && place.NeedsAttention ? "LunaAttention" : "LunaMuted", name: StatusName));
             var card = new Border { Child = words, CornerRadius = new CornerRadius(radius), Padding = big ? new Thickness(12, 0) : new Thickness(16, 0) };
             card[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaSurfaceRaised");
             var cell = new Panel { Name = "HubPlace." + place.Key, Width = width, Height = height, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Cursor = new Cursor(StandardCursorType.Hand) };
