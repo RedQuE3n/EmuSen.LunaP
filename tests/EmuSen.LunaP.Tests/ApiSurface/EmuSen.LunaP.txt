@@ -454,6 +454,37 @@ public enum EmuSen.LunaP.Controls.ControllerShape
     public const EmuSen.LunaP.Controls.ControllerShape Unknown = 0
     public int value__
 
+public class EmuSen.LunaP.Controls.CoverCard : Avalonia.Controls.Panel
+    public Avalonia.Rect CoverBounds { get; }
+    public CoverCard()
+    public EmuSen.LunaP.Controls.CoverItem? Item { get; set; }
+    public bool Big { get; set; }
+    public bool ShowsFocus { get; set; }
+    public const double BigReference = 180
+    public const double DesktopReference = 100
+    public const double MinimumTitle = 18
+    public double CellHeight { get; set; }
+    public double CellWidth { get; set; }
+
+public sealed class EmuSen.LunaP.Controls.CoverItem : System.IEquatable<EmuSen.LunaP.Controls.CoverItem>
+    public Avalonia.Media.IImage? Art { get; init; }
+    public Avalonia.Media.IImage? Picture { get; init; }
+    public CoverItem(string Key, string Title)
+    public bool Equals(EmuSen.LunaP.Controls.CoverItem? other)
+    public bool IsFavourite { get; init; }
+    public double Aspect { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.CoverItem? left, EmuSen.LunaP.Controls.CoverItem? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.CoverItem? left, EmuSen.LunaP.Controls.CoverItem? right)
+    public string Key { get; init; }
+    public string Title { get; init; }
+    public string? Facts { get; init; }
+    public string? Mark { get; init; }
+    public string? Status { get; init; }
+    public void Deconstruct(out string Key, out string Title)
+
 public class EmuSen.LunaP.Controls.CrossFadeImage : Avalonia.Controls.Panel
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     public Avalonia.Media.Imaging.BitmapInterpolationMode Interpolation { get; set; }
@@ -787,6 +818,70 @@ public class EmuSen.LunaP.Controls.FrameSequenceImage : Avalonia.Controls.Contro
     public static readonly Avalonia.StyledProperty<string?> SourceProperty = null
     public string? Source { get; set; }
 
+public struct EmuSen.LunaP.Controls.GalleryFocus : System.ValueType, System.IEquatable<EmuSen.LunaP.Controls.GalleryFocus>
+    public GalleryFocus(bool InKeyboard, string? Key)
+    public bool Equals(EmuSen.LunaP.Controls.GalleryFocus other)
+    public bool InKeyboard { get; init; }
+    public override bool Equals(object obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.GalleryFocus left, EmuSen.LunaP.Controls.GalleryFocus right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.GalleryFocus left, EmuSen.LunaP.Controls.GalleryFocus right)
+    public string? Key { get; init; }
+    public void Deconstruct(out bool InKeyboard, out string? Key)
+
+public class EmuSen.LunaP.Controls.GalleryLayout : Avalonia.Controls.Border
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    protected override void OnSizeChanged(Avalonia.Controls.SizeChangedEventArgs e)
+    public EmuSen.LunaP.Controls.GalleryFocus Focused { get; }
+    public EmuSen.LunaP.Controls.OnScreenKeyboard? Keyboard { get; }
+    public EmuSen.LunaP.Controls.PadFamily PadFamily { get; set; }
+    public GalleryLayout()
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.AdaptiveSection> Sections { get; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.CoverItem> Items { get; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry> Hints { get; }
+    public System.Collections.Generic.IReadOnlyList<string> Shown { get; }
+    public System.Func<EmuSen.LunaP.Controls.CoverItem, Avalonia.Media.IImage?>? PictureOf { get; set; }
+    public System.Func<EmuSen.LunaP.Controls.GalleryFocus, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PageHint>>? HintsFor { get; set; }
+    public bool CloseSearch()
+    public bool FocusOn(string key)
+    public bool IsSearchOpen { get; }
+    public bool Move(int dx, int dy)
+    public bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
+    public bool SelectSection(string key)
+    public bool StepSection(int by)
+    public const double CellHeight = 240
+    public const double CellWidth = 180
+    public const double DesignHeight = 800
+    public const double FactsTop = 670
+    public const double Gap = 24
+    public const double GridTop = 108
+    public const double KeyboardTop = 398
+    public const double NameTop = 628
+    public const double SearchGridTop = 156
+    public const double SearchHeight = 44
+    public const double SearchTop = 100
+    public const double Side = 64
+    public const double StripHeight = 44
+    public const double StripTop = 40
+    public event System.Action<EmuSen.LunaP.Controls.GalleryFocus> FocusChanged
+    public event System.Action<bool> SearchClosed
+    public event System.Action<string> HintInvoked
+    public event System.Action<string> ItemChosen
+    public event System.Action<string> SearchChanged
+    public event System.Action<string> SectionChosen
+    public int Columns { get; }
+    public int RowsShown { get; }
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadFamily> PadFamilyProperty = Xbox
+    public string Count { get; set; }
+    public string SearchText { get; }
+    public string? SelectedSection { get; }
+    public void OpenSearch(string text, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.KeyboardLayout> layouts)
+    public void Refresh()
+    public void SetItems(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.CoverItem> items)
+    public void SetSections(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.AdaptiveSection> sections, string? selected = null)
+
 public struct EmuSen.LunaP.Controls.GridGeometry : System.ValueType, System.IEquatable<EmuSen.LunaP.Controls.GridGeometry>
     public Avalonia.Rect CellRect(int index, double scroll)
     public Avalonia.RelativePoint Anchor(int index, double scroll)
@@ -894,6 +989,115 @@ public sealed class EmuSen.LunaP.Controls.HintEntry : System.IEquatable<EmuSen.L
 
 public class EmuSen.LunaP.Controls.HintText : Avalonia.Controls.TextBlock
     public HintText()
+
+public sealed class EmuSen.LunaP.Controls.HubContinue : System.IEquatable<EmuSen.LunaP.Controls.HubContinue>
+    public Avalonia.Media.IImage? Picture { get; init; }
+    public HubContinue(string Title, string? Facts = null, Avalonia.Media.IImage? Picture = null)
+    public bool Equals(EmuSen.LunaP.Controls.HubContinue? other)
+    public object? Video { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.HubContinue? left, EmuSen.LunaP.Controls.HubContinue? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.HubContinue? left, EmuSen.LunaP.Controls.HubContinue? right)
+    public string Button { get; init; }
+    public string Caption { get; init; }
+    public string Title { get; init; }
+    public string? Facts { get; init; }
+    public void Deconstruct(out string Title, out string? Facts, out Avalonia.Media.IImage? Picture)
+
+public struct EmuSen.LunaP.Controls.HubFocus : System.ValueType, System.IEquatable<EmuSen.LunaP.Controls.HubFocus>
+    public EmuSen.LunaP.Controls.HubRow Row { get; init; }
+    public HubFocus(EmuSen.LunaP.Controls.HubRow Row, string? Key)
+    public bool Equals(EmuSen.LunaP.Controls.HubFocus other)
+    public override bool Equals(object obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.HubFocus left, EmuSen.LunaP.Controls.HubFocus right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.HubFocus left, EmuSen.LunaP.Controls.HubFocus right)
+    public string? Key { get; init; }
+    public void Deconstruct(out EmuSen.LunaP.Controls.HubRow Row, out string? Key)
+
+public class EmuSen.LunaP.Controls.HubLayout : Avalonia.Controls.Border
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    protected override void OnSizeChanged(Avalonia.Controls.SizeChangedEventArgs e)
+    public EmuSen.LunaP.Controls.AdaptiveForm Form { get; set; }
+    public EmuSen.LunaP.Controls.HubContinue? Continue { get; set; }
+    public EmuSen.LunaP.Controls.HubFocus Focused { get; }
+    public EmuSen.LunaP.Controls.PadFamily PadFamily { get; set; }
+    public HubLayout()
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.CoverItem> Shelf { get; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry> Hints { get; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HubPlace> Places { get; }
+    public System.Collections.Generic.IReadOnlyList<string> ShelfShown { get; }
+    public System.Func<EmuSen.LunaP.Controls.CoverItem, Avalonia.Media.IImage?>? ArtOf { get; set; }
+    public System.Func<EmuSen.LunaP.Controls.CoverItem, Avalonia.Media.IImage?>? PictureOf { get; set; }
+    public System.Func<EmuSen.LunaP.Controls.HubFocus, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PageHint>>? HintsFor { get; set; }
+    public bool FocusOn(EmuSen.LunaP.Controls.HubRow row, string? key = null)
+    public bool Move(int dx, int dy)
+    public bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
+    public bool ShowsArt { get; set; }
+    public const double ContinueHeight = 280
+    public const double ContinueTop = 84
+    public const double ContinueWidth = 373
+    public const double DesignHeight = 800
+    public const double DesktopContinueHeight = 180
+    public const double DesktopGap = 16
+    public const double DesktopGutter = 24
+    public const double DesktopPlaceHeight = 64
+    public const double DesktopTileHeight = 133
+    public const double DesktopTileStep = 116
+    public const double DesktopTileWidth = 100
+    public const double PlaceGap = 17
+    public const double PlaceHeight = 64
+    public const double PlaceWidth = 150
+    public const double PlacesTop = 622
+    public const double ShelfTop = 416
+    public const double Side = 64
+    public const double TileHeight = 160
+    public const double TileStep = 144
+    public const double TileWidth = 120
+    public const double TitleFloor = 32
+    public const double Top = 40
+    public const string CoverLineName = "HubCoverLine"
+    public const string StatusName = "HubPlaceStatus"
+    public event System.Action ContinueChosen
+    public event System.Action<EmuSen.LunaP.Controls.HubFocus> FocusChanged
+    public event System.Action<string> HintInvoked
+    public event System.Action<string> PlaceChosen
+    public event System.Action<string> TileChosen
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.AdaptiveForm> FormProperty = Desktop
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadFamily> PadFamilyProperty = Xbox
+    public string PlacesTitle { get; set; }
+    public string RecentTitle { get; set; }
+    public string Status { get; set; }
+    public string Title { get; set; }
+    public void FocusStart()
+    public void Refresh()
+    public void SetPlaces(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.HubPlace> places)
+    public void SetShelf(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.CoverItem> covers)
+
+public sealed class EmuSen.LunaP.Controls.HubPlace : System.IEquatable<EmuSen.LunaP.Controls.HubPlace>
+    public HubPlace(string Key, string Label)
+    public bool Equals(EmuSen.LunaP.Controls.HubPlace? other)
+    public bool NeedsAttention { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.HubPlace? left, EmuSen.LunaP.Controls.HubPlace? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.HubPlace? left, EmuSen.LunaP.Controls.HubPlace? right)
+    public string Key { get; init; }
+    public string Label { get; init; }
+    public string? Status { get; init; }
+    public void Deconstruct(out string Key, out string Label)
+
+public enum EmuSen.LunaP.Controls.HubRow
+    public const EmuSen.LunaP.Controls.HubRow Continue = 0
+    public const EmuSen.LunaP.Controls.HubRow Places = 2
+    public const EmuSen.LunaP.Controls.HubRow Shelf = 1
+    public int value__
 
 public interface EmuSen.LunaP.Controls.ISidewaysAdjustable
 
@@ -1143,6 +1347,8 @@ public sealed class EmuSen.LunaP.Controls.KeyboardLayout
     public static EmuSen.LunaP.Controls.KeyboardLayout Code { get; }
     public static EmuSen.LunaP.Controls.KeyboardLayout GameGenie { get; }
     public static EmuSen.LunaP.Controls.KeyboardLayout Letters { get; }
+    public static EmuSen.LunaP.Controls.KeyboardLayout Search { get; }
+    public static EmuSen.LunaP.Controls.KeyboardLayout Symbols { get; }
     public static System.Collections.Generic.IReadOnlyList<System.ValueTuple<string, int>> Row(string keys)
     public string Name { get; }
 
@@ -1778,11 +1984,14 @@ public class EmuSen.LunaP.Controls.OnScreenKeyboard : Avalonia.Controls.Border
     public EmuSen.LunaP.Controls.KeyboardLayout Layout { get; }
     public OnScreenKeyboard(Avalonia.Controls.TextBox target, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.KeyboardLayout> layouts)
     public System.Threading.Tasks.Task<bool> Closed { get; }
+    public bool Docked { get; }
     public bool Erase()
     public bool IsOpen { get; }
     public bool MenuLook { get; init; }
     public bool Shifted { get; }
+    public bool ShowsCurrentKey { get; set; }
     public double KeySize { get; set; }
+    public static EmuSen.LunaP.Controls.OnScreenKeyboard CreateDocked(Avalonia.Controls.TextBox target, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.KeyboardLayout> layouts)
     public static EmuSen.LunaP.Controls.OnScreenKeyboard Show(Avalonia.Controls.TextBox target, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.KeyboardLayout> layouts, string? hint = null)
     public static EmuSen.LunaP.Controls.OnScreenKeyboard ShowAsMenu(Avalonia.Controls.TextBox target, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.KeyboardLayout> layouts, string? hint, string title)
     public static EmuSen.LunaP.Controls.OnScreenKeyboard? OpenOver(Avalonia.Visual visual)

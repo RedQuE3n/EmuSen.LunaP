@@ -34,7 +34,7 @@ namespace EmuSen.LunaP.Controls
             band.Child = bar;
         }
 
-        private static void StyleBar(HintBar bar)
+        internal static void StyleBar(HintBar bar)
         {
             bar.FontPath = LunaFonts.BodyFile;
             bar.FontSize = 24;
@@ -249,7 +249,7 @@ namespace EmuSen.LunaP.Controls
         }
 
         // A heart on a 24-unit grid, filled or outlined, scaled to the words' size.
-        private static Control? Mark(PageMark mark, string ink, double size)
+        internal static Control? Mark(PageMark mark, string ink, double size)
         {
             if (mark == PageMark.None) return null;
             var path = new Path

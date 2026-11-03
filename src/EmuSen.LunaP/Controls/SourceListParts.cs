@@ -27,6 +27,7 @@ namespace EmuSen.LunaP.Controls
             // letter as an acronym.
             var title = new TextBlock { Text = header.ToUpperInvariant() };
             title.Classes.Add("source-header");
+            title.IsVisible = header.Length > 0;
             AutomationProperties.SetAccessibilityView(title, AccessibilityView.Raw);
             Children.Add(title);
         }

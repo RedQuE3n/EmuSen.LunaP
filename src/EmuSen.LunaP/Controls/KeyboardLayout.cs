@@ -52,6 +52,26 @@ namespace EmuSen.LunaP.Controls
             Row("Next:2 . - Space:2 Erase:2 Done:2"),
         });
 
+        /// <summary>A layout for a search as the docked keyboard draws it: digits, the English alphabet and common punctuation, shift and erase, then the symbols' key, space and done.</summary>
+        public static KeyboardLayout Search { get; } = new("Letters", new[]
+        {
+            Row("1 2 3 4 5 6 7 8 9 0"),
+            Row("q w e r t y u i o p"),
+            Row("a s d f g h j k l '"),
+            Row("Shift:2 z x c v b n m , . - Erase:2"),
+            Row("Next:2 Space:5 Done:2"),
+        });
+
+        /// <summary>The symbols beside <see cref="Search"/>, with the same erase, space and done, and its key back to the letters.</summary>
+        public static KeyboardLayout Symbols { get; } = new("Symbols", new[]
+        {
+            Row("! @ # $ % & * ( ) ?"),
+            Row("+ = / : ; \" < > _ ~"),
+            Row("[ ] { } | ^ ` € £ ¥"),
+            Row("Shift:2 , . - ' Erase:2"),
+            Row("Next:2 Space:5 Done:2"),
+        });
+
         /// <summary>Makes a layout from rows of keys.</summary>
         /// <param name="name">What the layout is called, which is what the key that switches to it says.</param>
         /// <param name="rows">Each row's keys, left to right, with the width each takes in key units.</param>

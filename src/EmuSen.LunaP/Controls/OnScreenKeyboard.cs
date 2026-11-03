@@ -12,6 +12,7 @@ using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using EmuSen.LunaP.Theme;
 
 namespace EmuSen.LunaP.Controls
 {
@@ -102,6 +103,22 @@ namespace EmuSen.LunaP.Controls
         /// <summary>Whether the keyboard is drawn as a big-screen menu's text popup: a titled, rounded panel in the middle of the window, the text on a dark bar, and the keys as tiles in the menu's typeface, sized by the inherited menu scale. Set it before the keyboard is shown; false by default.</summary>
         public bool MenuLook { get; init; }
 
+        /// <summary>Whether the keyboard is docked: a band of keys the host places in its own screen, under a field the host draws, rather than a panel over the window. Set by CreateDocked.</summary>
+        public bool Docked { get; private init; }
+
+        /// <summary>Whether the highlighted key is drawn ringed; a docked keyboard the focus has left draws none. True by default.</summary>
+        public bool ShowsCurrentKey
+        {
+            get => _showsCurrent;
+            set
+            {
+                _showsCurrent = value;
+                Refresh();
+            }
+        }
+
+        private bool _showsCurrent = true, _dockOpen;
+
         /// <summary>The popup's title in the menu look, such as "Enter Name", drawn in upper case; null for none. Ignored otherwise.</summary>
         public string? Title { get; init; }
 
@@ -158,8 +175,8 @@ namespace EmuSen.LunaP.Controls
             return tile;
         });
 
-        /// <summary>Whether the keyboard is on screen.</summary>
-        public bool IsOpen => _host is not null;
+        /// <summary>Whether the keyboard is on screen, or docked and not yet finished.</summary>
+        public bool IsOpen => _host is not null || _dockOpen;
 
         /// <summary>Completes when the keyboard closes: true for Done, false when it was cancelled and the text put back.</summary>
         public Task<bool> Closed => _done.Task;
@@ -190,6 +207,52 @@ namespace EmuSen.LunaP.Controls
             keyboard.Open();
             return keyboard;
         }
+
+        /// <summary>Makes a docked keyboard for a text box: a band of keys 72 by 48 units, 8 apart, on the raised surface with the highlighted key ringed in the accent, for the host to place at the foot of its screen. It types until Finish or Cancel.</summary>
+        /// <param name="target">The text box to type into; the host draws it as the field.</param>
+        /// <param name="layouts">The layouts, the first shown first.</param>
+        /// <returns>The keyboard, open and not yet placed. Await <see cref="Closed"/> for how it ended; it removes itself from its parent when it closes.</returns>
+        public static OnScreenKeyboard CreateDocked(TextBox target, IReadOnlyList<KeyboardLayout> layouts)
+        {
+            var keyboard = new OnScreenKeyboard(target, layouts) { Docked = true };
+            keyboard.ApplyDockedLook();
+            return keyboard;
+        }
+
+        // The docked band's design sizes, in the units of the screen it sits in - see docs/LunaP.md §212.6.
+        private const double DockKey = 72, DockKeyHeight = 48, DockGap = 8, DockPad = 16;
+
+        private void ApplyDockedLook()
+        {
+            _dockOpen = true;
+            _keySize = DockKey;
+            _keyHeight = DockKeyHeight;
+            _gap = DockGap;
+            _rows.Spacing = DockGap;
+            _rows.VerticalAlignment = VerticalAlignment.Top;
+            HorizontalAlignment = HorizontalAlignment.Stretch;
+            VerticalAlignment = VerticalAlignment.Top;
+            CornerRadius = default;
+            Padding = new Thickness(0, DockPad);
+            BorderThickness = new Thickness(0, 1, 0, 0);
+            FocusAdorner = null;
+            (Child as DockPanel)?.Children.Clear();
+            Child = _rows;
+            Build();
+        }
+
+        // A key of the docked band: its words in Barlow on the raised surface, ringed in the accent when highlighted.
+        private static FuncControlTemplate<Button> DockedTemplate() => new((b, _) =>
+        {
+            var text = new TextBlock { FontFamily = Media.LunaFonts.Body, FontSize = LunaTokens.BigScreenType.Body, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            text.Bind(TextBlock.TextProperty, b.GetObservable(ContentControl.ContentProperty, c => c as string));
+            text.Bind(TextBlock.ForegroundProperty, b.GetObservable(TemplatedControl.ForegroundProperty));
+            var tile = new Border { Child = text, CornerRadius = new CornerRadius(4) };
+            tile.Bind(Border.BackgroundProperty, b.GetObservable(TemplatedControl.BackgroundProperty));
+            tile.Bind(Border.BorderBrushProperty, b.GetObservable(TemplatedControl.BorderBrushProperty));
+            tile.Bind(Border.BorderThicknessProperty, b.GetObservable(TemplatedControl.BorderThicknessProperty));
+            return tile;
+        });
 
         /// <summary>The keyboard open over the window holding a visual, or null when there is none.</summary>
         /// <param name="visual">Any visual in the window, or the window itself.</param>
@@ -231,13 +294,14 @@ namespace EmuSen.LunaP.Controls
                     {
                         Focusable = false,
                         Width = width * _keySize + (width - 1) * _gap,
-                        Height = MenuLook ? _keyHeight : _keySize,
+                        Height = MenuLook || Docked ? _keyHeight : _keySize,
                         FontSize = 18,
                         HorizontalContentAlignment = HorizontalAlignment.Center,
                         VerticalContentAlignment = VerticalAlignment.Center,
                         Tag = key,
                     };
                     if (MenuLook) button.Template = TileTemplate();
+                    else if (Docked) button.Template = DockedTemplate();
                     string captured = key;
                     button.Click += (_, _) => Type(captured);
                     buttons.Add(button);
@@ -261,8 +325,19 @@ namespace EmuSen.LunaP.Controls
                 {
                     Button button = _keys[r][c];
                     string key = (string)button.Tag!;
-                    button.Content = key == KeyboardLayout.Next ? _layouts[(_layout + 1) % _layouts.Count].Name : Shifted && key.Length == 1 ? key.ToUpperInvariant() : key;
+                    button.Content = key == KeyboardLayout.Next ? _layouts[(_layout + 1) % _layouts.Count].Name : Docked && key == KeyboardLayout.Erase ? "⌫" : Shifted && key.Length == 1 ? key.ToUpperInvariant() : key;
                     bool current = r == _row && c == _column;
+                    if (Docked)
+                    {
+                        bool ringed = current && _showsCurrent;
+                        button[!BackgroundProperty] = new DynamicResourceExtension("LunaSurfaceRaised");
+                        button[!TemplatedControl.ForegroundProperty] = new DynamicResourceExtension(ringed ? "LunaTextStrong" : "LunaText");
+                        if (ringed) button[!TemplatedControl.BorderBrushProperty] = new DynamicResourceExtension("LunaAccent");
+                        else button.BorderBrush = Brushes.Transparent;
+                        button.BorderThickness = new Thickness(2);
+                        button.Classes.Set("luna-key-current", current);
+                        continue;
+                    }
                     button.Classes.Set("luna-key-current", current);
                     if (MenuLook)
                     {
@@ -386,6 +461,17 @@ namespace EmuSen.LunaP.Controls
 
         private void Close(bool kept)
         {
+            if (_dockOpen)
+            {
+                _dockOpen = false;
+                switch (Parent)
+                {
+                    case Panel panel: panel.Children.Remove(this); break;
+                    case Decorator decorator: decorator.Child = null; break;
+                }
+                _done.TrySetResult(kept);
+                return;
+            }
             if (_host is null) return;
             (_host.Parent as Panel)?.Children.Remove(_host);
             _host.Children.Remove(this);

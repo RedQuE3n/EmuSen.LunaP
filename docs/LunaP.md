@@ -14860,3 +14860,97 @@ keyboard stepping past every band, the band following a recycled container, the 
 headings in both forms); `TableGroupTests`' whole-rows case (a table chosen far down at five places never draws a cut
 row; it fails with `WholeRows` doing nothing); `AdaptiveLayoutTests`' help bar case now reads the main action last. Seeded on 2026-11-02 and
 caught: a heading drawn over a single group (`TableGroupTests`), and the rows inset again (`ManagerLayoutTests`).
+
+## 212. A hub and a gallery: `HubLayout`, `GalleryLayout`, `CoverCard`, and the docked keyboard (2026-11-03)
+
+### 212.1 The gap
+
+The consumer's unified interface (its `EmuSen_Interface.md` §4, screens 1 and 2, decided 2026-11-01) gives its own look two
+screens no canonical layout drew: a hub, with the way back to what was left in front, a shelf of covers on one baseline
+and a row of places each with one live line; and a gallery, a grid of covers under a strip of sections with the focused
+item's name and facts under it, whose search docks a keyboard at the foot of the screen rather than over it. Neither is
+`AdaptiveLayout`'s arrangement nor `PageLayout`'s, and the rule that a screen needing a new arrangement gets a canonical
+layout rather than hand placement (§209.1) puts both here, general to any library: games, themes, music.
+
+### 212.2 `CoverCard` and `CoverItem`
+
+`CoverItem` is one item as a cover: its key, title, picture, box shape (`Aspect`, width over height), a short `Mark`, a
+favourite, a line of `Facts` a screen shows for the focused item, a desktop `Status` line and the `Art` a hub draws behind
+itself. `CoverCard` draws it in a cell: the cover fitted to its shape and standing on the cell's foot, never stretched,
+radius 8 on the big screen and 6 on the desktop; with no picture, a generated card on the raised surface, the mark in a
+ringed badge (48 units, 40 in a box under 150 high, at Caption in Barlow Condensed so it stays legible) over the title in
+Barlow Condensed at Title, shrunk with the box to no less than 18 units; a favourite's filled heart in the accent at the
+cell's top right. Focused, it takes the ring of §206 (3 units, 4 outside, the radius matching), the focus scale 1.06 and
+the shadow on the big screen, the 2-pixel ring on the desktop.
+
+### 212.3 `HubLayout` on the big screen
+
+Declared as data: `Continue` (`HubContinue`: title, facts, picture, caption, the desktop's button, a `Video` for the poster
+slot), `SetShelf` (`CoverItem`s), `SetPlaces` (`HubPlace`: key, label, status, `NeedsAttention`), `Status`, the words
+`Title`, `RecentTitle` and `PlacesTitle`, `ShowsArt`, `HintsFor` (a delegate from `HubFocus` to `PageHint`s), and
+`PictureOf` and `ArtOf`, so a long shelf decodes only the covers it draws. Presses come back as `ContinueChosen`,
+`TileChosen`, `PlaceChosen` and `HintInvoked`. In units of 1280 × 800 scaled by `MenuPanel.Scale`: the status line at the
+top right of the safe area at 40; Continue's picture at 64,84, 373 × 280, in a `PosterSlot` without the hero scrim, with
+`CONTINUE PLAYING` in Caption Muted at 461,112, the name in Display medium at 136 on two lines, shrunk to 32 before it is
+cut (`TitleFloor`), and the facts in Body Muted at 252; `RECENT` over the shelf at 416, cells of 120 × 160 stepping 144,
+whole covers only (eight across 1280 units, nine across a 16:9 screen's 1422), the window moving a cover at a time; the
+focused cover's name in Body under the shelf; the places at 622, 64 high, 17 apart, sharing the safe area's width (150 at
+1280), each its label in Caption TextStrong over its line in Caption Muted, a line needing the person in Attention after
+`⚠`, cut with an ellipsis where it is long (named `HubPlaceStatus`, which a fit audit allows); the help band of §211.4 at
+702. Behind everything the focused cover's art at 40 per cent, blurred 40, under a gradient from the scrim to the surface.
+With nothing left, the top shows the focused cover's art, name and facts, and nothing focuses it.
+
+### 212.4 `HubLayout` on the desktop
+
+In the content area, scrolling with the look's edge fade: a header 48 high of the title in Barlow Condensed at 20 upper case
+and the status in Caption Muted; the Continue card, the content's width by 180 on the raised surface, the picture 240 wide,
+the caption, the name in Display 24, the facts, and the button filled with the accent; `RECENT` and cells of 100 × 133
+stepping 116 with the name in Body and the line in Caption under each, cut at the cover's width as a desktop grid's are
+(`HubCoverLine`); `PLACES` four across, 64 high, 16 apart. A click focuses, a double click or Enter chooses.
+
+### 212.5 The pad, on both forms
+
+The focus starts on Continue, else the first cover, else the first place (`FocusStart`). Up and Down step the rows, a
+row below or above taking the item nearest the one left; Left and Right step the shelf or the places; A chooses; a button
+the hints give a key raises `HintInvoked`; anything else is declined, for the host.
+
+### 212.6 `GalleryLayout`
+
+The big screen's gallery, in the same units: the strip of sections at 64,40 with the frame's look (`StyleStrip`,
+`WholeRow`) and `Count` at its right in Caption Muted; cells of 180 × 240, 24 apart, as many across as fit (five at 1280,
+six at 1422) and centred, two whole rows at 108, the window moving a row at a time; the focused item's name in Title
+Condensed at 628 and its facts in Body Muted at 670; the help band at 702. `SetSections`, `SelectSection`, `StepSection`,
+`SetItems`, `FocusOn`, `HintsFor` (from `GalleryFocus`) and `PictureOf` as the hub has them; `SectionChosen`,
+`ItemChosen`, `HintInvoked`, `SearchChanged` and `SearchClosed` come back. The shoulders step the sections.
+
+`OpenSearch(text, layouts)` shows the search field at 64,100, 1152 × 44 on InputSurface with the text in TextStrong, one
+row of covers at 156, and docks the keyboard at 398 to the help band. While it is docked the shoulders move the focus
+between the keys and the grid, so a result is played without closing it; on the keys A types, Y types a space, X finishes
+(`CloseSearch`, keeping the text) and B erases, closing the keyboard when nothing is left to erase.
+
+### 212.7 The docked keyboard
+
+`OnScreenKeyboard.CreateDocked(target, layouts)` gives a keyboard the host places in its own screen rather than over the
+window: keys of 72 × 48 units, 8 apart, on the raised surface in Barlow at Body, the highlighted key ringed 2 units in the
+accent (`ShowsCurrentKey` false draws no ring, for when the focus has left it), no preview or hint of its own since the
+host draws the field and the help bar; it removes itself from its parent when it closes. `KeyboardLayout.Search` and
+`KeyboardLayout.Symbols` are the design's rows: the digits, the three rows of letters with shift and erase, then the
+symbols' key, a space of five units and Done.
+
+### 212.8 A source list's group without a heading
+
+A `SourceListGroup` whose header is empty draws no heading, so a list may begin with a row above its first group, as a
+hub's `Home` stands above `LIBRARY` in the consumer's sidebar.
+
+### 212.9 Tests and seeded faults
+
+`HubLayoutTests`, 21 cases: the hub at 1280 × 800, 1920 × 1200, 1920 × 1080 and 1280 × 720 with Continue, the shelf, the
+places and the help band where §212.3 puts them, whole covers counted (eight or nine), and the fit audit; the desktop at
+1080 × 772 and 1720 × 1148 under the audit; the pad's walk from Continue down the shelf to the places and back, the window
+moving a cover at a time; the top showing the focused cover when nothing was left; the help bar generated from the focus; a
+place's attention colour and its cut line; the gallery's columns, rows and centring at the four sizes under the audit; a
+cover and a row at a time with the rows moving whole; search docking the keyboard under one row at the four sizes; the docked
+keyboard typing, a space, moving to the grid and back, and closing on B with nothing left; X finishing with the text kept.
+Seeded on 2026-11-03 and caught (each reverted after its run): the shelf's window not moving with the focus (the pad walk's
+case); B on the docked keyboard closing at once instead of erasing (the keyboard case); the gallery's columns not counted
+from the width (the gallery cases at 16:9).

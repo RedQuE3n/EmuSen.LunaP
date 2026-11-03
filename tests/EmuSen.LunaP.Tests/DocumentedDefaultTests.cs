@@ -175,6 +175,12 @@ namespace EmuSen.LunaP.Tests
         // A claim the sweep finds and this file does not check, with the reason it cannot be.
         private static readonly Dictionary<string, string> Exempt = new()
         {
+            ["P:EmuSen.LunaP.Controls.HubLayout.ShowsArt"] =
+                "drawn rather than read: HubLayoutTests pictures the hub with its art behind it, and the consumer's switch for background art reaches it "
+                + "through the host.",
+            ["P:EmuSen.LunaP.Controls.OnScreenKeyboard.ShowsCurrentKey"] =
+                "drawn rather than read: HubLayoutTests' docked keyboard rings its key while it has the focus and draws none once the "
+                + "shoulders move the focus to the grid.",
             ["P:EmuSen.LunaP.Controls.ManagerLayout`1.PlanTitle"] =
                 "a delegate, null by default, whose effect is the plan's question Apply these changes?: ToolFrameTests reads it "
                 + "on the plan's question.",
