@@ -308,6 +308,47 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // Marking a row by the pad keeps the focus on that row, for every tool on the frame (docs/LunaP.md §211.6).
+        [Theory]
+        [InlineData(AdaptiveForm.BigScreen)]
+        [InlineData(AdaptiveForm.Desktop)]
+        public Task Marking_a_row_keeps_the_focus_on_it(AdaptiveForm form) => UiTest.Run(() =>
+        {
+            ManagerLayout<Row> m = Cores(form);
+            Window window = Host(m);
+            LunaTable<Row> table = form == AdaptiveForm.BigScreen ? m.BigScreenTable : m.Table;
+            table.Select(CoreRows[1]);
+            UiTest.Settle(m);
+            Assert.True(m.FocusRole(AdaptiveRole.Content));
+            UiTest.Settle(m);
+            object? Focused() => (TopLevel.GetTopLevel(m)?.FocusManager?.GetFocusedElement() as Control)?.GetSelfAndVisualAncestors().OfType<ListBoxItem>().FirstOrDefault()?.DataContext;
+            Assert.Same(CoreRows[1], Focused());
+            if (form == AdaptiveForm.BigScreen) Assert.True(m.Press(PadGlyphButton.West));
+            else m.Mark.Invoke();
+            UiTest.Settle(m);
+            Assert.Equal("install", m.MarkOf(CoreRows[1])?.Key);
+            Assert.Same(CoreRows[1], Focused());
+            window.Close();
+        });
+
+        // A plan switch says in a sentence what it does, under its name (docs/LunaP.md §211.7).
+        [Theory]
+        [InlineData(AdaptiveForm.BigScreen)]
+        [InlineData(AdaptiveForm.Desktop)]
+        public Task Every_plan_switch_says_what_it_does(AdaptiveForm form) => UiTest.Run(() =>
+        {
+            ManagerLayout<Row> m = Cores(form);
+            m.SetPlanOptions([new LunaAction("Videos", _ => { }) { IsCheckable = true, HelpText = "Also fetches each game's video." }]);
+            Window window = Host(m);
+            Assert.True(m.SetMark(CoreRows[1], "install"));
+            Assert.True(m.OpenPlan());
+            UiTest.Settle(m);
+            Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Classes.Contains(ManagerLayout<Row>.PlanOptionSentenceClass) && t.Text == "Also fetches each game's video." && t.IsEffectivelyVisible);
+            // Its name is drawn too: on the big screen a switch's template draws none of its own.
+            Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Videos" && t.IsEffectivelyVisible);
+            window.Close();
+        });
+
         // The big screen's list and bar held to the design's mockups - see docs/LunaP.md §211.2.
         [Fact]
         public Task The_big_screen_list_has_no_header_box_full_width_rows_and_Apply_beside_the_meter() => UiTest.Run(() =>

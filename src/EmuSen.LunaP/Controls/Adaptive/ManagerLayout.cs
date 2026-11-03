@@ -10,6 +10,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using EmuSen.LunaP.Commands;
 using EmuSen.LunaP.Theme;
 
@@ -145,6 +146,12 @@ namespace EmuSen.LunaP.Controls
             SearchChanged += _ => Show();
             SetToolActions(Array.Empty<LunaAction>());
         }
+
+        /// <summary>The style class on a plan option's name, drawn at its row's left on the big screen.</summary>
+        public const string PlanOptionNameClass = "manager-plan-option-name";
+
+        /// <summary>The style class on the sentence under a plan option, saying what it does.</summary>
+        public const string PlanOptionSentenceClass = "manager-plan-option-sentence";
 
         /// <summary>The style class on the Apply summary sheet.</summary>
         public const string PlanClass = "manager-plan";
@@ -542,19 +549,34 @@ namespace EmuSen.LunaP.Controls
             bool big = Form != AdaptiveForm.Desktop;
             foreach (LunaAction option in _planOptionList.Where(o => o.IsCheckable))
             {
+                Control toggle;
                 if (big)
                 {
-                    var row = new ToggleSwitch { IsChecked = option.IsChecked, HorizontalAlignment = HorizontalAlignment.Stretch };
+                    // The option's name at the row's left and its switch at the right, as the plan's mockup draws a row; the name was drawn by no template (§211.7).
+                    var row = new ToggleSwitch { IsChecked = option.IsChecked, HorizontalAlignment = HorizontalAlignment.Right };
                     MenuRows.SetLabel(row, option.Text);
+                    AutomationProperties.SetName(row, option.Text);
                     row.IsCheckedChanged += (_, _) => option.IsChecked = row.IsChecked == true;
-                    _planOptions.Children.Add(row);
+                    var name = new TextBlock { Text = option.Text, VerticalAlignment = VerticalAlignment.Center, FontFamily = Media.LunaFonts.Body, FontSize = LunaTokens.BigScreenType.Row, Classes = { PlanOptionNameClass } };
+                    DockPanel.SetDock(row, Dock.Right);
+                    _planOptions.Children.Add(new DockPanel { LastChildFill = true, MinHeight = 54, Children = { row, name } });
+                    toggle = row;
                 }
                 else
                 {
                     var box = new CheckBox { Content = option.Text, IsChecked = option.IsChecked };
                     AutomationProperties.SetName(box, option.Text);
                     box.IsCheckedChanged += (_, _) => option.IsChecked = box.IsChecked == true;
-                    _planOptions.Children.Add(box);
+                    toggle = box;
+                }
+                if (!big) _planOptions.Children.Add(toggle);
+                // Every switch says in a sentence what it does, under its name and to a screen reader (§211.7).
+                if (option.HelpText is { Length: > 0 } said)
+                {
+                    AutomationProperties.SetHelpText(toggle, said);
+                    var words = new TextBlock { Text = said, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(big ? 24 : 24, 0, 0, big ? 8 : 4), FontSize = LunaTokens.Type(big ? LunaForm.BigScreen : LunaForm.Desktop).Caption, Classes = { PlanOptionSentenceClass } };
+                    words.Bind(TextBlock.ForegroundProperty, words.GetResourceObservable("LunaMuted"));
+                    _planOptions.Children.Add(words);
                 }
             }
             _planOptions.IsVisible = IsPlanOpen && _asking is null && _planOptions.Children.Count > 0;
@@ -804,9 +826,20 @@ namespace EmuSen.LunaP.Controls
             Apply.PadButton = _running ? null : PadGlyphButton.Start;
             More.PadButton = _running || _pageFor is null ? null : PadGlyphButton.West;
             RefreshHints();
+            // The rows are drawn again for their marks, which builds their containers afresh; the focus that was on a row goes back to it (§211.6).
+            bool onRow = CurrentTable.IsKeyboardFocusWithin;
             _desktopTable.Refresh(_desktopTable.Models.ToList());
             _bigTable.Refresh(_bigTable.Models.ToList());
+            if (onRow && !FocusChosenRow()) Avalonia.Threading.Dispatcher.UIThread.Post(() => FocusChosenRow(), Avalonia.Threading.DispatcherPriority.Loaded);
             MarksChanged?.Invoke();
+        }
+
+        // The chosen row's own container given the focus, once the table has laid it out.
+        private bool FocusChosenRow()
+        {
+            LunaTable<T> table = CurrentTable;
+            table.UpdateLayout();
+            return table.GetVisualDescendants().OfType<ListBoxItem>().FirstOrDefault(i => i.IsSelected && i.IsEffectivelyVisible) is { } row && row.Focus(Avalonia.Input.NavigationMethod.Directional);
         }
 
         private void ShowSummary(IReadOnlyList<ManagerMarked<T>> marked) =>

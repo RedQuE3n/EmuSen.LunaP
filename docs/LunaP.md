@@ -14837,6 +14837,23 @@ still cuts at its foot is left undrawn (the presenter's clip,
 (`Ask(…, smallPrint)`) is drawn in Muted Caption under its sentences, as the approval's mockup draws the tested line
 and the hash.
 
+### 211.6 Marking keeps the focus on the row
+
+Found 2026-11-02 by the tester on the handheld: after marking a game in the Scraper the highlight moved to the search
+box. A mark redraws the rows (the mark's word is a cell), and the redraw builds the rows' containers afresh, so the
+focused container went and the focus fell to the next control. The frame now gives the focus back to the chosen
+row's new container whenever the focus was on the list, for every tool. `ManagerLayoutTests`
+`Marking_a_row_keeps_the_focus_on_it` marks by the pad's X on the big screen and by Mark on the desktop; it failed
+before the change in both forms.
+
+### 211.7 Every plan switch says what it does
+
+The plan's checkable options were drawn by their names alone, so the tester could not tell what the Scraper's three
+did. On the big screen the rows did not even show their names: `MenuRows.SetLabel` is drawn only by the menus'
+template, and a plan's switch has the toggle's own, so each row read `Off`. Each row now draws the option's name at its
+left and the switch at its right, and each option's `HelpText` is a sentence under it, in Muted Caption, and its
+accessible help text.
+
 Tests: `TableGroupTests` (the band on a group's first row only, none with one group, none for a null group, the
 keyboard stepping past every band, the band following a recycled container, the spoken name) and
 `ManagerLayoutTests`' big-screen cases (no header box, rows full width, Apply drawn on the big screen, the hint order, the
