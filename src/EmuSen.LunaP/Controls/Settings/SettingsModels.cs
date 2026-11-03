@@ -1,3 +1,5 @@
+using System;
+using Avalonia.Controls;
 using System.Collections.Generic;
 using Avalonia.Media;
 
@@ -52,4 +54,20 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The picture over the lines; null for none.</summary>
         public SettingsPreview? Preview { get; init; }
     }
+
+    /// <summary>A page of content in place of a settings screen's rows: the host's control, what it has focused, an optional strip of tabs over it and a sentence under it - see docs/LunaP.md §213.7.</summary>
+    /// <param name="Focus">The key of what the content has focused, asked of the pane and the help bar as a row's key is.</param>
+    /// <param name="Body">The host's control, drawn in the box the layout gives it.</param>
+    public sealed record SettingsContent(string Focus, Control Body)
+    {
+        /// <summary>The words of a strip over the body; empty for none.</summary>
+        public IReadOnlyList<string> Tabs { get; init; } = Array.Empty<string>();
+
+        /// <summary>The tab marked chosen.</summary>
+        public int Chosen { get; init; }
+
+        /// <summary>A sentence under the body; null for none.</summary>
+        public string? Caption { get; init; }
+    }
+
 }

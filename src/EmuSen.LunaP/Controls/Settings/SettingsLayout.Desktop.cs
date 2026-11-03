@@ -72,19 +72,25 @@ namespace EmuSen.LunaP.Controls
             var rows = new StackPanel { Name = "SettingsRows" };
             AutomationProperties.SetName(rows, _trail.LastOrDefault() ?? _sections.FirstOrDefault(s => s.Key == _selected)?.Label ?? "Settings");
             foreach (PageRow row in _rows) rows.Children.Add(DeskRow(row));
-            var scroller = new ScrollViewer { Content = rows, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
-            MenuLook.SetFadesEdges(scroller, true);
+            Control scroller;
+            if (_content is { } content) scroller = DeskContent(content);
+            else
+            {
+                var scrolled = new ScrollViewer { Content = rows, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+                MenuLook.SetFadesEdges(scrolled, true);
+                scroller = scrolled;
+            }
 
             var body = new DockPanel { LastChildFill = true, Margin = new Thickness(DesktopGutter, 8, DesktopGutter, DesktopGutter) };
             DockPanel.SetDock(header, Dock.Top);
             body.Children.Add(header);
-            SettingsPane? said = _focusKey is null ? null : PaneFor?.Invoke(_focusKey);
-            if (said?.Preview is not null)
+            SettingsPane? said = PaneKey is not { } paneKey ? null : PaneFor?.Invoke(paneKey);
+            if (said is not null && (said.Preview is not null || _content is not null))
             {
                 var pane = new Border { Name = "SettingsPane", Width = DesktopPaneWidth, CornerRadius = new CornerRadius(6), Padding = new Thickness(16), Margin = new Thickness(16, 8, 0, 0), VerticalAlignment = VerticalAlignment.Top };
                 pane[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaSurfaceRaised");
                 var stack = new StackPanel { Spacing = 8 };
-                stack.Children.Add(Preview(said.Preview, DesktopPaneWidth - 32, (DesktopPaneWidth - 32) * 0.66, DeskType));
+                if (said.Preview is { } preview) stack.Children.Add(Preview(preview, DesktopPaneWidth - 32, (DesktopPaneWidth - 32) * 0.66, DeskType));
                 foreach (SettingsLine line in said.Lines) stack.Children.Add(Line(line, DeskType.Body));
                 pane.Child = stack;
                 DockPanel.SetDock(pane, Dock.Right);
@@ -100,6 +106,31 @@ namespace EmuSen.LunaP.Controls
             _root.Children.Clear();
             _root.Children.Add(whole);
             _filling = false;
+        }
+
+        // A page of content on the desktop: the card in the rows' column, its tabs over the body and the caption under it (§213.7).
+        private Control DeskContent(SettingsContent content)
+        {
+            var dock = new DockPanel { LastChildFill = true };
+            if (content.Tabs.Count > 0)
+            {
+                WholeRow tabs = ContentTabs(content, 32);
+                DockPanel.SetDock(tabs, Dock.Top);
+                dock.Children.Add(tabs);
+            }
+            if (content.Caption is { Length: > 0 } caption)
+            {
+                var under = new TextBlock { Name = "SettingsContentCaption", Text = caption, FontSize = DeskType.Caption, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) };
+                under[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("LunaMuted");
+                DockPanel.SetDock(under, Dock.Bottom);
+                dock.Children.Add(under);
+            }
+            Detach(content.Body);
+            dock.Children.Add(new Border { Name = "SettingsContentBody", CornerRadius = new CornerRadius(6), ClipToBounds = true, Child = content.Body, Margin = new Thickness(0, 8, 0, 0) });
+            var card = new Border { Name = "SettingsContent", CornerRadius = new CornerRadius(6), Padding = new Thickness(16), Margin = new Thickness(0, 8, 0, 0), Child = dock };
+            card[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaSurfaceRaised");
+            AutomationProperties.SetName(card, _trail.LastOrDefault() ?? "Settings");
+            return card;
         }
 
         // One row: the label over its sentence, the control at the right; a click focuses it and a double click or Enter chooses it.

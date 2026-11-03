@@ -2387,12 +2387,28 @@ public class EmuSen.LunaP.Controls.SectionHeader : Avalonia.Controls.TextBlock
     public SectionHeader()
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = None
 
+public sealed class EmuSen.LunaP.Controls.SettingsContent : System.IEquatable<EmuSen.LunaP.Controls.SettingsContent>
+    public Avalonia.Controls.Control Body { get; init; }
+    public SettingsContent(string Focus, Avalonia.Controls.Control Body)
+    public System.Collections.Generic.IReadOnlyList<string> Tabs { get; init; }
+    public bool Equals(EmuSen.LunaP.Controls.SettingsContent? other)
+    public int Chosen { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.SettingsContent? left, EmuSen.LunaP.Controls.SettingsContent? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.SettingsContent? left, EmuSen.LunaP.Controls.SettingsContent? right)
+    public string Focus { get; init; }
+    public string? Caption { get; init; }
+    public void Deconstruct(out string Focus, out Avalonia.Controls.Control Body)
+
 public class EmuSen.LunaP.Controls.SettingsLayout : Avalonia.Controls.Border
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     protected override void OnSizeChanged(Avalonia.Controls.SizeChangedEventArgs e)
     public EmuSen.LunaP.Controls.AdaptiveForm Form { get; set; }
     public EmuSen.LunaP.Controls.PadFamily PadFamily { get; set; }
+    public EmuSen.LunaP.Controls.SettingsContent? Content { get; }
     public SettingsLayout()
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.AdaptiveSection> Sections { get; }
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry> Hints { get; }
@@ -2406,6 +2422,9 @@ public class EmuSen.LunaP.Controls.SettingsLayout : Avalonia.Controls.Border
     public bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
     public bool SelectSection(string key)
     public bool StepSection(int by)
+    public const double ContentBodyHeight = 380
+    public const double ContentCaptionGap = 12
+    public const double ContentTabsHeight = 44
     public const double ContentTop = 108
     public const double DesignHeight = 800
     public const double DesktopGutter = 24
@@ -2428,6 +2447,8 @@ public class EmuSen.LunaP.Controls.SettingsLayout : Avalonia.Controls.Border
     public const double VariantHeight = 160
     public const double VariantWidth = 176
     public event System.Action BackRequested
+    public event System.Action<int, int> ContentMoved
+    public event System.Action<int> ContentTabChosen
     public event System.Action<string, int> RowStepped
     public event System.Action<string> FocusChanged
     public event System.Action<string> HintInvoked
@@ -2440,6 +2461,7 @@ public class EmuSen.LunaP.Controls.SettingsLayout : Avalonia.Controls.Border
     public string? Focused { get; }
     public string? SelectedSection { get; }
     public void Refresh()
+    public void SetContent(EmuSen.LunaP.Controls.SettingsContent? content)
     public void SetRows(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.PageRow> rows, string? focus = null)
     public void SetSections(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.AdaptiveSection> sections, string? selected = null)
     public void SetTrail(System.Collections.Generic.IEnumerable<string> titles)

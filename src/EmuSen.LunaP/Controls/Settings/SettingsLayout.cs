@@ -58,6 +58,10 @@ namespace EmuSen.LunaP.Controls
         private double _unitsWide = 1280;
         private Func<string, SettingsPane?>? _paneFor;
         private Func<string?, IReadOnlyList<PageHint>>? _hintsFor;
+        private SettingsContent? _content;
+
+        // What the pane and the help bar are asked about: the content's focus while content is shown, else the focused row.
+        private string? PaneKey => _content?.Focus ?? _focusKey;
 
         /// <summary>An empty settings screen.</summary>
         public SettingsLayout()
@@ -116,6 +120,23 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>Raised when a pad button the hints give a key to is pressed, with that key.</summary>
         public event Action<string>? HintInvoked;
+
+        /// <summary>Raised by Up, Down, Left and Right while a page of content is shown, for the host to move the focus within its body.</summary>
+        public event Action<int, int>? ContentMoved;
+
+        /// <summary>Raised by a click on a tab of the page of content, with its index.</summary>
+        public event Action<int>? ContentTabChosen;
+
+        /// <summary>The page of content shown in place of the rows; null while the rows are shown.</summary>
+        public SettingsContent? Content => _content;
+
+        /// <summary>Gives the layout a page of content in place of its rows, or null to give the rows back - see docs/LunaP.md §213.7.</summary>
+        /// <param name="content">The content, or null.</param>
+        public void SetContent(SettingsContent? content)
+        {
+            _content = content;
+            Fill();
+        }
 
         /// <summary>Raised when the focus moves to another row.</summary>
         public event Action<string?>? FocusChanged;
@@ -198,6 +219,12 @@ namespace EmuSen.LunaP.Controls
         /// <returns>Whether anything moved or stepped.</returns>
         public bool Move(int dx, int dy)
         {
+            if (_content is not null)
+            {
+                if (dx == 0 && dy == 0) return false;
+                ContentMoved?.Invoke(Math.Sign(dx), Math.Sign(dy));
+                return true;
+            }
             if (_rows.Count == 0) return false;
             int at = Math.Max(0, _rows.ToList().FindIndex(r => r.Key == _focusKey));
             if (dx != 0)
@@ -220,6 +247,11 @@ namespace EmuSen.LunaP.Controls
         public bool Press(PadGlyphButton button)
         {
             if (button is PadGlyphButton.LeftShoulder or PadGlyphButton.RightShoulder && _trail.Count == 0) return StepSection(button == PadGlyphButton.LeftShoulder ? -1 : 1);
+            if (button == PadGlyphButton.South && _content is { } content)
+            {
+                RowChosen?.Invoke(content.Focus);
+                return true;
+            }
             if (button == PadGlyphButton.South && _rows.FirstOrDefault(r => r.Key == _focusKey) is { } row)
             {
                 if (row.IsEnabled) RowChosen?.Invoke(row.Key);
@@ -233,7 +265,7 @@ namespace EmuSen.LunaP.Controls
             return false;
         }
 
-        private IReadOnlyList<PageHint> CurrentHints() => HintsFor?.Invoke(_focusKey) ?? Array.Empty<PageHint>();
+        private IReadOnlyList<PageHint> CurrentHints() => HintsFor?.Invoke(PaneKey) ?? Array.Empty<PageHint>();
 
         private void RefreshHints()
         {
@@ -294,7 +326,8 @@ namespace EmuSen.LunaP.Controls
             var surface = new Panel { Width = _unitsWide, Height = DesignHeight, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
             surface[!Panel.BackgroundProperty] = new DynamicResourceExtension("LunaSurface");
             FillStrip(surface);
-            FillRows(surface);
+            if (_content is { } content) FillContent(surface, content);
+            else FillRows(surface);
             FillPane(surface);
             surface.Children.Add(HelpBand.Make(_hintBar, "SettingsHelpBar"));
             var scaled = new LayoutTransformControl { Child = surface, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
@@ -359,13 +392,63 @@ namespace EmuSen.LunaP.Controls
             surface.Children.Add(stack);
         }
 
+        /// <summary>The card a page of content is drawn in at 1280 × 800: its tabs' strip, the body's height and the gap to the caption.</summary>
+        public const double ContentTabsHeight = 44, ContentBodyHeight = 380, ContentCaptionGap = 12;
+
+        // A page of content: one card in the rows' box, its tabs, the host's body and the caption under it (§213.7).
+        private void FillContent(Panel surface, SettingsContent content)
+        {
+            var stack = new StackPanel { Spacing = 0 };
+            if (content.Tabs.Count > 0) stack.Children.Add(ContentTabs(content, ContentTabsHeight));
+            Detach(content.Body);
+            var body = new Border { Name = "SettingsContentBody", Height = ContentBodyHeight, CornerRadius = new CornerRadius(8), ClipToBounds = true, Child = content.Body };
+            stack.Children.Add(body);
+            if (content.Caption is { Length: > 0 } caption)
+            {
+                var under = new TextBlock { Name = "SettingsContentCaption", Text = caption, FontFamily = LunaFonts.Body, FontSize = Type.Body, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, ContentCaptionGap, 0, 0) };
+                under[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("LunaMuted");
+                stack.Children.Add(under);
+            }
+            var card = new Border { Name = "SettingsContent", Width = Math.Max(0, PaneLeft - PaneGap - Side), Height = PaneHeight, Margin = new Thickness(Side, ContentTop, 0, 0), CornerRadius = new CornerRadius(8), Padding = new Thickness(PaneInset), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, ClipToBounds = true, Child = stack };
+            card[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaSurfaceRaised");
+            AutomationProperties.SetName(card, _trail.LastOrDefault() ?? "Settings");
+            surface.Children.Add(card);
+        }
+
+        // The content's tabs, the chosen one marked as the sections' strip marks its own; a click raises ContentTabChosen.
+        private WholeRow ContentTabs(SettingsContent content, double height)
+        {
+            var tabs = new WholeRow { Spacing = 8, Name = "SettingsContentTabs", Height = height, VerticalAlignment = VerticalAlignment.Top };
+            AdaptiveLayout.StyleStrip(tabs);
+            for (int i = 0; i < content.Tabs.Count; i++)
+            {
+                int at = i;
+                var tab = new ToggleButton { Content = content.Tabs[i].ToUpperInvariant(), IsChecked = i == content.Chosen, Focusable = false, IsTabStop = false };
+                AutomationProperties.SetName(tab, content.Tabs[i]);
+                tab.Click += (_, _) => { tab.IsChecked = at == content.Chosen; ContentTabChosen?.Invoke(at); };
+                tabs.Children.Add(tab);
+            }
+            tabs.Chosen = Math.Clamp(content.Chosen, 0, Math.Max(0, content.Tabs.Count - 1));
+            return tabs;
+        }
+
+        private static void Detach(Control c)
+        {
+            switch (c.Parent)
+            {
+                case Panel panel: panel.Children.Remove(c); break;
+                case Decorator decorator: decorator.Child = null; break;
+                case ContentControl owner: owner.Content = null; break;
+            }
+        }
+
         private void FillPane(Panel surface)
         {
             var pane = new Border { Name = "SettingsPane", Width = PaneWidth, Height = PaneHeight, Margin = new Thickness(Math.Max(0, PaneLeft), ContentTop, 0, 0), CornerRadius = new CornerRadius(8), Padding = new Thickness(PaneInset), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, ClipToBounds = true };
             pane[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaSurfaceRaised");
             var stack = new StackPanel { Spacing = 8 };
-            PageRow? row = _rows.FirstOrDefault(r => r.Key == _focusKey);
-            SettingsPane? said = _focusKey is null ? null : PaneFor?.Invoke(_focusKey);
+            PageRow? row = _content is null ? _rows.FirstOrDefault(r => r.Key == _focusKey) : null;
+            SettingsPane? said = PaneKey is not { } key ? null : PaneFor?.Invoke(key);
             if (said is null && row?.Sentence is { Length: > 0 } sentence) said = new SettingsPane([new SettingsLine(sentence)]);
             if (said?.Preview is { } preview) stack.Children.Add(Preview(preview, PreviewWidth, PreviewHeight, Type));
             foreach (SettingsLine line in said?.Lines ?? Array.Empty<SettingsLine>()) stack.Children.Add(Line(line, Type.Body));

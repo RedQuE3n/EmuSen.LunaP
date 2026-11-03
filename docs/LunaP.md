@@ -15046,3 +15046,37 @@ a button of its label with `…`; `BackRequested` and `SearchChanged` come back.
 through the colour keys inside a `ThemeVariantScope`, since the shared brushes resolve through the application's variant
 only. `Dialogs.PromptAsync` gained `secret`, drawing the typed text as dots, for a password. `SettingsLayoutTests` holds
 the desktop form at 960 × 640 under the audit, with a switch, a dropdown and the pane only where a row has a picture.
+
+### 213.7 A page of content (2026-11-03)
+
+**The gap.** Some pages under a settings row are not rows: the consumer's controller bindings page (its
+`EmuSen_Interface.md` §16, approved 2026-11-03) draws the controller as content, its regions focused by the directions,
+with the focused region's binding in the pane. `SettingsLayout` drew rows only, so a host would have had to draw over the
+layout by hand, which §209.1 rules out.
+
+**The description.** `SetContent(SettingsContent?)` gives the layout a page of content in place of its rows; null gives
+the rows back. A `SettingsContent` is:
+
+- `Focus`, the key of what the content has focused, which the pane (`PaneFor`) and the help bar (`HintsFor`) are asked for,
+  as a row's key is;
+- `Body`, the host's control, drawn in the box the layout gives it;
+- `Tabs` and `Chosen`, an optional strip of words over the body (a set of consoles, a player), the chosen one marked as the
+  section strip marks its own;
+- `Caption`, an optional sentence under the body in Body Muted.
+
+Presses come back as before, with one more event: Up, Down, Left and Right raise `ContentMoved(dx, dy)` for the host to
+move the focus within its body (the layout cannot know a drawing's geometry); A raises `RowChosen(Focus)`; a hint with a
+key raises `HintInvoked`; the shoulders and B stay the host's, as under any page. A click on a tab raises
+`ContentTabChosen(index)`.
+
+**The big screen.** The rows' box (64,108, as wide as the rows, 578 high) becomes one card, SurfaceRaised with radius 8,
+its contents inset 24: the tabs as a `WholeRow` styled by `StyleStrip` 44 high at the card's top, the body under them
+filling the width and 380 high, radius 8, and the caption 12 under the body, wrapped. The pane is drawn as for a row.
+
+**The desktop.** The same card fills the rows' column under the header; the tabs are a strip of toggle buttons, the body
+takes the height left after the tabs and the caption, and the pane is drawn whether or not the focus has a preview, since a
+content page's words are what tell the player the focused part's value.
+
+**Tests.** `SettingsLayoutTests`: the card, tabs, body and caption where this section puts them at 1280 × 800 and in the
+desktop form under the fit audit; the directions raising `ContentMoved` and never `RowStepped`; A raising `RowChosen` with
+the focus; the pane asked for the content's focus; null giving the rows back with their focus.

@@ -213,6 +213,68 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // §213.7: a page of content in place of the rows, its card, tabs, body and caption, the pane asked for its focus, the directions the host's.
+        [Theory]
+        [MemberData(nameof(Screens))]
+        public Task A_page_of_content_is_one_card_with_its_tabs_body_and_caption_and_the_directions_are_the_hosts(int width, int height) => UiTest.Run(() =>
+        {
+            var (window, layout, said) = Screen(width, height);
+            double u = height / SettingsLayout.DesignHeight;
+            var moved = new List<string>();
+            var tabs = new List<int>();
+            layout.ContentMoved += (dx, dy) => moved.Add($"{dx},{dy}");
+            layout.ContentTabChosen += at => tabs.Add(at);
+            layout.PaneFor = key => key == "bind:Y" ? new SettingsPane([new SettingsLine("Bound to the pad's West button.")]) : null;
+            layout.SetTrail(["Controllers", "Controller bindings"]);
+            var body = new Border { Name = "Drawing" };
+            layout.SetContent(new SettingsContent("bind:Y", body) { Tabs = ["Player 1", "Super Nintendo", "Genesis"], Chosen = 1, Caption = "Left and Right move between the drawing's regions." });
+            UiTest.Settle(layout);
+            Picture(window, $"settings-content-{width}x{height}");
+
+            Rect card = At(layout, "SettingsContent", u), pane = At(layout, "SettingsPane", u);
+            Assert.Equal(new Rect(64 * u, 108 * u, pane.X - 32 * u - 64 * u, 578 * u), card, new RectComparer(1.5));
+            Assert.Equal(44 * u, At(layout, "SettingsContentTabs", u).Height, 1.5);
+            Assert.Equal(380 * u, At(layout, "SettingsContentBody", u).Height, 1.5);
+            Assert.Same(body, layout.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "SettingsContentBody").Child);
+            Assert.Contains(layout.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Bound to the pad's West button.");
+            Assert.DoesNotContain(layout.GetVisualDescendants().OfType<Control>(), c => c.Name == "SettingsRows");
+
+            // The directions are the host's, never a row's step; A chooses the content's focus.
+            Assert.True(layout.Move(-1, 0));
+            Assert.True(layout.Move(0, 1));
+            Assert.Equal(["-1,0", "0,1"], moved);
+            Assert.True(layout.Press(PadGlyphButton.South));
+            Assert.Equal(["row bind:Y"], said);
+            layout.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ToggleButton>().First(b => (string?)b.Content == "GENESIS").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Avalonia.Controls.Primitives.ToggleButton.ClickEvent));
+            Assert.Equal([2], tabs);
+            Assert.Empty(FitAudit.Check(layout, []));
+
+            // Null gives the rows back, with their focus.
+            layout.SetContent(null);
+            UiTest.Settle(layout);
+            Assert.Null(layout.Content);
+            Assert.Contains(layout.GetVisualDescendants().OfType<Control>(), c => c.Name == "SettingsRows");
+            window.Close();
+        });
+
+        [Fact]
+        public Task The_desktop_draws_a_page_of_content_with_its_pane_though_it_has_no_picture() => UiTest.Run(() =>
+        {
+            var layout = new SettingsLayout { Form = AdaptiveForm.Desktop };
+            layout.SetSections(Sections, "controllers");
+            layout.SetTrail(["Controllers", "Controller bindings"]);
+            layout.PaneFor = key => new SettingsPane([new SettingsLine("Bound to the pad's West button.")]);
+            layout.SetContent(new SettingsContent("bind:Y", new Border { Name = "Drawing", MinHeight = 200 }) { Tabs = ["Player 1", "Super Nintendo"], Chosen = 1, Caption = "A rebinds the focused one." });
+            var window = new Window { Width = 960, Height = 640, Content = layout };
+            window.Show();
+            UiTest.Settle(layout);
+            Picture(window, "settings-content-desktop-960x640");
+            bool Has(string name) => layout.GetVisualDescendants().OfType<Control>().Any(c => c.Name == name);
+            Assert.True(Has("SettingsContent") && Has("SettingsContentTabs") && Has("Drawing") && Has("SettingsContentCaption") && Has("SettingsPane"));
+            Assert.Empty(FitAudit.Check(layout, [], smallest: 0));
+            window.Close();
+        });
+
         private sealed class RectComparer(double slack) : IEqualityComparer<Rect>
         {
             public bool Equals(Rect a, Rect b) => Math.Abs(a.X - b.X) <= slack && Math.Abs(a.Y - b.Y) <= slack && Math.Abs(a.Width - b.Width) <= slack && Math.Abs(a.Height - b.Height) <= slack;
