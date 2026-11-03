@@ -175,6 +175,10 @@ namespace EmuSen.LunaP.Tests
         // A claim the sweep finds and this file does not check, with the reason it cannot be.
         private static readonly Dictionary<string, string> Exempt = new()
         {
+            ["P:EmuSen.LunaP.Controls.ManagerLayout`1.Applies"] =
+                "read through its effect: HubLayoutTests' manager case finds Apply in the help bar until Applies is set false.",
+            ["P:EmuSen.LunaP.Controls.MenuRow.IsDimmed"] =
+                "drawn rather than read: HubLayoutTests' dimmed row is rendered and its label read in the muted colour.",
             ["P:EmuSen.LunaP.Controls.HubLayout.ShowsArt"] =
                 "drawn rather than read: HubLayoutTests pictures the hub with its art behind it, and the consumer's switch for background art reaches it "
                 + "through the host.",

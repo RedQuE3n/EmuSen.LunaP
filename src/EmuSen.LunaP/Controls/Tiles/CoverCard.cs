@@ -108,11 +108,13 @@ namespace EmuSen.LunaP.Controls
             _box.CornerRadius = new CornerRadius(Radius);
             _box[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaSurfaceRaised");
             _box.Child = item.Picture is { } picture ? new Image { Source = picture, Stretch = Stretch.UniformToFill, IsHitTestVisible = false } : Generated(item, w, h);
-            if (item.IsFavourite && PageLayout.Mark(PageMark.FilledHeart, "LunaAccentColor", _big ? 24 : 14) is { } heart)
+            double side = _big ? 24 : 14, inset = _big ? 8 : 4;
+            if (item.IsFavourite && PageLayout.Mark(PageMark.FilledHeart, "LunaAccentColor", side) is { } heart)
             {
-                heart.HorizontalAlignment = HorizontalAlignment.Right;
+                // On the cover's own top right corner, so a heart never reads as a neighbour's (docs/LunaP.md §212.2).
+                heart.HorizontalAlignment = HorizontalAlignment.Left;
                 heart.VerticalAlignment = VerticalAlignment.Top;
-                heart.Margin = _big ? new Thickness(0, -2, 0, 0) : new Thickness(0, 4, 6, 0);
+                heart.Margin = new Thickness(CoverBounds.Right - side - inset, CoverBounds.Y + inset, 0, 0);
                 heart.Name = "CoverHeart";
                 Children.Add(heart);
             }

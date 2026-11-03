@@ -1565,6 +1565,7 @@ public class EmuSen.LunaP.Controls.ManagerLayout<T> : EmuSen.LunaP.Controls.Adap
     public System.Func<T?, Avalonia.Controls.Control?>? DetailFor { get; set; }
     public System.Threading.Tasks.Task<bool> Ask(string title, string sentences, string yes = "Yes", string no = "No", string? smallPrint = null)
     public T? Selected { get; }
+    public bool Applies { get; set; }
     public bool CancelPlan()
     public bool Confirm()
     public bool IsPlanOpen { get; }
@@ -1794,6 +1795,7 @@ public class EmuSen.LunaP.Controls.MenuRow : Avalonia.Controls.Control
     public EmuSen.LunaP.Media.LetterCase? ValueLetterCase { get; set; }
     public MenuRow()
     public bool FilledMarks { get; set; }
+    public bool IsDimmed { get; set; }
     public bool IsHighlighted { get; set; }
     public bool IsOn { get; set; }
     public double Inset { get; set; }
@@ -1812,6 +1814,7 @@ public class EmuSen.LunaP.Controls.MenuRow : Avalonia.Controls.Control
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = Upper
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase?> ValueLetterCaseProperty = null
     public static readonly Avalonia.StyledProperty<bool> FilledMarksProperty = false
+    public static readonly Avalonia.StyledProperty<bool> IsDimmedProperty = false
     public static readonly Avalonia.StyledProperty<bool> IsHighlightedProperty = false
     public static readonly Avalonia.StyledProperty<bool> IsOnProperty = false
     public static readonly Avalonia.StyledProperty<double> InsetProperty = 8
@@ -1863,16 +1866,19 @@ public static class EmuSen.LunaP.Controls.MenuRows
     public static T Apply<T>(T list) where T : Avalonia.Controls.ListBox
     public static T ApplyButton<T>(T button) where T : Avalonia.Controls.Button
     public static T ApplyButton<T>(T button, double textSize) where T : Avalonia.Controls.Button
+    public static bool GetIsDimmed(Avalonia.Controls.Control control)
     public static bool GetIsOn(Avalonia.Controls.Control control)
     public static readonly Avalonia.AttachedProperty<Avalonia.Media.Color?> ValueColorProperty = null
     public static readonly Avalonia.AttachedProperty<EmuSen.LunaP.Controls.MenuRowKind> KindProperty = Action
     public static readonly Avalonia.AttachedProperty<EmuSen.LunaP.Media.LetterCase?> ValueLetterCaseProperty = null
+    public static readonly Avalonia.AttachedProperty<bool> IsDimmedProperty = false
     public static readonly Avalonia.AttachedProperty<bool> IsOnProperty = false
     public static readonly Avalonia.AttachedProperty<string?> LabelProperty = null
     public static readonly Avalonia.AttachedProperty<string?> ValueProperty = null
     public static string? GetLabel(Avalonia.Controls.Control control)
     public static string? GetValue(Avalonia.Controls.Control control)
     public static void Remove(Avalonia.Controls.ListBox list)
+    public static void SetIsDimmed(Avalonia.Controls.Control control, bool value)
     public static void SetIsOn(Avalonia.Controls.Control control, bool value)
     public static void SetKind(Avalonia.Controls.Control control, EmuSen.LunaP.Controls.MenuRowKind value)
     public static void SetLabel(Avalonia.Controls.Control control, string? value)

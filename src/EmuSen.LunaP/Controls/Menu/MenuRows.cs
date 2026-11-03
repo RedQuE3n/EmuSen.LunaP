@@ -38,6 +38,19 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The casing of the row's value alone; null follows the row's.</summary>
         public static readonly AttachedProperty<LetterCase?> ValueLetterCaseProperty = AvaloniaProperty.RegisterAttached<Control, LetterCase?>("ValueLetterCase", typeof(MenuRows));
 
+        /// <summary>Whether the row is dimmed: its label and value drawn in the muted colour while it is not chosen, such as a choice offered but not yet supported.</summary>
+        public static readonly AttachedProperty<bool> IsDimmedProperty = AvaloniaProperty.RegisterAttached<Control, bool>("IsDimmed", typeof(MenuRows));
+
+        /// <summary>Reads whether a control's row is dimmed.</summary>
+        /// <param name="control">The control.</param>
+        /// <returns>True when its words are drawn muted.</returns>
+        public static bool GetIsDimmed(Control control) => control.GetValue(IsDimmedProperty);
+
+        /// <summary>Dims a control's row or brings it back.</summary>
+        /// <param name="control">The control.</param>
+        /// <param name="value">True to draw its words muted.</param>
+        public static void SetIsDimmed(Control control, bool value) => control.SetValue(IsDimmedProperty, value);
+
         /// <summary>Reads a control's row value colour.</summary>
         /// <param name="control">The control.</param>
         /// <returns>The colour, or null for the label's.</returns>
@@ -311,6 +324,7 @@ namespace EmuSen.LunaP.Controls
             row.Bind(MenuRow.KindProperty, owner.GetObservable(KindProperty));
             row.Bind(MenuRow.IsOnProperty, owner.GetObservable(IsOnProperty));
             row.Bind(MenuRow.ValueColorProperty, owner.GetObservable(ValueColorProperty));
+            row.Bind(MenuRow.IsDimmedProperty, owner.GetObservable(IsDimmedProperty));
             row.Bind(MenuRow.ValueLetterCaseProperty, owner.GetObservable(ValueLetterCaseProperty));
             row.Bind(MenuRow.IsHighlightedProperty, highlighted);
             return row;

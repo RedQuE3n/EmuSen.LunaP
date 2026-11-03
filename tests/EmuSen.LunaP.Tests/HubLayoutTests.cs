@@ -300,6 +300,50 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        [Fact]
+        public Task A_favourite_s_heart_sits_on_its_own_cover_s_top_right_corner() => UiTest.Run(() =>
+        {
+            var (window, gallery, _) = Gallery(1280, 800);
+            foreach (CoverCard card in gallery.GetVisualDescendants().OfType<CoverCard>().Where(c => c.Item!.IsFavourite))
+            {
+                Control heart = card.Children.First(c => c.Name == "CoverHeart");
+                Rect at = new(heart.Bounds.Position, heart.Bounds.Size);
+                Assert.True(card.CoverBounds.Contains(at), $"{card.Item!.Title}'s heart at {at} is outside its cover {card.CoverBounds}");
+                Assert.True(at.Right > card.CoverBounds.Right - 40 && at.Top < card.CoverBounds.Top + 20);
+            }
+            window.Close();
+        });
+
+        [Fact]
+        public Task A_dimmed_row_draws_its_label_in_the_muted_colour() => UiTest.Run(() =>
+        {
+            var row = new MenuRow { Label = "Saturn", Value = "Not supported yet", IsDimmed = true, Width = 400, Height = 54, TextSize = 26, MutedColor = Avalonia.Media.Color.Parse("#8D8D91"), LetterCase = EmuSen.LunaP.Media.LetterCase.None };
+            var window = new Window { Width = 400, Height = 54, Content = row, Background = Avalonia.Media.Brushes.Black };
+            window.Show();
+            UiTest.Settle(row);
+            RenderedFrame frame = UiTest.Capture(window);
+            int brightest = 0;
+            for (int y = 0; y < Math.Min(54, frame.Height); y++)
+                for (int x = 0; x < Math.Min(150, frame.Width); x++)
+                {
+                    int i = (y * frame.Width + x) * 4;
+                    brightest = Math.Max(brightest, Math.Max(frame.Rgba[i], Math.Max(frame.Rgba[i + 1], frame.Rgba[i + 2])));
+                }
+            Assert.InRange(brightest, 0x70, 0x95);
+            window.Close();
+        });
+
+        [Fact]
+        public Task A_list_nothing_is_marked_in_names_no_Apply() => UiTest.Run(() =>
+        {
+            var layout = new ManagerLayout<string> { Form = AdaptiveForm.BigScreen };
+            layout.SetRows(["a", "b"]);
+            Assert.Contains(layout.Hints, h => h.Label == "Apply…");
+            layout.Applies = false;
+            Assert.DoesNotContain(layout.Hints, h => h.Label == "Apply…");
+            Assert.Null(layout.Apply.PadButton);
+        });
+
         private sealed class RectComparer(double slack) : IEqualityComparer<Rect>
         {
             public bool Equals(Rect a, Rect b) => Math.Abs(a.X - b.X) <= slack && Math.Abs(a.Y - b.Y) <= slack && Math.Abs(a.Width - b.Width) <= slack && Math.Abs(a.Height - b.Height) <= slack;

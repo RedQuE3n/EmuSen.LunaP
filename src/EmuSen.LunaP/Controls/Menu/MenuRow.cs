@@ -58,6 +58,7 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<double> InsetProperty = AvaloniaProperty.Register<MenuRow, double>(nameof(Inset), 8);
         public static readonly StyledProperty<Color?> MutedColorProperty = AvaloniaProperty.Register<MenuRow, Color?>(nameof(MutedColor));
         public static readonly StyledProperty<bool> FilledMarksProperty = AvaloniaProperty.Register<MenuRow, bool>(nameof(FilledMarks));
+        public static readonly StyledProperty<bool> IsDimmedProperty = AvaloniaProperty.Register<MenuRow, bool>(nameof(IsDimmed));
 
         // Width at the right a MenuFieldRow keeps for the control it hosts, so the label is cut short of it - see docs/LunaP.md §182.3.
         internal static readonly StyledProperty<double> TrailingWidthProperty = AvaloniaProperty.Register<MenuRow, double>("TrailingWidth");
@@ -70,7 +71,7 @@ namespace EmuSen.LunaP.Controls
             AffectsMeasure<MenuRow>(ScaleProperty, RowHeightProperty);
             AffectsRender<MenuRow>(InsetProperty, MutedColorProperty, FilledMarksProperty, LabelProperty, ValueProperty, KindProperty, IsOnProperty, IsHighlightedProperty, FontPathProperty, TextSizeProperty, TextColorProperty,
                 HighlightTextColorProperty, BarColorProperty, RuleColorProperty, AccentColorProperty, LetterCaseProperty, LabelOverrideProperty, ValueColorProperty,
-                ValueLetterCaseProperty, TrailingWidthProperty);
+                ValueLetterCaseProperty, TrailingWidthProperty, IsDimmedProperty);
         }
 
         /// <summary>The words at the row's left, cased by LetterCase.</summary>
@@ -117,6 +118,9 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>The casing of the label and the value. Upper by default.</summary>
         public LetterCase LetterCase { get => GetValue(LetterCaseProperty); set => SetValue(LetterCaseProperty, value); }
+
+        /// <summary>Whether the label and the value are drawn in the muted colour while the row is not chosen, such as a choice not yet supported. False by default.</summary>
+        public bool IsDimmed { get => GetValue(IsDimmedProperty); set => SetValue(IsDimmedProperty, value); }
 
         /// <summary>The value's colour on either state of the row, such as one that marks where the value came from; null draws it as the label is drawn. Null by default.</summary>
         public Color? ValueColor { get => GetValue(ValueColorProperty); set => SetValue(ValueColorProperty, value); }
@@ -220,7 +224,7 @@ namespace EmuSen.LunaP.Controls
             }
             context.FillRectangle(new ImmutableSolidColorBrush(RuleColor), at.Rule);
 
-            Color ink = IsHighlighted ? HighlightTextColor : TextColor;
+            Color ink = IsHighlighted ? HighlightTextColor : IsDimmed ? MutedColor ?? Color.FromRgb(0x8D, 0x8D, 0x91) : TextColor;
             var brush = new ImmutableSolidColorBrush(ink);
             GlyphTypeface typeface = Typeface();
             double size = TextSize * u;

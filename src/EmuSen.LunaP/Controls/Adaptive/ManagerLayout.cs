@@ -173,6 +173,19 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The main action: shows the plan for the marked rows, enabled only while some are marked and nothing runs.</summary>
         public LunaAction Apply { get; }
 
+        private bool _applies = true;
+
+        /// <summary>Whether the list's marks are applied: false for a list nothing is marked in, whose help bar then names no Apply and whose Start does nothing. True by default.</summary>
+        public bool Applies
+        {
+            get => _applies;
+            set
+            {
+                _applies = value;
+                Changed();
+            }
+        }
+
         /// <summary>The action that opens the chosen row's page: the X button once PageFor is set, and never drawn as a button.</summary>
         public LunaAction More { get; }
 
@@ -823,7 +836,7 @@ namespace EmuSen.LunaP.Controls
             Apply.IsEnabled = marked.Count > 0 && !_running;
             Mark.IsEnabled = !_running;
             // While work runs the help bar names only what still works: Back, the shoulders and List (§211.2).
-            Apply.PadButton = _running ? null : PadGlyphButton.Start;
+            Apply.PadButton = _running || !_applies ? null : PadGlyphButton.Start;
             More.PadButton = _running || _pageFor is null ? null : PadGlyphButton.West;
             RefreshHints();
             // The rows are drawn again for their marks, which builds their containers afresh; the focus that was on a row goes back to it (§211.6).

@@ -14954,3 +14954,14 @@ keyboard typing, a space, moving to the grid and back, and closing on B with not
 Seeded on 2026-11-03 and caught (each reverted after its run): the shelf's window not moving with the focus (the pad walk's
 case); B on the docked keyboard closing at once instead of erasing (the keyboard case); the gallery's columns not counted
 from the width (the gallery cases at 16:9).
+
+### 212.10 A favourite's heart, and a dimmed row (2026-11-03)
+
+Held to the mockups again on 2026-11-03: a favourite's heart sits inside its own cover's top right corner, 8 units in on
+the big screen and 4 on the desktop, never at the top of the cell, where over a short cover in the row below it read as the
+neighbour's. `MenuRows.IsDimmed` (and `MenuRow.IsDimmed`) draws a row's label and value in the muted colour while it is not
+chosen, for a choice offered but not supported yet, such as a console with no engine. `HubLayoutTests` holds both: every
+favourite's heart within its cover's top right, and a dimmed row's brightest label pixel within the muted colour's range.
+
+`ManagerLayout.Applies` (true by default) says whether a list's marks are applied at all: set false, for a list nothing is
+marked in such as a consumer's collections, the help bar names no Apply and Start does nothing. `HubLayoutTests` holds it.
