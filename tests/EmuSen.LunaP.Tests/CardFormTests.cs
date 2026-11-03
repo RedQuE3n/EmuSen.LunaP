@@ -94,7 +94,9 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(new Rect(panelWidth + 64 * u, 156 * u, width - panelWidth - 128 * u, height - 270 * u), panel.PaneBounds, new RectComparer(0.5));
             Rect help = In(panel.HelpBar, panel);
             Assert.Equal(64 * u, help.X, 0.5);
-            Assert.True(help.Y >= height - 98 * u - 0.5 && help.Bottom <= height - 40 * u + 0.5, $"the help bar {help} in its band");
+            // The band reaches the screen's foot, its entries centred in all of it (decided 2026-11-02 by the tester, docs/LunaP.md §210).
+            Assert.True(help.Y >= height - 98 * u - 0.5 && help.Bottom <= height + 0.5, $"the help bar {help} in its band");
+            Assert.Equal(height - 49 * u, help.Y + help.Height / 2, 0.5);
             Assert.Equal(LetterCase.None, panel.HelpBar.LetterCase);
             Border surface = panel.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "AdaptiveCardPane");
             Assert.Equal(panel.PaneBounds, In(surface, panel), new RectComparer(0.5));
