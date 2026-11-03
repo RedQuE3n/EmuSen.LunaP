@@ -17,7 +17,7 @@ namespace EmuSen.LunaP.Controls
     }
 
     /// <summary>One line of a settings pane, wrapped to the pane's width.</summary>
-    /// <param name="Text">The words.</param>
+    /// <param name="Text">The words the line says, wrapped to the pane's width.</param>
     /// <param name="Tone">How it is coloured.</param>
     public sealed record SettingsLine(string Text, SettingsTone Tone = SettingsTone.Text)
     {

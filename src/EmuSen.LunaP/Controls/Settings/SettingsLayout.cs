@@ -18,10 +18,16 @@ namespace EmuSen.LunaP.Controls
 {
     // Settings as one description: sections or the trail of pages on the strip, whole rows each with a value and a sentence, the pane with its preview, the help bar generated - see docs/LunaP.md §213.
     /// <summary>A settings screen declared as data: a strip of sections, or the trail of the pages open under one; rows each with one value and one sentence; a pane explaining the focused row with a preview where it has a picture; and the help bar from the focus.</summary>
-    public class SettingsLayout : Border
+    public partial class SettingsLayout : Border
     {
         /// <summary>Defines the PadFamily property.</summary>
         public static readonly StyledProperty<PadFamily> PadFamilyProperty = AvaloniaProperty.Register<SettingsLayout, PadFamily>(nameof(PadFamily), PadFamily.Xbox);
+
+        /// <summary>Defines the Form property.</summary>
+        public static readonly StyledProperty<AdaptiveForm> FormProperty = AvaloniaProperty.Register<SettingsLayout, AdaptiveForm>(nameof(Form), AdaptiveForm.BigScreen);
+
+        /// <summary>The form drawn: the big screen's, or the desktop's.</summary>
+        public AdaptiveForm Form { get => GetValue(FormProperty); set => SetValue(FormProperty, value); }
 
         /// <summary>The design height; the screen is laid out in units of it and scaled by MenuPanel.Scale.</summary>
         public const double DesignHeight = 800;
@@ -61,6 +67,7 @@ namespace EmuSen.LunaP.Controls
             _hintBar[!HintBar.PadFamilyProperty] = this[!PadFamilyProperty];
             AdaptiveLayout.StyleStrip(_strip);
             AutomationProperties.SetName(_strip, "Sections");
+            WireDesktop();
             Child = _root;
             Fill();
         }
@@ -258,7 +265,7 @@ namespace EmuSen.LunaP.Controls
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);
-            if (change.Property == MenuPanel.ScaleProperty) Fill();
+            if (change.Property == MenuPanel.ScaleProperty || change.Property == FormProperty) Fill();
         }
 
         /// <inheritdoc/>
@@ -272,6 +279,11 @@ namespace EmuSen.LunaP.Controls
 
         private void Fill()
         {
+            if (Form == AdaptiveForm.Desktop)
+            {
+                FillDesktop();
+                return;
+            }
             KeepRowShown();
             foreach (Control c in new Control[] { _strip, _hintBar })
                 switch (c.Parent)
@@ -333,7 +345,7 @@ namespace EmuSen.LunaP.Controls
 
         private void FillRows(Panel surface)
         {
-            var stack = new StackPanel { Name = "SettingsRows", Width = PaneLeft - PaneGap - Side, Margin = new Thickness(Side, ContentTop, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+            var stack = new StackPanel { Name = "SettingsRows", Width = Math.Max(0, PaneLeft - PaneGap - Side), Margin = new Thickness(Side, ContentTop, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
             AutomationProperties.SetName(stack, _trail.LastOrDefault() ?? _sections.FirstOrDefault(s => s.Key == _selected)?.Label ?? "Settings");
             foreach (PageRow row in _rows.Skip(_first).Take(RowsShown))
             {
@@ -349,21 +361,21 @@ namespace EmuSen.LunaP.Controls
 
         private void FillPane(Panel surface)
         {
-            var pane = new Border { Name = "SettingsPane", Width = PaneWidth, Height = PaneHeight, Margin = new Thickness(PaneLeft, ContentTop, 0, 0), CornerRadius = new CornerRadius(8), Padding = new Thickness(PaneInset), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, ClipToBounds = true };
+            var pane = new Border { Name = "SettingsPane", Width = PaneWidth, Height = PaneHeight, Margin = new Thickness(Math.Max(0, PaneLeft), ContentTop, 0, 0), CornerRadius = new CornerRadius(8), Padding = new Thickness(PaneInset), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, ClipToBounds = true };
             pane[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaSurfaceRaised");
             var stack = new StackPanel { Spacing = 8 };
             PageRow? row = _rows.FirstOrDefault(r => r.Key == _focusKey);
             SettingsPane? said = _focusKey is null ? null : PaneFor?.Invoke(_focusKey);
             if (said is null && row?.Sentence is { Length: > 0 } sentence) said = new SettingsPane([new SettingsLine(sentence)]);
-            if (said?.Preview is { } preview) stack.Children.Add(Preview(preview));
-            foreach (SettingsLine line in said?.Lines ?? Array.Empty<SettingsLine>()) stack.Children.Add(Line(line));
+            if (said?.Preview is { } preview) stack.Children.Add(Preview(preview, PreviewWidth, PreviewHeight, Type));
+            foreach (SettingsLine line in said?.Lines ?? Array.Empty<SettingsLine>()) stack.Children.Add(Line(line, Type.Body));
             pane.Child = stack;
             surface.Children.Add(pane);
         }
 
-        private static Control Line(SettingsLine line)
+        private static Control Line(SettingsLine line, double size)
         {
-            var text = new TextBlock { FontFamily = LunaFonts.Body, FontSize = line.Size ?? Type.Body, TextWrapping = TextWrapping.Wrap, Name = "SettingsLine" };
+            var text = new TextBlock { FontFamily = LunaFonts.Body, FontSize = line.Size ?? size, TextWrapping = TextWrapping.Wrap, Name = "SettingsLine" };
             string tone = line.Tone == SettingsTone.Muted ? "LunaMuted" : "LunaText";
             if (line.Mark is { Length: > 0 } mark)
             {
@@ -381,36 +393,36 @@ namespace EmuSen.LunaP.Controls
             return text;
         }
 
-        private static Control Preview(SettingsPreview preview)
+        private static Control Preview(SettingsPreview preview, double width, double height, LunaTypeScale type)
         {
             switch (preview)
             {
                 case SettingsMeter meter:
                 {
                     double f = Math.Clamp(double.IsFinite(meter.Fraction) ? meter.Fraction : 0, 0, 1);
-                    var fill = new Border { Width = PreviewWidth * f, HorizontalAlignment = HorizontalAlignment.Left, CornerRadius = new CornerRadius(MeterHeight / 2) };
+                    var fill = new Border { Width = width * f, HorizontalAlignment = HorizontalAlignment.Left, CornerRadius = new CornerRadius(MeterHeight / 2) };
                     fill[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaAccent");
-                    var bar = new Border { Name = "SettingsMeter", Width = PreviewWidth, Height = MeterHeight, CornerRadius = new CornerRadius(MeterHeight / 2), Child = fill, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, PreviewGap - 8) };
+                    var bar = new Border { Name = "SettingsMeter", Width = width, Height = MeterHeight, CornerRadius = new CornerRadius(MeterHeight / 2), Child = fill, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, PreviewGap - 8) };
                     bar[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaBorder");
                     return bar;
                 }
                 case SettingsVariants variants:
                 {
-                    var row = new StackPanel { Name = "SettingsVariants", Orientation = Orientation.Horizontal, Spacing = PreviewWidth - 2 * VariantWidth, Margin = new Thickness(0, 0, 0, PreviewGap - 8) };
-                    row.Children.Add(Variant(variants.DarkName, ThemeVariant.Dark));
-                    row.Children.Add(Variant(variants.LightName, ThemeVariant.Light));
+                    var row = new StackPanel { Name = "SettingsVariants", Orientation = Orientation.Horizontal, Spacing = 16, Margin = new Thickness(0, 0, 0, PreviewGap - 8) };
+                    row.Children.Add(Variant(variants.DarkName, ThemeVariant.Dark, (width - 16) / 2, type));
+                    row.Children.Add(Variant(variants.LightName, ThemeVariant.Light, (width - 16) / 2, type));
                     return row;
                 }
                 case SettingsPicture picture:
                 {
-                    var box = new Panel { Name = "SettingsPicture", Width = PreviewWidth, Height = PreviewHeight, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, PreviewGap - 8) };
+                    var box = new Panel { Name = "SettingsPicture", Width = width, Height = height, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, PreviewGap - 8) };
                     var back = new Border { CornerRadius = new CornerRadius(8), ClipToBounds = true };
                     back[!Border.BackgroundProperty] = new DynamicResourceExtension(picture.Picture is null ? "LunaSurface" : "LunaVoid");
                     if (picture.Picture is { } image) back.Child = new Image { Source = image, Stretch = Stretch.Uniform };
                     box.Children.Add(back);
                     if (picture.Caption is { Length: > 0 } caption)
                     {
-                        var words = new TextBlock { Name = "SettingsCaption", IsHitTestVisible = false, Text = caption, FontFamily = LunaFonts.Condensed, FontSize = Type.Title, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap, MaxLines = 2, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(16, 0) };
+                        var words = new TextBlock { Name = "SettingsCaption", IsHitTestVisible = false, Text = caption, FontFamily = LunaFonts.Condensed, FontSize = type.Title, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap, MaxLines = 2, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(16, 0) };
                         words[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(picture.Picture is null ? "LunaTextStrong" : "LunaOnArt");
                         if (picture.Picture is not null) words.Effect = new DropShadowEffect { BlurRadius = 6, OffsetX = 0, OffsetY = 1, Opacity = 0.8 };
                         box.Children.Add(words);
@@ -423,10 +435,10 @@ namespace EmuSen.LunaP.Controls
         }
 
         // One variant drawn through its own palette, so the swatch is the tokens of that variant rather than literal colours.
-        private static Control Variant(string name, ThemeVariant variant)
+        private static Control Variant(string name, ThemeVariant variant, double width, LunaTypeScale type)
         {
-            var words = new TextBlock { Text = name, FontFamily = LunaFonts.Body, FontSize = Type.Caption, Margin = new Thickness(12, 12, 12, 0) };
-            var swatch = new Border { Width = VariantWidth, Height = VariantHeight, CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1), Child = words };
+            var words = new TextBlock { Text = name, FontFamily = LunaFonts.Body, FontSize = type.Caption, Margin = new Thickness(12, 12, 12, 0) };
+            var swatch = new Border { Width = width, Height = width * VariantHeight / VariantWidth, CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1), Child = words };
             // The colour keys, not the shared brushes, since only those resolve through the scope's own variant.
             words.Bind(TextBlock.ForegroundProperty, words.GetResourceObservable("LunaTextColor", c => c is Color col ? new SolidColorBrush(col) : null));
             swatch.Bind(Border.BackgroundProperty, swatch.GetResourceObservable("LunaSurfaceColor", c => c is Color col ? new SolidColorBrush(col) : null));

@@ -25,7 +25,7 @@ namespace EmuSen.LunaP.Tests
         private static List<PageRow> Display() =>
         [
             new("shape", "Picture shape") { Kind = PageRowKind.Steps, Status = "Console's", Sentence = "The screen each console was made for." },
-            new("crt", "CRT shader") { Kind = PageRowKind.Steps, Status = "Balanced" },
+            new("crt", "CRT shader") { Kind = PageRowKind.Steps, Status = "Balanced", Choices = ["Off", "Performance", "Balanced", "Accurate"] },
             new("levers", "Shader levers") { Kind = PageRowKind.Opens },
             new("crop", "Crop overscan") { Kind = PageRowKind.Steps, Status = "Console's" },
             new("variant", "Light or dark") { Kind = PageRowKind.Steps, Status = "Dark" },
@@ -100,6 +100,37 @@ namespace EmuSen.LunaP.Tests
             foreach (string f in faults) output.WriteLine($"{width}x{height}: {f}");
             window.Close();
             Assert.Empty(faults);
+        });
+
+        [Fact]
+        public Task The_desktop_form_draws_switches_dropdowns_and_the_pane_only_for_a_picture() => UiTest.Run(() =>
+        {
+            var said = new List<string>();
+            var layout = new SettingsLayout { Form = AdaptiveForm.Desktop };
+            layout.SetSections(Sections, "display");
+            layout.SetRows(Display().Prepend(new PageRow("art", "Background art on Home") { Kind = PageRowKind.Steps, Status = "On", Choices = ["On", "Off"] }));
+            layout.PaneFor = key => key == "crt" ? new SettingsPane([new SettingsLine("Balanced.")]) { Preview = new SettingsPicture(null, "Granite Choir") } : null;
+            layout.RowStepped += (k, by) => said.Add($"step {k} {by}");
+            layout.BackRequested += () => said.Add("back");
+            var window = new Window { Width = 960, Height = 640, Content = layout };
+            window.Show();
+            UiTest.Settle(layout);
+            bool Has(string name) => layout.GetVisualDescendants().OfType<Control>().Any(c => c.Name == name);
+            Assert.Single(layout.GetVisualDescendants().OfType<LunaSwitch>());
+            Assert.Contains(layout.GetVisualDescendants().OfType<ComboBox>(), b => (string?)b.SelectedItem == "Balanced");
+            Assert.False(Has("SettingsPane"));
+            layout.FocusOn("crt");
+            UiTest.Settle(layout);
+            Assert.True(Has("SettingsPane"));
+            layout.GetVisualDescendants().OfType<LunaSwitch>().Single().IsChecked = false;
+            Assert.Equal(["step art 1"], said);
+            layout.SetTrail(["Display", "Shader levers"]);
+            UiTest.Settle(layout);
+            Picture(window, "settings-desktop-960x640");
+            layout.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "SettingsBack").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal(["step art 1", "back"], said);
+            Assert.Empty(FitAudit.Check(layout, [], smallest: 0));
+            window.Close();
         });
 
         [Fact]

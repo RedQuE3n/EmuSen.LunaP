@@ -15036,3 +15036,13 @@ double click or Enter on a row raises `RowChosen`.
 1920 × 1080 and 1280 × 720 under the fit audit; rows whole, ten shown and the window moving a row at a time; the trail in
 place of the sections and the shoulders declined under it; Left and Right raising `RowStepped` only on a `Steps` row; A
 declined on a row not enabled; the pane's preview kinds and its tones; the help bar generated from the focus.
+
+### 213.6 As built (2026-11-03)
+
+Both forms are built. The big row a page draws is one helper, `PageRowLook`, which `PageLayout` and `SettingsLayout`
+share. The desktop form draws a two-way `Steps` row of On and Off as a switch, any other `Steps` row with choices as a
+dropdown and one without as `−` and `+`, an `Opens` row as a button of its value with `›` (or `Open…`), an `Asks` row as
+a button of its label with `…`; `BackRequested` and `SearchChanged` come back. The variants preview resolves its colours
+through the colour keys inside a `ThemeVariantScope`, since the shared brushes resolve through the application's variant
+only. `Dialogs.PromptAsync` gained `secret`, drawing the typed text as dots, for a password. `SettingsLayoutTests` holds
+the desktop form at 960 × 640 under the audit, with a switch, a dropdown and the pane only where a row has a picture.

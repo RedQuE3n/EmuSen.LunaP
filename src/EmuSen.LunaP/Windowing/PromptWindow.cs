@@ -28,7 +28,7 @@ namespace EmuSen.LunaP.Windowing
         private readonly TextBox _text;
         private readonly Button _accept;
 
-        public PromptWindow(string title, string message, string initial, string acceptText, string cancelText)
+        public PromptWindow(string title, string message, string initial, string acceptText, string cancelText, bool secret = false)
         {
             Title = title;
             SizeToContent = SizeToContent.Height;
@@ -37,7 +37,7 @@ namespace EmuSen.LunaP.Windowing
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             ClosesOnEscape = true;
 
-            _text = new TextBox { Name = "PART_Answer", Text = initial };
+            _text = new TextBox { Name = "PART_Answer", Text = initial, PasswordChar = secret ? '•' : default };
             Avalonia.Automation.AutomationProperties.SetName(_text, message);
             _accept = new Button { Name = "PART_Accept", Content = acceptText, IsDefault = true };
             _accept.Click += (_, _) => Accept();

@@ -76,9 +76,10 @@ namespace EmuSen.LunaP.Windowing
         /// <param name="acceptText">The caption of the accepting button, which is disabled while the text is blank.</param>
         /// <param name="cancelText">The caption of the cancelling button.</param>
         /// <returns>The text, trimmed and never empty, or null if the dialog was dismissed any other way.</returns>
+        /// <param name="secret">Whether the text is drawn as dots, as a password is.</param>
         public static async Task<string?> PromptAsync(Window owner, string title, string message, string initial = "",
-            string acceptText = "OK", string cancelText = "Cancel") =>
-            await SheetLayer.ShowDialog<string>(new PromptWindow(title, message, initial, acceptText, cancelText), owner);
+            string acceptText = "OK", string cancelText = "Cancel", bool secret = false) =>
+            await SheetLayer.ShowDialog<string>(new PromptWindow(title, message, initial, acceptText, cancelText, secret), owner);
 
         // Null means the dialog was cancelled, or the control is not in a window yet.
         /// <summary>Asks the platform for a folder.</summary>

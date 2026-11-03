@@ -2387,6 +2387,152 @@ public class EmuSen.LunaP.Controls.SectionHeader : Avalonia.Controls.TextBlock
     public SectionHeader()
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Media.LetterCase> LetterCaseProperty = None
 
+public class EmuSen.LunaP.Controls.SettingsLayout : Avalonia.Controls.Border
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    protected override void OnSizeChanged(Avalonia.Controls.SizeChangedEventArgs e)
+    public EmuSen.LunaP.Controls.AdaptiveForm Form { get; set; }
+    public EmuSen.LunaP.Controls.PadFamily PadFamily { get; set; }
+    public SettingsLayout()
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.AdaptiveSection> Sections { get; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry> Hints { get; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PageRow> Rows { get; }
+    public System.Collections.Generic.IReadOnlyList<string> Shown { get; }
+    public System.Collections.Generic.IReadOnlyList<string> Trail { get; }
+    public System.Func<string, EmuSen.LunaP.Controls.SettingsPane?>? PaneFor { get; set; }
+    public System.Func<string?, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PageHint>>? HintsFor { get; set; }
+    public bool FocusOn(string key)
+    public bool Move(int dx, int dy)
+    public bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
+    public bool SelectSection(string key)
+    public bool StepSection(int by)
+    public const double ContentTop = 108
+    public const double DesignHeight = 800
+    public const double DesktopGutter = 24
+    public const double DesktopPaneWidth = 276
+    public const double DesktopRowHeight = 48
+    public const double DesktopSearchWidth = 220
+    public const double DesktopSections = 200
+    public const double MeterHeight = 16
+    public const double PaneGap = 32
+    public const double PaneHeight = 578
+    public const double PaneInset = 24
+    public const double PaneWidth = 416
+    public const double PreviewGap = 12
+    public const double PreviewHeight = 276
+    public const double PreviewWidth = 368
+    public const double RowHeight = 54
+    public const double Side = 64
+    public const double StripHeight = 44
+    public const double StripTop = 40
+    public const double VariantHeight = 160
+    public const double VariantWidth = 176
+    public event System.Action BackRequested
+    public event System.Action<string, int> RowStepped
+    public event System.Action<string> FocusChanged
+    public event System.Action<string> HintInvoked
+    public event System.Action<string> RowChosen
+    public event System.Action<string> SearchChanged
+    public event System.Action<string> SectionChosen
+    public int RowsShown { get; }
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.AdaptiveForm> FormProperty = BigScreen
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadFamily> PadFamilyProperty = Xbox
+    public string? Focused { get; }
+    public string? SelectedSection { get; }
+    public void Refresh()
+    public void SetRows(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.PageRow> rows, string? focus = null)
+    public void SetSections(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.AdaptiveSection> sections, string? selected = null)
+    public void SetTrail(System.Collections.Generic.IEnumerable<string> titles)
+
+public sealed class EmuSen.LunaP.Controls.SettingsLine : System.IEquatable<EmuSen.LunaP.Controls.SettingsLine>
+    public EmuSen.LunaP.Controls.SettingsTone Tone { get; init; }
+    public SettingsLine(string Text, EmuSen.LunaP.Controls.SettingsTone Tone = 0)
+    public bool Equals(EmuSen.LunaP.Controls.SettingsLine? other)
+    public double? Size { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.SettingsLine? left, EmuSen.LunaP.Controls.SettingsLine? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.SettingsLine? left, EmuSen.LunaP.Controls.SettingsLine? right)
+    public string Text { get; init; }
+    public string? Mark { get; init; }
+    public void Deconstruct(out string Text, out EmuSen.LunaP.Controls.SettingsTone Tone)
+
+public sealed class EmuSen.LunaP.Controls.SettingsMeter : EmuSen.LunaP.Controls.SettingsPreview, System.IEquatable<EmuSen.LunaP.Controls.SettingsMeter>
+    protected override System.Type EqualityContract { get; }
+    protected override bool PrintMembers(System.Text.StringBuilder builder)
+    public SettingsMeter(double Fraction)
+    public bool Equals(EmuSen.LunaP.Controls.SettingsMeter? other)
+    public bool Equals(EmuSen.LunaP.Controls.SettingsPreview? other)
+    public double Fraction { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.SettingsMeter? left, EmuSen.LunaP.Controls.SettingsMeter? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.SettingsMeter? left, EmuSen.LunaP.Controls.SettingsMeter? right)
+    public void Deconstruct(out double Fraction)
+
+public sealed class EmuSen.LunaP.Controls.SettingsPane : System.IEquatable<EmuSen.LunaP.Controls.SettingsPane>
+    public EmuSen.LunaP.Controls.SettingsPreview? Preview { get; init; }
+    public SettingsPane(System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.SettingsLine> Lines)
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.SettingsLine> Lines { get; init; }
+    public bool Equals(EmuSen.LunaP.Controls.SettingsPane? other)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.SettingsPane? left, EmuSen.LunaP.Controls.SettingsPane? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.SettingsPane? left, EmuSen.LunaP.Controls.SettingsPane? right)
+    public void Deconstruct(out System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.SettingsLine> Lines)
+
+public sealed class EmuSen.LunaP.Controls.SettingsPicture : EmuSen.LunaP.Controls.SettingsPreview, System.IEquatable<EmuSen.LunaP.Controls.SettingsPicture>
+    protected override System.Type EqualityContract { get; }
+    protected override bool PrintMembers(System.Text.StringBuilder builder)
+    public Avalonia.Media.IImage? Picture { get; init; }
+    public SettingsPicture(Avalonia.Media.IImage? Picture, string Caption)
+    public bool Equals(EmuSen.LunaP.Controls.SettingsPicture? other)
+    public bool Equals(EmuSen.LunaP.Controls.SettingsPreview? other)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.SettingsPicture? left, EmuSen.LunaP.Controls.SettingsPicture? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.SettingsPicture? left, EmuSen.LunaP.Controls.SettingsPicture? right)
+    public string Caption { get; init; }
+    public void Deconstruct(out Avalonia.Media.IImage? Picture, out string Caption)
+
+public abstract class EmuSen.LunaP.Controls.SettingsPreview : System.IEquatable<EmuSen.LunaP.Controls.SettingsPreview>
+    protected SettingsPreview()
+    protected SettingsPreview(EmuSen.LunaP.Controls.SettingsPreview original)
+    protected virtual System.Type EqualityContract { get; }
+    protected virtual bool PrintMembers(System.Text.StringBuilder builder)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.SettingsPreview? left, EmuSen.LunaP.Controls.SettingsPreview? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.SettingsPreview? left, EmuSen.LunaP.Controls.SettingsPreview? right)
+    public virtual bool Equals(EmuSen.LunaP.Controls.SettingsPreview? other)
+
+public enum EmuSen.LunaP.Controls.SettingsTone
+    public const EmuSen.LunaP.Controls.SettingsTone Attention = 3
+    public const EmuSen.LunaP.Controls.SettingsTone Muted = 1
+    public const EmuSen.LunaP.Controls.SettingsTone Success = 2
+    public const EmuSen.LunaP.Controls.SettingsTone Text = 0
+    public int value__
+
+public sealed class EmuSen.LunaP.Controls.SettingsVariants : EmuSen.LunaP.Controls.SettingsPreview, System.IEquatable<EmuSen.LunaP.Controls.SettingsVariants>
+    protected override System.Type EqualityContract { get; }
+    protected override bool PrintMembers(System.Text.StringBuilder builder)
+    public SettingsVariants(string DarkName, string LightName)
+    public bool Equals(EmuSen.LunaP.Controls.SettingsPreview? other)
+    public bool Equals(EmuSen.LunaP.Controls.SettingsVariants? other)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.SettingsVariants? left, EmuSen.LunaP.Controls.SettingsVariants? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.SettingsVariants? left, EmuSen.LunaP.Controls.SettingsVariants? right)
+    public string DarkName { get; init; }
+    public string LightName { get; init; }
+    public void Deconstruct(out string DarkName, out string LightName)
+
 public class EmuSen.LunaP.Controls.SidePanel : Avalonia.Controls.ContentControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
@@ -3190,7 +3336,7 @@ public static class EmuSen.LunaP.Windowing.Dialogs
     public static System.Threading.Tasks.Task<bool> ConfirmAsync(Avalonia.Controls.Window owner, string title, string message, string acceptText = "OK", string cancelText = "Cancel")
     public static System.Threading.Tasks.Task<bool> MenuConfirmAsync(Avalonia.Controls.Window owner, string message, string acceptText, string cancelText, EmuSen.LunaP.Controls.PadFamily family, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry>? hints = null)
     public static System.Threading.Tasks.Task<string?> PickFolderAsync(Avalonia.Visual owner, string title, string? startIn = null)
-    public static System.Threading.Tasks.Task<string?> PromptAsync(Avalonia.Controls.Window owner, string title, string message, string initial = "", string acceptText = "OK", string cancelText = "Cancel")
+    public static System.Threading.Tasks.Task<string?> PromptAsync(Avalonia.Controls.Window owner, string title, string message, string initial = "", string acceptText = "OK", string cancelText = "Cancel", bool secret = false)
     public static System.Threading.Tasks.Task<string?> SaveFileAsync(Avalonia.Visual owner, string title, string? suggestedName = null, System.Collections.Generic.IReadOnlyList<Avalonia.Platform.Storage.FilePickerFileType>? types = null, string? startIn = null, string? defaultExtension = null)
 
 public static class EmuSen.LunaP.Windowing.EmbeddedPopups
