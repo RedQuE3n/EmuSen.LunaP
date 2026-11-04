@@ -15275,3 +15275,39 @@ change one consumer asked for. Whether the default should become a gap is left t
 **Tests.** `TableColumnGapTests`: without a gap two `Auto` columns touch; with one, the cells and the headings of every
 column but the last stand the gap apart, and the last column starts where its heading does; a negative gap is refused.
 `DocumentedDefaultTests` holds the default; the API snapshot gains the property.
+## 217. The help bar's word for Left and Right: `AdaptiveLayout.SideWord` (2026-11-03)
+
+A page whose rows step sideways names what Left and Right do in its help bar, and the approved pause-card mockups
+(`ingame-rewind-reel`, `ingame-options-controllers`, `-display`, `-sound`, `-memory-cards`) draw that entry second,
+between A and B: `A Go back · ◂▸ Moment · B Back · X Screenshot`. Appending it as an action put it after B, so the word
+is a property of the layout beside `AcceptWord` and `BackWord` (§210.5) rather than an action.
+
+- `SideWord` (string, null by default): when set, the help bar draws the D-pad's left-right glyph with this word
+  directly after A's entry; null draws nothing, so every existing layout's bar is unchanged.
+- The entry is a hint only. What Left and Right do stays the content's own, as for every row that steps.
+
+Proved by `CardFormTests.The_side_word_follows_A_and_comes_before_B`.
+
+## 218. An edge card's slide: `MenuPanel.SlideOut` (2026-11-03)
+
+Decided 2026-11-03 by the tester for the Pause Card, on the big screen and the desktop, in place of the opening that grows
+a menu from half its size (`MenuPanel.OpeningScale`): the panel slides in from the screen's left edge while the help band slides up from its
+foot, and both go back out the same ways on closing. Page turns keep no motion, and a sheet closing over the card does not
+replay it (`EmuSen_Interface.md` §18.5). No existing token moved a card, so the kit gains one property and keeps the
+timing in its motion tokens.
+
+- `SlideOut` (double, 0 by default): how far an edge card (`MenuAnchor.Edge`) is out of its place, 0 to 1. The panel's
+  surface, shadow, title, breadcrumb, rows and buttons are drawn moved left by the panel's right edge and 40 units, so the
+  shadow leaves too, times `SlideOut`; the help band and its bar move down by the band's height times `SlideOut`. The
+  pane does not move: its opacity is 1 minus `SlideOut`, so it fades in and out over the same duration and easing as the
+  slide rather than standing whole beside a card still arriving (a first build left it drawn at once, reviewed
+  2026-11-03). What is beneath the card does not move, and nothing is measured or arranged again, so a card at 0 is laid
+  out exactly as before, draws no transform and has its pane at full opacity: its recordings do not change. A centred
+  panel ignores it.
+- The host drives it: over `LunaMotionToken.Enter` (200 ms, quadratic ease-out) from 1 to 0 on opening, over `Exit`
+  (160 ms, quadratic ease-in) from 0 to 1 on closing. With `LunaMotion.Reduced` both durations are nothing, so the card
+  appears and leaves at once.
+- It composes with `OpeningScale`: the rows' transform is the scale about the panel's centre followed by the slide.
+
+Proved by `CardFormTests.A_slid_card_moves_its_rows_and_help_out_and_at_rest_is_laid_out_as_before`.
+

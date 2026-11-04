@@ -191,6 +191,50 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // A slid card moves its panel's rows left past the edge and its help bar down past the foot, lays nothing out again and fades the pane where it stands; at rest the transforms are gone and the pane whole (docs/LunaP.md §218).
+        [Fact]
+        public Task A_slid_card_moves_its_rows_and_help_out_and_at_rest_is_laid_out_as_before() => UiTest.Run(() =>
+        {
+            var (window, layout, rows, pane, _) = Card(1280, 800);
+            MenuPanel panel = layout.CardPanel;
+            Rect rowsAt = In(rows, window), paneAt = In(pane, window), panelAt = panel.PanelBounds;
+            HintBar help = panel.GetVisualDescendants().OfType<HintBar>().First();
+            Rect helpAt = In(help, window);
+            panel.SlideOut = 1;
+            UiTest.Settle(layout);
+            Assert.Equal(panelAt, panel.PanelBounds);
+            Assert.True(rows.TranslatePoint(new Point(rows.Bounds.Width, 0), window)!.Value.X <= 0, "the rows are past the left edge");
+            Assert.True(help.TranslatePoint(default, window)!.Value.Y >= 800, "the help bar is past the foot");
+            Assert.Equal(paneAt, In(pane, window));
+            Control paneHost = panel.Pane!;
+            Assert.Equal(0.0, paneHost.Opacity);
+            panel.SlideOut = 0.5;
+            UiTest.Settle(layout);
+            Assert.InRange(rows.TranslatePoint(default, window)!.Value.X, -panelAt.Right, rowsAt.X - 1);
+            Assert.Equal(0.5, paneHost.Opacity);
+            panel.SlideOut = 0;
+            UiTest.Settle(layout);
+            Assert.Null(rows.RenderTransform);
+            Assert.Null(help.RenderTransform);
+            Assert.Equal(1.0, paneHost.Opacity);
+            Assert.Equal((rowsAt, helpAt), (In(rows, window), In(help, window)));
+            window.Close();
+        });
+
+        // Left and Right's word comes second, after A and before B, as the pause card's pages draw it (docs/LunaP.md §217).
+        [Fact]
+        public Task The_side_word_follows_A_and_comes_before_B() => UiTest.Run(() =>
+        {
+            var (window, layout, _, _, _) = Card(1280, 800);
+            layout.AcceptWord = "Go back";
+            layout.SideWord = "Moment";
+            Assert.Equal(new[] { "Go back", "Moment", "Back", "Screenshot" }, layout.CardPanel.Hints!.Select(h => h.Label));
+            Assert.Equal(PadGlyphButton.DPadLeftRight, layout.CardPanel.Hints![1].Button);
+            layout.SideWord = null;
+            Assert.Equal(new[] { "Go back", "Back", "Screenshot" }, layout.CardPanel.Hints!.Select(h => h.Label));
+            window.Close();
+        });
+
         [Fact]
         public Task The_pad_s_shoulders_do_nothing_on_a_card_B_is_the_host_s_and_an_action_s_button_invokes_it() => UiTest.Run(() =>
         {

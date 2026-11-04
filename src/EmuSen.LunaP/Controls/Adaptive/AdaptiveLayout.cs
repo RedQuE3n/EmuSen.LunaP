@@ -94,6 +94,9 @@ namespace EmuSen.LunaP.Controls
         /// <summary>Defines the AcceptWord property.</summary>
         public static readonly StyledProperty<string?> AcceptWordProperty = AvaloniaProperty.Register<AdaptiveLayout, string?>(nameof(AcceptWord));
 
+        /// <summary>Defines the SideWord property.</summary>
+        public static readonly StyledProperty<string?> SideWordProperty = AvaloniaProperty.Register<AdaptiveLayout, string?>(nameof(SideWord));
+
         /// <summary>Defines the BackWord property.</summary>
         public static readonly StyledProperty<string> BackWordProperty = AvaloniaProperty.Register<AdaptiveLayout, string>(nameof(BackWord), "Back");
 
@@ -317,6 +320,13 @@ namespace EmuSen.LunaP.Controls
             set => SetValue(AcceptWordProperty, value);
         }
 
+        /// <summary>What the help bar calls Left and Right, after A, such as Value or Moment; null draws no such entry. Null by default (docs/LunaP.md §217).</summary>
+        public string? SideWord
+        {
+            get => GetValue(SideWordProperty);
+            set => SetValue(SideWordProperty, value);
+        }
+
         /// <summary>What the help bar calls B, such as Resume where B returns to a game. "Back" by default (docs/LunaP.md §210.5).</summary>
         public string BackWord
         {
@@ -428,6 +438,7 @@ namespace EmuSen.LunaP.Controls
                 if (IsCoverOpen && CoverHints is { } covered) return covered;
                 PadGlyphButton accept = SwapsAcceptAndBack ? PadGlyphButton.East : PadGlyphButton.South, back = SwapsAcceptAndBack ? PadGlyphButton.South : PadGlyphButton.East;
                 if (_content is not null && (AcceptWord ?? AcceptHint) is { } accepted) hints.Add(new HintEntry(accepted) { Button = accept });
+                if (SideWord is { } side) hints.Add(new HintEntry(side) { Button = PadGlyphButton.DPadLeftRight });
                 hints.Add(new HintEntry(BackWord) { Button = back });
                 if (_sections.Count > 1 && Form != AdaptiveForm.Card) hints.Add(new HintEntry(_sectionWord) { Button = PadGlyphButton.Shoulders });
                 // The face buttons' actions, then List, then the main action last (docs/LunaP.md §211.2).
@@ -812,7 +823,7 @@ namespace EmuSen.LunaP.Controls
                 Arrange();
                 if (focused is { } role) Avalonia.Threading.Dispatcher.UIThread.Post(() => Refocus(role), Avalonia.Threading.DispatcherPriority.Loaded);
             }
-            if (change.Property == AcceptWordProperty || change.Property == BackWordProperty) RefreshHints();
+            if (change.Property == AcceptWordProperty || change.Property == BackWordProperty || change.Property == SideWordProperty) RefreshHints();
         }
 
         /// <inheritdoc/>

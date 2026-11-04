@@ -63,6 +63,7 @@ namespace EmuSen.LunaP.Controls
         public static readonly StyledProperty<Color> HintColorProperty = AvaloniaProperty.Register<MenuPanel, Color>(nameof(HintColor), Color.FromRgb(0xD4, 0xD4, 0xD4));
         public static readonly StyledProperty<double> RowPitchProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(RowPitch), 54);
         public static readonly StyledProperty<double> OpeningScaleProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(OpeningScale), 1.0);
+        public static readonly StyledProperty<double> SlideOutProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(SlideOut));
         public static readonly StyledProperty<LetterCase?> FooterLetterCaseProperty = AvaloniaProperty.Register<MenuPanel, LetterCase?>(nameof(FooterLetterCase));
         public static readonly StyledProperty<double> TitleMinScaleProperty = AvaloniaProperty.Register<MenuPanel, double>(nameof(TitleMinScale), 1.0);
         public static readonly StyledProperty<int> TitleMaxLinesProperty = AvaloniaProperty.Register<MenuPanel, int>(nameof(TitleMaxLines), 1);
@@ -298,6 +299,9 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The panel's scale about its own centre, for an opening that grows it into place: the panel, its title, rows, buttons and footer are drawn at it, the help bar is not, and nothing is laid out again. 1 by default.</summary>
         public double OpeningScale { get => GetValue(OpeningScaleProperty); set => SetValue(OpeningScaleProperty, value); }
 
+        /// <summary>How far an edge card is out of its place, 0 to 1: its panel, title and rows moved left past the screen's edge and its help band down past the foot by that share, the pane left in place and faded to 1 minus that share, and nothing laid out again; a centred panel ignores it. 0 by default (docs/LunaP.md §218).</summary>
+        public double SlideOut { get => GetValue(SlideOutProperty); set => SetValue(SlideOutProperty, value); }
+
         /// <summary>Lines under the title, smaller, such as what the menu is about; separated by line breaks. Null shows none and keeps the title's band its own height.</summary>
         public string? Subtitle { get => GetValue(SubtitleProperty); set => SetValue(SubtitleProperty, value); }
 
@@ -404,7 +408,7 @@ namespace EmuSen.LunaP.Controls
                     LogicalChildren.Add(added);
                 }
             }
-            if (change.Property == OpeningScaleProperty)
+            if (change.Property == OpeningScaleProperty || change.Property == SlideOutProperty)
             {
                 ScaleChildren();
                 InvalidateVisual();
@@ -593,51 +597,69 @@ namespace EmuSen.LunaP.Controls
             return new Rect(x, Edge * u, Math.Max(0, area.Width - Edge * u - x), Math.Max(0, area.Height - hintHeight - 2 * Edge * u));
         }
 
-        // The rows and the buttons scaled about the panel's centre, as the panel is drawn; a scale of 1 takes the transform off again.
+        // The rows and the buttons scaled about the panel's centre and moved with an edge card's slide, the help bar moved down with its band; at rest the transforms come off again.
         private void ScaleChildren()
         {
-            double k = OpeningScale;
+            double k = OpeningScale, slide = IsEdge ? Math.Clamp(SlideOut, 0, 1) : 0;
+            Matrix moved = Matrix.CreateTranslation(-SlideDistance * slide, 0);
             foreach (Control? c in new[] { Child, Buttons })
+                Place(c, k == 1 && slide == 0 ? null : Matrix.CreateTranslation(-PanelBounds.Center.X, -PanelBounds.Center.Y) * Matrix.CreateScale(k, k) * Matrix.CreateTranslation(PanelBounds.Center.X, PanelBounds.Center.Y) * moved);
+            Place(_hints, slide == 0 ? null : Matrix.CreateTranslation(0, HelpBandBounds(Bounds.Size).Height * slide));
+            // The pane stays where it is and fades with the slide, so it never stands drawn beside a card still arriving.
+            if (Pane is { } pane && (slide > 0 || _paneFaded))
             {
-                if (c is null) continue;
-                bool ours = c.RenderTransform is ScaleTransform t && _openingTransforms.Contains(t);
-                if (k == 1)
-                {
-                    if (ours) c.RenderTransform = null;
-                    continue;
-                }
-                if (c.RenderTransform is not null && !ours) continue;
-                c.RenderTransformOrigin = new RelativePoint(PanelBounds.Center - c.Bounds.TopLeft, RelativeUnit.Absolute);
-                if (ours) ((ScaleTransform)c.RenderTransform!).ScaleX = ((ScaleTransform)c.RenderTransform!).ScaleY = k;
-                else
-                {
-                    var scale = new ScaleTransform(k, k);
-                    _openingTransforms.Add(scale);
-                    c.RenderTransform = scale;
-                }
+                pane.Opacity = 1 - slide;
+                _paneFaded = slide > 0;
             }
-            if (k == 1) _openingTransforms.Clear();
         }
 
-        private readonly HashSet<ScaleTransform> _openingTransforms = new();
+        private bool _paneFaded;
+
+        // How far the edge card moves to be wholly past the screen's left edge, its shadow with it.
+        private double SlideDistance => PanelBounds.Right + 40 * Unit;
+
+        // A transform of the panel's own on a child, in the child's parent's space; null takes it off, and a transform the host set is left alone.
+        private void Place(Control? c, Matrix? at)
+        {
+            if (c is null) return;
+            bool ours = c.RenderTransform is MatrixTransform t && _openingTransforms.Contains(t);
+            if (at is not { } matrix)
+            {
+                if (ours) c.RenderTransform = null;
+                return;
+            }
+            if (c.RenderTransform is not null && !ours) return;
+            c.RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Absolute);
+            Matrix local = Matrix.CreateTranslation(c.Bounds.X, c.Bounds.Y) * matrix * Matrix.CreateTranslation(-c.Bounds.X, -c.Bounds.Y);
+            if (ours) ((MatrixTransform)c.RenderTransform!).Matrix = local;
+            else
+            {
+                var transform = new MatrixTransform(local);
+                _openingTransforms.Add(transform);
+                c.RenderTransform = transform;
+            }
+        }
+
+        private readonly HashSet<MatrixTransform> _openingTransforms = new();
 
         public override void Render(DrawingContext context)
         {
             double u = Unit;
             Rect panel = PanelBounds;
             if (panel.Width <= 0) return;
-            double k = OpeningScale;
-            using DrawingContext.PushedState opening = context.PushTransform(Matrix.CreateTranslation(-panel.Center.X, -panel.Center.Y) * Matrix.CreateScale(k, k) * Matrix.CreateTranslation(panel.Center.X, panel.Center.Y));
+            double k = OpeningScale, slide = IsEdge ? Math.Clamp(SlideOut, 0, 1) : 0;
             double radius = IsEdge ? 0 : PanelCornerRadius * u;
             double rule = Math.Max(1, Math.Round(u));
             if (IsEdge && _hints.IsVisible)
             {
+                using DrawingContext.PushedState lowered = context.PushTransform(Matrix.CreateTranslation(0, HelpBandBounds(Bounds.Size).Height * slide));
                 // The help bar's band down to the screen's foot, on the panel's surface with the Border token's line along its top (§210).
                 Rect help = HelpBandBounds(Bounds.Size);
                 context.FillRectangle(new ImmutableSolidColorBrush(PanelColor), help);
                 Color line = this.TryFindResource("LunaBorderColor", ActualThemeVariant, out object? found) && found is Color c ? c : EmuSen.LunaP.Theme.LunaPalette.Border.Color;
                 context.FillRectangle(new ImmutableSolidColorBrush(line), new Rect(help.X, help.Y, help.Width, rule));
             }
+            using DrawingContext.PushedState opening = context.PushTransform(Matrix.CreateTranslation(-panel.Center.X, -panel.Center.Y) * Matrix.CreateScale(k, k) * Matrix.CreateTranslation(panel.Center.X, panel.Center.Y) * Matrix.CreateTranslation(-SlideDistance * slide, 0));
             if (IsEdge)
             {
                 // The one shadow, on the card's open edge: the Void token at half, 8 out and 24 blurred (§210.2).

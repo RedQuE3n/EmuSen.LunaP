@@ -179,8 +179,8 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(help, panel.HelpBar.Bounds);
             Assert.InRange(Lime(half, y0), full * 0.4, full * 0.6);
             Assert.Equal(0, Lime(half, (int)(whole.Top + whole.Height * 0.1)));
-            Assert.Equal(0.5, Assert.IsType<ScaleTransform>(rows.RenderTransform).ScaleX);
-            Assert.Equal(0.5, Assert.IsType<ScaleTransform>(buttons.RenderTransform).ScaleX);
+            Assert.Equal(0.5, Assert.IsType<MatrixTransform>(rows.RenderTransform).Matrix.M11);
+            Assert.Equal(0.5, Assert.IsType<MatrixTransform>(buttons.RenderTransform).Matrix.M11);
 
             panel.OpeningScale = 1;
             window.UpdateLayout();

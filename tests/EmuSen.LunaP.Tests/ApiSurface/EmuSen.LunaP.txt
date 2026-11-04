@@ -178,6 +178,7 @@ public class EmuSen.LunaP.Controls.AdaptiveLayout : Avalonia.Controls.Border
     public static readonly Avalonia.StyledProperty<double> ContentShareProperty = 0.4
     public static readonly Avalonia.StyledProperty<string> BackWordProperty = "Back"
     public static readonly Avalonia.StyledProperty<string?> AcceptWordProperty = null
+    public static readonly Avalonia.StyledProperty<string?> SideWordProperty = null
     public string BackWord { get; set; }
     public string SearchText { get; set; }
     public string SectionWord { get; set; }
@@ -186,6 +187,7 @@ public class EmuSen.LunaP.Controls.AdaptiveLayout : Avalonia.Controls.Border
     public string? SearchHint { get; set; }
     public string? SelectedFilter { get; }
     public string? SelectedSection { get; }
+    public string? SideWord { get; set; }
     public virtual bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
     public void SetActions(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> actions)
     public void SetActions(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> actions, System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> drawnElsewhere)
@@ -1740,6 +1742,7 @@ public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     public double OpeningScale { get; set; }
     public double PanelCornerRadius { get; set; }
     public double RowPitch { get; set; }
+    public double SlideOut { get; set; }
     public double SubtitleSize { get; set; }
     public double TitleDrawnSize { get; }
     public double TitleMinScale { get; set; }
@@ -1776,6 +1779,7 @@ public class EmuSen.LunaP.Controls.MenuPanel : Avalonia.Controls.Decorator
     public static readonly Avalonia.StyledProperty<double> OpeningScaleProperty = 1
     public static readonly Avalonia.StyledProperty<double> PanelCornerRadiusProperty = 16
     public static readonly Avalonia.StyledProperty<double> RowPitchProperty = 54
+    public static readonly Avalonia.StyledProperty<double> SlideOutProperty = 0
     public static readonly Avalonia.StyledProperty<double> SubtitleSizeProperty = 26
     public static readonly Avalonia.StyledProperty<double> TitleMinScaleProperty = 1
     public static readonly Avalonia.StyledProperty<double> TitleSizeProperty = 68
