@@ -102,6 +102,27 @@ namespace EmuSen.LunaP.Tests
             Assert.Empty(faults);
         });
 
+        // The tallest cover focused grows about its centre with its ring, and the label above the shelf keeps the mockup's clearance over it (docs/LunaP.md §212.12).
+        [Theory]
+        [MemberData(nameof(Screens))]
+        [InlineData(3840, 2160)]
+        public Task The_shelf_s_label_clears_a_focused_portrait_cover_and_its_ring(int width, int height) => UiTest.Run(() =>
+        {
+            var (window, hub, _) = Hub(width, height);
+            hub.FocusOn(HubRow.Shelf, "g1");
+            UiTest.Settle(hub);
+            double u = height / HubLayout.DesignHeight;
+            Picture(window, $"hub-shelf-portrait-{width}x{height}");
+            Control ring = hub.GetVisualDescendants().OfType<Control>().First(c => c.Name == "CoverRing" && c.IsVisible);
+            Rect drawn = new Rect(ring.Bounds.Size).TransformToAABB(ring.TransformToVisual(hub)!.Value);
+            Rect label = At(hub, "HubRecentTitle", u);
+            Assert.True(label.Bottom + HubLayout.ShelfLabelGap * u <= drawn.Top + 0.5, $"{width}x{height}: the label ends at {label.Bottom:0.0}, the ring starts at {drawn.Top:0.0}");
+            List<string> faults = FitAudit.Check(hub, [PlaceLines]);
+            foreach (string f in faults) output.WriteLine($"{width}x{height}: {f}");
+            window.Close();
+            Assert.Empty(faults);
+        });
+
         [Theory]
         [InlineData(1080, 772)]
         [InlineData(1720, 1148)]

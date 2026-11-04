@@ -37,6 +37,9 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The shelf's top, a cover's cell and the step from one cell to the next on the big screen.</summary>
         public const double ShelfTop = 416, TileWidth = 120, TileHeight = 160, TileStep = 144;
 
+        /// <summary>The space between the shelf's label and the highest the tallest cover reaches focused, grown with its ring - the mockup's 5 units (docs/LunaP.md §212.12).</summary>
+        public const double ShelfLabelGap = 5;
+
         /// <summary>The places' top, a place's width and height and the gap between two on the big screen.</summary>
         public const double PlacesTop = 622, PlaceWidth = 150, PlaceHeight = 64, PlaceGap = 17;
 

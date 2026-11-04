@@ -102,7 +102,11 @@ namespace EmuSen.LunaP.Controls
         private void AddShelf(Panel surface)
         {
             TextBlock label = Words(_recentTitle.ToUpperInvariant(), Type.Caption, "LunaMuted", name: "HubRecentTitle");
-            At(label, Side, ShelfTop - 28 * LunaTokens.TextScale, 400);
+            // Its foot over the tallest cover focused: grown about its centre with the ring around it (docs/LunaP.md §212.12).
+            LunaFocus focus = LunaTokens.FocusMarks;
+            double rise = (TileHeight / 2 + focus.RingThickness + focus.RingOffset) * focus.TileScale - TileHeight / 2;
+            label.Measure(Size.Infinity);
+            At(label, Side, Math.Floor(ShelfTop - rise - ShelfLabelGap - label.DesiredSize.Height), 400);
             surface.Children.Add(label);
             var shelf = new Panel { Name = "HubShelf", Height = TileHeight, Margin = new Thickness(Side, ShelfTop, Side, 0), VerticalAlignment = VerticalAlignment.Top };
             AutomationProperties.SetName(shelf, _recentTitle);

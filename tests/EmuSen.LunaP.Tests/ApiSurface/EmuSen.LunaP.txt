@@ -1067,6 +1067,7 @@ public class EmuSen.LunaP.Controls.HubLayout : Avalonia.Controls.Border
     public const double PlaceHeight = 64
     public const double PlaceWidth = 150
     public const double PlacesTop = 622
+    public const double ShelfLabelGap = 5
     public const double ShelfTop = 416
     public const double Side = 64
     public const double TileHeight = 160

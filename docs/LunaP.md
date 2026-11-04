@@ -14978,6 +14978,29 @@ taken again whenever the scale or the form changes.
 scale afterwards and holds both layouts to the fit audit. Without the change it found the hub reaching 10,368 pixels on
 the 3,840-wide window.
 
+### 212.12 The shelf's label over a focused portrait cover (2026-11-04)
+
+Reported by the tester on 2026-11-04 from a 4K television: with the shelf's tallest cover focused, its ring ran through
+the foot of the RECENT label. The label stood a fixed 28 units (times the text scale) above the shelf's top, and nothing
+in that number knew that a focused cover grows. A cover as tall as its cell (160 units, any aspect of 0.75 or under) is
+scaled by `TileScale` (1.06) about its own centre with the ring drawn `RingThickness + RingOffset` (3 + 4) outside it, so
+its ring reaches (80 + 7) × 1.06 − 80 = 12.2 units above the shelf's top, to 403.8 on the 800-unit design. The label's
+box then ran from 388 to 412 and its baseline sat near 406, inside the ring's stroke. The fault is not the television's:
+it holds on every screen, and the television only made it large enough to see.
+
+The library-home-shelf mockup leaves 5 units between the label's box and the shelf it names (`ShelfLabelGap`). The label
+now keeps those 5 units above the highest the tallest focused cover reaches with its ring: its foot is placed at
+`ShelfTop − rise − ShelfLabelGap`, its top found by measuring it and rounded down to a whole unit, so layout rounding never
+moves it lower. On the design it moves from 388 to 374; at text scale 1.3 it rises by its own extra height. The
+Continue picture ends at 364, so the label keeps 10 units below it. The shelf, the covers and every other part stay put.
+
+`HubLayoutTests.The_shelf_s_label_clears_a_focused_portrait_cover_and_its_ring` focuses the shelf's portrait cover on five
+screens (1280 x 720 to 3840 x 2160), takes the ring's drawn bounds through the cover's transform, holds the label's foot
+5 units above them and holds the hub to the fit audit. Seeded fault, reverted: the label at its old place, caught on all
+five screens (at 1280 x 800 the label ended at 412.0 against the ring's 403.8). In EmuSen the eight big-screen Home
+recordings (Home, HomeShelf, HomePlaces, HomeNothingLeft at 1280 x 800 and 1920 x 1200) moved by that label alone and
+were recorded again after the pictures were looked at.
+
 ## 213. Settings: `SettingsLayout`, the third canonical layout (2026-11-03)
 
 ### 213.1 The gap
