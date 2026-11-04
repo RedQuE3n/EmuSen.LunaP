@@ -322,7 +322,9 @@ namespace EmuSen.LunaP.Controls
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
             base.OnPropertyChanged(change);
-            if (change.Property == FormProperty || change.Property == MenuPanel.ScaleProperty) Fill();
+            if (change.Property != FormProperty && change.Property != MenuPanel.ScaleProperty) return;
+            if (Bounds.Width > 0) _unitsWide = Big ? Bounds.Width / Unit(MenuPanel.GetScale(this)) : Bounds.Width;
+            Fill();
         }
 
         /// <inheritdoc/>

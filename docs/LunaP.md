@@ -14966,6 +14966,18 @@ favourite's heart within its cover's top right, and a dimmed row's brightest lab
 `ManagerLayout.Applies` (true by default) says whether a list's marks are applied at all: set false, for a list nothing is
 marked in such as a consumer's collections, the help bar names no Apply and Start does nothing. `HubLayoutTests` holds it.
 
+### 212.11 A scale that follows a resize (2026-11-04)
+
+The hub, the gallery and SettingsLayout lay out in units: the window's width divided by `MenuPanel.Scale`. They read that
+width when their size changed, so a scale set after a resize left the width of the old scale. A docked handheld meets a
+4K television exactly that way: the window grows to 3840 x 2160 first, and the scale follows at 2.7. The hub was then laid
+out 4,000 units wide, its places and shelf ran off the right edge, and its status line left the screen. The width is now
+taken again whenever the scale or the form changes.
+
+`HubLayoutTests.A_scale_set_after_a_resize_lays_the_hub_and_gallery_out_to_the_window` resizes to 3840 x 2160, sets the
+scale afterwards and holds both layouts to the fit audit. Without the change it found the hub reaching 10,368 pixels on
+the 3,840-wide window.
+
 ## 213. Settings: `SettingsLayout`, the third canonical layout (2026-11-03)
 
 ### 213.1 The gap

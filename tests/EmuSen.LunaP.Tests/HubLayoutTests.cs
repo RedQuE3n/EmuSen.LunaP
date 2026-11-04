@@ -118,6 +118,28 @@ namespace EmuSen.LunaP.Tests
         });
 
         [Fact]
+        public Task A_scale_set_after_a_resize_lays_the_hub_and_gallery_out_to_the_window() => UiTest.Run(() =>
+        {
+            // Docking to a 4K screen resizes the window before its scale follows; the width in units must follow the scale too.
+            var (window, hub, _) = Hub(1280, 800);
+            var (galleryWindow, gallery, _) = Gallery(1280, 800);
+            foreach ((Window w, Control layout, double design) in new[] { (window, (Control)hub, HubLayout.DesignHeight), (galleryWindow, (Control)gallery, GalleryLayout.DesignHeight) })
+            {
+                w.Width = 3840;
+                w.Height = 2160;
+                UiTest.Settle(layout);
+                MenuPanel.SetScale(layout, 2160 / design);
+                UiTest.Settle(layout);
+                List<string> faults = FitAudit.Check(layout, [PlaceLines]);
+                foreach (string f in faults) output.WriteLine($"{layout.GetType().Name} 3840x2160: {f}");
+                w.Close();
+                Assert.Empty(faults);
+            }
+            // Nine whole covers across the 16:9 screen's 1422 units, as at 1920 x 1080.
+            Assert.Equal(9, hub.ShelfShown.Count);
+        });
+
+        [Fact]
         public Task The_pad_walks_from_Continue_down_the_shelf_to_the_places_and_back() => UiTest.Run(() =>
         {
             var (window, hub, said) = Hub(1280, 800);
