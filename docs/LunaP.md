@@ -15382,3 +15382,126 @@ timing in its motion tokens.
 
 Proved by `CardFormTests.A_slid_card_moves_its_rows_and_help_out_and_at_rest_is_laid_out_as_before`.
 
+
+## 219. A start-up splash drawn live: `LunaSplash`, `SplashTimeline` and the chime (2026-11-04)
+
+Decided 2026-11-04 by the tester, from an animated draft ("Moonrise", a canvas page) approved the same day: a host's
+big-screen start shows about five seconds of drawn motion over its start-up work. A star field fades in; a moon's
+outline is drawn as a light stroke and fills to a crescent with a halo; one small planet per item the host names
+(EmuSen's consoles) drifts in on an orbit and springs into a row beneath; a light sweeps along the row, and each planet
+flares and rings its own bell as the light reaches it; a title settles with a caption beneath it. The draft's timeline, colours, easing and layout are the specification; where the kit does
+not match it, §219.5 says so.
+
+### 219.1 Form
+
+Nothing in the kit drew motion of this kind, and a video file would be fixed at one resolution, so the splash is a
+control of its own that draws every frame from vectors through Avalonia's `DrawingContext`, which the compositor hands
+to Skia on the GPU. It is crisp at any size because nothing in it is a bitmap. It holds no clock: the host sets
+`Time`, in seconds since the splash began, from its own clock, so a test steps it as it steps any of the kit's motion
+(§206.5), and the control knows nothing of what start-up work it covers. One job: draw the frame for a time.
+
+- `LunaSplash` (control). `Timeline` (a `SplashTimeline`), `Bodies` (the planets, each a `SplashBody` with a name and a
+  hue in degrees), `Title` and `Caption` (the words; the host spells them), and `Time`, clamped to 0 to the timeline's
+  `Length`. `AtEnd` says the finished frame is drawn; `Finish()` sets `Time` to `Length`, which is what a skip and
+  reduced motion both show. `StrikeTimes()` gives, at the control's present size, when the sweep reaches each planet:
+  the times its bells ring. `Parts()` gives each drawn part's bounds, for a fit audit. Nothing is measured: the splash
+  fills whatever it is arranged in.
+- `SplashTimeline` (record, plain data). Every span of the draft as a `SplashSpan(From, To)` in the draft's own seconds,
+  the `Pace` they are stretched by and the `Length` the splash lasts, the star count and the seed that places stars and
+  orbits, and the chime (`SplashChime`). `SplashTimeline.Moonrise` is the approved draft. A host that wants another
+  timing writes another record; nothing else changes.
+- `LunaSounds.Render(SplashChime, strikes)`: the bells as samples in the cues' own format (48 kHz stereo 32-bit float,
+  §206.6), one bell per strike time, beginning at the first; the host renders them for the count it shows and plays them
+  through whatever plays its cues.
+
+### 219.2 The timeline
+
+Decided 2026-11-04 (a revision of the first draft the same day): the draft's points are stretched by `Pace` = 1.1, so
+the title settles by about 4.1 s, and the finished frame holds until `Length` = 5.0 s. The control draws the draft's
+frame for `Time / Pace`, so the spans below stay the draft's numbers and the pace is one figure.
+
+| Part | Span (draft seconds) | Easing |
+|---|---|---|
+| Stars fade in | 0 – 0.9 | cubic ease-out |
+| Moon's outline drawn from the top, clockwise | 0.4 – 1.6 | cubic ease-out |
+| Halo | 0.9 – 2.0 | cubic ease-out |
+| Moon fills; the shadow slides to a crescent | 1.2 – 2.0 | cubic ease-out |
+| Planets appear, each 0.03 s after the one before | 1.15 – 1.6 | cubic ease-out |
+| Planets settle from orbit into the row | 1.2 – 2.7, each 0.02 later, at 1.25× rate | damped spring, 1 − cos(2.4πv)·e^(−5v) |
+| Light sweep along the row, from 60 units before the row to 60 after it | 2.35 – 3.65 | linear; each planet flares as it passes |
+| Row's line grows from the centre | 2.4 – 3.7 | cubic ease-out |
+| Title and caption | 3.45 – 4.15 | cubic ease-out; the title's letter spacing closes from 18 to 10 units and it rises 10 units |
+
+Positions are the draft's, in units of the height over 720: the moon at 36 % of the height with a radius of 92 units;
+the row at 66 %, as wide as the lesser of 78 % of the width and 980 units; the title at 85 % in 78-unit type; the caption
+at 91 % in 15-unit type. The colours are the draft's: a sky from `#05060f` through `#0b1029` at 70 % to `#141b45`,
+stars `#dfe6ff`, the halo `rgba(201,214,255,.28)`, the outline `#f3efe2`, the lit face `#faf7ec` to `#d6d2c4`, the shadow
+`#070a1c`, the line `rgba(159,180,255,.35)`, the sweep `rgba(214,226,255,.55)`, the title `#e7e9f4` and the caption
+`#8b90ad`. A planet is a radial gradient from `hsl(h,70%,78%)` to `hsl(h,55%,38%)` lit from its upper left, with a glow
+of `hsla(h,80%,70%,.18)` 2.6 times its radius. While the sweep passes, a planet flares: a disc of `hsl(h,90%,86%)` at
+0.55 h' opacity and (2 + 2.2 h') times its radius, where h' = exp(−((x − sweep)/34 units)²), a Gaussian of the distance
+from the sweep's centre (`FlareWidth`).
+
+After `Length` the frame does not change, so a host holding the splash longer (its work is not done) draws nothing new
+and the compositor has nothing to do.
+
+### 219.3 Stars and orbits
+
+The draft placed its stars and each planet's orbit with `Math.random()`, so no two showings matched. Here they come
+from a seeded generator, Mulberry32 (Tommy Ettinger's 32-bit generator, a widely published one-line PRNG), seed
+`Moonrise.Seed`, drawn in the draft's order: five numbers per star (x, y, radius, phase, twinkle rate), then three per
+planet (start angle, orbit's width, orbit's height). The same generator in a copy of the draft page makes its frames
+comparable with the control's, pixel for pixel in placement (§219.5). A frame is a pure function of the timeline, the
+bodies, the time and the size.
+
+### 219.4 The bells
+
+Decided 2026-11-04 by the tester in several steps the same day (a sine chime of five notes; then five small bells; then
+a fourth lower and duller; then one bell per planet, rung by the sweep; then gentler, so it does not irritate; then reined in further and dry): as the
+light reaches each planet, that planet's bell rings, left to right, climbing the G major pentatonic scale from G4
+(392, 440, 493.88, 587.33, 659.25, 783.99, 880, 987.77, 1174.66, 1318.51, 1567.98, 1760 and 1975.53 Hz for thirteen).
+The scale is data, a root and its steps in semitones (`Root` 391.995 Hz, `Ladder` 0, 2, 4, 7, 9), so a fourteenth
+planet rings D7 and a twelfth is the last rung; the bells are as many as the planets.
+
+A strike is four sine partials at 1, 2.76, 5.40 and 8.93 times the note (the inharmonic series of a small struck bar),
+with amplitudes 1, 0.18, 0.06 and 0.02, each rising linearly in 18 ms and falling exponentially to a ten-thousandth at
+0.55, 0.22, 0.11 and 0.06 s, cut 50 ms later; every partial is detuned by up to ±0.2 %. The whole, at a gain of 0.03,
+passes a low-pass biquad at 2.4 kHz with a Q of 0.5 dB, and is dry: no echo. `Render` writes it as the Web Audio graph
+does, through the filter Web Audio's specification gives for a low-pass `BiquadFilterNode` (its Q read in decibels:
+α = sin ω₀ / (2 · 10^(Q/20))). The chime's data keeps an echo (a delay and its feedback, added to the dry mix as a
+`DelayNode` in a feedback loop would be) for a host that wants one; Moonrise's delay is 0, which renders none. At the
+same volume its loudest sample is under 0.8 of the quietest navigation cue's (§206.6), so at the default level the
+splash sits beneath the menus' sounds.
+
+When a bell rings depends on where its planet stands along the sweep, which depends on the row's width over the height
+(the lesser of 78 % of the width and 980 units), so the strike times are the control's (`StrikeTimes()`), read at its
+size, and the host renders the bells for those times and that count. The draft detunes with `Math.random()`, so it
+sounds a little different on every showing; here the detune comes from `SplashRandom` with `DetuneSeed`, drawn strike by
+strike and partial by partial, so two renders for the same times are the same. The samples begin at the first strike
+and end when the mix has fallen 60 dB under its loudest sample: for thirteen planets at 1280 × 720, about 1.8 s, 0.7 MB.
+
+### 219.5 Where it differs from the draft
+
+- **The title's weight.** The draft asks for Barlow Condensed Light (300); the kit bundles Barlow Condensed Regular and
+  Medium (§206.3), so the title is Regular, a little heavier. Bundling the Light cut is a font decision for the kit,
+  not for this control.
+- **Gradients.** The draft's two-circle gradients (a planet's light, the moon's face) are drawn as Avalonia radial
+  gradients with a moved origin; the inner circle, a tenth of the radius, is held as a flat stop. The difference is under
+  a few levels at the gradient's lit spot.
+- **Letter spacing.** Both add the spacing after every letter, the last included, and centre that width, so the title
+  sits half a space left of centre in both; the control rounds the spacing to a quarter unit so the title's layout is
+  made again only when the rounded value moves.
+- **The spring's end.** The draft's spring ends at 1 − cos(2.4π)·e⁻⁵, 0.998 of the way into the row, and so does the
+  control's: a planet's resting place is 0.2 % of its travel short of the row's line, as drawn in the draft.
+- **The finished frame holds still.** The draft's stars go on twinkling after the end; the control's finished frame is
+  one frame, so a held splash costs nothing to show.
+
+### 219.6 Tests
+
+`SplashTests`: the timeline's numbers are the draft's; `Time` is clamped and `Finish` reaches the end; the frame at a
+time is the same on two draws (the seed); the stars' and planets' first draws equal Mulberry32's published first
+outputs and the chime's two renders are the same; at every size audited (1280 × 800, 1920 × 1080, 1280 × 720, 3840 × 2160, the last set after the first
+layout) the title, caption, moon, halo and every planet of the finished frame are inside the control; nothing is drawn
+before the stars begin; each planet's bell starts at its strike time (the power at its pitch, by Goertzel's recurrence, ten times what it was
+the 50 ms before), the scale is the pentatonic ladder, two renders are the same, the bells are quieter than every cue
+and end quiet; mid-sweep a planet's flare brightens its halo.

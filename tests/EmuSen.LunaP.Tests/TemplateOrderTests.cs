@@ -487,6 +487,12 @@ namespace EmuSen.LunaP.Tests
         // checkable as an assertion.
         private static readonly Dictionary<(Type Type, string Method), string> Exempt = new()
         {
+            [(typeof(LunaSplash), nameof(LunaSplash.Finish))] =
+                "LunaSplash has no template: Finish only sets Time, which the next draw reads, so it holds whenever it is called.",
+            [(typeof(LunaSplash), nameof(LunaSplash.StrikeTimes))] =
+                "LunaSplash has no template: before it is arranged its height is 0 and every strike time is 0; SplashTests reads them after arranging.",
+            [(typeof(LunaSplash), nameof(LunaSplash.Parts))] =
+                "LunaSplash has no template: before it is arranged it has no size and returns no parts.",
             [(typeof(ManagerLayout<>), "RefreshRows")] =
                 "RefreshRows draws the rows the tool already gave again; before the template there is nothing drawn, and SetRows keeps the rows for the first draw.",
             [(typeof(LunaTable<>), "HeadingAt")] =

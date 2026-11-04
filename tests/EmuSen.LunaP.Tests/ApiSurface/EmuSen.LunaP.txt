@@ -1463,6 +1463,19 @@ public enum EmuSen.LunaP.Controls.LunaSelectionUnit
     public const EmuSen.LunaP.Controls.LunaSelectionUnit Row = 0
     public int value__
 
+public sealed class EmuSen.LunaP.Controls.LunaSplash : Avalonia.Controls.Control
+    public EmuSen.LunaP.Controls.SplashTimeline Timeline { get; set; }
+    public LunaSplash()
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.SplashBody> Bodies { get; set; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.SplashPart> Parts()
+    public System.Collections.Generic.IReadOnlyList<double> StrikeTimes()
+    public bool AtEnd { get; }
+    public double Time { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public string Caption { get; set; }
+    public string Title { get; set; }
+    public void Finish()
+
 public class EmuSen.LunaP.Controls.LunaSwitch : Avalonia.Controls.ToggleSwitch
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override System.Type StyleKeyOverride { get; }
@@ -2671,6 +2684,79 @@ public sealed class EmuSen.LunaP.Controls.SourceListItem : System.IEquatable<Emu
     public string? Badge { get; init; }
     public void Deconstruct(out string Key, out string Text, out string? Badge)
 
+public sealed class EmuSen.LunaP.Controls.SplashBody : System.IEquatable<EmuSen.LunaP.Controls.SplashBody>
+    public SplashBody(string Name, double Hue)
+    public bool Equals(EmuSen.LunaP.Controls.SplashBody? other)
+    public double Hue { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.SplashBody? left, EmuSen.LunaP.Controls.SplashBody? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.SplashBody? left, EmuSen.LunaP.Controls.SplashBody? right)
+    public string Name { get; init; }
+    public void Deconstruct(out string Name, out double Hue)
+
+public sealed class EmuSen.LunaP.Controls.SplashPart : System.IEquatable<EmuSen.LunaP.Controls.SplashPart>
+    public Avalonia.Rect Bounds { get; init; }
+    public SplashPart(string Name, Avalonia.Rect Bounds)
+    public bool Equals(EmuSen.LunaP.Controls.SplashPart? other)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.SplashPart? left, EmuSen.LunaP.Controls.SplashPart? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.SplashPart? left, EmuSen.LunaP.Controls.SplashPart? right)
+    public string Name { get; init; }
+    public void Deconstruct(out string Name, out Avalonia.Rect Bounds)
+
+public sealed class EmuSen.LunaP.Controls.SplashRandom
+    public SplashRandom(uint seed)
+    public double Next()
+    public static System.Collections.Generic.IReadOnlyList<double> First(uint seed, int count)
+
+public struct EmuSen.LunaP.Controls.SplashSpan : System.ValueType, System.IEquatable<EmuSen.LunaP.Controls.SplashSpan>
+    public SplashSpan(double From, double To)
+    public bool Equals(EmuSen.LunaP.Controls.SplashSpan other)
+    public double At(double t)
+    public double From { get; init; }
+    public double To { get; init; }
+    public override bool Equals(object obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.SplashSpan left, EmuSen.LunaP.Controls.SplashSpan right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.SplashSpan left, EmuSen.LunaP.Controls.SplashSpan right)
+    public void Deconstruct(out double From, out double To)
+
+public sealed class EmuSen.LunaP.Controls.SplashTimeline : System.IEquatable<EmuSen.LunaP.Controls.SplashTimeline>
+    public EmuSen.LunaP.Controls.SplashSpan Appear { get; init; }
+    public EmuSen.LunaP.Controls.SplashSpan Fill { get; init; }
+    public EmuSen.LunaP.Controls.SplashSpan Halo { get; init; }
+    public EmuSen.LunaP.Controls.SplashSpan Line { get; init; }
+    public EmuSen.LunaP.Controls.SplashSpan Settle { get; init; }
+    public EmuSen.LunaP.Controls.SplashSpan Stars { get; init; }
+    public EmuSen.LunaP.Controls.SplashSpan Stroke { get; init; }
+    public EmuSen.LunaP.Controls.SplashSpan Sweep { get; init; }
+    public EmuSen.LunaP.Controls.SplashSpan Words { get; init; }
+    public EmuSen.LunaP.Media.SplashChime Chime { get; init; }
+    public SplashTimeline(double Pace, double Length, EmuSen.LunaP.Controls.SplashSpan Stars, EmuSen.LunaP.Controls.SplashSpan Stroke, EmuSen.LunaP.Controls.SplashSpan Halo, EmuSen.LunaP.Controls.SplashSpan Fill, EmuSen.LunaP.Controls.SplashSpan Appear, double AppearStagger, EmuSen.LunaP.Controls.SplashSpan Settle, double SettleRate, double SettleStagger, double OrbitSwing, EmuSen.LunaP.Controls.SplashSpan Sweep, double FlareWidth, EmuSen.LunaP.Controls.SplashSpan Line, EmuSen.LunaP.Controls.SplashSpan Words, int StarCount, uint Seed, EmuSen.LunaP.Media.SplashChime Chime)
+    public bool Equals(EmuSen.LunaP.Controls.SplashTimeline? other)
+    public double AppearStagger { get; init; }
+    public double DraftTime(double seconds)
+    public double FlareWidth { get; init; }
+    public double Length { get; init; }
+    public double OrbitSwing { get; init; }
+    public double Pace { get; init; }
+    public double SettleRate { get; init; }
+    public double SettleStagger { get; init; }
+    public int StarCount { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static EmuSen.LunaP.Controls.SplashTimeline Moonrise { get; }
+    public static bool op_Equality(EmuSen.LunaP.Controls.SplashTimeline? left, EmuSen.LunaP.Controls.SplashTimeline? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.SplashTimeline? left, EmuSen.LunaP.Controls.SplashTimeline? right)
+    public uint Seed { get; init; }
+    public void Deconstruct(out double Pace, out double Length, out EmuSen.LunaP.Controls.SplashSpan Stars, out EmuSen.LunaP.Controls.SplashSpan Stroke, out EmuSen.LunaP.Controls.SplashSpan Halo, out EmuSen.LunaP.Controls.SplashSpan Fill, out EmuSen.LunaP.Controls.SplashSpan Appear, out double AppearStagger, out EmuSen.LunaP.Controls.SplashSpan Settle, out double SettleRate, out double SettleStagger, out double OrbitSwing, out EmuSen.LunaP.Controls.SplashSpan Sweep, out double FlareWidth, out EmuSen.LunaP.Controls.SplashSpan Line, out EmuSen.LunaP.Controls.SplashSpan Words, out int StarCount, out uint Seed, out EmuSen.LunaP.Media.SplashChime Chime)
+
 public class EmuSen.LunaP.Controls.SplitPane : Avalonia.Controls.Primitives.TemplatedControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
     protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
@@ -2982,6 +3068,19 @@ public static class EmuSen.LunaP.Fluent.Ui
     public static EmuSen.LunaP.Controls.MonoText Mono(string text = "")
     public static EmuSen.LunaP.Controls.SectionHeader Header(string text)
 
+public struct EmuSen.LunaP.Media.BellPartial : System.ValueType, System.IEquatable<EmuSen.LunaP.Media.BellPartial>
+    public BellPartial(double Ratio, double Amplitude, double Decay)
+    public bool Equals(EmuSen.LunaP.Media.BellPartial other)
+    public double Amplitude { get; init; }
+    public double Decay { get; init; }
+    public double Ratio { get; init; }
+    public override bool Equals(object obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Media.BellPartial left, EmuSen.LunaP.Media.BellPartial right)
+    public static bool op_Inequality(EmuSen.LunaP.Media.BellPartial left, EmuSen.LunaP.Media.BellPartial right)
+    public void Deconstruct(out double Ratio, out double Amplitude, out double Decay)
+
 public static class EmuSen.LunaP.Media.FontFiles
     public static Avalonia.Media.GlyphTypeface Default { get; }
     public static Avalonia.Media.GlyphTypeface? Load(string path)
@@ -3028,6 +3127,7 @@ public static class EmuSen.LunaP.Media.LunaSounds
     public static System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.LunaSoundCue> Cues { get; }
     public static System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.LunaTone> TonesOf(EmuSen.LunaP.Media.LunaSoundCue cue)
     public static bool PlaysOverGameplay(EmuSen.LunaP.Media.LunaSoundCue cue)
+    public static byte[] Render(EmuSen.LunaP.Media.SplashChime chime, System.Collections.Generic.IReadOnlyList<double> strikes)
     public static byte[] Render(System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.LunaTone> tones)
     public static byte[] Samples(EmuSen.LunaP.Media.LunaSoundCue cue)
 
@@ -3044,6 +3144,29 @@ public struct EmuSen.LunaP.Media.LunaTone : System.ValueType, System.IEquatable<
     public static bool op_Equality(EmuSen.LunaP.Media.LunaTone left, EmuSen.LunaP.Media.LunaTone right)
     public static bool op_Inequality(EmuSen.LunaP.Media.LunaTone left, EmuSen.LunaP.Media.LunaTone right)
     public void Deconstruct(out double From, out double To, out double Start, out double Length)
+
+public sealed class EmuSen.LunaP.Media.SplashChime : System.IEquatable<EmuSen.LunaP.Media.SplashChime>
+    public SplashChime(double Root, System.Collections.Generic.IReadOnlyList<int> Ladder, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.BellPartial> Partials, double Attack, double Tail, double Detune, uint DetuneSeed, double Echo, double Feedback, double Gain, double Lowpass, double LowpassQ)
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.BellPartial> Partials { get; init; }
+    public System.Collections.Generic.IReadOnlyList<int> Ladder { get; init; }
+    public bool Equals(EmuSen.LunaP.Media.SplashChime? other)
+    public double Attack { get; init; }
+    public double Detune { get; init; }
+    public double Echo { get; init; }
+    public double Feedback { get; init; }
+    public double Gain { get; init; }
+    public double Lowpass { get; init; }
+    public double LowpassQ { get; init; }
+    public double NoteOf(int bell)
+    public double Root { get; init; }
+    public double Tail { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Media.SplashChime? left, EmuSen.LunaP.Media.SplashChime? right)
+    public static bool op_Inequality(EmuSen.LunaP.Media.SplashChime? left, EmuSen.LunaP.Media.SplashChime? right)
+    public uint DetuneSeed { get; init; }
+    public void Deconstruct(out double Root, out System.Collections.Generic.IReadOnlyList<int> Ladder, out System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.BellPartial> Partials, out double Attack, out double Tail, out double Detune, out uint DetuneSeed, out double Echo, out double Feedback, out double Gain, out double Lowpass, out double LowpassQ)
 
 public sealed class EmuSen.LunaP.Media.SvgDocument
     public Avalonia.Matrix ViewportTransform(Avalonia.Rect viewport)
