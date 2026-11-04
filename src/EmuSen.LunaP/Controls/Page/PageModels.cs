@@ -8,7 +8,7 @@ namespace EmuSen.LunaP.Controls
     /// <param name="Facts">A line of facts under the name; null for none.</param>
     /// <param name="Art">The hero picture, the poster a clip will turn from; null draws the surface.</param>
     /// <param name="Cover">The cover; null draws a generated card with the title and the mark.</param>
-    /// <param name="CoverAspect">The cover's width over its height, the item's box shape; never stretched.</param>
+    /// <param name="CoverAspect">The generated card's width over its height, with no cover; a cover is drawn whole at its own shape.</param>
     /// <param name="Mark">A short name drawn at the top left of a generated cover, such as a console's.</param>
     public sealed record PageHero(string Title, string? Facts = null, IImage? Art = null, IImage? Cover = null, double CoverAspect = 0.75, string? Mark = null);
 

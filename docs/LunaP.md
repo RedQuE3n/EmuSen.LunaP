@@ -14874,9 +14874,9 @@ layout rather than hand placement (§209.1) puts both here, general to any libra
 
 ### 212.2 `CoverCard` and `CoverItem`
 
-`CoverItem` is one item as a cover: its key, title, picture, box shape (`Aspect`, width over height), a short `Mark`, a
+`CoverItem` is one item as a cover: its key, title, picture, a generated card's box shape (`Aspect`, width over height), a short `Mark`, a
 favourite, a line of `Facts` a screen shows for the focused item, a desktop `Status` line and the `Art` a hub draws behind
-itself. `CoverCard` draws it in a cell: the cover fitted to its shape and standing on the cell's foot, never stretched,
+itself. `CoverCard` draws it in a cell: the cover whole at its picture's own shape (§212.13) and standing on the cell's foot,
 radius 8 on the big screen and 6 on the desktop; with no picture, a generated card on the raised surface, the mark in a
 ringed badge (48 units, 40 in a box under 150 high, at Caption in Barlow Condensed so it stays legible) over the title in
 Barlow Condensed at Title, shrunk with the box to no less than 18 units; a favourite's filled heart in the accent at the
@@ -15000,6 +15000,42 @@ screens (1280 x 720 to 3840 x 2160), takes the ring's drawn bounds through the c
 five screens (at 1280 x 800 the label ended at 412.0 against the ring's 403.8). In EmuSen the eight big-screen Home
 recordings (Home, HomeShelf, HomePlaces, HomeNothingLeft at 1280 x 800 and 1920 x 1200) moved by that label alone and
 were recorded again after the pictures were looked at.
+
+### 212.13 A cover drawn whole at its own picture's shape (2026-11-04)
+
+Reported by the tester on 2026-11-04 from the consumer's own look: NES covers drawn too small with their top and bottom
+cut, SNES and N64 covers with a side cut, SG-1000, Master System and PlayStation 2 covers with their top and bottom cut;
+Game Boy, Game Boy Color, Genesis, Sega CD, Dreamcast and PlayStation covers right.
+
+**The cause, in the code.** `CoverCard.Fill` sized the cover's box from `CoverItem.Aspect` alone and drew the picture into
+it with `Stretch.UniformToFill`, which scales the picture until it covers the box and lets the box's clip cut whatever
+overflows. A picture whose shape differed from `Aspect` therefore lost the overflowing edges. `PageLayout`'s hero cover
+(`FillHero` and `Card`) did the same with `PageHero.CoverAspect`. In the consumer, `Aspect` came from a per-console table
+written as height over width (OpenEmu's convention: NES 1.43, SNES 0.73, N64 0.70, Master System and SG-1000 1.4,
+PlayStation 2 1.41) and read here as width over height, so every console whose value is not near 1 got a box of the
+inverse shape: a landscape box for the tall NES, Master System and PlayStation 2 cases (top and bottom cut, the NES's
+box short), a tall box for the landscape SNES and N64 boxes (sides cut). The Game Boy, PlayStation and Dreamcast sit at
+1.0, and the Genesis family's 0.7 is itself written as width over height, which is why those looked right. The reported
+pattern is exactly the table inverted.
+
+**The change.** A picture is the one owner of its shape. `CoverCard` takes the box's width over height from the picture's
+own size (`CoverCard.ShapeOf`, internal) and draws it with `Stretch.Uniform` into a box of that shape, so it is never cut
+and never stretched; `CoverItem.Aspect` now shapes only the generated card of an item with no picture. `PageLayout`'s hero
+cover's box takes its shape from the same function, so its fill cuts nothing; the media tiles that share its drawing keep filling their fixed tiles, as they did. Nothing in the hub's or the gallery's layout changed: a cell was already
+a fixed box with the cover fitted inside it and standing on its foot, so mixed shapes share the row's baseline within the
+row's height, as the U5 mockups draw them, a landscape box wider and shorter, a tall case narrower. Whole covers only and
+the pad's walk count cells, not covers, and are untouched.
+
+**Tests.** `CoverShapeTests`, 8 cases. Each picture is drawn with a band of its own colour along each edge, so a crop on any
+side removes that side's colour. A card at three shapes (tall 0.70, the Game Boy's near-square 0.90, landscape 1.40), on
+both forms, with `Aspect` set to the inverse of the picture's: the drawn box has the picture's shape within 0.01, stands on
+the cell's foot, and every edge's band is seen 2 pixels inside the drawn box. A generated card keeps its item's box shape.
+A game page's cover at 1.40 against a `CoverAspect` of 0.73 takes 1.40. A mixed shelf and grid (SNES, NES, Game Boy, N64,
+PlayStation 2, Master System, PlayStation, Genesis) at 1280 x 800, 1920 x 1080 and 3840 x 2160: every cover's shape,
+foot and four bands, the whole-cover count, and the fit audit. Before the change 7 of the 8 failed (the generated card's
+case passed, as it should). Seeded faults, each reverted: the picture's shape ignored in `CoverCard` and in `PageLayout`
+(7 cases caught); the cover centred in its cell instead of standing on its foot (6 cases caught). Compare pictures of the
+mixed shelf and grid before and after were made on 2026-11-04.
 
 ## 213. Settings: `SettingsLayout`, the third canonical layout (2026-11-03)
 

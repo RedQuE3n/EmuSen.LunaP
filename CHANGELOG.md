@@ -14,6 +14,10 @@ answer.
 
 ## Unreleased
 
+- **A cover whole at its own picture's shape (`§212.13`).** `CoverCard` and `PageLayout`'s hero cover take the box's
+  shape from the picture, so the picture is never cut and never stretched; `CoverItem.Aspect` and
+  `PageHero.CoverAspect` now shape only a generated card. What it costs: a consumer's recordings move wherever a
+  picture's shape differs from the aspect it passed.
 - **The header row's facts and the row's action (`§215`).** `AdaptiveHeaderRow`, the header's row as a control of its
   own, which `AdaptiveLayout` now draws its header with: each fact its own text, a fact beginning with `⚠` in
   `LunaAttention`; on the desktop the facts after the name and `AdaptiveLayout.HeaderAction` at the right, filled

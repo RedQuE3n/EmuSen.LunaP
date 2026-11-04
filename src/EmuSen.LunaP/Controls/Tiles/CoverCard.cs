@@ -19,7 +19,7 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The cover; null draws the generated card.</summary>
         public IImage? Picture { get; init; }
 
-        /// <summary>The cover's width over its height, the item's box shape; never stretched.</summary>
+        /// <summary>The generated card's width over its height, for an item with no picture; a picture is always drawn whole at its own shape.</summary>
         public double Aspect { get; init; } = 0.75;
 
         /// <summary>A short name drawn in a ringed badge on a generated card, such as a console's.</summary>
@@ -38,7 +38,7 @@ namespace EmuSen.LunaP.Controls
         public IImage? Art { get; init; }
     }
 
-    // A cover in its box shape standing on its cell's foot, or the generated card, with the ring, scale and shadow of a focused tile - see docs/LunaP.md §212.2.
+    // A cover whole at its picture's own shape (a generated card in the item's box shape) standing on its cell's foot, or the generated card, with the ring, scale and shadow of a focused tile - see docs/LunaP.md §212.2.
     /// <summary>One cover in a cell: the picture or a generated card in the item's box shape, standing on the cell's foot; focused, it takes the ring, grows by the focus scale and takes the shadow.</summary>
     public class CoverCard : Panel
     {
@@ -84,6 +84,13 @@ namespace EmuSen.LunaP.Controls
 
         private double Radius => _big ? 8 : 6;
 
+        // A cover's width over its height: the picture's own, else the generated card's box shape, else 0.75.
+        internal static double ShapeOf(IImage? picture, double fallback)
+        {
+            if (picture is { Size: { Width: > 0, Height: > 0 } size }) return size.Width / size.Height;
+            return double.IsFinite(fallback) && fallback > 0 ? fallback : 0.75;
+        }
+
         private void Fill()
         {
             Width = _cellWidth;
@@ -96,7 +103,7 @@ namespace EmuSen.LunaP.Controls
                 _box.IsVisible = false;
                 return;
             }
-            double aspect = double.IsFinite(item.Aspect) && item.Aspect > 0 ? item.Aspect : 0.75;
+            double aspect = ShapeOf(item.Picture, item.Aspect);
             double w = Math.Min(_cellWidth, _cellHeight * aspect), h = w / aspect;
             CoverBounds = new Rect((_cellWidth - w) / 2, _cellHeight - h, w, h);
             _box.IsVisible = true;
@@ -107,7 +114,7 @@ namespace EmuSen.LunaP.Controls
             _box.VerticalAlignment = VerticalAlignment.Top;
             _box.CornerRadius = new CornerRadius(Radius);
             _box[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaSurfaceRaised");
-            _box.Child = item.Picture is { } picture ? new Image { Source = picture, Stretch = Stretch.UniformToFill, IsHitTestVisible = false } : Generated(item, w, h);
+            _box.Child = item.Picture is { } picture ? new Image { Source = picture, Stretch = Stretch.Uniform, IsHitTestVisible = false } : Generated(item, w, h);
             double side = _big ? 24 : 14, inset = _big ? 8 : 4;
             if (item.IsFavourite && PageLayout.Mark(PageMark.FilledHeart, "LunaAccentColor", side) is { } heart)
             {

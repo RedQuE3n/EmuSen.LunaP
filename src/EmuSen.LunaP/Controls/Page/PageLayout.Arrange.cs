@@ -166,7 +166,7 @@ namespace EmuSen.LunaP.Controls
             _facts.Bind(TextBlock.ForegroundProperty, _facts.GetResourceObservable("LunaOnArt"));
             if (h is null) { _cover.Child = null; _cover.IsVisible = false; return; }
             _cover.IsVisible = true;
-            double aspect = double.IsFinite(h.CoverAspect) && h.CoverAspect > 0 ? h.CoverAspect : 0.75;
+            double aspect = CoverCard.ShapeOf(h.Cover, h.CoverAspect);
             (double w, double ht) = Big
                 ? (Math.Min(CoverWidth, CoverMaxHeight * aspect), Math.Min(CoverMaxHeight, CoverWidth / aspect))
                 : (Math.Min(DesktopCoverWidth, DesktopCoverHeight * aspect), Math.Min(DesktopCoverHeight, DesktopCoverWidth / aspect));
