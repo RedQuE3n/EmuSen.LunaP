@@ -174,6 +174,24 @@ namespace EmuSen.LunaP.Controls
         /// <summary>What sits above the gutter, in the header row. Empty by default, which is the spreadsheet's empty corner.</summary>
         public string RowHeaderCaption { get; set; } = string.Empty;
 
+        /// <summary>The space kept at the right of every visible column but the last, heading and cells alike, so that an Auto column's widest value does not run into the next column's. Zero by default, which leaves the columns touching. docs/LunaP.md §216.</summary>
+        public double ColumnGap
+        {
+            get => _columnGap;
+            set
+            {
+                if (value < 0 || double.IsNaN(value)) throw new ArgumentOutOfRangeException(nameof(value), value, "A gap is zero or more.");
+                if (value == _columnGap) return;
+                _columnGap = value;
+                Rebuild();
+            }
+        }
+
+        private double _columnGap;
+
+        // The right margin the gap gives column index's heading or cell.
+        private Avalonia.Thickness GapAfter(int index) => _columnGap > 0 && index < LastVisibleColumn ? new Avalonia.Thickness(0, 0, _columnGap, 0) : default;
+
         // Where each row sits in the view, so the gutter can be told without a scan. Empty and
         // untouched when there is no gutter to feed. §58.
         private readonly Dictionary<object, int> _position = new();
@@ -324,6 +342,7 @@ namespace EmuSen.LunaP.Controls
                 if (!_columns[i].IsVisible) continue;
 
                 Control cell = Heading(i);
+                if (_columnGap > 0) cell.Margin = GapAfter(i);
                 Grid.SetColumn(cell, GridColumn(i));
                 HeaderGrid.Children.Add(cell);
 

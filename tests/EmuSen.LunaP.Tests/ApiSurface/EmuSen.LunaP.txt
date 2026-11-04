@@ -1515,6 +1515,7 @@ public class EmuSen.LunaP.Controls.LunaTable<T> : EmuSen.LunaP.Controls.LunaTabl
     public bool WholeRows { get; set; }
     public const string GroupHeadingClass = "group-heading"
     public const string GroupRowClass = "group-row"
+    public double ColumnGap { get; set; }
     public double IndentSize { get; set; }
     public event System.Action<EmuSen.LunaP.Controls.LunaCell<T>?> CellChosen
     public event System.Action<EmuSen.LunaP.Controls.LunaRowDrop<T>> RowDropped

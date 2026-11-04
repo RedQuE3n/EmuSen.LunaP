@@ -15256,3 +15256,22 @@ header action left at the previous row's; the desktop drawing the facts at the r
 Decided 2026-11-03: a hub place's line that needs the person keeps its `⚠` on both forms, and is drawn in `LunaAttention`
 on the big screen only. The desktop stays quiet, as the consumer's desktop mockup draws it Muted, while the big screen
 calls the person's attention from across the room.
+
+## 216. A gap between a table's columns (2026-11-03)
+
+**The defect.** An `Auto` column is as wide as its widest heading or value, and `LunaTable` placed each column's heading
+and cells flush in their grid column. Two `Auto` columns side by side therefore had no space between them: the widest
+value of one ended where the next began, and EmuSen's Packages on the desktop read "MarkGame", "PlayStation 2CHD" and
+"OK4.3 GB" where its mockup draws spaced columns.
+
+**The extension.** `LunaTable<T>.ColumnGap`, a number of pixels kept at the right of every visible column but the last,
+as a right margin on its heading and on each of its cells. An `Auto` column grows by the gap, a `*` column gives it from
+its share, and the last column, which has nothing on its right, keeps none. Zero by default, so every existing table is
+laid out as before; a consumer opts in per table. A negative or NaN gap is refused.
+
+**Why opt-in.** A gap by default would move every table of every consumer, and every recorded layout of them, for a
+change one consumer asked for. Whether the default should become a gap is left to the toolkit's next look pass.
+
+**Tests.** `TableColumnGapTests`: without a gap two `Auto` columns touch; with one, the cells and the headings of every
+column but the last stand the gap apart, and the last column starts where its heading does; a negative gap is refused.
+`DocumentedDefaultTests` holds the default; the API snapshot gains the property.

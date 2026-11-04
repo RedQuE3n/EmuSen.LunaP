@@ -176,6 +176,7 @@ namespace EmuSen.LunaP.Controls
             Align(cell, index);
 
             TableCells.SetColumn(cell, index);
+            if (_columnGap > 0) placed.Margin = GapAfter(index);
             Grid.SetColumn(placed, GridColumn(index));
 
             // And the OTHER marker, which says this child of the grid is here because of that column
