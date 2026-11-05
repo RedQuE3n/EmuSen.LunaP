@@ -34,14 +34,14 @@ namespace EmuSen.LunaP.Tests
         public void The_timeline_is_the_approved_drafts_stretched_by_its_pace()
         {
             SplashTimeline m = SplashTimeline.Moonrise;
-            Assert.Equal((1.1, 5.0), (m.Pace, m.Length));
+            Assert.Equal((1.55, 8.0), (m.Pace, m.Length));
             Assert.Equal(new SplashSpan(0, 0.9), m.Stars);
             Assert.Equal(new SplashSpan(0.4, 1.6), m.Stroke);
             Assert.Equal(new SplashSpan(1.2, 2.0), m.Fill);
             Assert.Equal(new SplashSpan(3.45, 4.15), m.Words);
             Assert.Equal((new SplashSpan(2.35, 3.65), new SplashSpan(2.4, 3.7), 34.0), (m.Sweep, m.Line, m.FlareWidth));
-            Assert.Equal(5.0 / 1.1, m.DraftTime(9), 9);
-            Assert.Equal(1.0 / 1.1, m.DraftTime(1), 9);
+            Assert.Equal(m.Length / m.Pace, m.DraftTime(99), 9);
+            Assert.Equal(1.0 / m.Pace, m.DraftTime(1), 9);
             Assert.Equal(0.5, new SplashSpan(1, 3).At(2));
             Assert.Equal((0, 1), (new SplashSpan(1, 3).At(0), new SplashSpan(1, 3).At(4)));
         }
@@ -53,7 +53,7 @@ namespace EmuSen.LunaP.Tests
             Assert.Equal(0, splash.Time);
             Assert.False(splash.AtEnd);
             splash.Time = 99;
-            Assert.Equal(5.0, splash.Time);
+            Assert.Equal(SplashTimeline.Moonrise.Length, splash.Time);
             splash.Time = 2;
             splash.Finish();
             Assert.True(splash.AtEnd);
@@ -153,8 +153,8 @@ namespace EmuSen.LunaP.Tests
             splash.Arrange(new Rect(0, 0, 1280, 720));
             IReadOnlyList<double> strikes = splash.StrikeTimes();
             Assert.Equal(13, strikes.Count);
-            Assert.Equal((2.35 + 60.0 / 1100 * 1.3) * 1.1, strikes[0], 9);
-            Assert.Equal((2.35 + 1040.0 / 1100 * 1.3) * 1.1, strikes[12], 9);
+            Assert.Equal((2.35 + 60.0 / 1100 * 1.3) * SplashTimeline.Moonrise.Pace, strikes[0], 9);
+            Assert.Equal((2.35 + 1040.0 / 1100 * 1.3) * SplashTimeline.Moonrise.Pace, strikes[12], 9);
             Assert.True(strikes.Zip(strikes.Skip(1)).All(p => p.Second > p.First));
 
             SplashChime chime = SplashTimeline.Moonrise.Chime;
@@ -210,7 +210,7 @@ namespace EmuSen.LunaP.Tests
         {
             if (Environment.GetEnvironmentVariable("EMUSEN_SPLASH_FRAMES") is not { Length: > 0 } folder) return;
             Directory.CreateDirectory(folder);
-            foreach ((string name, double t) in new[] { ("1.0", 1.0), ("2.0", 2.0), ("3.0", 3.0), ("final", 5.0) })
+            foreach ((string name, double t) in new[] { ("1.0", 1.0), ("2.0", 2.0), ("3.0", 3.0), ("6.0", 6.0), ("final", SplashTimeline.Moonrise.Length) })
             {
                 var splash = Splash(t);
                 splash.Measure(new Size(1280, 720));

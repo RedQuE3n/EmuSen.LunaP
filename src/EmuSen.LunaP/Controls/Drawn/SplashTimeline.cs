@@ -51,9 +51,9 @@ namespace EmuSen.LunaP.Controls
         SplashSpan Appear, double AppearStagger, SplashSpan Settle, double SettleRate, double SettleStagger, double OrbitSwing,
         SplashSpan Sweep, double FlareWidth, SplashSpan Line, SplashSpan Words, int StarCount, uint Seed, SplashChime Chime, double FadeOut)
     {
-        /// <summary>Moonrise, the big screen's start-up splash approved on 2026-11-04: 5 s, the draft's spans stretched by 1.1, a bell for each planet.</summary>
+        /// <summary>Moonrise, the big screen's start-up splash approved on 2026-11-04: 8 s, the draft's spans stretched by 1.55, a bell for each planet.</summary>
         public static SplashTimeline Moonrise { get; } = new(
-            Pace: 1.1, Length: 5.0,
+            Pace: 1.55, Length: 8.0,
             Stars: new(0, 0.9), Stroke: new(0.4, 1.6), Halo: new(0.9, 2.0), Fill: new(1.2, 2.0),
             Appear: new(1.15, 1.6), AppearStagger: 0.03, Settle: new(1.2, 2.7), SettleRate: 1.25, SettleStagger: 0.02, OrbitSwing: 2.6,
             Sweep: new(2.35, 3.65), FlareWidth: 34, Line: new(2.4, 3.7), Words: new(3.45, 4.15), StarCount: 220, Seed: 0x4d6f6f6e,

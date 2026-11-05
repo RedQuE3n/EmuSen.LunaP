@@ -15426,9 +15426,9 @@ to Skia on the GPU. It is crisp at any size because nothing in it is a bitmap. I
 
 ### 219.2 The timeline
 
-Decided 2026-11-04 (a revision of the first draft the same day): the draft's points are stretched by `Pace` = 1.1, so
-the title settles by about 4.1 s, and the finished frame holds until `Length` = 5.0 s. The control draws the draft's
-frame for `Time / Pace`, so the spans below stay the draft's numbers and the pace is one figure.
+Decided 2026-11-04 (a revision of the first draft the same day): the draft's points are stretched by `Pace` = 1.55, so
+the title settles by about 6.4 s, and the finished frame holds until `Length` = 8.0 s. The control draws the draft's
+frame for `Time / Pace`, so the spans below stay the draft's numbers and the pace is one figure. The first revision held 5 s at a pace of 1.1; the tester lengthened it to 8 s on the same day.
 
 | Part | Span (draft seconds) | Easing |
 |---|---|---|
