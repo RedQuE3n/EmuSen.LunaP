@@ -3094,6 +3094,21 @@ public enum EmuSen.LunaP.Media.LetterCase
     public const EmuSen.LunaP.Media.LetterCase Upper = 1
     public int value__
 
+public struct EmuSen.LunaP.Media.LunaBell : System.ValueType, System.IEquatable<EmuSen.LunaP.Media.LunaBell>
+    public LunaBell(int Note, double Start, double Decay, double Gain, double Lowpass = 2400)
+    public bool Equals(EmuSen.LunaP.Media.LunaBell other)
+    public double Decay { get; init; }
+    public double Gain { get; init; }
+    public double Lowpass { get; init; }
+    public double Start { get; init; }
+    public int Note { get; init; }
+    public override bool Equals(object obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Media.LunaBell left, EmuSen.LunaP.Media.LunaBell right)
+    public static bool op_Inequality(EmuSen.LunaP.Media.LunaBell left, EmuSen.LunaP.Media.LunaBell right)
+    public void Deconstruct(out int Note, out double Start, out double Decay, out double Gain, out double Lowpass)
+
 public static class EmuSen.LunaP.Media.LunaFonts
     public const string Folder = "LunaP/Fonts"
     public static System.Collections.Generic.IReadOnlyList<Avalonia.Media.FontFallback> Fallbacks { get; }
@@ -3126,26 +3141,15 @@ public static class EmuSen.LunaP.Media.LunaSounds
     public const double DefaultVolume = 0.6
     public const double UnderGameplayDecibels = -12
     public const int Rate = 48000
+    public static System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.LunaBell> BellsOf(EmuSen.LunaP.Media.LunaSoundCue cue)
+    public static System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.LunaBell> QuickSelect { get; }
     public static System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.LunaSoundCue> Cues { get; }
-    public static System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.LunaTone> TonesOf(EmuSen.LunaP.Media.LunaSoundCue cue)
     public static bool PlaysOverGameplay(EmuSen.LunaP.Media.LunaSoundCue cue)
+    public static byte[] BellSamples(int rung)
+    public static byte[] QuickSelectSamples()
     public static byte[] Render(EmuSen.LunaP.Media.SplashChime chime, System.Collections.Generic.IReadOnlyList<double> strikes)
-    public static byte[] Render(System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.LunaTone> tones)
+    public static byte[] RenderBells(EmuSen.LunaP.Media.SplashChime chime, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.LunaBell> bells)
     public static byte[] Samples(EmuSen.LunaP.Media.LunaSoundCue cue)
-
-public struct EmuSen.LunaP.Media.LunaTone : System.ValueType, System.IEquatable<EmuSen.LunaP.Media.LunaTone>
-    public LunaTone(double From, double To, double Start, double Length)
-    public bool Equals(EmuSen.LunaP.Media.LunaTone other)
-    public double From { get; init; }
-    public double Length { get; init; }
-    public double Start { get; init; }
-    public double To { get; init; }
-    public override bool Equals(object obj)
-    public override int GetHashCode()
-    public override string ToString()
-    public static bool op_Equality(EmuSen.LunaP.Media.LunaTone left, EmuSen.LunaP.Media.LunaTone right)
-    public static bool op_Inequality(EmuSen.LunaP.Media.LunaTone left, EmuSen.LunaP.Media.LunaTone right)
-    public void Deconstruct(out double From, out double To, out double Start, out double Length)
 
 public sealed class EmuSen.LunaP.Media.SplashChime : System.IEquatable<EmuSen.LunaP.Media.SplashChime>
     public SplashChime(double Root, System.Collections.Generic.IReadOnlyList<int> Ladder, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Media.BellPartial> Partials, double Attack, double Tail, double Detune, uint DetuneSeed, double Echo, double Feedback, double Gain, double Lowpass, double LowpassQ)

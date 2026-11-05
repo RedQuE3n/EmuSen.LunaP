@@ -14289,7 +14289,7 @@ takes no time, a fade takes 120 ms, and the idle ring stops breathing (WCAG 2.3.
 
 ### 206.6 Sound
 
-`LunaSounds` synthesises nine cues (Move, Section, Choose, Back, Favourite, Launch, Saved, Loaded, Refused) as 48 kHz
+`LunaSounds` synthesised nine cues (since 2026-11-05 they are Moonrise's bells, §220; this describes the first tones) (Move, Section, Choose, Back, Favourite, Launch, Saved, Loaded, Refused) as 48 kHz
 stereo 32-bit float: each tone a sine with a quarter of its octave, a 3 ms rise and an exponential fall. The first six
 are the consumer's own tones, moved here unchanged so its existing sounds are byte for byte the same; Saved is 880 then
 1320 Hz, 60 ms each, Loaded the reverse, Refused 220 Hz for 120 ms. No recorded sound is copied. The default volume is
@@ -15475,13 +15475,13 @@ planet rings D7 and a twelfth is the last rung; the bells are as many as the pla
 
 A strike is four sine partials at 1, 2.76, 5.40 and 8.93 times the note (the inharmonic series of a small struck bar),
 with amplitudes 1, 0.18, 0.06 and 0.02, each rising linearly in 18 ms and falling exponentially to a ten-thousandth at
-0.55, 0.22, 0.11 and 0.06 s, cut 50 ms later; every partial is detuned by up to ±0.2 %. The whole, at a gain of 0.03,
+0.55, 0.22, 0.11 and 0.06 s, cut 50 ms later; every partial is detuned by up to ±0.2 %. The whole, at a gain of 0.2 (0.03 until 2026-11-05, §220.4),
 passes a low-pass biquad at 2.4 kHz with a Q of 0.5 dB, and is dry: no echo. `Render` writes it as the Web Audio graph
 does, through the filter Web Audio's specification gives for a low-pass `BiquadFilterNode` (its Q read in decibels:
 α = sin ω₀ / (2 · 10^(Q/20))). The chime's data keeps an echo (a delay and its feedback, added to the dry mix as a
 `DelayNode` in a feedback loop would be) for a host that wants one; Moonrise's delay is 0, which renders none. At the
-same volume its loudest sample is under 0.8 of the quietest navigation cue's (§206.6), so at the default level the
-splash sits beneath the menus' sounds.
+same volume its loudest sample sits at about the navigation cues' level (§220), so at the default level the
+splash is as loud as the menus' sounds.
 
 When a bell rings depends on where its planet stands along the sweep, which depends on the row's width over the height
 (the lesser of 78 % of the width and 980 units), so the strike times are the control's (`StrikeTimes()`), read at its
@@ -15516,3 +15516,57 @@ before the stars begin; each planet's bell starts at its strike time (the power 
 the 50 ms before), the scale is the pentatonic ladder, the wordmark resolves to the Light face and is as wide as Light
 sets it (and not as Regular does), the fade is 0.15 s, two renders are the same, the bells are quieter than every cue
 and end quiet; mid-sweep a planet's flare brightens its halo.
+
+## 220. The navigation sounds as Moonrise's bells (2026-11-05)
+
+Decided 2026-11-05 by the tester, from an audio draft ("Bell Cues", a Web Audio page) approved the same day: every
+navigation sound is made of Moonrise's bell, so the splash and the menus share one voice. The draft's cue table is the
+specification.
+
+### 220.1 The bell
+
+A strike is the bell of §219.4: four sine partials at 1, 2.76, 5.40 and 8.93 times the note, amplitudes 1, 0.18, 0.06
+and 0.02, an 18 ms rise, an exponential fall to a ten-thousandth at 0.55, 0.22, 0.11 and 0.06 s, a seeded detune of up
+to ±0.2 %, and a low-pass biquad (2.4 kHz, Q 0.5 dB), dry. A strike also carries a decay scale (the falls multiplied by
+it), a gain and a corner for the low-pass. One renderer makes every bell: `LunaSounds.Render(SplashChime, strikes)` (a wrapper of `RenderBells`) for
+the splash and `LunaSounds.Samples(cue)` for a cue are the same code with different strikes.
+
+Notes are rungs of the splash's ladder, the G major pentatonic from G4 (rung 0 G4, 1 A4, 2 B4, 3 D5, 4 E5, 5 G5, 6 A5,
+7 B5, 8 D6, 9 E6, 10 G6, 11 A6, 12 B6), so a cue's note is the pitch a console rings in Moonrise.
+
+### 220.2 The cues
+
+`LunaBell(Note, Start, Decay, Gain, Lowpass)` is one strike; `LunaSounds.BellsOf(cue)` lists a cue's. `LunaSoundCue`
+and `Samples` are unchanged. The tones and their renderer are gone.
+
+| Cue | Strikes (note, start s, decay scale, gain) | Low-pass |
+|---|---|---|
+| Move | D6 0, 0.3, 0.12 | 2.4 kHz |
+| Section | G5 0, 0.55, 0.18 | 2.4 kHz |
+| Choose | G5 0, 0.5, 0.22; D6 0.07, 0.6, 0.22 | 2.4 kHz |
+| Back | D6 0, 0.45, 0.18; G5 0.07, 0.5, 0.18 | 2.4 kHz |
+| Favourite | G5, B5, D6, G6 at 0, 0.055, 0.11, 0.165; 0.55; 0.17 | 2.4 kHz |
+| Launch | G4, A4, B4, D5, E5, G5 every 0.075 s; 0.7 (the last 1.2); 0.24 | 2.4 kHz |
+| Quick select | E5 0, 0.45, 0.22; A5 0.06, 0.55, 0.22 | 2.4 kHz |
+| Saved | B5 0, 0.45, 0.18; E6 0.08, 0.6, 0.18 | 2.4 kHz |
+| Loaded | E6 0, 0.45, 0.18; B5 0.08, 0.6, 0.18 | 2.4 kHz |
+| Refused | G4 0, 0.25, 0.26; G4 0.11, 0.25, 0.22 | 900 Hz |
+
+Quick select has no `LunaSoundCue`; it is `LunaSounds.QuickSelect` (the strikes) and `LunaSounds.QuickSelectSamples()`.
+
+### 220.3 One bell
+
+`LunaSounds.BellSamples(rung)` renders a single bell on a ladder rung (decay scale 0.6, gain 0.18, the draft's planet
+ring), so a host can ring each console's own note in Choose a console, the same rung it rings in Moonrise. Nothing
+in the kit calls it yet.
+
+### 220.4 The splash at the menus' level
+
+Moonrise's chime gain rises from 0.03 to 0.2, the level of the menus' bells (the draft's "At the menus' level"). The
+test that held the splash under 0.8 of the quietest cue now holds its loudest sample within a stated band of the cues'.
+
+### 220.5 Tests
+
+`BellCueTests`: each cue's notes are present at their strike times (Goertzel); two renders are identical; each cue's
+loudest sample is within 0.05 to 0.6; the single bell is at the requested pitch. `SplashTests`: the splash's loudest
+sample sits at about the cues' level.

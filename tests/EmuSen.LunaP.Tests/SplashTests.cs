@@ -179,9 +179,9 @@ namespace EmuSen.LunaP.Tests
             }
             Assert.Equal(bytes, LunaSounds.Render(chime, strikes));
             double loudest = Enumerable.Range(0, frames).Max(i => Math.Abs(Sample(i)));
-            // Gentler than any navigation cue at the same volume, as decided 2026-11-04.
-            double quietestCue = LunaSounds.Cues.Min(c => { byte[] cue = LunaSounds.Samples(c); return Enumerable.Range(0, cue.Length / 8).Max(i => Math.Abs(BitConverter.ToSingle(cue, i * 8))); });
-            Assert.InRange(loudest, 0.01, quietestCue * 0.8);
+            // At about the cues' level, as decided 2026-11-05: between the quietest cue's peak and the loudest's.
+            double[] cuePeaks = LunaSounds.Cues.Select(c => { byte[] cue = LunaSounds.Samples(c); return (double)Enumerable.Range(0, cue.Length / 8).Max(i => Math.Abs(BitConverter.ToSingle(cue, i * 8))); }).ToArray();
+            Assert.InRange(loudest, cuePeaks.Min() * 0.8, cuePeaks.Max() * 1.25);
             Assert.True(Enumerable.Range(frames - 4800, 4800).Max(i => Math.Abs(Sample(i))) < loudest * 0.01, "the last 100 ms is 40 dB under the loudest");
             Assert.Equal(BitConverter.ToSingle(bytes, 8 * 30000), BitConverter.ToSingle(bytes, 8 * 30000 + 4));
             Assert.Empty(LunaSounds.Render(chime, []));

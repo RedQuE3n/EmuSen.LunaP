@@ -209,13 +209,12 @@ namespace EmuSen.LunaP.Tests
             foreach (LunaSoundCue cue in LunaSounds.Cues)
             {
                 byte[] samples = LunaSounds.Samples(cue);
-                double seconds = LunaSounds.TonesOf(cue).Max(t => t.Start + t.Length);
-                Assert.Equal((int)Math.Ceiling(seconds * LunaSounds.Rate) * 8, samples.Length);
+                Assert.Equal(0, samples.Length % 8);
                 Assert.Contains(samples, b => b != 0);
                 Assert.Same(samples, LunaSounds.Samples(cue));
             }
             Assert.Equal([LunaSoundCue.Saved, LunaSoundCue.Loaded], LunaSounds.Cues.Where(LunaSounds.PlaysOverGameplay));
-            Assert.Equal(220, LunaSounds.TonesOf(LunaSoundCue.Refused).Single().From);
+            Assert.Equal(2, LunaSounds.BellsOf(LunaSoundCue.Refused).Count);
         }
 
         private static Color ColourOf(string key, ThemeVariant variant)
