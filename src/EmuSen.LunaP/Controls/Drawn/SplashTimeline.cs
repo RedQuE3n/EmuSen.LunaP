@@ -46,9 +46,10 @@ namespace EmuSen.LunaP.Controls
     /// <param name="StarCount">How many stars.</param>
     /// <param name="Seed">The seed of the generator that places the stars and the orbits.</param>
     /// <param name="Chime">The sound that goes with it.</param>
+    /// <param name="FadeOut">How long, in seconds, the host fades the splash out into what is behind it when it ends; a host cuts it under reduced motion.</param>
     public sealed record SplashTimeline(double Pace, double Length, SplashSpan Stars, SplashSpan Stroke, SplashSpan Halo, SplashSpan Fill,
         SplashSpan Appear, double AppearStagger, SplashSpan Settle, double SettleRate, double SettleStagger, double OrbitSwing,
-        SplashSpan Sweep, double FlareWidth, SplashSpan Line, SplashSpan Words, int StarCount, uint Seed, SplashChime Chime)
+        SplashSpan Sweep, double FlareWidth, SplashSpan Line, SplashSpan Words, int StarCount, uint Seed, SplashChime Chime, double FadeOut)
     {
         /// <summary>Moonrise, the big screen's start-up splash approved on 2026-11-04: 5 s, the draft's spans stretched by 1.1, a bell for each planet.</summary>
         public static SplashTimeline Moonrise { get; } = new(
@@ -57,7 +58,8 @@ namespace EmuSen.LunaP.Controls
             Appear: new(1.15, 1.6), AppearStagger: 0.03, Settle: new(1.2, 2.7), SettleRate: 1.25, SettleStagger: 0.02, OrbitSwing: 2.6,
             Sweep: new(2.35, 3.65), FlareWidth: 34, Line: new(2.4, 3.7), Words: new(3.45, 4.15), StarCount: 220, Seed: 0x4d6f6f6e,
             Chime: new SplashChime(391.995, [0, 2, 4, 7, 9], [new(1, 1, 0.55), new(2.76, 0.18, 0.22), new(5.40, 0.06, 0.11), new(8.93, 0.02, 0.06)],
-                Attack: 0.018, Tail: 0.05, Detune: 0.002, DetuneSeed: 0x42656c6c, Echo: 0, Feedback: 0, Gain: 0.03, Lowpass: 2400, LowpassQ: 0.5));
+                Attack: 0.018, Tail: 0.05, Detune: 0.002, DetuneSeed: 0x42656c6c, Echo: 0, Feedback: 0, Gain: 0.03, Lowpass: 2400, LowpassQ: 0.5),
+            FadeOut: 0.15);
 
         /// <summary>The draft's own time for a time since the splash began: clamped to Length, then divided by Pace.</summary>
         /// <param name="seconds">Seconds since the splash began.</param>

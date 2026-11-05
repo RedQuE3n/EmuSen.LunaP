@@ -2737,10 +2737,11 @@ public sealed class EmuSen.LunaP.Controls.SplashTimeline : System.IEquatable<Emu
     public EmuSen.LunaP.Controls.SplashSpan Sweep { get; init; }
     public EmuSen.LunaP.Controls.SplashSpan Words { get; init; }
     public EmuSen.LunaP.Media.SplashChime Chime { get; init; }
-    public SplashTimeline(double Pace, double Length, EmuSen.LunaP.Controls.SplashSpan Stars, EmuSen.LunaP.Controls.SplashSpan Stroke, EmuSen.LunaP.Controls.SplashSpan Halo, EmuSen.LunaP.Controls.SplashSpan Fill, EmuSen.LunaP.Controls.SplashSpan Appear, double AppearStagger, EmuSen.LunaP.Controls.SplashSpan Settle, double SettleRate, double SettleStagger, double OrbitSwing, EmuSen.LunaP.Controls.SplashSpan Sweep, double FlareWidth, EmuSen.LunaP.Controls.SplashSpan Line, EmuSen.LunaP.Controls.SplashSpan Words, int StarCount, uint Seed, EmuSen.LunaP.Media.SplashChime Chime)
+    public SplashTimeline(double Pace, double Length, EmuSen.LunaP.Controls.SplashSpan Stars, EmuSen.LunaP.Controls.SplashSpan Stroke, EmuSen.LunaP.Controls.SplashSpan Halo, EmuSen.LunaP.Controls.SplashSpan Fill, EmuSen.LunaP.Controls.SplashSpan Appear, double AppearStagger, EmuSen.LunaP.Controls.SplashSpan Settle, double SettleRate, double SettleStagger, double OrbitSwing, EmuSen.LunaP.Controls.SplashSpan Sweep, double FlareWidth, EmuSen.LunaP.Controls.SplashSpan Line, EmuSen.LunaP.Controls.SplashSpan Words, int StarCount, uint Seed, EmuSen.LunaP.Media.SplashChime Chime, double FadeOut)
     public bool Equals(EmuSen.LunaP.Controls.SplashTimeline? other)
     public double AppearStagger { get; init; }
     public double DraftTime(double seconds)
+    public double FadeOut { get; init; }
     public double FlareWidth { get; init; }
     public double Length { get; init; }
     public double OrbitSwing { get; init; }
@@ -2755,7 +2756,7 @@ public sealed class EmuSen.LunaP.Controls.SplashTimeline : System.IEquatable<Emu
     public static bool op_Equality(EmuSen.LunaP.Controls.SplashTimeline? left, EmuSen.LunaP.Controls.SplashTimeline? right)
     public static bool op_Inequality(EmuSen.LunaP.Controls.SplashTimeline? left, EmuSen.LunaP.Controls.SplashTimeline? right)
     public uint Seed { get; init; }
-    public void Deconstruct(out double Pace, out double Length, out EmuSen.LunaP.Controls.SplashSpan Stars, out EmuSen.LunaP.Controls.SplashSpan Stroke, out EmuSen.LunaP.Controls.SplashSpan Halo, out EmuSen.LunaP.Controls.SplashSpan Fill, out EmuSen.LunaP.Controls.SplashSpan Appear, out double AppearStagger, out EmuSen.LunaP.Controls.SplashSpan Settle, out double SettleRate, out double SettleStagger, out double OrbitSwing, out EmuSen.LunaP.Controls.SplashSpan Sweep, out double FlareWidth, out EmuSen.LunaP.Controls.SplashSpan Line, out EmuSen.LunaP.Controls.SplashSpan Words, out int StarCount, out uint Seed, out EmuSen.LunaP.Media.SplashChime Chime)
+    public void Deconstruct(out double Pace, out double Length, out EmuSen.LunaP.Controls.SplashSpan Stars, out EmuSen.LunaP.Controls.SplashSpan Stroke, out EmuSen.LunaP.Controls.SplashSpan Halo, out EmuSen.LunaP.Controls.SplashSpan Fill, out EmuSen.LunaP.Controls.SplashSpan Appear, out double AppearStagger, out EmuSen.LunaP.Controls.SplashSpan Settle, out double SettleRate, out double SettleStagger, out double OrbitSwing, out EmuSen.LunaP.Controls.SplashSpan Sweep, out double FlareWidth, out EmuSen.LunaP.Controls.SplashSpan Line, out EmuSen.LunaP.Controls.SplashSpan Words, out int StarCount, out uint Seed, out EmuSen.LunaP.Media.SplashChime Chime, out double FadeOut)
 
 public class EmuSen.LunaP.Controls.SplitPane : Avalonia.Controls.Primitives.TemplatedControl
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
@@ -3102,6 +3103,7 @@ public static class EmuSen.LunaP.Media.LunaFonts
     public static string BodyFile { get; }
     public static string BodyMediumFile { get; }
     public static string CondensedFile { get; }
+    public static string CondensedLightFile { get; }
     public static string CondensedMediumFile { get; }
     public static string LicenceFile { get; }
     public static string SymbolsFile { get; }

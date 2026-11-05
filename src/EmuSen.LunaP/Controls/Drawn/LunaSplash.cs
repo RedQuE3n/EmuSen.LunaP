@@ -178,7 +178,7 @@ namespace EmuSen.LunaP.Controls
             if (_titleLayout is null || _titleKey != (size, spacing))
             {
                 _titleLayout?.Dispose();
-                _titleLayout = Words(_title, LunaFonts.Condensed, FontWeight.Normal, size, spacing, TitleBrush);
+                _titleLayout = Words(_title, LunaFonts.Condensed, FontWeight.Light, size, spacing, TitleBrush);
                 _titleKey = (size, spacing);
             }
             return _titleLayout;

@@ -79,6 +79,30 @@ namespace EmuSen.LunaP.Tests
             Assert.True(Near(At(start, 10, 180), At(start, 630, 180), 1), "nothing but the sky's gradient at the start");
         });
 
+        // The wordmark in Barlow Condensed Light, the draft's 300, bundled beside Regular and Medium (decided 2026-11-04).
+        [Fact]
+        public Task The_wordmark_is_set_in_barlow_condensed_light() => UiTest.Run(() =>
+        {
+            Assert.True(FontManager.Current.TryGetGlyphTypeface(new Typeface(LunaFonts.Condensed, FontStyle.Normal, FontWeight.Light), out GlyphTypeface? light));
+            Assert.Equal(FontWeight.Light, light!.Weight);
+            Assert.True(File.Exists(LunaFonts.CondensedLightFile));
+            var splash = Splash(0);
+            splash.Finish();
+            splash.Measure(new Size(1280, 720));
+            splash.Arrange(new Rect(0, 0, 1280, 720));
+            double Width(FontWeight weight)
+            {
+                using var layout = new Avalonia.Media.TextFormatting.TextLayout("EMUSEN", new Typeface(LunaFonts.Condensed, FontStyle.Normal, weight), 78, null, letterSpacing: 10);
+                return layout.WidthIncludingTrailingWhitespace;
+            }
+            Assert.NotEqual(Width(FontWeight.Light), Width(FontWeight.Normal), 1);
+            Assert.Equal(Width(FontWeight.Light), splash.Parts().Single(p => p.Name == "title").Bounds.Width, 1);
+        });
+
+        // The splash leaves over the motion tokens' fade, 150 ms, which the host runs and cuts under reduced motion.
+        [Fact]
+        public void The_splash_fades_out_over_150_ms() => Assert.Equal(0.15, SplashTimeline.Moonrise.FadeOut);
+
         // The moon's face lit at the end, the row of planets drawn in their hues, the title in its colour.
         [Fact]
         public Task The_finished_frame_has_its_crescent_its_row_and_its_title() => UiTest.Run(() =>

@@ -17,7 +17,9 @@ answer.
 - **A start-up splash drawn live (`§219`).** `LunaSplash` draws Moonrise, the big screen's start-up splash, from
   vectors for the time its host sets: stars, a moon that draws itself, a row of planets (`SplashBody`), a sweep that
   flares each planet, a title and caption; `StrikeTimes()` says when the sweep reaches each planet. `SplashTimeline` holds the timing as data (`SplashTimeline.Moonrise`, 5 s), `SplashRandom` places
-  stars and orbits from a seed, and `LunaSounds.Render(SplashChime, strikes)` makes a bell for each planet (`BellPartial`). What it costs: nothing, it is new.
+  stars and orbits from a seed, and `LunaSounds.Render(SplashChime, strikes)` makes a bell for each planet (`BellPartial`).
+  Barlow Condensed Light is bundled for its wordmark (`LunaFonts.CondensedLightFile`, `§206.3`), and
+  `SplashTimeline.FadeOut` says how long a host fades it out. What it costs: nothing, it is new.
 - **A cover whole at its own picture's shape (`§212.13`).** `CoverCard` and `PageLayout`'s hero cover take the box's
   shape from the picture, so the picture is never cut and never stretched; `CoverItem.Aspect` and
   `PageHero.CoverAspect` now shape only a generated card. What it costs: a consumer's recordings move wherever a

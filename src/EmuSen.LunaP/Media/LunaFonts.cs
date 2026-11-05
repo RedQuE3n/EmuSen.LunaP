@@ -26,6 +26,9 @@ namespace EmuSen.LunaP.Media
         /// <summary>Barlow Condensed Regular's file.</summary>
         public static string CondensedFile => FileOf("BarlowCondensed-Regular.ttf");
 
+        /// <summary>Barlow Condensed Light's file, the splash's wordmark.</summary>
+        public static string CondensedLightFile => FileOf("BarlowCondensed-Light.ttf");
+
         /// <summary>Barlow Condensed Medium's file.</summary>
         public static string CondensedMediumFile => FileOf("BarlowCondensed-Medium.ttf");
 

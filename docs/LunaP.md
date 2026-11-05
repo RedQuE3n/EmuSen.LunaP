@@ -14244,6 +14244,13 @@ rest). Each family has its own resource folder: with both in one folder, Avaloni
 `#Barlow Condensed` with Barlow Regular, at every weight (measured 2026-11-01 by the advance of `M`, 699 units in
 both), so the condensed faces were unreachable.
 
+Barlow Condensed Light joined them on 2026-11-04 for the splash's wordmark (§219.5), fetched the same day from
+Google Fonts' repository, https://github.com/google/fonts, `ofl/barlowcondensed/BarlowCondensed-Light.ttf` (SHA-256
+`2c37e1e6…a67d`). That folder's `OFL.txt` is the same text, byte for byte apart from line ends, as the bundled
+`OFL.txt` (same copyright line, same licence), so the one licence file covers it; it is copied beside the application
+with the others (`LunaFonts.CondensedLightFile`). Asking `#Barlow Condensed` for `FontWeight.Light` now gives the Light
+face; before, the collection answered with Regular.
+
 **Against §181.2.** The consumer had kept Barlow Condensed in its own frontend, reasoning that the toolkit keeps every
 dependency MIT. A font is not a code dependency: the OFL governs the font files alone, lets them be bundled and
 redistributed with software under any licence, and asks only that they are not sold by themselves and that a modified
@@ -15404,7 +15411,10 @@ to Skia on the GPU. It is crisp at any size because nothing in it is a bitmap. I
   hue in degrees), `Title` and `Caption` (the words; the host spells them), and `Time`, clamped to 0 to the timeline's
   `Length`. `AtEnd` says the finished frame is drawn; `Finish()` sets `Time` to `Length`, which is what a skip and
   reduced motion both show. `StrikeTimes()` gives, at the control's present size, when the sweep reaches each planet:
-  the times its bells ring. `Parts()` gives each drawn part's bounds, for a fit audit. Nothing is measured: the splash
+  the times its bells ring. `Parts()` gives each drawn part's bounds, for a fit audit. The timeline's `FadeOut`,
+  0.15 s as the motion tokens' Fade (§206.5), is how long the host fades the splash into what is behind it when it ends,
+  at its last frame or on a skip; the host runs that fade on its own clock and cuts it under reduced motion (decided
+  2026-11-04 by the tester). Nothing is measured: the splash
   fills whatever it is arranged in.
 - `SplashTimeline` (record, plain data). Every span of the draft as a `SplashSpan(From, To)` in the draft's own seconds,
   the `Pace` they are stretched by and the `Length` the splash lasts, the star count and the seed that places stars and
@@ -15482,9 +15492,9 @@ and end when the mix has fallen 60 dB under its loudest sample: for thirteen pla
 
 ### 219.5 Where it differs from the draft
 
-- **The title's weight.** The draft asks for Barlow Condensed Light (300); the kit bundles Barlow Condensed Regular and
-  Medium (§206.3), so the title is Regular, a little heavier. Bundling the Light cut is a font decision for the kit,
-  not for this control.
+- **The title's weight.** Matched since 2026-11-04: the draft asks for Barlow Condensed Light (300), which the kit now
+  bundles (§206.3, decided by the tester the same day); the first build set it in Regular, a little heavier, while only
+  Regular and Medium were bundled.
 - **Gradients.** The draft's two-circle gradients (a planet's light, the moon's face) are drawn as Avalonia radial
   gradients with a moved origin; the inner circle, a tenth of the radius, is held as a flat stop. The difference is under
   a few levels at the gradient's lit spot.
@@ -15503,5 +15513,6 @@ time is the same on two draws (the seed); the stars' and planets' first draws eq
 outputs and the chime's two renders are the same; at every size audited (1280 × 800, 1920 × 1080, 1280 × 720, 3840 × 2160, the last set after the first
 layout) the title, caption, moon, halo and every planet of the finished frame are inside the control; nothing is drawn
 before the stars begin; each planet's bell starts at its strike time (the power at its pitch, by Goertzel's recurrence, ten times what it was
-the 50 ms before), the scale is the pentatonic ladder, two renders are the same, the bells are quieter than every cue
+the 50 ms before), the scale is the pentatonic ladder, the wordmark resolves to the Light face and is as wide as Light
+sets it (and not as Regular does), the fade is 0.15 s, two renders are the same, the bells are quieter than every cue
 and end quiet; mid-sweep a planet's flare brightens its halo.
