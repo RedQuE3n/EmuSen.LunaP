@@ -15570,3 +15570,136 @@ test that held the splash under 0.8 of the quietest cue now holds its loudest sa
 `BellCueTests`: each cue's notes are present at their strike times (Goertzel); two renders are identical; each cue's
 loudest sample is within 0.05 to 0.6; the single bell is at the requested pitch. `SplashTests`: the splash's loudest
 sample sits at about the cues' level.
+
+## 221. The night sky: `LunaSky`, `PlanetLayout`, and the hub and gallery at night (2026-11-05)
+
+Decided 2026-11-05 by the tester, from three approved mockups (canvas pages of 1280 × 800 design units: "Choose a
+console", "Home" and a console's games): a host's big-screen screens may stand under Moonrise's night sky instead of
+the flat surface. The sky has three parts, the night gradient, a seeded star field and one soft glow whose hue follows
+the focus; a new layout chooses among worlds drawn as planets; the hub and the gallery gain a night form. The mockups'
+markup and `renderVals()` are the specification; where the kit does not match them, §221.6 says so.
+
+### 221.1 One sky, two users
+
+Moonrise (§219) already drew a night gradient and a star field. Rather than a copy, both moved into `NightSky`, an
+internal static class with one job, painting the sky, which `LunaSplash` and `LunaSky` both call:
+
+- `NightSky.Gradient(stops)` makes the vertical gradient; `NightSky.Moonrise` is the draft's (`#05060f`, `#0b1029` at
+  70 %, `#141b45`), `NightSky.Screens` the mockups' (`#05060f`, `#0a0d22` at 55 %, `#141a3c`).
+- `NightSky.Place(random, count)` places stars with five draws each, in Moonrise's order and with its
+  formulas (x, y × 0.92, radius 0.2 to 1.4, phase, twinkle rate), so the splash's frames are unchanged.
+- `NightSky.DrawStars(context, stars, w, h, unit, size, opacity, time)` draws each at its twinkle for a time.
+
+`LunaSplash` keeps its timeline, words and planets; it now calls these three for its sky, and `SplashTests` hold its
+frames as before.
+
+### 221.2 `LunaSky`
+
+A control that fills what it is arranged in and draws the night gradient, the stars and the glow from vectors, in
+pixels, so it is crisp at 4K and costs nothing to scale. It sits behind a layout's scaled surface, not inside it.
+
+- **Stars.** `StarCount` and `Seed` default to Moonrise's, with the same height share, so as the splash fades into big
+  picture the stars stand where they stood. They hold still: each is drawn at its twinkle for time 0, which gives the
+  field the mockups' spread of brightness (0.25 to 0.85 there) without motion. A star is 0.7 of the splash's size, in
+  units of the height over 800.
+- **The glow.** `GlowHue` (degrees, or null for none), `GlowCentre` (shares of the width and height), `GlowRadii` (in
+  design units) and `GlowStrength` (the alpha at the centre). It is the mockups' radial gradient: `hsl(h, 70 %, 50 %)`
+  at the strength at its centre, `hsl(h, 70 %, 40 %)` at 0.35 of it at 45 % of the radius, clear from 75 %.
+- **The glow eases.** A new hue is reached along the shorter way round the colour wheel, and the centre moves with it,
+  over the Pan motion token (320 ms, cubic out, §206.5; the mockups' 350 ms ease). Each value is a `Glide` (§102.1)
+  on the control's `Clock`, which a host or test replaces; while one is moving the control asks its top level for the
+  next frame, and once all are at rest it asks for nothing. Under reduced motion a `Glide` is at its end at once, so
+  the glow holds still: the new hue is drawn at once, with no frames between. `ShownHue` is the hue drawn now.
+- The glow's brush is made again only when the drawn hue or strength moves by a quarter of a degree or a thousandth.
+
+### 221.3 `PlanetLayout`
+
+A big screen's chooser of worlds, declared as data, at the mockup's places in units of the height over 800:
+
+| Part | Where |
+|---|---|
+| Header: `Title` (Condensed Medium 32, spacing 3), `Subtitle` (Body 20, muted), `Count` at the right (Body 20, muted) | top 40, 44 high, baseline-aligned |
+| Wide tiles (`SetTiles`): an icon in a 40-unit disc, the name (Condensed Medium 24, spacing 1.5) and a line (Body 18) | top 100, 72 high, as many columns as tiles across the safe width, 18 apart |
+| Planets (`SetPlanets`) in cells 176 square, 18 apart; a planet's area is 120 high, then its name (Condensed Medium 22, spacing 1.2, upper case) and its line (Body 17) | first row's top 196, the next 192 below |
+| An orbit line through each row's planets: 1 unit, `rgba(140,150,220,.28)` fading out at each end | 60 below the row's top |
+| The focused item's title (Condensed Medium 44, spacing 2, upper case) and facts (Body 22, muted) at the left; a fan of its covers at the right | 586 to 690 |
+| The help band (§211.4) | 702 |
+
+- **Rows that fit.** As many cells across as the safe width holds; the planets are shared evenly among the rows they
+  need (eleven at 1280 units: six, then five), and each row is centred, so a short row sits between the long one's
+  planets as the mockup's does. Two rows show at once; a third scrolls in a whole row at a time as the focus reaches it.
+- **A planet** (`PlanetGlyph`) is a disc lit from 34 %, 30 %: `hsl(h,85%,80%)`, `hsl(h,65%,52%)` at 45 %,
+  `hsl(h,60%,22%)` at the rim; a band around it, 9 units of `hsl(h,70%,55%)` at 0.12, and a glow 24 units of
+  `hsl(h,80%,60%)` at 0.25. Focused, it is 84 units across instead of 58, its band 14 at 0.22 and its glow 60 at 0.55.
+- **The focus.** The focused cell lifts 6 units, takes the glass at 0.88 and the ring, and the sky's glow takes its
+  planet's hue, centred at 50 %, 77 % with radii 756 by 450 and a strength of 0.20. A wide tile focused takes the glass
+  at 0.92 and the ring; unfocused, wide tiles are glass at 0.55 and planets stand on the sky alone. A tile has no hue,
+  so the glow keeps the last planet's.
+- **The fan.** Up to four of the focused item's covers, each drawn whole at its own shape 100 units high (no wider than
+  150), each 74 units left of the next, turned (i − 1.5) × 4 degrees, the first at the back, as the mockup lays them.
+- **The pad.** Left and Right along a row, Up and Down to the nearest item of the next row by its centre, as the hub
+  walks between its rows; A raises `ItemChosen`; a button the hints give a key raises `HintInvoked`.
+- **Night.** With `Night` on, the layout stands on a `LunaSky`; off, it draws the theme's surface and opaque raised
+  tiles, as every other screen does in the light variant.
+
+`PlanetItem(Key, Name)` carries `Hue` (null for a wide tile), `Status` (the line under the name), `Title` (the words
+under the rows; the name when null), `Facts`, `Covers` and `Icon` (an SVG path in a 24-unit box, stroked, for a wide tile).
+
+### 221.4 The hub at night
+
+`HubLayout.Night` keeps the hub's places, sizes and focus order (§212) and changes its surfaces:
+
+- The sky replaces the blurred art behind the hub. The glow follows the focused cover's `CoverItem.Hue`, centred at
+  40 %, 62.5 % with radii 720 by 450; on Continue or the places it takes Continue's `HubContinue.Hue`, centred at
+  19 %, 37.5 %; the strength is 0.22.
+- Continue sits in a glass panel 12 units round its picture and words, 12 round at the corners, at 0.55 with the
+  ring inside its edge when focused and at 0.3 when not; a 14-unit planet in Continue's hue stands before the facts.
+  The shelf stands at 424 (`NightShelfTop`, the mockup's) rather than 416, and the panel's foot is shortened where it
+  would come within the mockup's 8 units of the shelf's label (`NightPanelGap`): at the default text size the panel
+  ends at 368 and RECENT starts at 376, so the ring never crosses the label. Found 2026-11-05 at 1920 × 1080, where the
+  first build's ring ran through RECENT; `PlanetLayoutTests` holds the gap at every audited size.
+  The focused cover's name stands 2 units under the shelf rather than 6 (`NightTitleGap`), so at the largest text
+  size (1.3) it still ends above the places at 622.
+- A focused cover lifts 6 units (`CoverCard.Lift`) besides growing, and glows in its hue (40 units at 0.35).
+- The places are glass at 0.5 with a 1-unit edge of the border token at 0.35, and at 0.92 with the ring when focused.
+- `Mark`, when set, draws a small crescent (a 26-unit disc of `#e9e4d4` with an 18-unit glow, its shadow `#070917`
+  7 units right and 2 up) and the word in Condensed Light 24 at spacing 6 at the top right; the status line moves to
+  the top left, as the mockup has it.
+- The help band at night is the input surface at 0.72 as glass under its entries, with the border token's rule.
+
+### 221.5 The gallery at night
+
+`GalleryLayout.Night` replaces the strip of sections with a heading and keeps everything else (§212.5):
+
+- Left: `Trail` in upper case with " ▸" (Body 20, spacing 2, muted), a 34-unit planet in `Hue` (band 7 at 0.18,
+  glow 26 at 0.5) when there is one, the chosen section's label (Condensed Medium 32, spacing 3, upper case) and
+  `Count`. Right: the left shoulder, the previous section's label, a dot, the next section's label and the right
+  shoulder, the sections the shoulders lead to, wrapping as `StepSection` does; with one section, none.
+- The sky's glow takes `Hue`, else the focused cover's, centred at 50 %, 16 % with radii 846 by 440 at 0.16.
+- The focused cover lifts and glows as on the hub; the help band is the night one.
+
+### 221.6 Where it differs from the mockups
+
+- **Shadows.** CSS's blurred box shadows (a planet's glow, a cover's) are drawn as radial gradients from the shape's
+  edge to the blur's reach; a Gaussian falls off a little more softly at its foot.
+- **The help band on Choose a console.** That mockup kept the day's band (`rgba(27,27,30,.92)`); Home's and the
+  grid's draw the night one, and all three use it here, so the band does not change between screens.
+- **Night colours from the palette.** The mockups' bluish edges and band (`rgba(140,150,220,.12)` and `.18`,
+  `rgba(10,12,30,.72)`) and the icon discs' white at 0.06 are drawn from the palette's tokens at an opacity (the
+  border, the input surface, the strong text), because every colour a screen paints is one its resources offer (EmuSen's
+  palette-reach rule, `InterfaceRules.PaletteReach`); the edges read grey rather than blue.
+- **Stars.** The mockups placed 80 to 90 stars with a linear congruential generator per screen; the screens share
+  Moonrise's field (§221.2), so the sky is one sky as the player moves between them.
+- **The hub's places.** The hub keeps its own measures (§212.3) but for the shelf: Continue at 84, the shelf at the
+  mockup's 424, the places at 622, the help band at 702; the Home mockup draws the places 10 lower and its help band at
+  742. Continue's panel ends 4 units under the picture rather than 12, to clear the label.
+
+### 221.7 Tests
+
+`SkyTests`: the splash and the sky place the same stars from one seed; the glow eases toward a new hue along the
+shorter arc and is at rest after the Pan token; under reduced motion it holds still, the new hue drawn at once; a frame
+is the same on two draws. `PlanetLayoutTests`: rows that fit (6 and 5 at 1280 units), each centred; the pad's walk
+between the tiles and the rows; A raises the focused key; the focused planet grows and the glow takes its hue; the fit
+audit at 1280 × 800, 1920 × 1080, 1280 × 720 and 3840 × 2160, the last with its scale set after the resize, for the
+planets, the hub and the gallery at night. `HubLayoutTests` and the gallery's: the night forms keep the day's places
+and walk; the heading names the neighbours the shoulders lead to.

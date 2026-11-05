@@ -28,16 +28,17 @@ namespace EmuSen.LunaP.Controls
         private Control ArrangeBig()
         {
             var surface = new Panel { Width = _unitsWide, Height = DesignHeight, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
-            surface.Children.Add(Backdrop());
+            if (!_night) surface.Children.Add(Backdrop());
             TextBlock status = Words(_status, Type.Caption, "LunaMuted", name: "HubStatus");
-            status.HorizontalAlignment = HorizontalAlignment.Right;
+            status.HorizontalAlignment = _night ? HorizontalAlignment.Left : HorizontalAlignment.Right;
             status.VerticalAlignment = VerticalAlignment.Top;
-            status.Margin = new Thickness(0, Top, Side, 0);
+            status.Margin = _night ? new Thickness(Side, Top, 0, 0) : new Thickness(0, Top, Side, 0);
             surface.Children.Add(status);
+            if (_night && _mark is { Length: > 0 } mark) surface.Children.Add(Wordmark(mark));
             AddTop(surface);
             if (_shelf.Count > 0) AddShelf(surface);
             AddPlaces(surface);
-            surface.Children.Add(HelpBand.Make(_hintBar, "HubHelpBar"));
+            surface.Children.Add(HelpBand.Make(_hintBar, "HubHelpBar", _night));
             var scaled = new LayoutTransformControl { Child = surface, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
             scaled.Bind(LayoutTransformControl.LayoutTransformProperty, this.GetObservable(MenuPanel.ScaleProperty, u => (ITransform)new ScaleTransform(Unit(u), Unit(u))));
             return scaled;
@@ -52,9 +53,10 @@ namespace EmuSen.LunaP.Controls
             var slot = new PosterSlot { Name = "HubPoster", Scrim = false, Poster = _continue?.Picture ?? (preview is null ? null : ArtFor(preview)), Video = _continue?.Video, IsHitTestVisible = false };
             var box = new Border { Child = slot, CornerRadius = new CornerRadius(8), ClipToBounds = true };
             bool focused = _row == HubRow.Continue && _continue is not null;
+            if (_night && _continue is not null) surface.Children.Add(ContinuePanel(focused));
             if (focused) box.BoxShadow = new BoxShadows(new BoxShadow { OffsetY = 8, Blur = 24, Color = Color.FromArgb(0x80, 0, 0, 0) });
             frame.Children.Add(box);
-            frame.Children.Add(Ring(focused, 8));
+            frame.Children.Add(Ring(focused && !_night, 8));
             if (_continue is not null)
             {
                 AutomationProperties.SetName(frame, _continue.Title);
@@ -83,7 +85,8 @@ namespace EmuSen.LunaP.Controls
                 TextBlock line = Words(facts, Type.Body, "LunaMuted", name: "HubFacts");
                 line.TextWrapping = TextWrapping.Wrap;
                 line.MaxLines = 2;
-                At(line, left, nameTop + 116 * scale, width);
+                double indent = _night && _continue?.Hue is double hue ? FactsPlanet(surface, hue, left, nameTop + 116 * scale) : 0;
+                At(line, left + indent, nameTop + 116 * scale, width - indent);
                 surface.Children.Add(line);
             }
         }
@@ -99,16 +102,25 @@ namespace EmuSen.LunaP.Controls
             return TitleFloor;
         }
 
+        private double ShelfY => _night ? NightShelfTop : ShelfTop;
+
+        private TextBlock RecentLabel() => Words(_recentTitle.ToUpperInvariant(), Type.Caption, "LunaMuted", name: "HubRecentTitle");
+
+        // The label's top: its foot over the tallest cover focused, grown about its centre with the ring around it (docs/LunaP.md §212.12).
+        private double LabelTop(TextBlock label)
+        {
+            LunaFocus focus = LunaTokens.FocusMarks;
+            double rise = (TileHeight / 2 + focus.RingThickness + focus.RingOffset) * focus.TileScale - TileHeight / 2 + (_night ? NightLift : 0);
+            label.Measure(Size.Infinity);
+            return Math.Floor(ShelfY - rise - ShelfLabelGap - label.DesiredSize.Height);
+        }
+
         private void AddShelf(Panel surface)
         {
-            TextBlock label = Words(_recentTitle.ToUpperInvariant(), Type.Caption, "LunaMuted", name: "HubRecentTitle");
-            // Its foot over the tallest cover focused: grown about its centre with the ring around it (docs/LunaP.md §212.12).
-            LunaFocus focus = LunaTokens.FocusMarks;
-            double rise = (TileHeight / 2 + focus.RingThickness + focus.RingOffset) * focus.TileScale - TileHeight / 2;
-            label.Measure(Size.Infinity);
-            At(label, Side, Math.Floor(ShelfTop - rise - ShelfLabelGap - label.DesiredSize.Height), 400);
+            TextBlock label = RecentLabel();
+            At(label, Side, LabelTop(label), 400);
             surface.Children.Add(label);
-            var shelf = new Panel { Name = "HubShelf", Height = TileHeight, Margin = new Thickness(Side, ShelfTop, Side, 0), VerticalAlignment = VerticalAlignment.Top };
+            var shelf = new Panel { Name = "HubShelf", Height = TileHeight, Margin = new Thickness(Side, ShelfY, Side, 0), VerticalAlignment = VerticalAlignment.Top };
             AutomationProperties.SetName(shelf, _recentTitle);
             int fit = ShelfFit(), i = 0;
             foreach (CoverItem item in _shelf.Skip(_firstTile).Take(fit))
@@ -121,14 +133,14 @@ namespace EmuSen.LunaP.Controls
             if (_row == HubRow.Shelf && _shelf.FirstOrDefault(t => t.Key == _tileKey) is { } focused)
             {
                 TextBlock under = Words(focused.Title, Type.Body, "LunaText", name: "HubShelfTitle");
-                At(under, Side, ShelfTop + TileHeight + 6, _unitsWide - 2 * Side);
+                At(under, Side, ShelfY + TileHeight + (_night ? NightTitleGap : 6), _unitsWide - 2 * Side);
                 surface.Children.Add(under);
             }
         }
 
         private CoverCard Card(CoverItem item, double width, double height, bool big, bool focused)
         {
-            var card = new CoverCard { Big = big, CellWidth = width, CellHeight = height, Item = item.Picture is null && PictureOf?.Invoke(item) is { } picture ? item with { Picture = picture } : item, ShowsFocus = focused, Name = "HubTile." + item.Key, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+            var card = new CoverCard { Big = big, Lift = big && _night ? NightLift : 0, CellWidth = width, CellHeight = height, Item = item.Picture is null && PictureOf?.Invoke(item) is { } picture ? item with { Picture = picture } : item, ShowsFocus = focused, Name = "HubTile." + item.Key, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
             string key = item.Key;
             card.PointerPressed += (_, e) =>
             {
@@ -163,8 +175,18 @@ namespace EmuSen.LunaP.Controls
             if (place.Status is { Length: > 0 } status)
                 words.Children.Add(Words(place.NeedsAttention ? "⚠ " + status : status, Type.Caption, big && place.NeedsAttention ? "LunaAttention" : "LunaMuted", name: StatusName));
             var card = new Border { Child = words, CornerRadius = new CornerRadius(radius), Padding = big ? new Thickness(12, 0) : new Thickness(16, 0) };
-            card[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaSurfaceRaised");
             var cell = new Panel { Name = "HubPlace." + place.Key, Width = width, Height = height, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Cursor = new Cursor(StandardCursorType.Hand) };
+            if (big && _night)
+            {
+                cell.Children.Add(Glass(focused ? 0.92 : 0.5, radius));
+                if (!focused)
+                {
+                    var edge = new Border { CornerRadius = new CornerRadius(radius), BorderThickness = new Thickness(1), Opacity = 0.35, IsHitTestVisible = false };
+                    edge[!Border.BorderBrushProperty] = new DynamicResourceExtension("LunaBorder");
+                    cell.Children.Add(edge);
+                }
+            }
+            else card[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaSurfaceRaised");
             cell.Children.Add(card);
             cell.Children.Add(Ring(focused, radius, big));
             AutomationProperties.SetName(cell, place.Status is { Length: > 0 } s ? $"{place.Label}, {s}" : place.Label);
@@ -173,7 +195,62 @@ namespace EmuSen.LunaP.Controls
             return cell;
         }
 
-        private static Border Ring(bool shown, double radius, bool big = true)
+        /// <summary>How far a focused cover rises at night, besides growing.</summary>
+        public const double NightLift = 6;
+
+        // The raised surface at an opacity, as glass over the sky.
+        private static Border Glass(double opacity, double radius)
+        {
+            var glass = new Border { CornerRadius = new CornerRadius(radius), Opacity = opacity, IsHitTestVisible = false, Name = "HubGlass" };
+            glass[!Border.BackgroundProperty] = new DynamicResourceExtension("LunaSurfaceRaised");
+            return glass;
+        }
+
+        // Continue's glass panel, 12 units round its picture and words, with the ring inside its edge when focused.
+        private Control ContinuePanel(bool focused)
+        {
+            var panel = new Panel { Name = "HubContinuePanel", IsHitTestVisible = false };
+            panel.Children.Add(Glass(focused ? 0.55 : 0.3, 12));
+            if (focused)
+            {
+                var ring = new Border { CornerRadius = new CornerRadius(12), BorderThickness = new Thickness(LunaTokens.FocusMarks.RingThickness), Name = "HubRing" };
+                ring[!Border.BorderBrushProperty] = new DynamicResourceExtension("LunaAccent");
+                panel.Children.Add(ring);
+            }
+            At(panel, Side - 12, ContinueTop - 12, _unitsWide - 2 * (Side - 12));
+            // 12 round the picture, the foot shortened where the shelf's label would come within the mockup's gap of it.
+            double foot = _shelf.Count > 0 ? LabelTop(RecentLabel()) - NightPanelGap : double.PositiveInfinity;
+            panel.Height = Math.Min(ContinueHeight + 24, foot - (ContinueTop - 12));
+            return panel;
+        }
+
+        // A small planet in Continue's hue before the facts; returns how far the facts move right.
+        private double FactsPlanet(Panel surface, double hue, double left, double top)
+        {
+            var planet = new PlanetGlyph { Name = "HubContinuePlanet", Hue = hue, Width = 14, Height = 14 };
+            planet.Halo(0, 0, 10, 0.6);
+            At(planet, left, top + (Type.Body * 1.3 - 14) / 2, 14);
+            surface.Children.Add(planet);
+            return 24;
+        }
+
+        // A small crescent and the wordmark at the top right, as the night hub's mockup draws them.
+        private Control Wordmark(string mark)
+        {
+            var lit = new EllipseGeometry(new Rect(0, 0, 26, 26));
+            var moon = new Avalonia.Controls.Shapes.Path { Width = 26, Height = 26, Data = new CombinedGeometry(GeometryCombineMode.Exclude, lit, new EllipseGeometry(new Rect(7, -2, 26, 26))), Fill = new Avalonia.Media.Immutable.ImmutableSolidColorBrush(Color.Parse("#e9e4d4")) };
+            var glow = new Border { Width = 26, Height = 26, CornerRadius = new CornerRadius(13), BoxShadow = new BoxShadows(new BoxShadow { Blur = 18, Color = Color.FromArgb(89, 233, 228, 212) }), VerticalAlignment = VerticalAlignment.Center, Child = moon };
+            TextBlock word = Words(mark, 24 * LunaTokens.TextScale, "LunaTextStrong", LunaFonts.Condensed, "HubMark");
+            word.FontWeight = FontWeight.Light;
+            word.LetterSpacing = 6;
+            word.VerticalAlignment = VerticalAlignment.Center;
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 36, Side, 0), Name = "HubWordmark" };
+            row.Children.Add(glow);
+            row.Children.Add(word);
+            return row;
+        }
+
+        internal static Border Ring(bool shown, double radius, bool big = true)
         {
             LunaFocus focus = LunaTokens.FocusMarks;
             double thick = big ? focus.RingThickness : 2, offset = big ? focus.RingOffset : 1;

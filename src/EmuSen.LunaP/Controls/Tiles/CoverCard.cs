@@ -19,6 +19,9 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The cover; null draws the generated card.</summary>
         public IImage? Picture { get; init; }
 
+        /// <summary>The colour of the item's world in degrees, such as its console's, which a night screen glows in; null for none.</summary>
+        public double? Hue { get; init; }
+
         /// <summary>The generated card's width over its height, for an item with no picture; a picture is always drawn whole at its own shape.</summary>
         public double Aspect { get; init; } = 0.75;
 
@@ -52,7 +55,7 @@ namespace EmuSen.LunaP.Controls
         private readonly Border _ring = new() { IsHitTestVisible = false, IsVisible = false, Name = "CoverRing" };
         private CoverItem? _item;
         private bool _focused, _big = true;
-        private double _cellWidth = 180, _cellHeight = 240;
+        private double _cellWidth = 180, _cellHeight = 240, _lift;
 
         /// <summary>An empty cell on the big screen.</summary>
         public CoverCard()
@@ -78,6 +81,9 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>Whether the cover has the focus: the ring drawn outside it, the focus scale and the shadow.</summary>
         public bool ShowsFocus { get => _focused; set { _focused = value; FillFocus(); } }
+
+        /// <summary>How far a focused big cover rises, in the cell's units, besides growing; 0 by default, 6 at night (docs/LunaP.md §221.4).</summary>
+        public double Lift { get => _lift; set { _lift = Math.Max(0, value); FillFocus(); } }
 
         /// <summary>The cover's box inside the cell, after fitting its shape.</summary>
         public Rect CoverBounds { get; private set; }
@@ -174,8 +180,13 @@ namespace EmuSen.LunaP.Controls
             _ring[!Border.BorderBrushProperty] = new DynamicResourceExtension("LunaAccent");
             bool raised = _focused && _big;
             RenderTransformOrigin = new RelativePoint(box.Center.X / Math.Max(1, _cellWidth), box.Center.Y / Math.Max(1, _cellHeight), RelativeUnit.Relative);
-            RenderTransform = raised ? new ScaleTransform(focus.TileScale, focus.TileScale) : null;
-            _box.BoxShadow = raised ? new BoxShadows(new BoxShadow { OffsetY = 8, Blur = 24, Color = Color.FromArgb(0x80, 0, 0, 0) }) : default;
+            RenderTransform = !raised ? null
+                : _lift > 0 ? new TransformGroup { Children = { new ScaleTransform(focus.TileScale, focus.TileScale), new TranslateTransform(0, -_lift) } }
+                : new ScaleTransform(focus.TileScale, focus.TileScale);
+            var shadow = new BoxShadow { OffsetY = 8, Blur = 24, Color = Color.FromArgb(0x80, 0, 0, 0) };
+            _box.BoxShadow = !raised ? default
+                : _lift > 0 && _item?.Hue is double hue ? new BoxShadows(shadow, [new BoxShadow { Blur = 40, Color = NightSky.Hsl(hue, 0.8, 0.6, 0.35) }])
+                : new BoxShadows(shadow);
             ZIndex = _focused ? 1 : 0;
         }
     }

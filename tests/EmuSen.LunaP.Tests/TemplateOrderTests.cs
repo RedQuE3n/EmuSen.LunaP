@@ -487,6 +487,24 @@ namespace EmuSen.LunaP.Tests
         // checkable as an assertion.
         private static readonly Dictionary<(Type Type, string Method), string> Exempt = new()
         {
+            [(typeof(LunaSky), nameof(LunaSky.PlaceGlow))] =
+                "LunaSky has no template: PlaceGlow sets the glow's glides, which the next draw reads, so it holds whenever it is called.",
+            [(typeof(LunaSky), nameof(LunaSky.GlowBounds))] =
+                "LunaSky has no template: before it is arranged its size is 0 and the bounds are empty; SkyTests reads them after arranging.",
+            [(typeof(PlanetGlyph), nameof(PlanetGlyph.Halo))] =
+                "PlanetGlyph has no template: Halo sets four numbers and the brushes, which the next draw reads.",
+            [(typeof(PlanetLayout), nameof(PlanetLayout.Refresh))] =
+                "PlanetLayout is a Border whose child is built in code by Fill from what it holds; there is no template to wait for.",
+            [(typeof(PlanetLayout), nameof(PlanetLayout.SetTiles))] =
+                "PlanetLayout is a Border whose child is built in code by Fill from what it holds; there is no template to wait for.",
+            [(typeof(PlanetLayout), nameof(PlanetLayout.SetPlanets))] =
+                "PlanetLayout is a Border whose child is built in code by Fill from what it holds; there is no template to wait for.",
+            [(typeof(PlanetLayout), nameof(PlanetLayout.FocusOn))] =
+                "PlanetLayout keeps the focus as a key and draws it on the next Fill; PlanetLayoutTests focuses before and after showing.",
+            [(typeof(PlanetLayout), nameof(PlanetLayout.Move))] =
+                "PlanetLayout walks its own lists of items, not controls; PlanetLayoutTests walks it shown.",
+            [(typeof(PlanetLayout), nameof(PlanetLayout.Press))] =
+                "PlanetLayout raises its events from the focused key and the hints, not from controls; PlanetLayoutTests presses it shown.",
             [(typeof(LunaSplash), nameof(LunaSplash.Finish))] =
                 "LunaSplash has no template: Finish only sets Time, which the next draw reads, so it holds whenever it is called.",
             [(typeof(LunaSplash), nameof(LunaSplash.StrikeTimes))] =

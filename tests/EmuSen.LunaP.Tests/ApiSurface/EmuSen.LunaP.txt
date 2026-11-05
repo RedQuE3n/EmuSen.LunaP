@@ -478,6 +478,7 @@ public class EmuSen.LunaP.Controls.CoverCard : Avalonia.Controls.Panel
     public const double MinimumTitle = 18
     public double CellHeight { get; set; }
     public double CellWidth { get; set; }
+    public double Lift { get; set; }
 
 public sealed class EmuSen.LunaP.Controls.CoverItem : System.IEquatable<EmuSen.LunaP.Controls.CoverItem>
     public Avalonia.Media.IImage? Art { get; init; }
@@ -486,6 +487,7 @@ public sealed class EmuSen.LunaP.Controls.CoverItem : System.IEquatable<EmuSen.L
     public bool Equals(EmuSen.LunaP.Controls.CoverItem? other)
     public bool IsFavourite { get; init; }
     public double Aspect { get; init; }
+    public double? Hue { get; init; }
     public override bool Equals(object? obj)
     public override int GetHashCode()
     public override string ToString()
@@ -848,6 +850,7 @@ public class EmuSen.LunaP.Controls.GalleryLayout : Avalonia.Controls.Border
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     protected override void OnSizeChanged(Avalonia.Controls.SizeChangedEventArgs e)
     public EmuSen.LunaP.Controls.GalleryFocus Focused { get; }
+    public EmuSen.LunaP.Controls.LunaSky Sky { get; }
     public EmuSen.LunaP.Controls.OnScreenKeyboard? Keyboard { get; }
     public EmuSen.LunaP.Controls.PadFamily PadFamily { get; set; }
     public GalleryLayout()
@@ -857,10 +860,12 @@ public class EmuSen.LunaP.Controls.GalleryLayout : Avalonia.Controls.Border
     public System.Collections.Generic.IReadOnlyList<string> Shown { get; }
     public System.Func<EmuSen.LunaP.Controls.CoverItem, Avalonia.Media.IImage?>? PictureOf { get; set; }
     public System.Func<EmuSen.LunaP.Controls.GalleryFocus, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PageHint>>? HintsFor { get; set; }
+    public System.ValueTuple<string, string>? Neighbours { get; }
     public bool CloseSearch()
     public bool FocusOn(string key)
     public bool IsSearchOpen { get; }
     public bool Move(int dx, int dy)
+    public bool Night { get; set; }
     public bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
     public bool SelectSection(string key)
     public bool StepSection(int by)
@@ -878,6 +883,7 @@ public class EmuSen.LunaP.Controls.GalleryLayout : Avalonia.Controls.Border
     public const double Side = 64
     public const double StripHeight = 44
     public const double StripTop = 40
+    public double? Hue { get; set; }
     public event System.Action<EmuSen.LunaP.Controls.GalleryFocus> FocusChanged
     public event System.Action<bool> SearchClosed
     public event System.Action<string> HintInvoked
@@ -889,6 +895,7 @@ public class EmuSen.LunaP.Controls.GalleryLayout : Avalonia.Controls.Border
     public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadFamily> PadFamilyProperty = Xbox
     public string Count { get; set; }
     public string SearchText { get; }
+    public string Trail { get; set; }
     public string? SelectedSection { get; }
     public void OpenSearch(string text, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.KeyboardLayout> layouts)
     public void Refresh()
@@ -1007,6 +1014,7 @@ public sealed class EmuSen.LunaP.Controls.HubContinue : System.IEquatable<EmuSen
     public Avalonia.Media.IImage? Picture { get; init; }
     public HubContinue(string Title, string? Facts = null, Avalonia.Media.IImage? Picture = null)
     public bool Equals(EmuSen.LunaP.Controls.HubContinue? other)
+    public double? Hue { get; init; }
     public object? Video { get; init; }
     public override bool Equals(object? obj)
     public override int GetHashCode()
@@ -1039,6 +1047,7 @@ public class EmuSen.LunaP.Controls.HubLayout : Avalonia.Controls.Border
     public EmuSen.LunaP.Controls.AdaptiveForm Form { get; set; }
     public EmuSen.LunaP.Controls.HubContinue? Continue { get; set; }
     public EmuSen.LunaP.Controls.HubFocus Focused { get; }
+    public EmuSen.LunaP.Controls.LunaSky Sky { get; }
     public EmuSen.LunaP.Controls.PadFamily PadFamily { get; set; }
     public HubLayout()
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.CoverItem> Shelf { get; }
@@ -1050,6 +1059,7 @@ public class EmuSen.LunaP.Controls.HubLayout : Avalonia.Controls.Border
     public System.Func<EmuSen.LunaP.Controls.HubFocus, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PageHint>>? HintsFor { get; set; }
     public bool FocusOn(EmuSen.LunaP.Controls.HubRow row, string? key = null)
     public bool Move(int dx, int dy)
+    public bool Night { get; set; }
     public bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
     public bool ShowsArt { get; set; }
     public const double ContinueHeight = 280
@@ -1063,6 +1073,10 @@ public class EmuSen.LunaP.Controls.HubLayout : Avalonia.Controls.Border
     public const double DesktopTileHeight = 133
     public const double DesktopTileStep = 116
     public const double DesktopTileWidth = 100
+    public const double NightLift = 6
+    public const double NightPanelGap = 8
+    public const double NightShelfTop = 424
+    public const double NightTitleGap = 2
     public const double PlaceGap = 17
     public const double PlaceHeight = 64
     public const double PlaceWidth = 150
@@ -1088,6 +1102,7 @@ public class EmuSen.LunaP.Controls.HubLayout : Avalonia.Controls.Border
     public string RecentTitle { get; set; }
     public string Status { get; set; }
     public string Title { get; set; }
+    public string? Mark { get; set; }
     public void FocusStart()
     public void Refresh()
     public void SetPlaces(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.HubPlace> places)
@@ -1462,6 +1477,23 @@ public enum EmuSen.LunaP.Controls.LunaSelectionUnit
     public const EmuSen.LunaP.Controls.LunaSelectionUnit Cell = 1
     public const EmuSen.LunaP.Controls.LunaSelectionUnit Row = 0
     public int value__
+
+public sealed class EmuSen.LunaP.Controls.LunaSky : Avalonia.Controls.Control
+    public Avalonia.Point GlowCentre { get; set; }
+    public Avalonia.Rect GlowBounds()
+    public Avalonia.Size GlowRadii { get; set; }
+    public LunaSky()
+    public System.Func<System.TimeSpan> Clock { get; set; }
+    public bool Settled { get; }
+    public const double DesignHeight = 800
+    public const double StarSize = 0.7
+    public double GlowStrength { get; set; }
+    public double? GlowHue { get; set; }
+    public double? ShownHue { get; }
+    public int StarCount { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public uint Seed { get; set; }
+    public void PlaceGlow(Avalonia.Point centre)
 
 public sealed class EmuSen.LunaP.Controls.LunaSplash : Avalonia.Controls.Control
     public EmuSen.LunaP.Controls.SplashTimeline Timeline { get; set; }
@@ -2324,6 +2356,85 @@ public class EmuSen.LunaP.Controls.PathPickerRow : Avalonia.Controls.Primitives.
     public string BrowseTitle { get; set; }
     public string Path { get; set; }
     public string Placeholder { get; set; }
+
+public sealed class EmuSen.LunaP.Controls.PlanetGlyph : Avalonia.Controls.Control
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    public PlanetGlyph()
+    public System.ValueTuple<double, double> HaloSize { get; }
+    public double Hue { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public void Halo(double band, double bandOpacity, double glow, double glowOpacity)
+
+public sealed class EmuSen.LunaP.Controls.PlanetItem : System.IEquatable<EmuSen.LunaP.Controls.PlanetItem>
+    public PlanetItem(string Key, string Name)
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.CoverItem> Covers { get; init; }
+    public bool Equals(EmuSen.LunaP.Controls.PlanetItem? other)
+    public double? Hue { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.PlanetItem? left, EmuSen.LunaP.Controls.PlanetItem? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.PlanetItem? left, EmuSen.LunaP.Controls.PlanetItem? right)
+    public string Key { get; init; }
+    public string Name { get; init; }
+    public string? Facts { get; init; }
+    public string? Icon { get; init; }
+    public string? Status { get; init; }
+    public string? Title { get; init; }
+    public void Deconstruct(out string Key, out string Name)
+
+public class EmuSen.LunaP.Controls.PlanetLayout : Avalonia.Controls.Border
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+    protected override void OnKeyDown(Avalonia.Input.KeyEventArgs e)
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    protected override void OnSizeChanged(Avalonia.Controls.SizeChangedEventArgs e)
+    public EmuSen.LunaP.Controls.LunaSky Sky { get; }
+    public EmuSen.LunaP.Controls.PadFamily PadFamily { get; set; }
+    public PlanetLayout()
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.HintEntry> Hints { get; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PlanetItem> Planets { get; }
+    public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PlanetItem> Tiles { get; }
+    public System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PlanetItem>> Rows { get; }
+    public System.Func<EmuSen.LunaP.Controls.CoverItem, Avalonia.Media.IImage?>? PictureOf { get; set; }
+    public System.Func<string?, System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.PageHint>>? HintsFor { get; set; }
+    public bool FocusOn(string key)
+    public bool Move(int dx, int dy)
+    public bool Night { get; set; }
+    public bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
+    public const double Cell = 176
+    public const double CellGap = 18
+    public const double DesignHeight = 800
+    public const double DetailHeight = 104
+    public const double DetailTop = 586
+    public const double FanCover = 100
+    public const double FanStep = 74
+    public const double FanWidth = 420
+    public const double FocusedPlanet = 84
+    public const double HeaderHeight = 44
+    public const double HeaderTop = 40
+    public const double Lift = 6
+    public const double Planet = 58
+    public const double PlanetArea = 120
+    public const double RowStep = 192
+    public const double RowTop = 196
+    public const double Side = 64
+    public const double TileGap = 18
+    public const double TileHeight = 72
+    public const double TilesTop = 100
+    public const int RowsShown = 2
+    public const string StatusName = "PlanetStatus"
+    public event System.Action<string> FocusChanged
+    public event System.Action<string> HintInvoked
+    public event System.Action<string> ItemChosen
+    public int Columns { get; }
+    public static readonly Avalonia.StyledProperty<EmuSen.LunaP.Controls.PadFamily> PadFamilyProperty = Xbox
+    public string Count { get; set; }
+    public string Subtitle { get; set; }
+    public string Title { get; set; }
+    public string? Focused { get; }
+    public void Refresh()
+    public void SetPlanets(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.PlanetItem> planets)
+    public void SetTiles(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.PlanetItem> tiles)
 
 public class EmuSen.LunaP.Controls.PosterSlot : Avalonia.Controls.Control
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()

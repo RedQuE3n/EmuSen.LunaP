@@ -186,6 +186,16 @@ namespace EmuSen.LunaP.Tests
         // A claim the sweep finds and this file does not check, with the reason it cannot be.
         private static readonly Dictionary<string, string> Exempt = new()
         {
+            ["P:EmuSen.LunaP.Controls.LunaSky.StarCount"] =
+                "named rather than valued: SkyTests asserts a new sky's count equals SplashTimeline.Moonrise.StarCount.",
+            ["P:EmuSen.LunaP.Controls.LunaSky.Seed"] =
+                "named rather than valued: SkyTests asserts a new sky's seed equals SplashTimeline.Moonrise.Seed.",
+            ["P:EmuSen.LunaP.Controls.GalleryLayout.Night"] =
+                "drawn rather than read: HubLayoutTests' galleries are drawn on the surface with no sky, and PlanetLayoutTests sets it to draw one.",
+            ["P:EmuSen.LunaP.Controls.HubLayout.Night"] =
+                "drawn rather than read: HubLayoutTests' hubs are drawn with the art behind them and no sky, and PlanetLayoutTests sets it to draw one.",
+            ["P:EmuSen.LunaP.Controls.CoverCard.Lift"] =
+                "drawn rather than read: CoverShapeTests' focused covers grow about their centre with no rise, and PlanetLayoutTests reads 6 on the hub at night.",
             ["P:EmuSen.LunaP.Controls.ManagerLayout`1.Applies"] =
                 "read through its effect: HubLayoutTests' manager case finds Apply in the help bar until Applies is set false.",
             ["P:EmuSen.LunaP.Controls.MenuRow.IsDimmed"] =

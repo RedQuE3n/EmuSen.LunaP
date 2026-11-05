@@ -15,10 +15,6 @@ namespace EmuSen.LunaP.Controls
     {
         private const double Unit = 720, MoonY = 0.36, MoonRadius = 92, RowY = 0.66, RowShare = 0.78, RowMost = 980, TitleY = 0.85, TitleSize = 78, CaptionY = 0.91, CaptionSize = 15;
 
-        private static readonly IBrush Sky = new ImmutableLinearGradientBrush(
-            [new ImmutableGradientStop(0, Color.Parse("#05060f")), new ImmutableGradientStop(0.7, Color.Parse("#0b1029")), new ImmutableGradientStop(1, Color.Parse("#141b45"))],
-            startPoint: new RelativePoint(0, 0, RelativeUnit.Relative), endPoint: new RelativePoint(0, 1, RelativeUnit.Relative));
-        private static readonly IBrush Star = new ImmutableSolidColorBrush(Color.Parse("#dfe6ff"));
         private static readonly IBrush HaloBrush = new ImmutableRadialGradientBrush(
             [new ImmutableGradientStop(0, Color.FromArgb(71, 201, 214, 255)), new ImmutableGradientStop(0.6 / 3.2, Color.FromArgb(71, 201, 214, 255)), new ImmutableGradientStop(1, Color.FromArgb(0, 201, 214, 255))],
             radiusX: new RelativeScalar(0.5, RelativeUnit.Relative), radiusY: new RelativeScalar(0.5, RelativeUnit.Relative));
@@ -39,7 +35,7 @@ namespace EmuSen.LunaP.Controls
         private IReadOnlyList<SplashBody> _bodies = [];
         private string _title = "", _caption = "";
         private double _time;
-        private (double X, double Y, double R, double P, double S)[] _stars = [];
+        private NightSky.Star[] _stars = [];
         private (double A0, double Rx, double Ry, IBrush Body, IBrush Glow, IBrush Flare)[] _planets = [];
         private TextLayout? _titleLayout, _captionLayout;
         private (double Size, double Spacing) _titleKey, _captionKey;
@@ -110,9 +106,7 @@ namespace EmuSen.LunaP.Controls
         private void Place()
         {
             var random = new SplashRandom(_timeline.Seed);
-            _stars = new (double, double, double, double, double)[_timeline.StarCount];
-            for (int i = 0; i < _stars.Length; i++)
-                _stars[i] = (random.Next(), random.Next() * 0.92, random.Next() * 1.2 + 0.2, random.Next() * 6.28, 0.6 + random.Next() * 1.6);
+            _stars = NightSky.Place(random, _timeline.StarCount);
             _planets = new (double, double, double, IBrush, IBrush, IBrush)[_bodies.Count];
             for (int i = 0; i < _planets.Length; i++)
             {
@@ -127,7 +121,7 @@ namespace EmuSen.LunaP.Controls
             InvalidateVisual();
         }
 
-        private static Color Hsl(double hue, double s, double l) => HslColor.ToRgb(((hue % 360) + 360) % 360, s, l, 1);
+        private static Color Hsl(double hue, double s, double l) => NightSky.Hsl(hue, s, l);
 
         private static double Ease(double v) => 1 - Math.Pow(1 - Math.Clamp(v, 0, 1), 3);
 
@@ -233,15 +227,8 @@ namespace EmuSen.LunaP.Controls
             double w = Bounds.Width, h = Bounds.Height;
             if (w <= 0 || h <= 0) return;
             double t = _timeline.DraftTime(_time), u = h / Unit;
-            context.FillRectangle(Sky, new Rect(0, 0, w, h));
-
-            double starsIn = Ease(_timeline.Stars.At(t));
-            if (starsIn > 0)
-                foreach (var s in _stars)
-                {
-                    double twinkle = 0.55 + 0.45 * Math.Sin(s.P + t * s.S), r = s.R * u * 1.4;
-                    using (context.PushOpacity(starsIn * twinkle * 0.9)) context.DrawEllipse(Star, null, new Point(s.X * w, s.Y * h), r, r);
-                }
+            context.FillRectangle(NightSky.Moonrise, new Rect(0, 0, w, h));
+            NightSky.DrawStars(context, _stars, w, h, u, 1.4, Ease(_timeline.Stars.At(t)) * 0.9, t);
 
             double mx = w / 2, my = h * MoonY, mr = MoonRadius * u;
             double glow = Ease(_timeline.Halo.At(t));

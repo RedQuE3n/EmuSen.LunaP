@@ -37,6 +37,15 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The shelf's top, a cover's cell and the step from one cell to the next on the big screen.</summary>
         public const double ShelfTop = 416, TileWidth = 120, TileHeight = 160, TileStep = 144;
 
+        /// <summary>The shelf's top at night, the mockup's, 8 lower than by day so Continue's glass panel clears the label above it (docs/LunaP.md §221.4).</summary>
+        public const double NightShelfTop = 424;
+
+        /// <summary>The least space between Continue's glass panel, its ring included, and the shelf's label at night: the mockup's 8 units.</summary>
+        public const double NightPanelGap = 8;
+
+        /// <summary>The space between the shelf and the focused cover's name under it at night, 2 rather than 6, so the name at the largest text size still ends above the places.</summary>
+        public const double NightTitleGap = 2;
+
         /// <summary>The space between the shelf's label and the highest the tallest cover reaches focused, grown with its ring - the mockup's 5 units (docs/LunaP.md §212.12).</summary>
         public const double ShelfLabelGap = 5;
 
@@ -56,7 +65,9 @@ namespace EmuSen.LunaP.Controls
         private int _firstTile;
         private double _unitsWide;
         private string _status = string.Empty, _title = "Home", _recentTitle = "Recent", _placesTitle = "Places";
-        private bool _showsArt = true;
+        private bool _showsArt = true, _night;
+        private string? _mark;
+        private readonly LunaSky _sky = new() { Name = "HubSky" };
 
         /// <summary>An empty hub in the desktop form.</summary>
         public HubLayout()
@@ -99,6 +110,15 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>Whether the focused cover's art is drawn behind the big screen's hub, dimmed and blurred; true by default.</summary>
         public bool ShowsArt { get => _showsArt; set { _showsArt = value; Fill(); } }
+
+        /// <summary>Whether the big screen's hub stands on the night sky, with glass panels and a glow in the focus's hue; false by default (docs/LunaP.md §221.4).</summary>
+        public bool Night { get => _night; set { _night = value; Fill(); } }
+
+        /// <summary>A wordmark drawn with a small crescent at the top right at night, such as the application's name; null for none.</summary>
+        public string? Mark { get => _mark; set { _mark = value; Fill(); } }
+
+        /// <summary>The sky behind the big screen's hub at night.</summary>
+        public LunaSky Sky => _sky;
 
         /// <summary>Gives the help bar's entries for what is focused, generated from what the host declares.</summary>
         public Func<HubFocus, IReadOnlyList<PageHint>>? HintsFor { get; set; }
@@ -366,6 +386,11 @@ namespace EmuSen.LunaP.Controls
             if (_hintBar.Parent is Decorator d) d.Child = null;
             else if (_hintBar.Parent is Panel p) p.Children.Remove(_hintBar);
             _root.Children.Clear();
+            if (Big && _night)
+            {
+                _root.Children.Add(_sky);
+                Glow();
+            }
             _root.Children.Add(Big ? ArrangeBig() : ArrangeDesktop());
             RefreshHints();
         }
@@ -405,6 +430,18 @@ namespace EmuSen.LunaP.Controls
                 back.Children.Add(fade);
             }
             return back;
+        }
+
+        // The glow in the focused cover's hue under the shelf, else in Continue's at the upper left (docs/LunaP.md §221.4).
+        private void Glow()
+        {
+            _sky.GlowRadii = new Size(720, 450);
+            _sky.GlowStrength = 0.22;
+            double? tileHue = _row == HubRow.Shelf ? _shelf.FirstOrDefault(t => t.Key == _tileKey)?.Hue : null;
+            Point centre = tileHue is not null ? new Point(510.0 / 1280, 0.625) : new Point(240.0 / 1280, 0.375);
+            if (_sky.GlowHue is null) _sky.PlaceGlow(centre);
+            else _sky.GlowCentre = centre;
+            _sky.GlowHue = tileHue ?? _continue?.Hue ?? _shelf.FirstOrDefault(t => t.Key == _tileKey)?.Hue ?? _shelf.FirstOrDefault()?.Hue;
         }
 
         private Color Colour(string key, Color fallback) => this.TryFindResource(key, ActualThemeVariant, out object? found) && found is Color c ? c : fallback;

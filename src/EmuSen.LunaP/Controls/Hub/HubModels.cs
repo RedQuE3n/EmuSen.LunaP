@@ -14,6 +14,9 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The desktop's button under the facts, such as Resume.</summary>
         public string Button { get; init; } = "Resume";
 
+        /// <summary>The colour of its world in degrees, such as its console's, drawn as a small planet before the facts at night; null for none.</summary>
+        public double? Hue { get; init; }
+
         /// <summary>A clip the poster slot will play once a video surface exists; null for none.</summary>
         public object? Video { get; init; }
     }

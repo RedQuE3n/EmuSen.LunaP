@@ -59,7 +59,10 @@ namespace EmuSen.LunaP.Controls
         private int _firstRow;
         private double _unitsWide = 1280;
         private OnScreenKeyboard? _keyboard;
-        private bool _inKeyboard;
+        private bool _inKeyboard, _night;
+        private string _trail = string.Empty;
+        private double? _hue;
+        private readonly LunaSky _sky = new() { Name = "GallerySky" };
 
         /// <summary>An empty gallery.</summary>
         public GalleryLayout()
@@ -89,6 +92,29 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>One line at the strip's right, such as how many items the section holds.</summary>
         public string Count { get => _count; set { _count = value ?? string.Empty; Fill(); } }
+
+        /// <summary>Whether the gallery stands on the night sky, a heading with the shoulders' neighbours in the strip's place; false by default (docs/LunaP.md §221.5).</summary>
+        public bool Night { get => _night; set { _night = value; Fill(); } }
+
+        /// <summary>The heading's first words at night, drawn in upper case before a ▸, such as Games.</summary>
+        public string Trail { get => _trail; set { _trail = value ?? string.Empty; Fill(); } }
+
+        /// <summary>The chosen section's planet hue in degrees at night, the sky's glow taking it; null for no planet.</summary>
+        public double? Hue { get => _hue; set { _hue = value; Fill(); } }
+
+        /// <summary>The sky behind the gallery at night.</summary>
+        public LunaSky Sky => _sky;
+
+        /// <summary>The labels of the sections the left and right shoulders lead to, wrapping; null with fewer than two sections.</summary>
+        public (string Previous, string Next)? Neighbours
+        {
+            get
+            {
+                if (_sections.Count < 2) return null;
+                int at = Math.Max(0, _sections.ToList().FindIndex(s => s.Key == _selected)), n = _sections.Count;
+                return (_sections[(at - 1 + n) % n].Label, _sections[(at + 1) % n].Label);
+            }
+        }
 
         /// <summary>Gives the help bar's entries for what is focused, generated from what the host declares.</summary>
         public Func<GalleryFocus, IReadOnlyList<PageHint>>? HintsFor { get; set; }
@@ -360,12 +386,13 @@ namespace EmuSen.LunaP.Controls
             foreach (Control c in new Control[] { _strip, _search, _hintBar }) Detach(c);
             if (_keyboard is not null) Detach(_keyboard);
             var surface = new Panel { Width = _unitsWide, Height = DesignHeight, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
-            surface[!Panel.BackgroundProperty] = new DynamicResourceExtension("LunaSurface");
-            FillStrip(surface);
+            if (!_night) surface[!Panel.BackgroundProperty] = new DynamicResourceExtension("LunaSurface");
+            if (_night) FillHeading(surface);
+            else FillStrip(surface);
             if (_keyboard is not null) FillSearch(surface);
             FillGrid(surface);
             if (_keyboard is null) FillName(surface);
-            surface.Children.Add(HelpBand.Make(_hintBar, "GalleryHelpBar"));
+            surface.Children.Add(HelpBand.Make(_hintBar, "GalleryHelpBar", _night));
             if (_keyboard is { } keyboard)
             {
                 keyboard.Margin = new Thickness(0, KeyboardTop, 0, 0);
@@ -377,6 +404,14 @@ namespace EmuSen.LunaP.Controls
             var scaled = new LayoutTransformControl { Child = surface, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
             scaled.Bind(LayoutTransformControl.LayoutTransformProperty, this.GetObservable(MenuPanel.ScaleProperty, u => (ITransform)new ScaleTransform(Unit(u), Unit(u))));
             _root.Children.Clear();
+            if (_night)
+            {
+                _sky.GlowRadii = new Size(846, 440);
+                _sky.GlowStrength = 0.16;
+                if (_sky.GlowHue is null) _sky.PlaceGlow(new Point(0.5, 130.0 / 800));
+                _sky.GlowHue = _hue ?? _items.FirstOrDefault(i => i.Key == _focusKey)?.Hue;
+                _root.Children.Add(_sky);
+            }
             _root.Children.Add(scaled);
             RefreshHints();
         }
@@ -422,6 +457,52 @@ namespace EmuSen.LunaP.Controls
             surface.Children.Add(row);
         }
 
+        // At night: the trail, the section's planet, its name and count at the left; the shoulders and the sections they lead to at the right.
+        private void FillHeading(Panel surface)
+        {
+            double scale = LunaTokens.TextScale;
+            var left = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16, Name = "GalleryHeading" };
+            left.Children.Add(Heading(_trail.ToUpperInvariant() + " ▸", Type.Caption, "LunaMuted", LunaFonts.Body, "GalleryTrail", FontWeight.Normal, 2));
+            if (_hue is double hue)
+            {
+                var planet = new PlanetGlyph { Name = "GalleryPlanet", Hue = hue, Width = 34, Height = 34, VerticalAlignment = VerticalAlignment.Center };
+                planet.Halo(7, 0.18, 26, 0.5);
+                left.Children.Add(planet);
+            }
+            string label = _sections.FirstOrDefault(s => s.Key == _selected)?.Label ?? string.Empty;
+            left.Children.Add(Heading(label.ToUpperInvariant(), 32 * scale, "LunaTextStrong", LunaFonts.Condensed, "GallerySection", FontWeight.Medium, 3));
+            left.Children.Add(Heading(_count, Type.Caption, "LunaMuted", LunaFonts.Body, "GalleryCount", FontWeight.Normal, 0));
+            var right = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Name = "GalleryNeighbours" };
+            if (Neighbours is var (previous, next))
+            {
+                right.Children.Add(Shoulder(PadGlyphButton.LeftShoulder));
+                right.Children.Add(Heading(previous, 18 * scale, "LunaMuted", LunaFonts.Body, "GalleryPrevious", FontWeight.Normal, 0));
+                right.Children.Add(Heading("·", 18 * scale, "LunaMuted", LunaFonts.Body, null, FontWeight.Normal, 0));
+                right.Children.Add(Heading(next, 18 * scale, "LunaMuted", LunaFonts.Body, "GalleryNext", FontWeight.Normal, 0));
+                right.Children.Add(Shoulder(PadGlyphButton.RightShoulder));
+            }
+            var row = new DockPanel { Height = 52, Margin = new Thickness(Side, 34, Side, 0), VerticalAlignment = VerticalAlignment.Top, LastChildFill = false };
+            DockPanel.SetDock(right, Dock.Right);
+            row.Children.Add(right);
+            row.Children.Add(left);
+            surface.Children.Add(row);
+        }
+
+        private static TextBlock Heading(string text, double size, string ink, FontFamily face, string? name, FontWeight weight, double spacing)
+        {
+            var t = new TextBlock { Text = text, FontFamily = face, FontSize = size, FontWeight = weight, LetterSpacing = spacing, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+            if (name is not null) t.Name = name;
+            t[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(ink);
+            return t;
+        }
+
+        private Control Shoulder(PadGlyphButton button)
+        {
+            var glyph = new PadGlyph { Button = button, GlyphSize = 30, VerticalAlignment = VerticalAlignment.Center, Name = button == PadGlyphButton.LeftShoulder ? "GalleryLeftShoulder" : "GalleryRightShoulder" };
+            glyph[!PadGlyph.FamilyProperty] = this[!PadFamilyProperty];
+            return glyph;
+        }
+
         private void FillSearch(Panel surface)
         {
             _search.FontFamily = LunaFonts.Body;
@@ -453,7 +534,7 @@ namespace EmuSen.LunaP.Controls
             foreach (CoverItem item in _items.Skip(_firstRow * columns).Take(RowsShown * columns))
             {
                 CoverItem drawn = item.Picture is null && PictureOf?.Invoke(item) is { } picture ? item with { Picture = picture } : item;
-                var card = new CoverCard { CellWidth = CellWidth, CellHeight = CellHeight, Item = drawn, ShowsFocus = !_inKeyboard && item.Key == _focusKey, Name = "GalleryTile." + item.Key, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+                var card = new CoverCard { Lift = _night ? HubLayout.NightLift : 0, CellWidth = CellWidth, CellHeight = CellHeight, Item = drawn, ShowsFocus = !_inKeyboard && item.Key == _focusKey, Name = "GalleryTile." + item.Key, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
                 card.Margin = new Thickness(i % columns * (CellWidth + Gap), i / columns * (CellHeight + Gap), 0, 0);
                 string key = item.Key;
                 card.PointerPressed += (_, _) => { if (key == _focusKey) ItemChosen?.Invoke(key); else FocusOn(key); };
