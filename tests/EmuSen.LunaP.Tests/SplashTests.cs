@@ -204,6 +204,21 @@ namespace EmuSen.LunaP.Tests
             Assert.True(lit.R + lit.G + lit.B > after.R + after.G + after.B + 60, $"flare {lit} against {after}");
         });
 
+        // A planet given a body is drawn with the chooser's own drawing of it: a gem's middle facet in the focused ink at the planet's centre (docs/LunaP.md §222.6).
+        [Fact]
+        public Task Each_planet_is_drawn_as_its_body_with_the_chooser_s_drawing() => UiTest.Run(() =>
+        {
+            var splash = new LunaSplash { Bodies = [new SplashBody("plain", 30), new SplashBody("gem", 250) { Body = new WorldBody(WorldShape.Gem) }], Title = "EMUSEN", Caption = "2 CONSOLES" };
+            splash.Finish();
+            splash.Measure(new Size(1280, 720));
+            splash.Arrange(new Rect(0, 0, 1280, 720));
+            RenderedFrame frame = Drawn(splash, 1280, 720);
+            Point gem = splash.Parts().Single(p => p.Name == "gem").Bounds.Center, plain = splash.Parts().Single(p => p.Name == "plain").Bounds.Center;
+            Color ink = WorldGlyph.FacetInks(250, true)[2];
+            Assert.True(DrawnSupport.Near(ink, At(frame, gem.X, gem.Y), 8), $"the gem's centre {At(frame, gem.X, gem.Y)}, its ink {ink}");
+            Assert.False(DrawnSupport.Near(ink, At(frame, plain.X, plain.Y), 30));
+        });
+
         // The control's frames for the comparison with the draft, written only when the variable names a folder.
         [Fact]
         public Task The_comparison_frames_are_written_on_request() => UiTest.Run(() =>

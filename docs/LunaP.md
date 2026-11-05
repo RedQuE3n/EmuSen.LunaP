@@ -15620,10 +15620,10 @@ A big screen's chooser of worlds, declared as data, at the mockup's places in un
 |---|---|
 | Header: `Title` (Condensed Medium 32, spacing 3), `Subtitle` (Body 20, muted), `Count` at the right (Body 20, muted) | top 40, 44 high, baseline-aligned |
 | Wide tiles (`SetTiles`): an icon in a 40-unit disc, the name (Condensed Medium 24, spacing 1.5) and a line (Body 18) | top 100, 72 high, as many columns as tiles across the safe width, 18 apart |
-| Planets (`SetPlanets`) in cells 176 square, 18 apart; a planet's area is 120 high, then its name (Condensed Medium 22, spacing 1.2, upper case) and its line (Body 17) | first row's top 196, the next 192 below |
-| An orbit line through each row's planets: 1 unit, `rgba(140,150,220,.28)` fading out at each end | 60 below the row's top |
-| The focused item's title (Condensed Medium 44, spacing 2, upper case) and facts (Body 22, muted) at the left; a fan of its covers at the right | 586 to 690 |
-| The help band (§211.4) | 702 |
+| Planets (`SetPlanets`) in cells 176 square, 18 apart; a planet's area is 120 high, then its name (Condensed Medium 22, spacing 1.2, upper case) and its line (Body 17); since §222, cells 176 × 190 with a 104-unit area for the body | first row's top 196, the next 192 below; since §222, 186 and 200 below |
+| An orbit line through each row's planets: 1 unit, `rgba(140,150,220,.28)` fading out at each end | 60 below the row's top; since §222, 52 |
+| The focused item's title (Condensed Medium 44, spacing 2, upper case) and facts (Body 22, muted) at the left; a fan of its covers at the right | 586 to 690; since §222.7, 612 to 716 |
+| The help band (§211.4) | 702; since §222.7, 742 to 800 at night |
 
 - **Rows that fit.** As many cells across as the safe width holds; the planets are shared evenly among the rows they
   need (eleven at 1280 units: six, then five), and each row is centred, so a short row sits between the long one's
@@ -15703,3 +15703,136 @@ between the tiles and the rows; A raises the focused key; the focused planet gro
 audit at 1280 × 800, 1920 × 1080, 1280 × 720 and 3840 × 2160, the last with its scale set after the resize, for the
 planets, the hub and the gallery at night. `HubLayoutTests` and the gallery's: the night forms keep the day's places
 and walk; the heading names the neighbours the shoulders lead to.
+
+## 222. Bodies: what a world on `PlanetLayout` is drawn as, and its engine line (2026-11-05)
+
+Decided 2026-11-05 by the tester, from an approved mockup ("Choose a console", the courts draft, 1280 × 800 design
+units): each world on `PlanetLayout` is drawn by kind rather than as one planet in a hue, and a world may carry an
+engine line under its count. The sky, the fonts, the wide tiles, the focused world's words, the fan and the help band
+are §221's and do not change. The mockup's markup and `renderVals()` are the specification; §222.5 says where the kit
+does not match it.
+
+### 222.1 Where the drawing lives
+
+The kit draws generic bodies from plain data and knows nothing of consoles or makers; the host says which world is
+which body. That keeps one owner for each fact: LunaP owns how a planet with craters, a cluster of shards or a cut gem
+is drawn, and the host (EmuSen's Mistress, beside its table of hues) owns which console is which body and palette.
+
+- `WorldShape`: `Planet`, `Shards` or `Gem`.
+- `WorldBody(Shape)`: `Palette`, three colours for a planet's lit disc (light, middle, rim), or null to derive them from
+  the item's hue; craters, bands and a polar cap, each an opacity from 0 (absent) to 1 (`Craters`, `Bands`, `Cap`);
+  a ring by size (`Ring`: `WorldRing.None`, `Subtle` or `Big`); and a count of moonlets, 0 to 2 (`Moons`).
+  `WorldBody.Plain` is a planet with no palette and no feature. Decided 2026-11-05: the ring is a size and the moonlets
+  a count rather than flags, so a console that arrives later with a subtle or a big ring, or two moons, is data only. Shards and a gem take their facets from the hue.
+- `PlanetItem.Body`: the world's body; null draws `WorldBody.Plain`, so a host that says nothing gets §221's planet
+  in its hue.
+- `PlanetItem.Engine`: a `PlanetEngine(Name, Tag, InHue)`, the line under the count; null draws none.
+
+### 222.2 `WorldGlyph`
+
+A control that draws one body in a hue, focused or at rest, from vectors in the mockup's boxes: 100 × 100 for a
+planet, 100 × 160 for shards and the gem, scaled to the control. Drawing reaches outside the box (a ring, a moonlet);
+nothing is clipped.
+
+| Kind | At rest | Focused |
+|---|---|---|
+| Planet | 58 wide | 84 wide |
+| Shards, gem | 42 × 68 | 60 × 96 |
+
+- **A planet**: a disc of radius 44 at 50, 50, lit by a radial gradient centred at 36 %, 32 % of its box with radius
+  74 % (the palette's light at 0, middle at 48 %, rim at 100 %); then, each at its feature's opacity, three craters
+  in the rim colour (r 7 at 63, 40; r 5 at 40, 64; r 3.5 at 67, 66), two bands stroked in the light colour (4 and 3
+  wide, `M9 44 Q50 33 91 44` and `M12 62 Q50 53 88 62`), a polar cap of `#FFF4F6` (`M33 13 Q50 4 67 13 Q50 20 33 13Z`),
+  a ring (an ellipse at 50, 52 turned −16°, its back half drawn before the disc and its front half after: big is the
+  mockup's, radii 64 by 13 stroked 2.4 at 0.75; subtle is radii 54 by 10 stroked 1.4 at 0.45, a proposal no console
+  uses yet), and moonlets in the middle colour with a 1-unit edge of the light, the first of radius 5.5 at 93, 14 and
+  the second of radius 3.8 at 5, 84, lower left. A white
+  highlight (radii 10 by 6 at 35, 29, turned −28°, at 0.5) sits over the disc. The ring is white at 0.95 focused and
+  `rgba(255,245,252,.7)` at rest.
+- **Without a palette**, a planet's three colours come from its hue as §221.3's glyph's did: `hsl(h,85%,80%)`,
+  `hsl(h,65%,52%)`, `hsl(h,60%,22%)`.
+- **Shards**: six facets, the mockup's polygons, in four inks of the hue; at rest `hsl(h,50%,74%)` at 0.62,
+  `hsl(h,45%,58%)` at 0.55, `hsl(h,60%,82%)` at 0.68 and `hsl(h,38%,42%)` at 0.55; focused `hsl(h,80%,84%)`,
+  `hsl(h,70%,64%)`, `hsl(h,95%,90%)` and `hsl(h,60%,46%)`, opaque. Each facet has a 1.2-unit edge, white at 0.95
+  focused and `rgba(255,245,252,.55)` at rest, and two strokes of light (white at 0.95 or 0.45) run down the facets.
+- **A gem**: a crown of three facets and a pavilion of three, the same inks and edges, two strokes of light.
+- **The glow** is a drop shadow of the drawn shape, `hsl(h,90%,70%)`, blur 24 at 0.75 focused and 9 at 0.3 at rest,
+  as the mockup's CSS `drop-shadow`. So at rest a body is translucent with a soft glow (the facets' alphas), and
+  focused it grows and brightens.
+
+### 222.3 The cell
+
+The cell grows to the mockup's tile: 176 wide and 190 high (`CellHeight`), the rows' tops at 186 and 386
+(`RowTop`, `RowStep` 200), the body's area 104 high (`PlanetArea`) and the orbit line through its middle, 52 below the
+row's top. The words under the body keep §221.3's sizes: the name (Condensed Medium 22, spacing 1.2, upper case) and
+the count (Body 17, muted), one unit apart, 12 above the cell's foot.
+
+- **Sparkles.** The focused cell carries three four-pointed sparkles (the mockup's path in a 24-unit box): 14 units of
+  `#FFF3DA` at 30, 16; 10 of `#FFD9EE` 32 from the right at 46; 7 of white at 40, 84.
+- **The engine line**, 3 units under the count: a mark (`PlanetEngine.Mark`, a `PlanetMark` drawn by `MarkGlyph`;
+  none when null), 6 units, the engine's name
+  in upper case (Condensed Medium 17, spacing 2), 6 units, then the tag, its word in upper case (Condensed Medium 17, spacing 0.8) in a box 4 units round with a
+  1-unit edge and 4 units of room either side. With `InHue` on (an engine of the host's own), the name is drawn in
+  `hsl(h,85%,80%)` focused and `hsl(h,35%,70%)` at rest, and the tag's edge `hsl(h,45%,52%)`, its word
+  `hsl(h,70%,82%)` and its fill `hsl(h,60%,50%)` at 0.14. With it off, the name is the text token, the tag's edge the
+  border token and its word the text token at 0.8, with no fill. In the light variant both forms take the tokens.
+- **Marks.** A `PlanetMark` is plain data, either `Stroke` (SVG path data in a 24-unit box, stroked 2 wide with round
+  ends and joins in the name's ink, drawn 15 units square) or `Pixels` (a badge: an 11-unit square rounded 1.6 in the
+  name's ink, with its pixels, one string per row and 'X' for a pixel, cut in the raised surface's colour `#26262B`
+  one unit from the left and 1.5 from the top, drawn 16 units square and without antialiasing so they stay crisp).
+  Vectors rather than font glyphs, since a handheld's fonts cannot be trusted to have the symbols. The host says which
+  mark an engine has.
+- **Fit.** The tag is always whole; the name takes what the tile has left and is cut with an ellipsis past it, and is
+  named `PlanetStatus` so a fit audit allows the cut: its full name is in the focused world's facts, which the host
+  writes (Mistress ends them "runs on Venus, an EmuSen core").
+
+### 222.4 What stays
+
+The pad's walk, `Rows` and the window of two rows, the wide tiles, the header, the focused words, the fan, the help
+band and the sky's glow (still the focused planet's hue) are §221.3's. `PlanetGlyph` stays for the hub's Continue and
+the gallery's heading.
+
+### 222.5 Where it differs from the mockup
+
+- **The engine line's sizes.** The mockup draws the name at 15 and the tag's word at 11, both under the smallest text
+  the fit audit allows a big screen (capitals of the desktop face at 16, which Barlow reaches at 16.6). Both are 17,
+  the tag's word in Condensed rather than Body to keep it narrow, and the tag's line 18 high.
+- **The longest names.** At 17 the tag LIBRETRO takes 70 units with its box and the badge 22 with its gap, leaving a
+  libretro core's name 62 of the tile's 160: PCSX2, Snes9x and Flycast fit whole; SameBoy (63), Nestopia, PicoDrive,
+  Beetle PSX HW, Beetle Saturn, Genesis Plus GX and Mupen64Plus-Next (141) are cut with an ellipsis, whole in the facts.
+  EmuSen's own names fit with their 15-unit symbol and tag at every size: Nephrite, the widest line, takes 158. Measured from
+  the fonts' advance widths, 2026-11-05.
+- **The libretro inks.** The mockup's greys (`#C9C9D0`, `#6E6E78`, `#A9A9B2`) are drawn from the palette's text and
+  border tokens (`#D4D4D4`, `#707070`, the text at 0.8), as §221.6 did for the night's edges.
+- **The glow.** The mockup's CSS `drop-shadow(0 0 24px …)` is Avalonia's `DropShadowEffect` with the same blur
+  radius; Skia turns a radius into a Gaussian a little wider than CSS's (σ ≈ 0.58 r + 0.5 rather than r / 2).
+
+### 222.6 Moonrise draws the same bodies
+
+Decided 2026-11-05 by the tester: each console on the splash (§219) is drawn as the same body, palette and features as
+its tile. `SplashBody.Body` carries it (null draws `WorldBody.Plain` in the hue), and the splash draws it with the one
+drawing the tile uses: `WorldPaint`, an internal class holding a body's brushes made once and drawing it into a box of
+its shape's proportions, which `WorldGlyph` and `LunaSplash` both call, so there is no second copy. A planet's box is
+set so its disc has the splash's radius for that place in the row; shards and a gem stand 2.5 radii tall about the same
+centre. The splash draws the bodies in their focused inks (opaque, bright), keeps its own soft glow and flare, and its
+timeline, ladder, bells and layout are unchanged. A plain planet now takes the tile's three hue colours rather than the
+splash's former two-stop gradient.
+
+### 222.7 The help band at night sits on the foot
+
+Decided 2026-11-05 by the tester: on the night screens (the hub, the gallery and `PlanetLayout` at night) the help band
+is 58 units from 742 to 800, flush with the screen's foot, rather than at 702 with 40 units of glass under it. The
+surface is 800 units high at every size, so the band's foot is the window's foot at 1280 × 800, 1920 × 1080,
+1280 × 720 and 3840 × 2160. `PlanetLayout`'s focused words and fan move down with it, to 612 to 716 (`DetailTop`).
+The day band (§211.4) is unchanged.
+
+### 222.8 Tests
+
+`WorldGlyphTests`: each shape's size at rest and focused; a subtle ring, a big ring, and one or two moonlets; a plain planet's colours from its hue; a palette's colours
+drawn; a feature at 0 draws nothing of itself (pixels with and without it). `PlanetLayoutTests`: a world with no body
+draws the plain planet; the focused cell carries the sparkles and no other does; the engine line's name and tag, in the
+hue or in the tokens; the symbol in the name's ink; the cell's words and the widest lines (Nephrite with its symbol and tag, and
+Mupen64Plus-Next with its symbol, cut, and LIBRETRO) inside the tile at 1280 × 800,
+1920 × 1080, 1280 × 720 and 3840 × 2160, the last with its scale set after the resize; the band's foot is the
+window's foot and the fan starts at 612, there and on the hub and gallery at night. `SplashTests`: a planet given a
+gem is drawn with the tile's drawing, its middle facet in the focused ink at its centre.

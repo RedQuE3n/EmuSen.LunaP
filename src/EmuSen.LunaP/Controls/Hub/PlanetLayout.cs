@@ -39,6 +39,22 @@ namespace EmuSen.LunaP.Controls
 
         /// <summary>A wide tile's icon as SVG path data in a 24-unit box, stroked; null for none.</summary>
         public string? Icon { get; init; }
+
+        /// <summary>What a planet's world is drawn as; null draws WorldBody.Plain in its hue.</summary>
+        public WorldBody? Body { get; init; }
+
+        /// <summary>The engine line under a planet's status; null draws none.</summary>
+        public PlanetEngine? Engine { get; init; }
+    }
+
+    /// <summary>A world's engine line: its name, then a tag in a box.</summary>
+    /// <param name="Name">The engine's name, drawn in upper case and cut with an ellipsis where the tile has no room.</param>
+    /// <param name="Tag">The tag's word, drawn whole in upper case.</param>
+    /// <param name="InHue">Whether the line is drawn in the world's hue (the host's own engine) rather than the theme's neutral tokens.</param>
+    public sealed record PlanetEngine(string Name, string Tag, bool InHue)
+    {
+        /// <summary>A mark before the name, in the line's ink: 15 units for a path, 16 for a badge; null for none.</summary>
+        public PlanetMark? Mark { get; init; }
     }
 
     // Wide tiles over rows of planets on orbit lines, the focused world's words and covers beneath, on the night sky - see docs/LunaP.md §221.3.
@@ -57,14 +73,14 @@ namespace EmuSen.LunaP.Controls
         /// <summary>The wide tiles' top, height and the gap between two.</summary>
         public const double TilesTop = 100, TileHeight = 72, TileGap = 18;
 
-        /// <summary>The first planet row's top, the step to the next, a cell's side, the gap between cells and the planet's area at a cell's top.</summary>
-        public const double RowTop = 196, RowStep = 192, Cell = 176, CellGap = 18, PlanetArea = 120;
+        /// <summary>The first planet row's top, the step to the next, a cell's width and height, the gap between cells and the body's area at a cell's top.</summary>
+        public const double RowTop = 186, RowStep = 200, Cell = 176, CellHeight = 190, CellGap = 18, PlanetArea = 104;
 
         /// <summary>A planet's diameter at rest and focused, and how far a focused cell rises.</summary>
         public const double Planet = 58, FocusedPlanet = 84, Lift = 6;
 
         /// <summary>The focused world's words and fan: their top and height, and the fan's width and a cover's height.</summary>
-        public const double DetailTop = 586, DetailHeight = 104, FanWidth = 420, FanCover = 100, FanStep = 74;
+        public const double DetailTop = 612, DetailHeight = 104, FanWidth = 420, FanCover = 100, FanStep = 74;
 
         /// <summary>How many planet rows show at once.</summary>
         public const int RowsShown = 2;
@@ -362,11 +378,11 @@ namespace EmuSen.LunaP.Controls
             AutomationProperties.SetName(_hintBar, string.Join(", ", entries.Select(e => e.Label)));
         }
 
-        private static TextBlock Words(string text, double size, string ink, FontFamily? face = null, string? name = null, FontWeight weight = FontWeight.Normal, double spacing = 0)
+        private static TextBlock Words(string text, double size, string? ink, FontFamily? face = null, string? name = null, FontWeight weight = FontWeight.Normal, double spacing = 0)
         {
             var t = new TextBlock { Text = text, FontFamily = face ?? LunaFonts.Body, FontSize = size, FontWeight = weight, LetterSpacing = spacing, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis };
             if (name is not null) t.Name = name;
-            t[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(ink);
+            if (ink is not null) t[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(ink);
             return t;
         }
 
@@ -478,13 +494,11 @@ namespace EmuSen.LunaP.Controls
         private Control PlanetCell(PlanetItem item)
         {
             bool on = item.Key == _focus;
-            var cell = new Panel { Name = "PlanetCell." + item.Key, Width = Cell, Height = Cell, Cursor = new Cursor(StandardCursorType.Hand) };
+            var cell = new Panel { Name = "PlanetCell." + item.Key, Width = Cell, Height = CellHeight, Cursor = new Cursor(StandardCursorType.Hand) };
             cell.Children.Add(Glass(on ? 0.88 : 0, 8));
-            var stack = new StackPanel { Spacing = 2, Margin = new Thickness(8, 0, 8, 14) };
-            double d = on ? FocusedPlanet : Planet;
-            var planet = new PlanetGlyph { Name = "Planet." + item.Key, Hue = item.Hue ?? 0, Width = d, Height = d, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-            planet.Halo(on ? 14 : 9, on ? 0.22 : 0.12, on ? 60 : 24, on ? 0.55 : 0.25);
-            stack.Children.Add(new Panel { Height = PlanetArea, Children = { planet } });
+            var stack = new StackPanel { Spacing = 1, Margin = new Thickness(8, 0, 8, 12) };
+            var body = new WorldGlyph { Name = "Planet." + item.Key, Body = item.Body ?? WorldBody.Plain, Hue = item.Hue ?? 0, Focused = on, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            stack.Children.Add(new Panel { Height = PlanetArea, Children = { body } });
             TextBlock name = Words(item.Name.ToUpperInvariant(), Scaled(22), "LunaTextStrong", LunaFonts.Condensed, StatusName, FontWeight.Medium, 1.2);
             name.HorizontalAlignment = HorizontalAlignment.Center;
             stack.Children.Add(name);
@@ -494,7 +508,9 @@ namespace EmuSen.LunaP.Controls
                 line.HorizontalAlignment = HorizontalAlignment.Center;
                 stack.Children.Add(line);
             }
+            if (item.Engine is { } engine) stack.Children.Add(EngineLine(engine, item.Hue ?? 0, on));
             cell.Children.Add(stack);
+            if (on) foreach (Control sparkle in Sparkles()) cell.Children.Add(sparkle);
             cell.Children.Add(HubLayout.Ring(on, 8));
             if (on)
             {
@@ -506,6 +522,68 @@ namespace EmuSen.LunaP.Controls
             cell.PointerPressed += (_, _) => { if (key == _focus) ItemChosen?.Invoke(key); else FocusOn(key); };
             return cell;
         }
+
+        /// <summary>The name of an engine line's tag, drawn whole.</summary>
+        public const string EngineTagName = "PlanetEngineTag";
+
+        /// <summary>The name of an engine line's symbol, drawn before the name.</summary>
+        public const string EngineSymbolName = "PlanetEngineSymbol";
+
+        // The engine's name in upper case, cut where the tile has no room, then its tag whole in a box, in the hue or the theme's tokens - see docs/LunaP.md §222.3.
+        private Control EngineLine(PlanetEngine engine, double hue, bool on)
+        {
+            bool tinted = engine.InHue && _night;
+            string? token = tinted ? null : "LunaText";
+            TextBlock name = Words(engine.Name.ToUpperInvariant(), Scaled(17), token, LunaFonts.Condensed, StatusName, FontWeight.Medium, engine.InHue ? 2 : 1.5);
+            TextBlock word = Words(engine.Tag.ToUpperInvariant(), Scaled(17), token, LunaFonts.Condensed, EngineTagName + "Word", FontWeight.Medium, 0.8);
+            word.LineHeight = Scaled(18);
+            word.TextTrimming = TextTrimming.None;
+            var tag = new Border { Name = EngineTagName, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(4, 0), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0), Child = word };
+            if (tinted)
+            {
+                name.Foreground = new ImmutableSolidColorBrush(NightSky.Hsl(hue, on ? 0.85 : 0.35, on ? 0.8 : 0.7));
+                word.Foreground = new ImmutableSolidColorBrush(NightSky.Hsl(hue, 0.7, 0.82));
+                tag.BorderBrush = new ImmutableSolidColorBrush(NightSky.Hsl(hue, 0.45, 0.52));
+                tag.Background = new ImmutableSolidColorBrush(NightSky.Hsl(hue, 0.6, 0.5, 0.14));
+            }
+            else
+            {
+                word.Opacity = 0.8;
+                tag[!Border.BorderBrushProperty] = new DynamicResourceExtension("LunaBorder");
+            }
+            name.VerticalAlignment = VerticalAlignment.Center;
+            var line = new DockPanel { Name = "PlanetEngine", HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 3, 0, 0), LastChildFill = true };
+            if (engine.Mark is { } drawn)
+            {
+                double side = Scaled(drawn.Pixels is null ? 15 : 16);
+                var mark = new MarkGlyph { Name = EngineSymbolName, Mark = drawn, Width = side, Height = side, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+                if (tinted) mark.Ink = name.Foreground;
+                else mark[!MarkGlyph.InkProperty] = new DynamicResourceExtension("LunaText");
+                mark[!MarkGlyph.DarkProperty] = new DynamicResourceExtension("LunaSurfaceRaised");
+                DockPanel.SetDock(mark, Dock.Left);
+                line.Children.Add(mark);
+            }
+            DockPanel.SetDock(tag, Dock.Right);
+            line.Children.Add(tag);
+            line.Children.Add(name);
+            return line;
+        }
+
+        // Parsed on first use, so reading the type's surface needs no renderer.
+        private static class Shapes
+        {
+            public static readonly Geometry Sparkle = Geometry.Parse("M12,1 C12.9,8.2 15.8,11.1 23,12 C15.8,12.9 12.9,15.8 12,23 C11.1,15.8 8.2,12.9 1,12 C8.2,11.1 11.1,8.2 12,1Z");
+        }
+
+        // The focused cell's three sparkles, the mockup's: their size, where they stand in the cell and their colour.
+        private static readonly (double Size, double X, double Y, string Ink)[] SparkleSpots = [(14, 30, 16, "#FFF3DA"), (10, Cell - 32 - 10, 46, "#FFD9EE"), (7, 40, 84, "#FFFFFF")];
+
+        private static IEnumerable<Control> Sparkles() => SparkleSpots.Select(s => (Control)new Path
+        {
+            Name = "PlanetSparkle", Data = Shapes.Sparkle, Fill = new ImmutableSolidColorBrush(Color.Parse(s.Ink)), Stretch = Stretch.Fill, IsHitTestVisible = false,
+            Width = s.Size * 22 / 24, Height = s.Size * 22 / 24, Margin = new Thickness(s.X + s.Size / 24, s.Y + s.Size / 24, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top,
+        });
 
         private void AddDetail(Panel surface)
         {

@@ -18,7 +18,11 @@ namespace EmuSen.LunaP.Controls
     /// <summary>One planet of a splash's row: its name and its colour's hue in degrees.</summary>
     /// <param name="Name">What the planet stands for.</param>
     /// <param name="Hue">The hue, 0 to 360.</param>
-    public sealed record SplashBody(string Name, double Hue);
+    public sealed record SplashBody(string Name, double Hue)
+    {
+        /// <summary>What the planet is drawn as, the same body a chooser of worlds draws for it; null draws WorldBody.Plain in its hue.</summary>
+        public WorldBody? Body { get; init; }
+    }
 
     /// <summary>What a splash shows of one part of its frame: the part's name and its bounds in the control.</summary>
     /// <param name="Name">The part: title, caption, moon, halo, or a planet's name.</param>

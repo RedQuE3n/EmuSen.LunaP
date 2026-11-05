@@ -1680,6 +1680,18 @@ public struct EmuSen.LunaP.Controls.ManagerMarked<T> : System.ValueType, System.
     public static bool op_Inequality(EmuSen.LunaP.Controls.ManagerMarked<T> left, EmuSen.LunaP.Controls.ManagerMarked<T> right)
     public void Deconstruct(out T? Row, out EmuSen.LunaP.Controls.ManagerMark Mark)
 
+public sealed class EmuSen.LunaP.Controls.MarkGlyph : Avalonia.Controls.Control
+    public Avalonia.Media.IBrush? Dark { get; set; }
+    public Avalonia.Media.IBrush? Ink { get; set; }
+    public EmuSen.LunaP.Controls.PlanetMark Mark { get; set; }
+    public MarkGlyph()
+    public const double BadgeSide = 11
+    public const double PixelLeft = 1
+    public const double PixelTop = 1.5
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.IBrush?> DarkProperty = null
+    public static readonly Avalonia.StyledProperty<Avalonia.Media.IBrush?> InkProperty = null
+
 public enum EmuSen.LunaP.Controls.MenuAnchor
     public const EmuSen.LunaP.Controls.MenuAnchor Centre = 0
     public const EmuSen.LunaP.Controls.MenuAnchor Edge = 2
@@ -2357,6 +2369,20 @@ public class EmuSen.LunaP.Controls.PathPickerRow : Avalonia.Controls.Primitives.
     public string Path { get; set; }
     public string Placeholder { get; set; }
 
+public sealed class EmuSen.LunaP.Controls.PlanetEngine : System.IEquatable<EmuSen.LunaP.Controls.PlanetEngine>
+    public EmuSen.LunaP.Controls.PlanetMark? Mark { get; init; }
+    public PlanetEngine(string Name, string Tag, bool InHue)
+    public bool Equals(EmuSen.LunaP.Controls.PlanetEngine? other)
+    public bool InHue { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.PlanetEngine? left, EmuSen.LunaP.Controls.PlanetEngine? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.PlanetEngine? left, EmuSen.LunaP.Controls.PlanetEngine? right)
+    public string Name { get; init; }
+    public string Tag { get; init; }
+    public void Deconstruct(out string Name, out string Tag, out bool InHue)
+
 public sealed class EmuSen.LunaP.Controls.PlanetGlyph : Avalonia.Controls.Control
     protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
     public PlanetGlyph()
@@ -2366,6 +2392,8 @@ public sealed class EmuSen.LunaP.Controls.PlanetGlyph : Avalonia.Controls.Contro
     public void Halo(double band, double bandOpacity, double glow, double glowOpacity)
 
 public sealed class EmuSen.LunaP.Controls.PlanetItem : System.IEquatable<EmuSen.LunaP.Controls.PlanetItem>
+    public EmuSen.LunaP.Controls.PlanetEngine? Engine { get; init; }
+    public EmuSen.LunaP.Controls.WorldBody? Body { get; init; }
     public PlanetItem(string Key, string Name)
     public System.Collections.Generic.IReadOnlyList<EmuSen.LunaP.Controls.CoverItem> Covers { get; init; }
     public bool Equals(EmuSen.LunaP.Controls.PlanetItem? other)
@@ -2403,9 +2431,10 @@ public class EmuSen.LunaP.Controls.PlanetLayout : Avalonia.Controls.Border
     public bool Press(EmuSen.LunaP.Controls.PadGlyphButton button)
     public const double Cell = 176
     public const double CellGap = 18
+    public const double CellHeight = 190
     public const double DesignHeight = 800
     public const double DetailHeight = 104
-    public const double DetailTop = 586
+    public const double DetailTop = 612
     public const double FanCover = 100
     public const double FanStep = 74
     public const double FanWidth = 420
@@ -2414,14 +2443,16 @@ public class EmuSen.LunaP.Controls.PlanetLayout : Avalonia.Controls.Border
     public const double HeaderTop = 40
     public const double Lift = 6
     public const double Planet = 58
-    public const double PlanetArea = 120
-    public const double RowStep = 192
-    public const double RowTop = 196
+    public const double PlanetArea = 104
+    public const double RowStep = 200
+    public const double RowTop = 186
     public const double Side = 64
     public const double TileGap = 18
     public const double TileHeight = 72
     public const double TilesTop = 100
     public const int RowsShown = 2
+    public const string EngineSymbolName = "PlanetEngineSymbol"
+    public const string EngineTagName = "PlanetEngineTag"
     public const string StatusName = "PlanetStatus"
     public event System.Action<string> FocusChanged
     public event System.Action<string> HintInvoked
@@ -2435,6 +2466,17 @@ public class EmuSen.LunaP.Controls.PlanetLayout : Avalonia.Controls.Border
     public void Refresh()
     public void SetPlanets(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.PlanetItem> planets)
     public void SetTiles(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Controls.PlanetItem> tiles)
+
+public sealed class EmuSen.LunaP.Controls.PlanetMark : System.IEquatable<EmuSen.LunaP.Controls.PlanetMark>
+    public PlanetMark()
+    public System.Collections.Generic.IReadOnlyList<string>? Pixels { get; init; }
+    public bool Equals(EmuSen.LunaP.Controls.PlanetMark? other)
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static bool op_Equality(EmuSen.LunaP.Controls.PlanetMark? left, EmuSen.LunaP.Controls.PlanetMark? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.PlanetMark? left, EmuSen.LunaP.Controls.PlanetMark? right)
+    public string? Stroke { get; init; }
 
 public class EmuSen.LunaP.Controls.PosterSlot : Avalonia.Controls.Control
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
@@ -2796,6 +2838,7 @@ public sealed class EmuSen.LunaP.Controls.SourceListItem : System.IEquatable<Emu
     public void Deconstruct(out string Key, out string Text, out string? Badge)
 
 public sealed class EmuSen.LunaP.Controls.SplashBody : System.IEquatable<EmuSen.LunaP.Controls.SplashBody>
+    public EmuSen.LunaP.Controls.WorldBody? Body { get; init; }
     public SplashBody(string Name, double Hue)
     public bool Equals(EmuSen.LunaP.Controls.SplashBody? other)
     public double Hue { get; init; }
@@ -3132,6 +3175,46 @@ public class EmuSen.LunaP.Controls.ToolBar : Avalonia.Controls.ItemsControl
     public ToolBar()
     public void SetActions(EmuSen.LunaP.Commands.LunaAction[] actions)
     public void SetActions(System.Collections.Generic.IEnumerable<EmuSen.LunaP.Commands.LunaAction> actions)
+
+public sealed class EmuSen.LunaP.Controls.WorldBody : System.IEquatable<EmuSen.LunaP.Controls.WorldBody>
+    public EmuSen.LunaP.Controls.WorldRing Ring { get; init; }
+    public EmuSen.LunaP.Controls.WorldShape Shape { get; init; }
+    public System.Collections.Generic.IReadOnlyList<Avalonia.Media.Color>? Palette { get; init; }
+    public WorldBody(EmuSen.LunaP.Controls.WorldShape Shape)
+    public bool Equals(EmuSen.LunaP.Controls.WorldBody? other)
+    public double Bands { get; init; }
+    public double Cap { get; init; }
+    public double Craters { get; init; }
+    public int Moons { get; init; }
+    public override bool Equals(object? obj)
+    public override int GetHashCode()
+    public override string ToString()
+    public static EmuSen.LunaP.Controls.WorldBody Plain { get; }
+    public static bool op_Equality(EmuSen.LunaP.Controls.WorldBody? left, EmuSen.LunaP.Controls.WorldBody? right)
+    public static bool op_Inequality(EmuSen.LunaP.Controls.WorldBody? left, EmuSen.LunaP.Controls.WorldBody? right)
+    public void Deconstruct(out EmuSen.LunaP.Controls.WorldShape Shape)
+
+public sealed class EmuSen.LunaP.Controls.WorldGlyph : Avalonia.Controls.Control
+    public EmuSen.LunaP.Controls.WorldBody Body { get; set; }
+    public WorldGlyph()
+    public bool Focused { get; set; }
+    public double Hue { get; set; }
+    public override void Render(Avalonia.Media.DrawingContext context)
+    public static Avalonia.Media.Color[] FacetInks(double hue, bool focused)
+    public static Avalonia.Size SizeOf(EmuSen.LunaP.Controls.WorldShape shape, bool focused)
+    public static System.ValueTuple<Avalonia.Media.Color, Avalonia.Media.Color, Avalonia.Media.Color> Colours(EmuSen.LunaP.Controls.WorldBody body, double hue)
+
+public enum EmuSen.LunaP.Controls.WorldRing
+    public const EmuSen.LunaP.Controls.WorldRing Big = 2
+    public const EmuSen.LunaP.Controls.WorldRing None = 0
+    public const EmuSen.LunaP.Controls.WorldRing Subtle = 1
+    public int value__
+
+public enum EmuSen.LunaP.Controls.WorldShape
+    public const EmuSen.LunaP.Controls.WorldShape Gem = 2
+    public const EmuSen.LunaP.Controls.WorldShape Planet = 0
+    public const EmuSen.LunaP.Controls.WorldShape Shards = 1
+    public int value__
 
 public static class EmuSen.LunaP.Fluent.AccessibilityExtensions
     public static T AccessibleName<T>(this T control, string name) where T : Avalonia.Controls.Control

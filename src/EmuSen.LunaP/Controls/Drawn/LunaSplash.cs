@@ -36,7 +36,7 @@ namespace EmuSen.LunaP.Controls
         private string _title = "", _caption = "";
         private double _time;
         private NightSky.Star[] _stars = [];
-        private (double A0, double Rx, double Ry, IBrush Body, IBrush Glow, IBrush Flare)[] _planets = [];
+        private (double A0, double Rx, double Ry, WorldPaint Body, IBrush Glow, IBrush Flare)[] _planets = [];
         private TextLayout? _titleLayout, _captionLayout;
         private (double Size, double Spacing) _titleKey, _captionKey;
 
@@ -107,13 +107,11 @@ namespace EmuSen.LunaP.Controls
         {
             var random = new SplashRandom(_timeline.Seed);
             _stars = NightSky.Place(random, _timeline.StarCount);
-            _planets = new (double, double, double, IBrush, IBrush, IBrush)[_bodies.Count];
+            _planets = new (double, double, double, WorldPaint, IBrush, IBrush)[_bodies.Count];
             for (int i = 0; i < _planets.Length; i++)
             {
                 double hue = _bodies[i].Hue;
-                IBrush body = new ImmutableRadialGradientBrush(
-                    [new ImmutableGradientStop(0, Hsl(hue, 0.7, 0.78)), new ImmutableGradientStop(0.1, Hsl(hue, 0.7, 0.78)), new ImmutableGradientStop(1, Hsl(hue, 0.55, 0.38))],
-                    gradientOrigin: new RelativePoint(0.3, 0.3, RelativeUnit.Relative), radiusX: new RelativeScalar(0.5, RelativeUnit.Relative), radiusY: new RelativeScalar(0.5, RelativeUnit.Relative));
+                var body = new WorldPaint(_bodies[i].Body ?? WorldBody.Plain, hue, true);
                 IBrush glow = new ImmutableSolidColorBrush(Hsl(hue, 0.8, 0.7), 0.18);
                 IBrush flare = new ImmutableSolidColorBrush(Hsl(hue, 0.9, 0.86));
                 _planets[i] = (random.Next() * 6.28, 0.32 + random.Next() * 0.16, 0.12 + random.Next() * 0.1, body, glow, flare);
@@ -129,6 +127,13 @@ namespace EmuSen.LunaP.Controls
         {
             v = Math.Clamp(v, 0, 1);
             return 1 - Math.Cos(v * Math.PI * 2.4) * Math.Exp(-5 * v);
+        }
+
+        // The box a body is drawn in about its centre: a planet's disc of radius r, shards and a gem 2.5 r tall - see docs/LunaP.md §222.6.
+        private static Rect BodyBox(WorldShape shape, Point c, double r)
+        {
+            double h = shape == WorldShape.Planet ? r / 0.44 : 2.5 * r, w = h / WorldPaint.Tallness(shape);
+            return new Rect(c.X - w / 2, c.Y - (shape == WorldShape.Planet ? h / 2 : h * 80 / 160), w, h);
         }
 
         private double PlanetRadius(int i, double u) => (5 + (i % 4) * 1.6) * u * 1.25;
@@ -258,7 +263,7 @@ namespace EmuSen.LunaP.Controls
                 using (context.PushOpacity(appear))
                 {
                     context.DrawEllipse(_planets[i].Glow, null, c, r * 2.6, r * 2.6);
-                    context.DrawEllipse(_planets[i].Body, null, c, r, r);
+                    _planets[i].Body.Draw(context, BodyBox(_bodies[i].Body?.Shape ?? WorldShape.Planet, c, r));
                 }
                 double hit = sweeping ? Math.Exp(-Math.Pow((c.X - sweepX) / (_timeline.FlareWidth * u), 2)) : 0;
                 if (hit > 0.01)

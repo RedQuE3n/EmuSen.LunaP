@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using EmuSen.LunaP.Controls;
 using EmuSen.LunaP.Testing;
@@ -21,6 +23,19 @@ namespace EmuSen.LunaP.Tests
             ("genesis", "Genesis", 0), ("mcd", "Sega CD", 190), ("psx", "PlayStation", 230), ("ps2", "PlayStation 2", 250), ("dc", "Dreamcast", 25),
         ];
 
+        private static readonly PlanetMark Crescent = new() { Stroke = "M15 3.5a8.5 8.5 0 1 0 0 17a7 7 0 1 1 0-17z" };
+        private static readonly PlanetMark Badge = new() { Pixels = ["X.......X", ".X.....X.", ".XXXXXXX.", "XX.XXX.XX", "XXXXXXXXX", ".XX...XX.", ".X.....X.", "XX.....XX"] };
+
+        // A body and an engine line for some worlds, the longest libretro name among them; the rest are plain and say no engine (docs/LunaP.md §222).
+        private static readonly Dictionary<string, (WorldBody? Body, PlanetEngine? Engine)> Kinds = new()
+        {
+            ["nes"] = (new WorldBody(WorldShape.Planet) { Palette = [Color.Parse("#FFF8FB"), Color.Parse("#F3CFE3"), Color.Parse("#A9789F")], Craters = 0.28 }, new PlanetEngine("Moon", "EmuSen", true) { Mark = Crescent }),
+            ["snes"] = (null, new PlanetEngine("Venus", "EmuSen", true) { Mark = Crescent }),
+            ["n64"] = (null, new PlanetEngine("Mupen64Plus-Next", "libretro", false) { Mark = Badge }),
+            ["genesis"] = (new WorldBody(WorldShape.Shards), new PlanetEngine("Nephrite", "EmuSen", true) { Mark = Crescent }),
+            ["ps2"] = (new WorldBody(WorldShape.Gem), new PlanetEngine("PCSX2", "libretro", false) { Mark = Badge }),
+        };
+
         private static List<CoverItem> Covers(string world) =>
             Enumerable.Range(0, 4).Select(i => new CoverItem($"{world}/{i}", $"Granite Choir {i}") { Aspect = new[] { 0.7, 1.4, 1.0, 0.72 }[i], Mark = "SNES" }).ToList();
 
@@ -33,7 +48,11 @@ namespace EmuSen.LunaP.Tests
                 new PlanetItem("fav", "Favourites") { Status = "12 games", Icon = "M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" },
                 new PlanetItem("recent", "Recently played") { Status = "Last: Super Metroid" },
             ]);
-            layout.SetPlanets(Worlds.Take(count).Select(w => new PlanetItem(w.Key, w.Name) { Hue = w.Hue, Status = "795 games", Title = w.Name, Facts = "Nintendo · 1991 · 795 games", Covers = Covers(w.Key) }));
+            layout.SetPlanets(Worlds.Take(count).Select(w => new PlanetItem(w.Key, w.Name)
+            {
+                Hue = w.Hue, Status = "795 games", Title = w.Name, Facts = "Nintendo · 1991 · 795 games", Covers = Covers(w.Key),
+                Body = Kinds.GetValueOrDefault(w.Key).Body, Engine = Kinds.GetValueOrDefault(w.Key).Engine,
+            }));
             layout.HintsFor = _ => [new PageHint(PadGlyphButton.South, "Open"), new PageHint(PadGlyphButton.East, "Back", "back"), new PageHint(PadGlyphButton.North, "Favourites", "fav"), new PageHint(PadGlyphButton.West, "Random game", "random")];
             layout.ItemChosen += k => said.Add("chose " + k);
             layout.HintInvoked += k => said.Add("hint " + k);
@@ -119,6 +138,63 @@ namespace EmuSen.LunaP.Tests
             window.Close();
         });
 
+        // Each world drawn as its body says, a world with none as the plain planet, each at its shape's size (docs/LunaP.md §222.2).
+        [Fact]
+        public Task Each_world_is_drawn_as_its_body_at_its_shape_s_size() => UiTest.Run(() =>
+        {
+            var (window, layout, _) = Planets(1280, 800);
+            layout.FocusOn("ps2");
+            UiTest.Settle(layout);
+            WorldGlyph Glyph(string key) => (WorldGlyph)Named(layout, "Planet." + key);
+            Assert.Equal((WorldShape.Gem, 60.0, 96.0), (Glyph("ps2").Body.Shape, Glyph("ps2").Bounds.Width, Glyph("ps2").Bounds.Height));
+            Assert.Equal((WorldShape.Shards, 42.0, 68.0), (Glyph("genesis").Body.Shape, Glyph("genesis").Bounds.Width, Glyph("genesis").Bounds.Height));
+            Assert.Same(WorldBody.Plain, Glyph("dc").Body);
+            Assert.Equal(0.28, Glyph("nes").Body.Craters);
+            Assert.True(Glyph("ps2").Focused);
+            Assert.False(Glyph("genesis").Focused);
+            Assert.Equal(PlanetLayout.RowTop + PlanetLayout.PlanetArea / 2, Named(layout, "PlanetOrbit").TranslatePoint(default, layout)!.Value.Y, 1.5);
+            window.Close();
+        });
+
+        [Fact]
+        public Task The_focused_cell_alone_carries_three_sparkles() => UiTest.Run(() =>
+        {
+            var (window, layout, _) = Planets(1280, 800);
+            Assert.DoesNotContain(layout.GetVisualDescendants(), c => c.Name == "PlanetSparkle");
+            layout.FocusOn("snes");
+            UiTest.Settle(layout);
+            Assert.Equal(3, Named(layout, "PlanetCell.snes").GetVisualDescendants().Count(c => c.Name == "PlanetSparkle"));
+            Assert.Equal(3, layout.GetVisualDescendants().Count(c => c.Name == "PlanetSparkle"));
+            window.Close();
+        });
+
+        // The engine line: the name and tag in the world's hue for the host's own engine, in the theme's tokens otherwise, brighter when focused (docs/LunaP.md §222.3).
+        [Fact]
+        public Task The_engine_line_names_the_engine_and_its_tag_in_the_hue_or_in_the_tokens() => UiTest.Run(() =>
+        {
+            var (window, layout, _) = Planets(1280, 800);
+            static Color Ink(Control c) => Assert.IsAssignableFrom<ISolidColorBrush>(((TextBlock)c).Foreground).Color;
+            Control snes = Named(layout, "PlanetCell.snes"), n64 = Named(layout, "PlanetCell.n64");
+            Assert.Equal("VENUS", ((TextBlock)Named(Named(snes, "PlanetEngine"), PlanetLayout.StatusName)).Text);
+            Assert.Equal("EMUSEN", ((TextBlock)Named(snes, PlanetLayout.EngineTagName + "Word")).Text);
+            Assert.Equal(HslColor.ToRgb(280, 0.35, 0.7, 1), Ink(Named(Named(snes, "PlanetEngine"), PlanetLayout.StatusName)));
+            Assert.Equal(HslColor.ToRgb(280, 0.45, 0.52, 1), Assert.IsAssignableFrom<ISolidColorBrush>(((Border)Named(snes, PlanetLayout.EngineTagName)).BorderBrush).Color);
+            Assert.Equal("LIBRETRO", ((TextBlock)Named(n64, PlanetLayout.EngineTagName + "Word")).Text);
+            Assert.Equal(Color.Parse("#D4D4D4"), Ink(Named(Named(n64, "PlanetEngine"), PlanetLayout.StatusName)));
+            Assert.Null(((Border)Named(n64, PlanetLayout.EngineTagName)).Background);
+            Assert.DoesNotContain(Named(layout, "PlanetCell.dc").GetVisualDescendants(), c => c.Name == PlanetLayout.EngineTagName);
+            var symbol = (MarkGlyph)Named(snes, PlanetLayout.EngineSymbolName);
+            Assert.Equal(HslColor.ToRgb(280, 0.35, 0.7, 1), Assert.IsAssignableFrom<ISolidColorBrush>(symbol.Ink).Color);
+            Assert.Equal(15, symbol.Bounds.Width, 0.5);
+            var badge = (MarkGlyph)Named(n64, PlanetLayout.EngineSymbolName);
+            Assert.Same(Badge, badge.Mark);
+            Assert.Equal((16.0, Color.Parse("#D4D4D4"), Color.Parse("#26262B")), (badge.Bounds.Width, Assert.IsAssignableFrom<ISolidColorBrush>(badge.Ink).Color, Assert.IsAssignableFrom<ISolidColorBrush>(badge.Dark).Color));
+            layout.FocusOn("snes");
+            UiTest.Settle(layout);
+            Assert.Equal(HslColor.ToRgb(280, 0.85, 0.8, 1), Ink(Named(Named(Named(layout, "PlanetCell.snes"), "PlanetEngine"), PlanetLayout.StatusName)));
+            window.Close();
+        });
+
         [Fact]
         public Task A_third_row_scrolls_in_as_the_focus_reaches_it() => UiTest.Run(() =>
         {
@@ -140,7 +216,7 @@ namespace EmuSen.LunaP.Tests
         public Task The_planets_fit_at_every_size(int width, int height, bool late) => UiTest.Run(() =>
         {
             var (window, layout, _) = Planets(width, height, late);
-            foreach (string key in new[] { "all", "gbc", "dc" })
+            foreach (string key in new[] { "all", "gbc", "dc", "n64", "genesis" })
             {
                 layout.FocusOn(key);
                 UiTest.Settle(layout);
@@ -149,7 +225,21 @@ namespace EmuSen.LunaP.Tests
                 Assert.Empty(faults);
             }
             double u = height / PlanetLayout.DesignHeight;
-            Assert.Equal(702 * u, Named(layout, "PlanetHelpBar").TranslatePoint(default, layout)!.Value.Y, 1.5);
+            Control band = Named(layout, "PlanetHelpBar");
+            Assert.Equal(742 * u, band.TranslatePoint(default, layout)!.Value.Y, 1.5);
+            Assert.Equal(height, band.TranslatePoint(new Point(0, band.Bounds.Height), layout)!.Value.Y, 1.0);
+            Assert.Equal(612 * u, Named(layout, "PlanetFan").TranslatePoint(default, layout)!.Value.Y, 1.5);
+            foreach (string key in Kinds.Keys)
+            {
+                Control cell = Named(layout, "PlanetCell." + key), tag = Named(cell, PlanetLayout.EngineTagName);
+                Rect inCell = new Rect(tag.Bounds.Size).TransformToAABB(tag.TransformToVisual(cell)!.Value);
+                Assert.True(inCell.X >= 8 - 0.5 && inCell.Right <= PlanetLayout.Cell - 8 + 0.5 && inCell.Bottom <= PlanetLayout.CellHeight + 0.5, $"{width}x{height} {key}: the tag at {inCell} leaves its tile");
+                Control symbol = Named(cell, PlanetLayout.EngineSymbolName);
+                Rect mark = new Rect(symbol.Bounds.Size).TransformToAABB(symbol.TransformToVisual(cell)!.Value);
+                Assert.True(mark.X >= 8 - 0.5 && mark.Right <= inCell.X, $"{width}x{height} {key}: the symbol at {mark} leaves its tile or meets the tag");
+                TextBlock word = (TextBlock)Named(tag, PlanetLayout.EngineTagName + "Word");
+                Assert.False(word.TextLayout.TextLines.Any(l => l.HasCollapsed), $"{key}'s tag is cut");
+            }
             window.Close();
         });
 
@@ -181,6 +271,8 @@ namespace EmuSen.LunaP.Tests
                 }
                 List<string> faults = FitAudit.Check(layout, [Lines]);
                 foreach (string f in faults) output.WriteLine($"{layout.GetType().Name} {width}x{height}: {f}");
+                Control band = Named(layout, layout is HubLayout ? "HubHelpBar" : "GalleryHelpBar");
+                Assert.Equal(height, band.TranslatePoint(new Point(0, band.Bounds.Height), layout)!.Value.Y, 1.0);
                 Assert.Empty(faults);
                 Assert.Contains(layout.GetVisualDescendants(), c => c is LunaSky);
                 window.Content = null;
